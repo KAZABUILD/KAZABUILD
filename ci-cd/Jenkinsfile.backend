@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        DOTNET_CLI_HOME = '.'
+        CONNECTION_STRING = "Server=localhost,1433;Database=KAZABUILD_DB;User Id=sa;Password=Passw0rd;TrustServerCertificate=True"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-org/your-repo.git'
+            }
+        }
+
+        stage('Restore') {
+            steps {
+                dir('backend/src/KAZABUILD.Api') {
+                    sh 'dotnet restore'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('backend/src/KAZABUILD.Api') {
+                    sh 'dotnet build --configuration Release'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('tests') {
+                    sh 'dotnet test --no-build --verbosity normal'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t kazabuild-api ./backend'
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh 'docker tag kazabuild-api:latest your-dockerhub-user/kazabuild-api:latest'
+                sh 'docker push your-dockerhub-user/kazabuild-api:latest'
+            }
+        }
+    }
+}
