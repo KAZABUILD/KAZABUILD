@@ -8,5 +8,31 @@
   "AllowedHosts": "*",
   "ConnectionStrings": {
     "DefaultConnection": "Server=localhost,1433;Database=KAZABUILD_DB;User Id=sa;Password=Passw0rd;TrustServerCertificate=True"
-  }
+  },
+  "JwtSettings": {
+    "Secret": "verystrongsecretkey12345",
+    "Issuer": "KAZABUILD.API",
+    "Audience": "KAZABUILD.Client",
+    "ExpiryMinutes": 3600
+  },
+  "SmtpSettings": {
+    "Host": "smtp.example.com",
+    "Port": 587,
+    "Username": "no-reply@example.com",
+    "Password": "securepassword"
+  },
+  "RabbitMQ": {
+    "messaging": {
+      "HostName": "localhost",
+      "Port": 5672,
+      "UserName": "guest",
+      "Password": "guest",
+      "QueueName": "defaultQueue",
+      "PrefetchCount": 10
+    }
+  },
+  "AllowedFrontendOrigins": [
+    "https://localhost:4200",
+    "https://yourfrontend.com"
+  ]
 }
