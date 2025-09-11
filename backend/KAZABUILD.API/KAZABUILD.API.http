@@ -1,0 +1,6 @@
+@KAZABUILD_HostAddress = http://localhost:5100
+
+GET {{KAZABUILD_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

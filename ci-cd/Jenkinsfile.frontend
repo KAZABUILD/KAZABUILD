@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    environment {
+        API_BASE_URL = "https://api.example.com"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-org/your-repo.git'
+            }
+        }
+
+        stage('Flutter Setup') {
+            steps {
+                sh 'flutter --version'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('frontend') {
+                    sh 'flutter pub get'
+                }
+            }
+        }
+
+        stage('Build Web') {
+            steps {
+                dir('frontend') {
+                    sh "flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL}"
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t pc-builder-web ./frontend'
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh 'docker tag pc-builder-web:latest your-dockerhub-user/pc-builder-web:latest'
+                sh 'docker push your-dockerhub-user/pc-builder-web:latest'
+            }
+        }
+    }
+}

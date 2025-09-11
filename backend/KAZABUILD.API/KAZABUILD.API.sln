@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36401.2
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KAZABUILD.API", "KAZABUILD.API.csproj", "{193113F1-BC7A-40D2-AEB5-F68DA74F9621}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KAZABUILD.Domain", "..\KAZABUILD.Domain\KAZABUILD.Domain.csproj", "{E7B0B7FC-3FEC-4A7E-9799-BF68B2D24DF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KAZABUILD.Application", "..\KAZABUILD.Application\KAZABUILD.Application.csproj", "{8507FC98-4BC3-407A-8B46-AEDBA2577089}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KAZABUILD.Infrastructure", "..\KAZABUILD.Infrastructure\KAZABUILD.Infrastructure.csproj", "{8523D8E5-5809-4608-BF1E-8AA9CFB551FF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		Dockerfile.txt = Dockerfile.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{193113F1-BC7A-40D2-AEB5-F68DA74F9621}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{193113F1-BC7A-40D2-AEB5-F68DA74F9621}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{193113F1-BC7A-40D2-AEB5-F68DA74F9621}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{193113F1-BC7A-40D2-AEB5-F68DA74F9621}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7B0B7FC-3FEC-4A7E-9799-BF68B2D24DF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7B0B7FC-3FEC-4A7E-9799-BF68B2D24DF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7B0B7FC-3FEC-4A7E-9799-BF68B2D24DF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7B0B7FC-3FEC-4A7E-9799-BF68B2D24DF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8507FC98-4BC3-407A-8B46-AEDBA2577089}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8507FC98-4BC3-407A-8B46-AEDBA2577089}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8507FC98-4BC3-407A-8B46-AEDBA2577089}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8507FC98-4BC3-407A-8B46-AEDBA2577089}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8523D8E5-5809-4608-BF1E-8AA9CFB551FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8523D8E5-5809-4608-BF1E-8AA9CFB551FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8523D8E5-5809-4608-BF1E-8AA9CFB551FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8523D8E5-5809-4608-BF1E-8AA9CFB551FF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6B38821F-E869-4F2F-87F6-012079ECF70A}
+	EndGlobalSection
+EndGlobal

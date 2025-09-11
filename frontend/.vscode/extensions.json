@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "dart-code.dart-code",
+    "dart-code.flutter",
+    "ms-dotnettools.csharp",
+    "rihardsz.flutter-advanced-snippets",
+    "riverpod-rs.riverpod-snippets"
+  ]
+}
