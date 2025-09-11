@@ -1,13 +1,10 @@
 using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Application.DTOs.User
 {
-    public class User
+    public class CreateUserDto
     {
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         [StringLength(50)]
         [MinLength(8)]
@@ -19,7 +16,7 @@ namespace KAZABUILD.Domain.Entities
 
         [Required]
         [MinLength(8)]
-        public string PasswordHash { get; set; } = default!;
+        public string Password { get; set; } = default!;
 
         [Required]
         [StringLength(50)]
@@ -47,13 +44,5 @@ namespace KAZABUILD.Domain.Entities
         [Required]
         [DataType(DataType.DateTime)]
         public DateTime RegisteredAt { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-
     }
 }

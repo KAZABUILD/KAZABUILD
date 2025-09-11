@@ -3,11 +3,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KAZABUILD.Infrastructure.Data
 {
-    public class KAZABUILDDBContext(DbContextOptions<KAZABUILDDBContext> options) : DbContext(options)
+    public class KAZABUILDDBContext : DbContext
     {
+        public KAZABUILDDBContext(DbContextOptions<KAZABUILDDBContext> options) : base(options)
+        {
+        }
+
+        //Declared tables in the database
         public DbSet<Log> Logs { get; set; } = default!;
         public DbSet<User> Users { get; set; } = default!;
 
+        //Declare enums and cascade delete behaviour
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
