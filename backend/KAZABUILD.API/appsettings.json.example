@@ -31,8 +31,10 @@
       "PrefetchCount": 10
     }
   },
-  "AllowedFrontendOrigins": [
-    "https://localhost:4200",
-    "https://yourfrontend.com"
-  ]
+  "AllowedFrontendOrigins": {
+    "AllowedFrontendOrigins": [
+      "https://localhost:4200",
+      "https://yourfrontend.com"
+    ]
+  }
 }

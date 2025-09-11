@@ -110,6 +110,9 @@ namespace KAZABUILD.Infrastructure
             //Add authorization service
             services.AddScoped<IAuthorizationService, AuthorizationService>();
 
+            //Add loggin service
+            services.AddScoped<ILogger, Logger>();
+
             //Add the RabbitMQ queue service
             services.Configure<RabbitMQSettings>(config.GetSection("RabbitMq"));
             services.AddSingleton<IRabbitMqConnection, RabbitMQConnection>();

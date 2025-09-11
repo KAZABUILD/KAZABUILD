@@ -1,4 +1,5 @@
 using FluentValidation;
+using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.User
@@ -8,6 +9,10 @@ namespace KAZABUILD.Application.DTOs.User
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
         [MinLength(8, ErrorMessage = "Display Name must be at least 8 characters long!")]
         public string? DisplayName { get; set; }
+
+        [StringLength(50, ErrorMessage = "Login cannot be longer than 50 characters!")]
+        [MinLength(8, ErrorMessage = "Login must be at least 8 characters long!")]
+        public string? Login { get; set; }
 
         [Phone(ErrorMessage = "Invalid phone number format!")]
         public string? PhoneNumber { get; set; }
@@ -26,5 +31,7 @@ namespace KAZABUILD.Application.DTOs.User
 
         [EmailAddress(ErrorMessage = "Invalid Email Format!")]
         public string? Email { get; set; }
+
+        public UserRole? UserRole { get; set; }
     }
 }

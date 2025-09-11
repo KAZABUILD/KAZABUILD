@@ -1,5 +1,9 @@
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Infrastructure;
+using KAZABUILD.Infrastructure.Data;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.API
@@ -17,7 +21,34 @@ namespace KAZABUILD.API
             builder.Services.AddOpenApi();
 
             //Documentation with swagger
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                //Enable adding a jwt security token
+                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = Microsoft.OpenApi.Models.ParameterLocation.Header
+                });
+
+                //Inform swagger that endpoints require authorization
+                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                {
+                    {
+                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        {
+                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
 
             //Add CORS policy
             var corsSettings = builder.Configuration.GetSection("AllowedFrontendOrigins").Get<FrontendSettings>()!;
@@ -47,7 +78,21 @@ namespace KAZABUILD.API
                     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 });
 
+            //Build the app using the declared configuration
             var app = builder.Build();
+
+            //Apply migrations automatically
+            using var scope = app.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<KAZABUILDDBContext>();
+            try
+            {
+                dbContext.Database.Migrate();
+            }
+            catch (Exception ex) //Catch any error related to migration
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database.");
+            }
 
             //Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -87,7 +132,38 @@ namespace KAZABUILD.API
             //Map controllers' enpoints
             app.MapControllers();
 
-            app.Run();
+            //Try to run the app and throw an error for empty validation
+            try
+            {
+                app.Run();
+            }
+            catch (OptionsValidationException ex)
+            {
+                //Print all configuration errors
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Configuration validation failed:");
+                foreach (var failure in ex.Failures)
+                {
+                    Console.WriteLine($"  - {failure}");
+                }
+                Console.ResetColor();
+
+                //Close the app upon a button press
+                Console.WriteLine("Press any button to close...");
+                Console.ReadKey();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Launching the application failed: {ex.Message}");
+                Console.ResetColor();
+
+                //Close the app upon a button press
+                Console.WriteLine("Press any button to close...");
+                Console.ReadKey();
+                return;
+            }
         }
     }
 }
