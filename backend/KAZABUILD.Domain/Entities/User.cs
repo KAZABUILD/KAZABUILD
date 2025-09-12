@@ -1,10 +1,12 @@
 using KAZABUILD.Domain.Enums;
+using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities
 {
     public class User
     {
+        //User Profile fields
         [Key]
         public Guid Id { get; set; }
 
@@ -46,14 +48,42 @@ namespace KAZABUILD.Domain.Entities
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime RegisteredAt { get; set; }
+        public DateTime Birth { get; set; } = default!;
 
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime RegisteredAt { get; set; } = default!;
+
+        public Address? Address { get; set; }
+
+        //User Settings fields
+        [Required]
+        public ProfileAccessibility ProfileAccessibility { get; set; } = ProfileAccessibility.FOLLOWS;
+
+        [Required]
+        public Theme Theme { get; set; } = Theme.DARK;
+
+        [Required]
+        public Language Language { get; set; } = Language.ENGLISH;
+
+        [StringLength(100)]
+        public string? Location { get; set; }
+
+        [Required]
+        public bool ReceiveEmailNotifications { get; set; } = true; 
+
+        //Additional database information
         [DataType(DataType.DateTime)]
         public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
 
         [DataType(DataType.DateTime)]
         public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
 
+        [StringLength(255)]
+        public string? Note { get; set; }
 
+        //Database relationships
+        public ICollection<UserFollow>? Followers { get; }
+        public ICollection<UserFollow>? Followed { get; }
     }
 }

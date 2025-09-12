@@ -1,17 +1,19 @@
+using Azure;
 using KAZABUILD.Application.DTOs.User;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
+using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
-using ILogger = KAZABUILD.Application.Interfaces.ILogger;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
-using KAZABUILD.Domain.Entities;
-using KAZABUILD.Application.Helpers;
+using ILogger = KAZABUILD.Application.Interfaces.ILogger;
 
 namespace KAZABUILD.API.Controllers
 {
@@ -27,7 +29,7 @@ namespace KAZABUILD.API.Controllers
         private readonly IHashingService _hasher = hasher;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //Create a new user
+        //API Endpont for creating a new user
         [HttpPost("Add")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> AddUser([FromBody] CreateUserDto dto)
@@ -50,7 +52,14 @@ namespace KAZABUILD.API.Controllers
                 Gender = dto.Gender,
                 UserRole = dto.UserRole,
                 ImageUrl = dto.ImageUrl,
+                Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
+                Address = dto.Address,
+                ProfileAccessibility = dto.ProfileAccessibility,
+                Theme = dto.Theme,
+                Language = dto.Language,
+                Location = dto.Location,
+                ReceiveEmailNotifications = dto.ReceiveEmailNotifications,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -83,7 +92,9 @@ namespace KAZABUILD.API.Controllers
             return Ok(new { message = "User craeted successfully!" });
         }
 
-        //Update the selected user
+        //API endpoint for updating the selected user
+        //Users can only update their own profiles and settings
+        //Admins can update all information
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
@@ -114,6 +125,7 @@ namespace KAZABUILD.API.Controllers
                     "Operation Failed - Unathorized Access"
                 );
 
+                //Return forbidden response
                 return Forbid();
             }
 
@@ -142,33 +154,117 @@ namespace KAZABUILD.API.Controllers
             //Update allowed fields
             if (!string.IsNullOrEmpty(dto.DisplayName))
             {
-                user.DisplayName = dto.DisplayName;
+                changedFields.Add("DisplayName: " + user.DisplayName);
 
-                changedFields.Add("DisplayName: " + dto.DisplayName);
+                user.DisplayName = dto.DisplayName;
             }
             if (dto.PhoneNumber != null)
             {
-                user.PhoneNumber = dto.PhoneNumber;
+                changedFields.Add("PhoneNumber: " + user.PhoneNumber);
 
-                changedFields.Add("PhoneNumber: " + dto.PhoneNumber);
+                user.PhoneNumber = dto.PhoneNumber;
             }
             if (dto.Description != null)
             {
-                user.Description = dto.Description;
+                changedFields.Add("Description: " + user.Description);
 
-                changedFields.Add("Description: " + dto.Description);
+                user.Description = dto.Description;
             }
             if (!string.IsNullOrEmpty(dto.Gender))
             {
-                user.Gender = dto.Gender;
+                changedFields.Add("Gender: " + user.Gender);
 
-                changedFields.Add("Gender: " + dto.Gender);
+                user.Gender = dto.Gender;
             }
             if (!string.IsNullOrEmpty(dto.ImageUrl))
             {
-                user.ImageUrl = dto.ImageUrl;
+                changedFields.Add("ImageUrl: " + user.ImageUrl);
 
-                changedFields.Add("ImageUrl: " + dto.ImageUrl);
+                user.ImageUrl = dto.ImageUrl;
+            }
+            if (dto.Birth != null)
+            {
+                changedFields.Add("Birth: " + user.Birth);
+
+                user.Birth = (DateTime)dto.Birth;
+            }
+            if (dto.Address != null)
+            {
+                if(user.Address == null)
+                {
+                    changedFields.Add("Added Address");
+
+                    user.Address = dto.Address;
+                }
+                else
+                {
+                    if (dto.Address.Country != null)
+                    {
+                        user.Address.Country = dto.Address.Country;
+
+                        changedFields.Add("Country: " + user.Address.Country);
+                    }
+                    if (dto.Address.Province != null)
+                    {
+                        user.Address.Province = dto.Address.Province;
+
+                        changedFields.Add("Province: " + user.Address.Province);
+                    }
+                    if (dto.Address.City != null)
+                    {
+                        user.Address.City = dto.Address.City;
+
+                        changedFields.Add("City: " + user.Address.City);
+                    }
+                    if (dto.Address.Street != null)
+                    {
+                        user.Address.Street = dto.Address.Street;
+
+                        changedFields.Add("Street: " + user.Address.Street);
+                    }
+                    if (dto.Address.StreetNumber != null)
+                    {
+                        user.Address.StreetNumber = dto.Address.StreetNumber;
+
+                        changedFields.Add("StreetNumber: " + user.Address.StreetNumber);
+                    }
+                    if (dto.Address.PostalCode != null)
+                    {
+                        user.Address.PostalCode = dto.Address.PostalCode;
+
+                        changedFields.Add("PostalCode: " + user.Address.PostalCode);
+                    }
+                    if (dto.Address.ApartmentNumber != null)
+                    {
+                        changedFields.Add("ApartmentNumber: " + user.Address.ApartmentNumber);
+
+                        user.Address.ApartmentNumber = dto.Address.ApartmentNumber;
+                    }
+                }
+            }
+            if (dto.ProfileAccessibility != null)
+            {
+                user.ProfileAccessibility = (ProfileAccessibility)dto.ProfileAccessibility;
+
+                changedFields.Add("ProfileAccessibility: " + user.ProfileAccessibility);
+            }
+            if (dto.Theme != null)
+            {
+                changedFields.Add("Theme: " + user.Theme);
+
+                user.Theme = (Theme)dto.Theme;
+            }
+            if (dto.Language != null)
+            {
+                changedFields.Add("Language: " + user.Language);
+
+                user.Language = (Language)dto.Language;
+            }
+            if (!string.IsNullOrEmpty(dto.Location))
+            {
+                changedFields.Add("Location: " + user.Location);
+
+                user.Location = dto.Location;
             }
 
             //Update allowed fields - administration
@@ -176,17 +272,28 @@ namespace KAZABUILD.API.Controllers
             {
                 if (!string.IsNullOrEmpty(dto.Email))
                 {
-                    user.Email = dto.Email;
+                    changedFields.Add("Email: " + user.Email);
 
-                    changedFields.Add("Email: " + dto.Email);
+                    user.Email = dto.Email;
                 }
                 if (!string.IsNullOrEmpty(dto.Login))
                 {
-                    user.Login = dto.Login;
+                    changedFields.Add("Login: " + user.Login);
 
-                    changedFields.Add("Login: " +  dto.Login);
+                    user.Login = dto.Login;
                 }
-                if (dto.UserRole != null && !string.IsNullOrEmpty(dto.UserRole.ToString())) user.UserRole = (UserRole)dto.UserRole;
+                if (dto.UserRole != null)
+                {
+                    changedFields.Add("UserRole: " + user.UserRole);
+
+                    user.UserRole = (UserRole)dto.UserRole;
+                }
+                if (!string.IsNullOrEmpty(dto.Note))
+                {
+                    changedFields.Add("Note: " + user.Note);
+
+                    user.Note = dto.Note;
+                }
                 //Hash password if provided
                 if (!string.IsNullOrEmpty(dto.Password))
                 {
@@ -227,7 +334,83 @@ namespace KAZABUILD.API.Controllers
             return Ok(new { message = "User updated successfully!" });
         }
 
-        //Get the selected user
+        //API endpoint for changing the password, users can change their own password
+        [HttpPost("{id:guid}/change-password")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordDto dto)
+        {
+            //Get the ip from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Get user id and check if the calling user matches the changing user
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id != currentUserId)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "GET",
+                    "User",
+                    ip,
+                    id,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Failed - No Such User"
+                );
+
+                //Return forbidden response
+                return Forbid();
+            }
+
+            //Get the user to edit
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "UPDATE",
+                    "User",
+                    ip,
+                    id,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Failed - No Such User"
+                );
+
+                //Return not found response
+                return NotFound(new { message = "User not found!" });
+            }
+
+            //Verify if the old password is correct
+            if (!_hasher.Verify(user.PasswordHash, dto.OldPassword))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "UPDATE",
+                    "User",
+                    ip,
+                    id,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Failed - Invalid Password"
+                );
+
+                //Return bad request response
+                return BadRequest(new { message = "Old password incorrect!" });
+            }
+
+            //Change the password
+            user.PasswordHash = _hasher.Hash(dto.NewPassword);
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
+
+            //Return success response
+            return Ok(new { message = "Password changed successfully!" });
+        }
+
+        //API endpoint for getting the user specified by id,
+        //different level of information returned based on privilages
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<UserReponseDto>> GetUser(Guid id)
@@ -259,12 +442,8 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "User not found!" });
             }
 
-            //Publish RabbitMQ event
-            await _publisher.PublishAsync("user.got", new
-            {
-                userId = id,
-                updatedBy = currentUserId
-            });
+            //Log Description string declaration
+            string logDescription;
 
             //Declare response variable
             UserReponseDto response;
@@ -273,19 +452,29 @@ namespace KAZABUILD.API.Controllers
             var isSelf = currentUserId == id;
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
+            //Check if the calling user is followed
+            var isFollowed = await _db.UserFollows.AnyAsync(f => f.FollowerId == id && f.FollowedId == currentUserId);
+
             //Check what permissions user has and return respective information
+            if(!isSelf && !isPrivileged
+                && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE
+                || (user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed))) //Return restricted knowledge if the user set their profile to private or restricted access
+            {
+                //Change log description
+                logDescription = "Successful Operation - Protected Access";
+
+                //Create user response
+                response = new UserReponseDto
+                {
+                    Id = user.Id,
+                    DisplayName = user.DisplayName,
+                    UserRole = user.UserRole
+                };
+            }
             if (!isSelf && !isPrivileged) //Return limited knowledge if not user or if no privilages
             {
-                //Log success
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "User",
-                    ip,
-                    id,
-                    PrivacyLevel.INFORMATION,
-                    "Successful Operation - Limited Access"
-                );
+                //Change log description
+                logDescription = "Successful Operation - Limited Access";
 
                 //Create user response
                 response = new UserReponseDto
@@ -293,23 +482,14 @@ namespace KAZABUILD.API.Controllers
                     Id = user.Id,
                     DisplayName = user.DisplayName,
                     Description = user.Description,
-                    UserRole = user.UserRole,
-                    DatabaseEntryAt = user.DatabaseEntryAt,
-                    LastEditedAt = user.LastEditedAt
+                    ImageUrl = user.ImageUrl,
+                    UserRole = user.UserRole
                 };
             }
             else //Return full knowledge if is user or if has privilages
             {
-                //Log success
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "User",
-                    ip,
-                    id,
-                    PrivacyLevel.INFORMATION,
-                    "Successful Operation - Full Access"
-                );
+                //Change log description
+                logDescription = "Successful Operation - Full Access";
 
                 //Create user response
                 response = new UserReponseDto
@@ -324,16 +504,43 @@ namespace KAZABUILD.API.Controllers
                     UserRole = user.UserRole,
                     ImageUrl = user.ImageUrl,
                     RegisteredAt = user.RegisteredAt,
+                    Birth = user.Birth,
+                    Address = user.Address,
+                    ProfileAccessibility = user.ProfileAccessibility,
+                    Theme = user.Theme,
+                    Language = user.Language,
+                    Location = user.Location,
+                    ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                     DatabaseEntryAt = user.DatabaseEntryAt,
-                    LastEditedAt = user.LastEditedAt
+                    LastEditedAt = user.LastEditedAt,
+                    Note = user.Note
                 };
 
             }
 
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "User",
+                ip,
+                id,
+                PrivacyLevel.INFORMATION,
+                logDescription
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("user.got", new
+            {
+                userId = id,
+                updatedBy = currentUserId
+            });
+
             return Ok(response);
         }
 
-        //Get user with paging and search
+        //API endpoint for getting users with pagination and search,
+        //different level of information returned based on privilages
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<UserReponseDto>>> GetUsers([FromBody] GetUserDto dto)
@@ -355,7 +562,7 @@ namespace KAZABUILD.API.Controllers
             //Apply search based on credentials
             if(isPrivileged)
             {
-                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description, u => u.PhoneNumber, u => u.Gender, u => u.RegisteredAt);
+                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description, u => u.PhoneNumber, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location, u => u.Note);
             }
             else
             {
@@ -376,7 +583,129 @@ namespace KAZABUILD.API.Controllers
                     .Take(dto.PageLength);
             }
 
+            //Log Description string declaration
+            string logDescription;
+
             List<User> users = await query.ToListAsync();
+
+            //Declare response variable
+            List<UserReponseDto> responses;
+
+            //Check what permissions user has and return respective information
+            if (!isPrivileged) //Return limited knowledge if no privilages
+            {
+                //Change log description
+                logDescription = "Successful Operation - Limited Access, Multiple Users";
+
+                //Get all follows for the current user
+                var followers = await _db.UserFollows
+                    .Where(f => f.FollowedId == currentUserId)
+                    .Select(f => f.FollowerId)
+                    .ToListAsync();
+
+                //Create a user response list
+                responses = [.. users.Select(user =>
+                {
+                    //Check if the calling user is followed
+                    var isFollowed = followers.Contains(user.Id);
+
+                    //Check if current user is getting themselves
+                    var isSelf = currentUserId == user.Id;
+
+                    //Return limited or restricted information based on user profile settings
+                    if(!isSelf && user.ProfileAccessibility == ProfileAccessibility.PRIVATE || (user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed))
+                    {
+                        //Return restricted knowledge if the user set their profile to private or restricted access
+                        return new UserReponseDto
+                        {
+                            Id = user.Id,
+                            DisplayName = user.DisplayName,
+                            UserRole = user.UserRole
+                        };
+                    }
+                    else if(!isSelf)
+                    {
+                        //Return limited knowledge if not user
+                        return new UserReponseDto
+                        {
+                            Id = user.Id,
+                            DisplayName = user.DisplayName,
+                            Description = user.Description,
+                            ImageUrl = user.ImageUrl,
+                            UserRole = user.UserRole
+                        };
+                    }
+                    else
+                    {
+                        //Return full knowledge if is user
+                        return new UserReponseDto
+                        {
+                            Id = user.Id,
+                            Login = user.Login,
+                            Email = user.Email,
+                            DisplayName = user.DisplayName,
+                            PhoneNumber = user.PhoneNumber,
+                            Description = user.Description,
+                            Gender = user.Gender,
+                            UserRole = user.UserRole,
+                            ImageUrl = user.ImageUrl,
+                            RegisteredAt = user.RegisteredAt,
+                            Birth = user.Birth,
+                            Address = user.Address,
+                            ProfileAccessibility = user.ProfileAccessibility,
+                            Theme = user.Theme,
+                            Language = user.Language,
+                            Location = user.Location,
+                            ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                            DatabaseEntryAt = user.DatabaseEntryAt,
+                            LastEditedAt = user.LastEditedAt,
+                            Note = user.Note
+                        };
+                    }
+                })];
+            }
+            else //Return full knowledge if has privilages
+            {
+                //Change log description
+                logDescription = "Successful Operation - Full Access, Multiple Users";
+
+                //Create a user response list
+                responses = [.. users.Select(user => new UserReponseDto
+                {
+                    Id = user.Id,
+                    Login = user.Login,
+                    Email = user.Email,
+                    DisplayName = user.DisplayName,
+                    PhoneNumber = user.PhoneNumber,
+                    Description = user.Description,
+                    Gender = user.Gender,
+                    UserRole = user.UserRole,
+                    ImageUrl = user.ImageUrl,
+                    RegisteredAt = user.RegisteredAt,
+                    Birth = user.Birth,
+                    Address = user.Address,
+                    ProfileAccessibility = user.ProfileAccessibility,
+                    Theme = user.Theme,
+                    Language = user.Language,
+                    Location = user.Location,
+                    ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                    DatabaseEntryAt = user.DatabaseEntryAt,
+                    LastEditedAt = user.LastEditedAt,
+                    Note = user.Note
+                })];
+
+            }
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "User",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                logDescription
+            );
 
             //Publish RabbitMQ event
             await _publisher.PublishAsync("user.gotUsers", new
@@ -385,72 +714,11 @@ namespace KAZABUILD.API.Controllers
                 updatedBy = currentUserId
             });
 
-            //Declare response variable
-            List<UserReponseDto> responses;
-
-            //Check what permissions user has and return respective information
-            if (!isPrivileged) //Return limited knowledge if no privilages
-            {
-                //Log success
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "User",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.INFORMATION,
-                    $"Successful Operation - Limited Access, Multiple Users"
-                );
-
-                //Create a user response list
-                responses = [.. users.Select(user => new UserReponseDto
-                {
-                    Id = user.Id,
-                    DisplayName = user.DisplayName,
-                    Description = user.Description,
-                    UserRole = user.UserRole,
-                    DatabaseEntryAt = user.DatabaseEntryAt,
-                    LastEditedAt = user.LastEditedAt
-                })];
-            }
-            else //Return full knowledge if has privilages
-            {
-                //Log success
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "User",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.INFORMATION,
-                    $"Successful Operation - Full Access, Multiple Users"
-                );
-
-                //Create a user response list
-                responses = [.. users.Select(user => new UserReponseDto
-                {
-                    Id = user.Id,
-                    Login = user.Login,
-                    Email = user.Email,
-                    PasswordHash = user.PasswordHash,
-                    DisplayName = user.DisplayName,
-                    PhoneNumber = user.PhoneNumber,
-                    Description = user.Description,
-                    Gender = user.Gender,
-                    UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
-                    RegisteredAt = user.RegisteredAt,
-                    DatabaseEntryAt = user.DatabaseEntryAt,
-                    LastEditedAt = user.LastEditedAt
-                })];
-
-            }
-
             //Return the users
             return Ok(responses);
         }
 
-        //Update the selected user
+        //API endpoint for deleting the selected user for administration
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> DeleteUser(Guid id)

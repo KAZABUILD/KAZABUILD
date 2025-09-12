@@ -1,5 +1,6 @@
 using FluentValidation;
 using KAZABUILD.Domain.Enums;
+using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.User
@@ -26,6 +27,9 @@ namespace KAZABUILD.Application.DTOs.User
         [Url(ErrorMessage = "Invalid image URL!")]
         public string? ImageUrl { get; set; }
 
+        [DataType(DataType.DateTime)]
+        public DateTime? Birth { get; set; }
+
         [MinLength(8, ErrorMessage = "Password must be at least 8 characters long!")]
         public string? Password { get; set; }
 
@@ -33,5 +37,19 @@ namespace KAZABUILD.Application.DTOs.User
         public string? Email { get; set; }
 
         public UserRole? UserRole { get; set; }
+
+        public Address? Address { get; set; }
+
+        public ProfileAccessibility? ProfileAccessibility { get; set; }
+
+        public Theme? Theme { get; set; }
+
+        public Language? Language { get; set; }
+
+        public string? Location { get; set; }
+
+        public bool? ReceiveEmailNotifications { get; set; }
+
+        public string? Note { get; set; }
     }
 }

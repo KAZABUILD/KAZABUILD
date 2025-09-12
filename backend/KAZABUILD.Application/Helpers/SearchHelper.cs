@@ -27,29 +27,41 @@ namespace KAZABUILD.Application.Helpers
             //Search all words
             foreach (var term in terms)
             {
-                if (term.Contains(':')) //Field-specific search e.g. "email:test@example.com"
+                //Check if the term is a negation
+                var isExclusion = term.StartsWith('-');
+                //If it is a negation remove the dash
+                var cleanTerm = isExclusion ? term[1..] : term;
+
+                if (cleanTerm.Contains(':')) //Field-specific search e.g. "email:test@example.com"
                 {
                     //Split into the field name and value to search
-                    var parts = term.Split(':', 2);
+                    var parts = cleanTerm.Split(':', 2);
                     var fieldName = parts[0];
                     var value = parts[1].Trim('"');
 
                     //Call the function to build the filter and apply it to get filtered objects
-                    query = ApplyFieldFilter(query, fieldName, value);
+                    var filter = ApplyFieldFilter(query, fieldName, value);
+
+                    //Apply the exclusion if it's a negation
+                    query = isExclusion
+                       ? query.Except(filter)
+                       : filter;
                 }
                 else //General search across all searchable fields
                 {
                     //Build expression for filtering the query using all searchable fields, prune null ones
                     var predicates = searchableFields
-                        .Select(expr => BuildContainsExpression(expr, term.Trim('"')))
+                        .Select(expr => BuildContainsExpression(expr, cleanTerm.Trim('"')))
                         .Where(p => p != null)
                         .ToList();
 
                     //Filter the query by combining the build predicates
-                    if (predicates.Count != 0)
+                    if (predicates.Count > 0)
                     {
                         var combined = predicates.Aggregate((p1, p2) => p1.OrElse(p2));
-                        query = query.Where(combined);
+                        query = isExclusion
+                            ? query.Where(Expression.Lambda<Func<T, bool>>(Expression.Not(combined.Body), combined.Parameters))
+                            : query.Where(combined);
                     }
                 }
             }
@@ -108,7 +120,7 @@ namespace KAZABUILD.Application.Helpers
         }
 
         //Build the default contains expression, e.g. (x.Name.Contains("term"))
-        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value)
+        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value, int tolerance = 1)
         {
             //Get the parameter "x"
             var param = field.Parameters[0];
@@ -134,6 +146,14 @@ namespace KAZABUILD.Application.Helpers
             return Expression.Lambda<Func<T, bool>>(combined, param);
         }
 
+        //Fuzzy matching helper function
+        //TODO
+        /*public static bool FuzzyMatch(string? source, string target, int tolerance)
+        {
+            if (string.IsNullOrEmpty(source)) return false;
+            return LevenshteinDistance(source.ToLower(), target.ToLower()) <= tolerance;
+        }*/
+
         //Expression helper that combines two lambdas with a logical OR, e.g. Name.Contains("a") OR Email.Contains("a")
         private static Expression<Func<T, bool>> OrElse<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)
         {
@@ -155,7 +175,7 @@ namespace KAZABUILD.Application.Helpers
                 => node == _oldParam ? _newParam : node;
         }
 
-        //Regex generator, created the regex once at launch
+        //Regex generator, creates the regex once at launch
         [GeneratedRegex(@"(\w+:[\""].+?[\""])|([\""].+?[\""])|(\S+)")]
         private static partial Regex SearchTermRegex();
     }
