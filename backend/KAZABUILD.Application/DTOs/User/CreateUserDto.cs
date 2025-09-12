@@ -1,4 +1,5 @@
 using KAZABUILD.Domain.Enums;
+using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.User
@@ -43,6 +44,22 @@ namespace KAZABUILD.Application.DTOs.User
 
         [Required]
         [DataType(DataType.DateTime)]
+        public DateTime Birth { get; set; }
+
+        [Required]
+        [DataType(DataType.DateTime)]
         public DateTime RegisteredAt { get; set; }
+
+        public Address? Address { get; set; }
+
+        public ProfileAccessibility ProfileAccessibility { get; set; } = ProfileAccessibility.FOLLOWS;
+
+        public Theme Theme { get; set; } = Theme.DARK;
+
+        public Language Language { get; set; } = Language.ENGLISH;
+
+        public string? Location { get; set; }
+
+        public bool ReceiveEmailNotifications { get; set; } = true;
     }
 }
