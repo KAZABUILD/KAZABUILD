@@ -1,19 +1,17 @@
-using Azure;
 using KAZABUILD.Application.DTOs.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
-using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
+using ILogger = KAZABUILD.Application.Interfaces.ILogger;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
-using ILogger = KAZABUILD.Application.Interfaces.ILogger;
 
 namespace KAZABUILD.API.Controllers
 {
