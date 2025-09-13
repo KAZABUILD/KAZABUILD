@@ -18,13 +18,14 @@ namespace KAZABUILD.Application.DTOs.User
         [Phone(ErrorMessage = "Invalid phone number format!")]
         public string? PhoneNumber { get; set; }
 
-        [StringLength(1000, ErrorMessage = "Description must be shorter than 1001 characters!")]
+        [StringLength(1000, ErrorMessage = "Description cannot be longer than 1000 characters!")]
         public string? Description { get; set; }
 
-        [StringLength(20, ErrorMessage = "Gender must be shorter than 10 characters!")]
+        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
         public string? Gender { get; set; }
 
         [Url(ErrorMessage = "Invalid image URL!")]
+        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
         public string? ImageUrl { get; set; }
 
         [DataType(DataType.DateTime)]
@@ -36,20 +37,26 @@ namespace KAZABUILD.Application.DTOs.User
         [EmailAddress(ErrorMessage = "Invalid Email Format!")]
         public string? Email { get; set; }
 
+        [EnumDataType(typeof(UserRole))]
         public UserRole? UserRole { get; set; }
 
         public Address? Address { get; set; }
 
+        [EnumDataType(typeof(ProfileAccessibility))]
         public ProfileAccessibility? ProfileAccessibility { get; set; }
 
+        [EnumDataType(typeof(Theme))]
         public Theme? Theme { get; set; }
 
+        [EnumDataType(typeof(Language))]
         public Language? Language { get; set; }
 
+        [StringLength(100, ErrorMessage = "Location cannot be longer than 100 characters!")]
         public string? Location { get; set; }
 
         public bool? ReceiveEmailNotifications { get; set; }
 
+        [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
         public string? Note { get; set; }
     }
 }

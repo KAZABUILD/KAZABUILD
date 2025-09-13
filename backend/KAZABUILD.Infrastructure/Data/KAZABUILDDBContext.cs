@@ -48,7 +48,24 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
+            //Register address as a ValueObject
+            modelBuilder.Entity<User>()
+                .OwnsOne(u => u.Address);
 
+            //====================================== USER FOLLOW ======================================//
+
+            //Register relationships
+            modelBuilder.Entity<UserFollow>()
+                .HasOne(f => f.Follower)
+                .WithMany(u => u.Followed)
+                .HasForeignKey(f => f.FollowerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserFollow>()
+                .HasOne(f => f.Followed)
+                .WithMany(u => u.Followers)
+                .HasForeignKey(f => f.FollowedId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

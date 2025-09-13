@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Serilog;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.API
@@ -75,8 +76,12 @@ namespace KAZABUILD.API
                 .AddJsonOptions(options =>
                 {
                     //Add enum serialization (so that both numerical values and string are valid)
-                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: true));
                 });
+
+            //Register Serilog settings
+            builder.Host.UseSerilog((ctx, config) =>
+                config.ReadFrom.Configuration(ctx.Configuration));
 
             //Build the app using the declared configuration
             var app = builder.Build();

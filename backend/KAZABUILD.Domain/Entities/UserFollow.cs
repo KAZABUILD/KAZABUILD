@@ -21,7 +21,7 @@ namespace KAZABUILD.Domain.Entities
         public string? Note { get; set; }
 
         //Database relationships
-        public User? Follower { get; set; }
-        public User? Followed { get; set; }
+        public User? Follower { get; set; } = default!;
+        public User? Followed { get; set; } = default!;
     }
 }
