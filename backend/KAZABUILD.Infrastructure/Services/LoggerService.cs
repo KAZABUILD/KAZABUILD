@@ -42,8 +42,11 @@ namespace KAZABUILD.Infrastructure.Services
             //Check if there is a target and format it correctly
             var _userId = userId == Guid.Empty ? "" : $" by {userId}";
 
-            //Crate a serilog message
-            string message = $"{activityType} on {targetType}{_userId}{ip}{_targetId} - {description ?? "No description"}";
+            //Check if there is a decription and format it correctly
+            var _description = string.IsNullOrEmpty(description) ? "" : $" - {description}";
+
+            //Crate a serilog message string
+            string message = $"{DateOnly.FromDateTime(DateTime.UtcNow)}: {activityType} on {targetType}{_userId}{ip}{_targetId}{_description}";
 
             //Write the log to serilog depending on severity
             switch (severityLevel)

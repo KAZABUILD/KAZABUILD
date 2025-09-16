@@ -49,7 +49,7 @@ namespace KAZABUILD.API.Controllers
                     "User",
                     ip,
                     isUserAvailaible.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Email Already In Use"
                 );
 
@@ -137,11 +137,11 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "UPDATE",
+                    "PUT",
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Unathorized Access"
                 );
 
@@ -156,11 +156,11 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "UPDATE",
+                    "PUT",
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - No Such User"
                 );
 
@@ -335,7 +335,7 @@ namespace KAZABUILD.API.Controllers
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
-                "UPDATE",
+                "PUT",
                 "User",
                 ip,
                 user.Id,
@@ -355,7 +355,7 @@ namespace KAZABUILD.API.Controllers
         }
 
         //API endpoint for changing the password, users can change their own password
-        [HttpPost("{id:guid}/change-password")]
+        [HttpPut("{id:guid}/change-password")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordDto dto)
         {
@@ -370,12 +370,12 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "GET",
+                    "PUT",
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
-                    "Operation Failed - No Such User"
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unathorized Access"
                 );
 
                 //Return forbidden response
@@ -389,11 +389,11 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "UPDATE",
+                    "PUT",
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - No Such User"
                 );
 
@@ -407,11 +407,11 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "UPDATE",
+                    "PUT",
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Invalid Password"
                 );
 
@@ -424,6 +424,24 @@ namespace KAZABUILD.API.Controllers
 
             //Save changes to the database
             await _db.SaveChangesAsync();
+
+            //Log the update
+            await _logger.LogAsync(
+                currentUserId,
+                "PUT",
+                "User",
+                ip,
+                user.Id,
+                PrivacyLevel.INFORMATION,
+                $"Successful Operation - Changed Password"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("user.passwordUpdated", new
+            {
+                userId = id,
+                updatedBy = currentUserId
+            });
 
             //Return success response
             return Ok(new { message = "Password changed successfully!" });
@@ -761,7 +779,7 @@ namespace KAZABUILD.API.Controllers
                     "User",
                     ip,
                     id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - No Such User"
                 );
 

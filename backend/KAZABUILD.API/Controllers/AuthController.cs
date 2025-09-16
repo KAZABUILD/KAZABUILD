@@ -4,7 +4,6 @@ using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Infrastructure.Services;
 using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationService;
 
 using Microsoft.AspNetCore.Authorization;
@@ -62,7 +61,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     Guid.Empty,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Invalid Login"
                 );
 
@@ -78,7 +77,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     user.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Invalid Password"
                 );
 
@@ -94,7 +93,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     user.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Attempted Unverified User Login"
                 );
 
@@ -110,7 +109,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     user.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Attempted Unverified User Login"
                 );
 
@@ -173,7 +172,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     isUserAvailaible.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Email Or Login Already In Use"
                 );
 
@@ -218,7 +217,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     user.Id,
-                    PrivacyLevel.WARNING,
+                    PrivacyLevel.ERROR,
                     "Operation Failed - IP Address Empty"
                 );
 
@@ -243,12 +242,6 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow,
             };
 
-            //Add the token to the database
-            _db.UserTokens.Add(token);
-
-            //Save changes to the database
-            await _db.SaveChangesAsync();
-
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
@@ -256,8 +249,22 @@ namespace KAZABUILD.API.Controllers
             //Create the email message body with html
             var body = $"Welcome {user.DisplayName},<br/>Click <a href=\"{confirmUrl}\">here</a> to confirm your account.";
 
-            //Send the confirmation email
-            await _smtp.SendEmailAsync(user.Email, "Confirm your account", body);
+            //Try to send the confirmation email
+            try
+            {
+                //Send the confirmation email
+                await _smtp.SendEmailAsync(user.Email, "Confirm your account", body);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
+            }
+
+            //Add the token to the database
+            _db.UserTokens.Add(token);
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
 
             //Log the creation
             await _logger.LogAsync(
@@ -306,7 +313,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     Guid.Empty,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Invalid Token"
                 );
 
@@ -322,7 +329,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     token.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Expired Token"
                 );
 
@@ -398,7 +405,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     Guid.Empty,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - No Such User For Password Reset"
                 );
 
@@ -416,7 +423,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     user.Id,
-                    PrivacyLevel.WARNING,
+                    PrivacyLevel.ERROR,
                     "Operation Failed - IP Address Empty For Password Reset"
                 );
 
@@ -437,12 +444,6 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the token to the database
-            _db.UserTokens.Add(token);
-
-            //Save changes to the database
-            await _db.SaveChangesAsync();
-
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
@@ -450,8 +451,22 @@ namespace KAZABUILD.API.Controllers
             //Create the email message body with html
             var body = $"Welcome {user.DisplayName},<br/>Click <a href=\"{confirmUrl}\">here</a> to reset your password.";
 
-            //Send the confirmation email
-            await _smtp.SendEmailAsync(user.Email, "Confirm your account", body);
+            //Try to send the confirmation email
+            try
+            {
+                //Send the confirmation email
+                await _smtp.SendEmailAsync(user.Email, "Confirm password reset", body);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
+            }
+
+            //Add the token to the database
+            _db.UserTokens.Add(token);
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
 
             //Log the creation
             await _logger.LogAsync(
@@ -501,7 +516,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     Guid.Empty,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Invalid Token"
                 );
 
@@ -517,7 +532,7 @@ namespace KAZABUILD.API.Controllers
                     "Auth",
                     ip,
                     token.Id,
-                    PrivacyLevel.INFORMATION,
+                    PrivacyLevel.WARNING,
                     "Operation Failed - Expired Token"
                 );
 

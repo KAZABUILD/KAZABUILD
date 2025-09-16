@@ -1,4 +1,6 @@
+using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
+using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -85,17 +87,56 @@ namespace KAZABUILD.API
             //Build the app using the declared configuration
             var app = builder.Build();
 
-            //Apply migrations automatically
+            //Get the database context and the logger from context
             using var scope = app.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<KAZABUILDDBContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerService>();
+
+            //Check if the connection to the database can be established
+            try
+            {
+                if (!dbContext.Database.CanConnect())
+                {
+                    logger.LogAsync(
+                        Guid.Empty,
+                        "Connect",
+                        "Database",
+                        "",
+                        Guid.Empty,
+                        PrivacyLevel.CRITICAL,
+                        $"Database connection failed."
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogAsync(
+                    Guid.Empty,
+                    "Connect",
+                    "Database",
+                    "",
+                    Guid.Empty,
+                    PrivacyLevel.CRITICAL,
+                    $"Database connection could not be established. Error message: {ex.Message}"
+                );
+            }
+
+            //Apply migrations automatically
             try
             {
                 dbContext.Database.Migrate();
             }
             catch (Exception ex) //Catch any error related to migration
             {
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred while migrating the database.");
+                logger.LogAsync(
+                    Guid.Empty,
+                    "Connect",
+                    "Database",
+                    "",
+                    Guid.Empty,
+                    PrivacyLevel.CRITICAL,
+                    $"An error occurred while migrating the database. Error message: {ex.Message}"
+                );
             }
 
             //Configure the HTTP request pipeline.
@@ -143,7 +184,18 @@ namespace KAZABUILD.API
             }
             catch (OptionsValidationException ex)
             {
-                //Print all configuration errors
+                //Log the validation error
+                logger.LogAsync(
+                    Guid.Empty,
+                    "validate",
+                    "Application",
+                    "",
+                    Guid.Empty,
+                    PrivacyLevel.CRITICAL,
+                    $"Configuration validation failed. Error message: {ex.Message}"
+                );
+
+                //Print all configuration errors to the console
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Configuration validation failed:");
                 foreach (var failure in ex.Failures)
@@ -159,6 +211,17 @@ namespace KAZABUILD.API
             }
             catch (Exception ex)
             {
+                //Log the validation error
+                logger.LogAsync(
+                    Guid.Empty,
+                    "start",
+                    "Application",
+                    "",
+                    Guid.Empty,
+                    PrivacyLevel.CRITICAL,
+                    $"Launching the application failed. Error message: {ex.Message}"
+                );
+
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Launching the application failed: {ex.Message}");
                 Console.ResetColor();
