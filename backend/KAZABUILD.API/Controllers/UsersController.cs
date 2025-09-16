@@ -633,12 +633,12 @@ namespace KAZABUILD.API.Controllers
             //Apply search based on credentials
             if (isPrivileged)
             {
-                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description,
-                    u => u.PhoneNumber, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location, u => u.Note);
+                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description!,
+                    u => u.PhoneNumber!, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location!, u => u.Note!);
             }
             else
             {
-                query = query.Search(dto.Query, u => u.DisplayName, u => u.UserRole, u => u.Description);
+                query = query.Search(dto.Query, u => u.DisplayName, u => u.UserRole, u => u.Description!);
             }
 
             //Order by specified field if provided
