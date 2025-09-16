@@ -11,10 +11,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using KAZABUILD.Application.Helpers;
 
 namespace KAZABUILD.API.Controllers
 {
-    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<JwtSettings> jwtSettings, IOptions<FrontendHost> frontendHost) : Controller
+    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendHost> frontendHost) : Controller
     {
         private readonly KAZABUILDDBContext _db = db;
         private readonly IHashingService _hasher = hasher;
@@ -22,7 +23,6 @@ namespace KAZABUILD.API.Controllers
         private readonly IRabbitMQPublisher _publisher = publisher;
         private readonly IAuthorizationService _auth = auth;
         private readonly IEmailService _smtp = smtp;
-        private readonly JwtSettings _jwtSettings = jwtSettings.Value;
         private readonly string _frontendHost = frontendHost.Value.Host;
 
         //API endpoint that allows the user to log into the website;
@@ -245,15 +245,15 @@ namespace KAZABUILD.API.Controllers
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token}&userId={user.Id}";
+            var confirmUrl = $"{token.RedirectUrl}?token={token.TokenHash}&userId={user.Id}";
             //Create the email message body with html
-            var body = $"Welcome {user.DisplayName},<br/>Click <a href=\"{confirmUrl}\">here</a> to confirm your account.";
+            var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
             //Try to send the confirmation email
             try
             {
                 //Send the confirmation email
-                await _smtp.SendEmailAsync(user.Email, "Confirm your account", body);
+                await _smtp.SendEmailAsync(user.Email, "Confirm your KAZABUILD account", body);
             }
             catch (Exception)
             {
@@ -447,15 +447,15 @@ namespace KAZABUILD.API.Controllers
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token}&userId={user.Id}";
+            var confirmUrl = $"{token.RedirectUrl}?token={token.TokenHash}&userId={user.Id}";
             //Create the email message body with html
-            var body = $"Welcome {user.DisplayName},<br/>Click <a href=\"{confirmUrl}\">here</a> to reset your password.";
+            var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
 
             //Try to send the confirmation email
             try
             {
                 //Send the confirmation email
-                await _smtp.SendEmailAsync(user.Email, "Confirm password reset", body);
+                await _smtp.SendEmailAsync(user.Email, "Confirm password reset for your KAZABUILD account", body);
             }
             catch (Exception)
             {
