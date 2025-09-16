@@ -1,9 +1,10 @@
-﻿namespace KAZABUILD.Domain.Enums
+namespace KAZABUILD.Domain.Enums
 {
     public enum PrivacyLevel
     {
         INFORMATION,
         WARNING,
-        ERROR
+        ERROR,
+        CRITICAL
     }
 }

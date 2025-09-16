@@ -77,11 +77,11 @@ namespace KAZABUILD.Infrastructure.Messaging
 
                 await logger.LogAsync(
                     Guid.Empty,
-                    "RabbitMQ",
                     "Consumer",
+                    "RabbitMQ",
                     "",
                     Guid.Empty,
-                    PrivacyLevel.WARNING,
+                    PrivacyLevel.ERROR,
                     $"RabbitMQ Unavailable. Skipping consumer startup. Error message: {ex.Message}"
                 );
             }
@@ -95,7 +95,6 @@ namespace KAZABUILD.Infrastructure.Messaging
                 }
 
             }
-
         }
     }
 }
