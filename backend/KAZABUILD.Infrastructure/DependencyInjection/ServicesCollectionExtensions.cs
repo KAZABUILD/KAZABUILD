@@ -24,6 +24,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add loggin service
             services.AddScoped<ILoggerService, LoggerService>();
 
+            //Add logs and token cleanup service
+            services.AddHostedService<CleanupService>();
+
             //Add the RabbitMQ queue service
             services.Configure<RabbitMQSettings>(config.GetSection("RabbitMq"));
             services.AddSingleton<IRabbitMqConnection, RabbitMQConnection>();
