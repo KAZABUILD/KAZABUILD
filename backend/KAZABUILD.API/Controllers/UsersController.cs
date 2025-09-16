@@ -302,12 +302,6 @@ namespace KAZABUILD.API.Controllers
 
                     user.Login = dto.Login;
                 }
-                if (dto.UserRole != null)
-                {
-                    changedFields.Add("UserRole: " + user.UserRole);
-
-                    user.UserRole = (UserRole)dto.UserRole;
-                }
                 if (!string.IsNullOrEmpty(dto.Note))
                 {
                     changedFields.Add("Note: " + user.Note);
@@ -320,6 +314,35 @@ namespace KAZABUILD.API.Controllers
                     user.PasswordHash = _hasher.Hash(dto.Password);
 
                     changedFields.Add("Changed Password");
+                }
+            }
+
+            //Update role based on user privilige
+            if (dto.UserRole != null)
+            {
+                if(isPrivileged && dto.UserRole < UserRole.MODERATOR)
+                {
+                    changedFields.Add("UserRole: " + user.UserRole);
+
+                    user.UserRole = (UserRole)dto.UserRole;
+                }
+                else if(currentUserRole == UserRole.ADMINISTRATOR && dto.UserRole < UserRole.ADMINISTRATOR)
+                {
+                    changedFields.Add("UserRole: " + user.UserRole);
+
+                    user.UserRole = (UserRole)dto.UserRole;
+                }
+                else if (currentUserRole == UserRole.OWNER && dto.UserRole < UserRole.OWNER)
+                {
+                    changedFields.Add("UserRole: " + user.UserRole);
+
+                    user.UserRole = (UserRole)dto.UserRole;
+                }
+                else if (currentUserRole == UserRole.SYSTEM && dto.UserRole < UserRole.SYSTEM)
+                {
+                    changedFields.Add("UserRole: " + user.UserRole);
+
+                    user.UserRole = (UserRole)dto.UserRole;
                 }
             }
 
@@ -597,10 +620,21 @@ namespace KAZABUILD.API.Controllers
             //Declare the query
             var query = _db.Users.AsNoTracking();
 
-            //Apply search based on credentials
-            if(isPrivileged)
+            //Filter by the variables if included
+            if(dto.Gender != null)
             {
-                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description, u => u.PhoneNumber, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location, u => u.Note);
+                query = query.Where(u =>  u.Gender == dto.Gender);
+            }
+            if (dto.UserRole != null)
+            {
+                query = query.Where(u => u.UserRole == dto.UserRole);
+            }
+
+            //Apply search based on credentials
+            if (isPrivileged)
+            {
+                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description,
+                    u => u.PhoneNumber, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location, u => u.Note);
             }
             else
             {
