@@ -1,7 +1,6 @@
 using KAZABUILD.Application.Settings;
-using KAZABUILD.Infrastructure;
 using KAZABUILD.Infrastructure.Data;
-
+using KAZABUILD.Infrastructure.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -15,7 +14,7 @@ namespace KAZABUILD.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //Register the database and add the infrastructure
+            //Register all custom services
             builder.Services.AddInfrastructure(builder.Configuration);
 
             //Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

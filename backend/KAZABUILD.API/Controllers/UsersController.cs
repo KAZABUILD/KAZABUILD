@@ -5,7 +5,6 @@ using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using ILogger = KAZABUILD.Application.Interfaces.ILogger;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,11 +18,11 @@ namespace KAZABUILD.API.Controllers
     [ApiController]
     [Route("[controller]")]
     // [EnableRateLimiting("Fixed")] <- Uncomment to add rate limiting
-    public class UsersController(KAZABUILDDBContext db, ILogger logger, IHashingService hasher, IRabbitMQPublisher publisher) : ControllerBase
+    public class UsersController(KAZABUILDDBContext db, ILoggerService logger, IHashingService hasher, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
-        private readonly ILogger _logger = logger;
+        private readonly ILoggerService _logger = logger;
         private readonly IHashingService _hasher = hasher;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
@@ -38,6 +37,29 @@ namespace KAZABUILD.API.Controllers
             //Get the ip from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if the email is not already in use
+            var isUserAvailaible = await _db.Users.FirstOrDefaultAsync(u => u.Login == dto.Login || u.Email == dto.Email);
+            if (isUserAvailaible != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "User",
+                    ip,
+                    isUserAvailaible.Id,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Failed - Email Already In Use"
+                );
+
+                //Return proper conflict response
+                if(dto.Email == isUserAvailaible.Email)
+                    return Conflict(new { message = "Email Already In Use" });
+                else
+                    return Conflict(new { message = "Login Already In Use" });
+            }
+            
 
             //Create a user to add
             User user = new()
@@ -68,7 +90,7 @@ namespace KAZABUILD.API.Controllers
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Log the craetion
+            //Log the creation
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
@@ -747,7 +769,14 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "User not found!" });
             }
 
-            //Delete user
+            //Hamdle deleting followed user and followers to avoid conflicts with cascade deletes
+            //Get all followers' and followed users' follows
+            var follows = _db.UserFollows.Where(f => f.FollowedId == user.Id || f.FollowerId == user.Id);
+
+            //Remove all user follows containing the user id of the user to be deleted
+            _db.UserFollows.RemoveRange(follows);
+
+            //Delete the user
             _db.Users.Remove(user);
 
             //Save changes to the database
