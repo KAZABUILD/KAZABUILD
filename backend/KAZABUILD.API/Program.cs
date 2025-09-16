@@ -1,11 +1,14 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
+using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.Reflection.Emit;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.API
@@ -176,6 +179,37 @@ namespace KAZABUILD.API
 
             //Map controllers' enpoints
             app.MapControllers();
+
+            //Get the hasher and admin user settings
+            var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();
+            var SystemAdminSettigns = scope.ServiceProvider.GetRequiredService<IOptions<SystemAdminSetings>>().Value;
+            var SmtpSErviceSettings = scope.ServiceProvider.GetRequiredService<IOptions<SmtpSettings>>().Value;
+
+            //Create the system user if one doesn't already exist
+            if (!dbContext.Users.Any(u => u.Login == "SYSTEM"))
+            {
+                var systemUser = new User
+                {
+                    Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                    Login = SystemAdminSettigns.Login,
+                    Email = SmtpSErviceSettings.Username,
+                    PasswordHash = hasher.Hash(SystemAdminSettigns.Password),
+                    DisplayName = SystemAdminSettigns.Login,
+                    Description = "System Admin account. Beware!",
+                    Gender = "None",
+                    UserRole = UserRole.SYSTEM,
+                    ImageUrl = "",
+                    Birth = DateTime.UtcNow,
+                    RegisteredAt = DateTime.UtcNow,
+                    ProfileAccessibility = ProfileAccessibility.PUBLIC,
+                    Theme = Theme.LIGHT,
+                    Language = Language.ENGLISH,
+                    ReceiveEmailNotifications = false
+                };
+
+                dbContext.Users.Add(systemUser);
+                dbContext.SaveChanges();
+            }
 
             //Try to run the app and throw an error for empty validation
             try

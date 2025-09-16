@@ -39,5 +39,9 @@
   },
   "Frontend": {
     "Host": "localhost:4200"
+  },
+  "SYSTEM_ADMIN": {
+    "Name": "SYSTEM_ADMIN",
+    "Password": "password123!"
   }
 }
