@@ -9,10 +9,13 @@ namespace KAZABUILD.Infrastructure.Data
         {
         }
 
-        //Declared tables in the database
+        //General tables
         public DbSet<Log> Logs { get; set; } = default!;
+
+        //User related tables
         public DbSet<User> Users { get; set; } = default!;
         public DbSet<UserFollow> UserFollows { get; set; } = default!;
+        public DbSet<UserToken> UserTokens { get; set; } = default!;
 
         //Declare enums and cascade delete behaviour
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -59,12 +62,21 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(f => f.Follower)
                 .WithMany(u => u.Followed)
                 .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a follower
 
             modelBuilder.Entity<UserFollow>()
                 .HasOne(f => f.Followed)
                 .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FollowedId)
+                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a followed user
+
+            //====================================== USER TOKEN ======================================//
+
+            //Register relationship
+            modelBuilder.Entity<UserToken>()
+                .HasOne(f => f.User)
+                .WithMany(u => u.UserTokens)
+                .HasForeignKey(f => f.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

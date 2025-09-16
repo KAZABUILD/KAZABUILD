@@ -1,15 +1,12 @@
+using KAZABUILD.Application.Validators;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Application.DTOs.Auth
 {
-    public class User
+    public class RegisterDto
     {
-        //User Profile fields
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         [StringLength(50, ErrorMessage = "Login cannot be longer than 50 characters!")]
         [MinLength(8, ErrorMessage = "Login must be at least 8 characters long!")]
@@ -20,7 +17,8 @@ namespace KAZABUILD.Domain.Entities
         public string Email { get; set; } = default!;
 
         [Required]
-        public string PasswordHash { get; set; } = default!;
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long!")]
+        public string Password { get; set; } = default!;
 
         [Required]
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
@@ -48,46 +46,31 @@ namespace KAZABUILD.Domain.Entities
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime Birth { get; set; } = default!;
+        public DateTime Birth { get; set; }
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime RegisteredAt { get; set; } = default!;
+        public DateTime RegisteredAt { get; set; }
 
         public Address? Address { get; set; }
 
-        //User Settings fields
-        [Required]
         [EnumDataType(typeof(ProfileAccessibility))]
         public ProfileAccessibility ProfileAccessibility { get; set; } = ProfileAccessibility.FOLLOWS;
 
-        [Required]
         [EnumDataType(typeof(Theme))]
         public Theme Theme { get; set; } = Theme.DARK;
 
-        [Required]
         [EnumDataType(typeof(Language))]
         public Language Language { get; set; } = Language.ENGLISH;
 
         [StringLength(100, ErrorMessage = "Location cannot be longer than 100 characters!")]
         public string? Location { get; set; }
 
+        public bool ReceiveEmailNotifications { get; set; } = true;
+
         [Required]
-        public bool ReceiveEmailNotifications { get; set; } = true; 
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public ICollection<UserFollow> Followers { get; set; } = [];
-        public ICollection<UserFollow> Followed { get; set; } = [];
-        public ICollection<UserToken> UserTokens { get; set; } = [];
+        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
+        [RelativePath(ErrorMessage = "Invalid redirect URL!")]
+        public string RedirectUrl { get; set; } = default!;
     }
 }

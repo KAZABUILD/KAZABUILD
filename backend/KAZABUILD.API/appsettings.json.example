@@ -36,5 +36,8 @@
       "https://localhost:4200",
       "https://yourfrontend.com"
     ]
+  },
+  "Frontend": {
+    "Host": "localhost:4200"
   }
 }

@@ -8,7 +8,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
-using ILogger = KAZABUILD.Application.Interfaces.ILogger;
+using ILoggerService = KAZABUILD.Application.Interfaces.ILoggerService;
 
 namespace KAZABUILD.Infrastructure.Messaging
 {
@@ -73,7 +73,7 @@ namespace KAZABUILD.Infrastructure.Messaging
             catch (Exception ex)
             {
                 using var scope = _serviceProvider.CreateScope();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+                var logger = scope.ServiceProvider.GetRequiredService<ILoggerService>();
 
                 await logger.LogAsync(
                     Guid.Empty,
