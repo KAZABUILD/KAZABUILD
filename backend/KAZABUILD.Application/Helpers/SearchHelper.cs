@@ -130,28 +130,79 @@ namespace KAZABUILD.Application.Helpers
             if (body is UnaryExpression unary && unary.Operand is MemberExpression)
                 body = unary.Operand;
 
-            //Only strings can be searched in the general search
-            if (body.Type != typeof(string)) return null!;
+            //Only strings should be searched in the general search convert to string if it's not
+            if (body.Type != typeof(string))
+            {
+                //Get a toString method for the object
+                var toStringMethod = body.Type.GetMethod("ToString", Type.EmptyTypes);
 
-            //Build the contains expression, e.g. (x.Name.Contains("value"))
-            var method = typeof(string).GetMethod("Contains", [typeof(string)])!;
-            var call = Expression.Call(body, method, Expression.Constant(value));
-            //Create a null check expression for the type
-            var notNull = Expression.NotEqual(body, Expression.Constant(null, typeof(string)));
-            //Combine it so the expression cannot be null
-            var combined = Expression.AndAlso(notNull, call);
+                //Skip conversion if no ToString exists
+                if (toStringMethod == null)
+                    return null!;
+
+                //Add a to string method to the exression body
+                body = Expression.Call(body, toStringMethod);
+            }
+
+            //Get the fuzzy matching method
+            var fuzzyMethod = typeof(SearchHelper).GetMethod(nameof(LevenshteinDistance), BindingFlags.Public | BindingFlags.Static)!;
+
+            //Call Fuzzy Match on every record
+            var distanceCall = Expression.Call(
+                fuzzyMethod,
+                body,
+                Expression.Constant(value)
+            );
+
+            //Compare distance <= tolerance
+            var compare = Expression.LessThanOrEqual(distanceCall, Expression.Constant(tolerance));
 
             //Wrap the expression into a lamda and return it
-            return Expression.Lambda<Func<T, bool>>(combined, param);
+            return Expression.Lambda<Func<T, bool>>(compare, param);
         }
 
         //Fuzzy matching helper function
-        //TODO
-        /*public static bool FuzzyMatch(string? source, string target, int tolerance)
+        public static bool FuzzyMatch(string? source, string target, int tolerance)
         {
+            //Check if the string is not empty
             if (string.IsNullOrEmpty(source)) return false;
+
+            //return if the value is within tolerance
             return LevenshteinDistance(source.ToLower(), target.ToLower()) <= tolerance;
-        }*/
+        }
+
+        //Check how far away the target is 
+        public static int LevenshteinDistance(string s, string t)
+        {
+            //Check if the string length allows using the function
+            if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
+            if (string.IsNullOrEmpty(t)) return s.Length;
+
+            //Declare necessary variables
+            var n = s.Length;
+            var m = t.Length;
+            var d = new int[n + 1, m + 1]; //Helper array for storing the edit distance
+
+            //Fill the array edges with intial values for the string length
+            for (int i = 0; i <= n; i++) d[i, 0] = i;
+            for (int j = 0; j <= m; j++) d[0, j] = j;
+
+            //Calculate the Levenshtein distance
+            for (int i = 1; i <= n; i++)
+            {
+                for (int j = 1; j <= m; j++)
+                {
+                    //Check if there a difference between the specified characters
+                    int cost = (s[i - 1] == t[j - 1]) ? 0 : 1;
+
+                    //Take the minimum cost of deleting, inserting or substituting a character
+                    d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+                }
+            }
+
+            //return the last cell of the array which stores the final value of edit distance
+            return d[n, m];
+        }
 
         //Expression helper that combines two lambdas with a logical OR, e.g. Name.Contains("a") OR Email.Contains("a")
         private static Expression<Func<T, bool>> OrElse<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)

@@ -39,6 +39,12 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            //Get the frontend url for link redirect in the auth controller from appsettings
+            services.AddOptions<SystemAdminSetings>()
+                .Bind(config.GetSection("SYSTEM_ADMIN"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             //Return the services with all the options added
             return services;
         }

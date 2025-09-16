@@ -46,5 +46,65 @@
 - hashing Service
 
 ## Models
+All models have protections against adding invalid values but the any call made should be double checked anyway
+
+- User: 
+ - `Id` -> automatically assigned GUID
+ - `Login` -> string storing user's username
+ - `Email` -> string storing a unique email
+ - `PasswordHash` -> string storing securely stored password
+ - `DisplayName` -> string storing the name displayed on user's profile
+ - `PhoneNumber` -> nullable string storing phone number
+ - `Description` -> string storing user's profile description
+ - `Gender` -> string storing user's gender (Write full names like "Male")
+ - `UserRole` -> Enum storing the assigned user role, can be used with a number or the full role string
+ - `ImageURL` -> string storing user's saved profile picture's URL in the backend
+ - `Birth` -> date object storing user's birth date
+ - `RegisteredAt` -> date object storing the date the user registered their account
+ - `Address` -> an object storing user's address with 7 strings:
+  - `Country`
+  - nullable `Province`
+  - `City`
+  - `Street`
+  - `StreetNumber`
+  - `PostalCode`
+  - nullable `apartmentNumber`
+ - `ProfileAccessibility` -> Enum storing who can see user's profile
+ - `Theme` -> Enum storing which theme the user uses globally
+ - `Language` -> Enum storing which language the user uses globally 
+ - `Location` -> nullable string storing user's noted location
+ - `ReceiveEmailNotifications` -> string storing whether the user wants to receive email notifications
+ - `DatabaseEntryAt` -> date object storing when the user was created in the database
+ - `LastEditedAt` -> date object storing when the user was last edited
+ - `Note` -> nullable string storing any staff-only information
+
+- Log
+ - `Id` -> automatically assigned GUID
+ - `UserId` -> GUID storing the id of the user that called the logged activity
+ - `Timestamp` -> date object storing when the activity happened
+ - `SeverityLevel` -> Enum storing how critical the information in the log is
+ - `ActivityType` -> string storing what is being logged
+ - `TargetType` -> string storing where the activity happened
+ - `TargetId` -> nullable string storing which object in the database was affected
+ - `Description` -> nullable string storing additional information about the activity and error if one occured
+ - `IpAddress` -> the IP address of the user that called the logged activity
 
 ## Controller methods
+To see what fields should be provided in an API request check the swagger documentation.
+
+### Basic CRUD API calls
+- `GET/id` gets the specified object from the database using the id
+ - all users have access but returns different amount of information
+- `POST/add` creates a new object with elements provided in the Body
+ - only staff has access
+- `DELETE/id` removes the specified object from the database
+ - only staff has access
+- `POST/get` gets a list of objects depending on the provided: allowed field values, sort order, page length and number
+ - all users have access but returns different amount of information
+- `PUT/id` updates the specified object with the fields provided, only fields specified in the body get updated
+ - all users can edit information related to themselves
+ - only staff can edit sensitive user related info
+ - only admins can modify component related objects
+
+### User specific API calls
+- `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body 

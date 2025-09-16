@@ -27,7 +27,7 @@ namespace KAZABUILD.API.Controllers
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         //API Endpont for creating a new user
-        [HttpPost("Add")]
+        [HttpPost("add")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> AddUser([FromBody] CreateUserDto dto)
         {
