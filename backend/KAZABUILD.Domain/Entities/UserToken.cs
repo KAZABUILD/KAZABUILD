@@ -1,3 +1,5 @@
+using KAZABUILD.Domain.Enums;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities
@@ -12,11 +14,11 @@ namespace KAZABUILD.Domain.Entities
         public Guid UserId { get; set; } = default!;
 
         [Required]
-        public string TokenHash { get; set; } = default!;
+        public string Token { get; set; } = default!;
 
         [Required]
         [StringLength(25, ErrorMessage = "Token Type cannot be longer than 25 characters!")]
-        public string TokenType { get; set; } = default!;
+        public TokenType TokenType { get; set; } = default!;
 
         [Required]
         [DataType(DataType.DateTime)]
