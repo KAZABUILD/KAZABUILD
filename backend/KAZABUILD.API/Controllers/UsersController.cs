@@ -420,7 +420,7 @@ namespace KAZABUILD.API.Controllers
 
             //Get the user to edit
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null)
+            if (user == null || user.PasswordHash == null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -648,7 +648,7 @@ namespace KAZABUILD.API.Controllers
             if (isPrivileged)
             {
                 query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description!,
-                    u => u.PhoneNumber!, u => u.Gender, u => u.RegisteredAt, u => u.Birth, u => u.Language, u => u.Location!, u => u.Note!);
+                    u => u.PhoneNumber!, u => u.Gender, u => u.RegisteredAt, u => u.Birth!, u => u.Language, u => u.Location!, u => u.Note!);
             }
             else
             {

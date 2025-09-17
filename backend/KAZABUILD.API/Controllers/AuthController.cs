@@ -1,17 +1,17 @@
+using Google.Apis.Auth;
 using KAZABUILD.Application.DTOs.Auth;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationService;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
-using KAZABUILD.Application.Helpers;
+using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationService;
 
 namespace KAZABUILD.API.Controllers
 {
@@ -52,7 +52,7 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Return an appropriate unauthorized response if the user is not found or if the password is incorrect
-            if (user == null)
+            if (user == null || user.PasswordHash == null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -110,7 +110,7 @@ namespace KAZABUILD.API.Controllers
                     ip,
                     user.Id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Attempted Unverified User Login"
+                    "Operation Failed - Attempted Banned User Login"
                 );
 
                 //Return a custom banned unauthorized response
@@ -131,7 +131,7 @@ namespace KAZABUILD.API.Controllers
                         ip,
                         user.Id,
                         PrivacyLevel.ERROR,
-                        "Operation Failed - IP Address Empty"
+                        "Operation Failed - IP Address Empty for login"
                     );
 
                     //Return conflict response
@@ -249,7 +249,7 @@ namespace KAZABUILD.API.Controllers
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Invalid Token"
+                    "Operation Failed - Invalid 2fa Token"
                 );
 
                 //Return a proper conflict response
@@ -265,7 +265,7 @@ namespace KAZABUILD.API.Controllers
                     ip,
                     token.Id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Expired Token"
+                    "Operation Failed - Expired 2fa Token"
                 );
 
                 //Return a proper conflict response
@@ -297,7 +297,7 @@ namespace KAZABUILD.API.Controllers
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("auth.logingAuthenticated", new
+            await _publisher.PublishAsync("auth.loginAuthenticated", new
             {
                 userId = user.Id,
                 updatedBy = currentUserId
@@ -312,6 +312,118 @@ namespace KAZABUILD.API.Controllers
                 Token = jwt
             };
 
+            //Return a success response
+            return Ok(response);
+        }
+
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the ip from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Connect to google and get the user info
+            var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken);
+
+            //Check if the payload was received
+            if (payload == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Invalid Google Login Token"
+                );
+
+                //Return an anauthorized response
+                return Unauthorized(new { message = "Invalid Google token." });
+            }
+
+            //Get the google authenticated user
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Subject || u.Email == payload.Email);
+
+            //Check if the user exists
+            if (user == null)
+            {
+                //Create a new user
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = payload.Email,
+                    DisplayName = payload.Name,
+                    Login = payload.Email,
+                    GoogleId = payload.Subject,
+                    GoogleProfilePicture = payload.Picture,
+                    RegisteredAt = DateTime.UtcNow,
+                    Gender = "Unknown",
+                    UserRole = UserRole.USER,
+                    ReceiveEmailNotifications = true,
+                    DatabaseEntryAt = DateTime.UtcNow,
+                    LastEditedAt = DateTime.UtcNow
+                };
+
+                //Add the user to the database
+                _db.Users.Add(user);
+
+                //Save changes to the database
+                await _db.SaveChangesAsync();
+
+                //Log the confirmation
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.INFORMATION,
+                    "Successful Operation - User Registered With Google"
+                );
+
+                //Publish RabbitMQ event
+                await _publisher.PublishAsync("auth.registeredGoogle", new
+                {
+                    userId = user.Id,
+                    updatedBy = currentUserId
+                });
+            }
+
+            //Log the confirmation
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Auth",
+                ip,
+                user.Id,
+                PrivacyLevel.INFORMATION,
+                "Successful Operation - User Login With Google"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("auth.loggedGoogle", new
+            {
+                userId = user.Id,
+                updatedBy = currentUserId
+            });
+
+            //Generate a JWT token
+            var jwt = _auth.GenerateJwtToken(user.Id, user.Email, user.UserRole);
+
+            //Create a response with the token
+            var response = new TokenResponseDto
+            {
+                Token = jwt
+            };
+
+            //Return a success response
             return Ok(response);
         }
 

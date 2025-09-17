@@ -45,6 +45,12 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            //Get the OAuth settigns from appsettings
+            services.AddOptions<OAuthSettings>()
+                .Bind(config.GetSection("Authentication"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             //Return the services with all the options added
             return services;
         }

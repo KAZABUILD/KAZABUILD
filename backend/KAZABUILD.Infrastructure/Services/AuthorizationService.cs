@@ -20,6 +20,7 @@ namespace KAZABUILD.Infrastructure.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(ClaimTypes.Role, role.ToString())
             };
@@ -37,6 +38,7 @@ namespace KAZABUILD.Infrastructure.Services
                 signingCredentials: creds
             );
 
+            //Return a new security token
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }

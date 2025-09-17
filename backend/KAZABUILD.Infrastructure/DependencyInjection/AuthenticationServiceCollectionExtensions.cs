@@ -5,16 +5,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using KAZABUILD.Application.Settings;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
     //Extension for adding authentication to the app services
     public static class AuthenticationServiceCollectionExtensions
     {
-        public static IServiceCollection AddAuthentication(this IServiceCollection services, IConfiguration config)
+        public static IServiceCollection AddAppAuthentication(this IServiceCollection services, IConfiguration config)
         {
             //Get jwt information from saved settings
             var jwt = config.GetSection("JwtSettings").Get<JwtSettings>()!;
+            var google = config.GetSection("OAuthSettings").Get<OAuthSettings>()!;
             var key = Encoding.UTF8.GetBytes(jwt.Secret);
 
             //Add authentication
@@ -35,6 +37,11 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                     ValidAudience = jwt.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(key)
                 };
+            })
+            .AddGoogle("Google", options =>
+            {
+                options.ClientId = google.Google.ClientId;
+                options.ClientSecret = google.Google.ClientSecret;
             });
 
             //Return the services with added authentication
