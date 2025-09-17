@@ -51,7 +51,7 @@
 ## Models
 All models have protections against adding invalid values but the any call made should be double checked anyway
 
-- User: 
+- User:
   - `Id` -> automatically assigned GUID
   - `Login` -> string storing user's username
   - `Email` -> string storing a unique email
@@ -71,7 +71,7 @@ All models have protections against adding invalid values but the any call made 
     - `Street`
     - `StreetNumber`
     - `PostalCode`
-  - nullable `apartmentNumber`
+    - nullable `apartmentNumber`
   - `ProfileAccessibility` -> Enum storing who can see user's profile
   - `Theme` -> Enum storing which theme the user uses globally
   - `Language` -> Enum storing which language the user uses globally 
