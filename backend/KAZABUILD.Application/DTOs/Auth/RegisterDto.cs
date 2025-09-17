@@ -68,6 +68,8 @@ namespace KAZABUILD.Application.DTOs.Auth
 
         public bool ReceiveEmailNotifications { get; set; } = true;
 
+        public bool EnableDoubleFactorAuthentication { get; set; } = false;
+
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
         [RelativePath(ErrorMessage = "Invalid redirect URL!")]

@@ -56,6 +56,9 @@ namespace KAZABUILD.Application.DTOs.User
 
         public bool? ReceiveEmailNotifications { get; set; }
 
+        public bool? EnableDoubleFactorAuthentication { get; set; }
+        
+
         [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
         public string? Note { get; set; }
     }

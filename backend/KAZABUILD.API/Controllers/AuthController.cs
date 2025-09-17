@@ -117,6 +117,82 @@ namespace KAZABUILD.API.Controllers
                 return Unauthorized(new { message = "Account banned.", code = "BANNED" });
             }
 
+            //Check if the user has double factor authentication enabled
+            if (user.EnableDoubleFactorAuthentication)
+            {
+                //Check if the ip address exists
+                if (string.IsNullOrEmpty(ip))
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Auth",
+                        ip,
+                        user.Id,
+                        PrivacyLevel.ERROR,
+                        "Operation Failed - IP Address Empty"
+                    );
+
+                    //Return conflict response
+                    return BadRequest(new { message = "Unable to determine the IP address" });
+                }
+
+                //Generate an authentication token
+                var token = new UserToken
+                {
+                    UserId = user.Id,
+                    TokenHash = Guid.NewGuid().ToString("N").Substring(0, 6),
+                    TokenType = "LOGIN_2FA",
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+                    IpAddress = ip,
+                    DatabaseEntryAt = DateTime.UtcNow,
+                    LastEditedAt = DateTime.UtcNow,
+                };
+
+                //Create the email message body with html
+                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.TokenHash);
+
+                //Try to send the confirmation email
+                try
+                {
+                    //Send the confirmation email
+                    await _smtp.SendEmailAsync(user.Email, "KAZABUILD login verification code", body);
+                }
+                catch (Exception)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
+                }
+
+                //Add the token to the database
+                _db.UserTokens.Add(token);
+
+                //Save changes to the database
+                await _db.SaveChangesAsync();
+
+                //Log the success
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.INFORMATION,
+                    "Successful Operation - 2FA email sent!"
+                );
+
+                //Publish RabbitMQ event
+                await _publisher.PublishAsync("auth.2fa", new
+                {
+                    userId = user.Id,
+                    updatedBy = currentUserId
+                });
+
+                //Return a success response with 
+                return Ok(new { code = "2FA_REQUIRED", userId = user.Id });
+            }
+
             //Generate a JWT token
             var jwt = _auth.GenerateJwtToken(user.Id, user.Email, user.UserRole);
 
@@ -145,6 +221,97 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
+            return Ok(response);
+        }
+
+        [HttpPost("verify-2fa")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Verify2Fa([FromBody] Verify2FactorAuthenticationDto dto)
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the ip from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Get the correct token
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && t.TokenHash == dto.Token && t.TokenType == "LOGIN_2FA" && t.UsedAt == null);
+
+            //Check if the token isn't invalid or expired
+            if (token == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Invalid Token"
+                );
+
+                //Return a proper conflict response
+                return BadRequest(new { message = "Invalid token" });
+            }
+            else if (token.ExpiresAt < DateTime.UtcNow)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    token.Id,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Expired Token"
+                );
+
+                //Return a proper conflict response
+                return BadRequest(new { message = "Expired token" });
+            }
+
+            //Get the user the token was for
+            var user = await _db.Users.FirstAsync(u => u.Id == token.UserId);
+
+            //Update the token usage time 
+            token.UsedAt = DateTime.UtcNow;
+            token.LastEditedAt = DateTime.UtcNow;
+
+            //Update the user in the database
+            _db.UserTokens.Update(token);
+
+            //Commit the changes to the database
+            await _db.SaveChangesAsync();
+
+            //Log the confirmation
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Auth",
+                ip,
+                user.Id,
+                PrivacyLevel.INFORMATION,
+                "Successful Operation - User Login 2 Factor Authenticated"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("auth.logingAuthenticated", new
+            {
+                userId = user.Id,
+                updatedBy = currentUserId
+            });
+
+            //Generate a JWT token
+            var jwt = _auth.GenerateJwtToken(user.Id, user.Email, user.UserRole);
+
+            //Create a response with the token
+            var response = new TokenResponseDto
+            {
+                Token = jwt
+            };
+
             return Ok(response);
         }
 

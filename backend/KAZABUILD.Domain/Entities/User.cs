@@ -73,7 +73,9 @@ namespace KAZABUILD.Domain.Entities
         public string? Location { get; set; }
 
         [Required]
-        public bool ReceiveEmailNotifications { get; set; } = true; 
+        public bool ReceiveEmailNotifications { get; set; } = true;
+
+        public bool EnableDoubleFactorAuthentication { get; set; } = false;
 
         //Additional database information
         [DataType(DataType.DateTime)]

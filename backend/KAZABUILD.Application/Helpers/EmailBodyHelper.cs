@@ -49,7 +49,35 @@ namespace KAZABUILD.Application.Helpers
                     <a class='button' href='{confirmUrl}'>Reset Password</a>
                     <p>If you did not request a password reset, you can safely ignore this email.</p>
                     <div class='footer'>
-                      &copy; {DateTime.Now.Year} Your Company. All rights reserved.
+                      &copy; {DateTime.Now.Year} KAZABUILD. All rights reserved.
+                    </div>
+                  </div>
+                </body>
+                </html>";
+        }
+
+        public static string GetTwoFactorEmailBody(string displayName, string code)
+        {
+            return $@"
+                <html>
+                <head>
+                  <style>
+                    body {{ font-family: Arial, sans-serif; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px; }}
+                    .code-box {{ display: inline-block; padding: 15px 25px; margin: 20px 0; font-size: 20px; font-weight: bold; 
+                                 background-color: #f4f4f4; border: 1px solid #ddd; border-radius: 6px; letter-spacing: 3px; }}
+                    .footer {{ margin-top: 30px; font-size: 12px; color: #888; }}
+                  </style>
+                </head>
+                <body>
+                  <div class='container'>
+                    <h2>Hello, {displayName}</h2>
+                    <p>Your login verification code is:</p>
+                    <div class='code-box'>{code}</div>
+                    <p>This code will expire in 10 minutes. Please do not share it with anyone.</p>
+                    <p>If you did not attempt to log in, please secure your account immediately.</p>
+                    <div class='footer'>
+                      &copy; {DateTime.Now.Year} KAZABUILD. All rights reserved.
                     </div>
                   </div>
                 </body>

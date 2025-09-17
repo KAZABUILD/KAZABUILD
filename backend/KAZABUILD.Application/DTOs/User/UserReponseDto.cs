@@ -42,6 +42,8 @@ namespace KAZABUILD.Application.DTOs.User
 
         public bool? ReceiveEmailNotifications { get; set; }
 
+        public bool? EnableDoubleFactorAuthentication { get; set; }
+
         public DateTime? DatabaseEntryAt { get; set; }
 
         public DateTime? LastEditedAt { get; set; }

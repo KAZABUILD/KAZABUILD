@@ -15,7 +15,7 @@ namespace KAZABUILD.API
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -100,7 +100,7 @@ namespace KAZABUILD.API
             {
                 if (!dbContext.Database.CanConnect())
                 {
-                    logger.LogAsync(
+                    await logger.LogAsync(
                         Guid.Empty,
                         "Connect",
                         "Database",
@@ -113,7 +113,7 @@ namespace KAZABUILD.API
             }
             catch (Exception ex)
             {
-                logger.LogAsync(
+                await logger.LogAsync(
                     Guid.Empty,
                     "Connect",
                     "Database",
@@ -127,11 +127,11 @@ namespace KAZABUILD.API
             //Apply migrations automatically
             try
             {
-                dbContext.Database.Migrate();
+                await dbContext.Database.MigrateAsync();
             }
             catch (Exception ex) //Catch any error related to migration
             {
-                logger.LogAsync(
+                await logger.LogAsync(
                     Guid.Empty,
                     "Connect",
                     "Database",
@@ -186,7 +186,7 @@ namespace KAZABUILD.API
             var SmtpSErviceSettings = scope.ServiceProvider.GetRequiredService<IOptions<SmtpSettings>>().Value;
 
             //Create the system user if one doesn't already exist
-            if (!dbContext.Users.Any(u => u.Login == "SYSTEM"))
+            if (!await dbContext.Users.AnyAsync(u => u.Login == SystemAdminSettigns.Login))
             {
                 var systemUser = new User
                 {
@@ -204,11 +204,12 @@ namespace KAZABUILD.API
                     ProfileAccessibility = ProfileAccessibility.PUBLIC,
                     Theme = Theme.LIGHT,
                     Language = Language.ENGLISH,
-                    ReceiveEmailNotifications = false
+                    ReceiveEmailNotifications = false,
+                    EnableDoubleFactorAuthentication = false
                 };
 
                 dbContext.Users.Add(systemUser);
-                dbContext.SaveChanges();
+                await dbContext.SaveChangesAsync();
             }
 
             //Try to run the app and throw an error for empty validation
@@ -219,7 +220,7 @@ namespace KAZABUILD.API
             catch (OptionsValidationException ex)
             {
                 //Log the validation error
-                logger.LogAsync(
+                await logger.LogAsync(
                     Guid.Empty,
                     "validate",
                     "Application",
@@ -246,7 +247,7 @@ namespace KAZABUILD.API
             catch (Exception ex)
             {
                 //Log the validation error
-                logger.LogAsync(
+                await logger.LogAsync(
                     Guid.Empty,
                     "start",
                     "Application",

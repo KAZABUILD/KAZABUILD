@@ -80,6 +80,7 @@ namespace KAZABUILD.API.Controllers
                 Language = dto.Language,
                 Location = dto.Location,
                 ReceiveEmailNotifications = dto.ReceiveEmailNotifications,
+                EnableDoubleFactorAuthentication = dto.EnableDoubleFactorAuthentication,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -285,6 +286,18 @@ namespace KAZABUILD.API.Controllers
                 changedFields.Add("Location: " + user.Location);
 
                 user.Location = dto.Location;
+            }
+            if (dto.ReceiveEmailNotifications != null)
+            {
+                changedFields.Add("ReceiveEmailNotifications: " + user.ReceiveEmailNotifications);
+
+                user.ReceiveEmailNotifications = (bool)dto.ReceiveEmailNotifications;
+            }
+            if (dto.EnableDoubleFactorAuthentication != null)
+            {
+                changedFields.Add("EnableDoubleFactorAuthentication : " + user.EnableDoubleFactorAuthentication);
+
+                user.EnableDoubleFactorAuthentication = (bool)dto.EnableDoubleFactorAuthentication;
             }
 
             //Update allowed fields - administration
@@ -572,6 +585,7 @@ namespace KAZABUILD.API.Controllers
                     Language = user.Language,
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
                     DatabaseEntryAt = user.DatabaseEntryAt,
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
@@ -729,6 +743,7 @@ namespace KAZABUILD.API.Controllers
                             Language = user.Language,
                             Location = user.Location,
                             ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                            EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
                             DatabaseEntryAt = user.DatabaseEntryAt,
                             LastEditedAt = user.LastEditedAt,
                             Note = user.Note
@@ -761,6 +776,7 @@ namespace KAZABUILD.API.Controllers
                     Language = user.Language,
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
                     DatabaseEntryAt = user.DatabaseEntryAt,
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note

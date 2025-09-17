@@ -66,5 +66,7 @@ namespace KAZABUILD.Application.DTOs.User
         public string? Location { get; set; }
 
         public bool ReceiveEmailNotifications { get; set; } = true;
+
+        public bool EnableDoubleFactorAuthentication { get; set; } = false;
     }
 }
