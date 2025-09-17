@@ -78,6 +78,12 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== USER TOKEN ======================================//
 
+            //Configure TokenType enum as string
+            modelBuilder
+                .Entity<UserToken>()
+                .Property(u => u.TokenType)
+                .HasConversion<string>();
+
             //Register relationship
             modelBuilder.Entity<UserToken>()
                 .HasOne(f => f.User)

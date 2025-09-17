@@ -158,8 +158,8 @@ namespace KAZABUILD.API.Controllers
                 var token = new UserToken
                 {
                     UserId = user.Id,
-                    TokenHash = Guid.NewGuid().ToString("N").Substring(0, 6),
-                    TokenType = "LOGIN_2FA",
+                    Token = Guid.NewGuid().ToString("N").Substring(0, 6),
+                    TokenType = TokenType.LOGIN_2FA,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(10),
                     IpAddress = ip,
@@ -168,7 +168,7 @@ namespace KAZABUILD.API.Controllers
                 };
 
                 //Create the email message body with html
-                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.TokenHash);
+                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.Token);
 
                 //Try to send the confirmation email
                 try
@@ -252,7 +252,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && t.TokenHash == dto.Token && t.TokenType == "LOGIN_2FA" && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && t.Token == dto.Token && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -527,8 +527,8 @@ namespace KAZABUILD.API.Controllers
             var token = new UserToken
             {
                 UserId = user.Id,
-                TokenHash = Guid.NewGuid().ToString("N"),
-                TokenType = "CONFIRM_REGISTER",
+                Token = Guid.NewGuid().ToString("N"),
+                TokenType = TokenType.CONFIRM_REGISTER,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
                 IpAddress = ip,
@@ -540,7 +540,7 @@ namespace KAZABUILD.API.Controllers
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token.TokenHash}&userId={user.Id}";
+            var confirmUrl = $"{token.RedirectUrl}?token={token.Token}&userId={user.Id}";
             //Create the email message body with html
             var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
@@ -596,7 +596,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.TokenHash == dto.Token && t.TokenType == "CONFIRM_REGISTER" && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -729,8 +729,8 @@ namespace KAZABUILD.API.Controllers
             var token = new UserToken
             {
                 UserId = user.Id,
-                TokenHash = Guid.NewGuid().ToString("N"),
-                TokenType = "RESET_PASSWORD",
+                Token = Guid.NewGuid().ToString("N"),
+                TokenType = TokenType.RESET_PASSWORD,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(2),
                 RedirectUrl = dto.RedirectUrl,
@@ -742,7 +742,7 @@ namespace KAZABUILD.API.Controllers
             //Get the redirect to frontend
             var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
             //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token.TokenHash}&userId={user.Id}";
+            var confirmUrl = $"{token.RedirectUrl}?token={token.Token}&userId={user.Id}";
             //Create the email message body with html
             var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
 
@@ -799,7 +799,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.TokenHash == dto.Token && t.TokenType == "RESET_PASSWORD" && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)

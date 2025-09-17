@@ -37,15 +37,16 @@
 
 ## Features
 - Swagger Documentation
-- Authentication
-- Authorization
+- Authentication Middleware
+- Authorization Middleware
 - Automatic Validation
 - Rate Limiting
-- CORS
+- CORS Middleware
 - RabbitMQ Queues
 - Health Checks Endpoints
 - Smtp Email Service
-- hashing Service
+- Hashing Service
+- Guest User Handling Middleware
 
 ## Models
 All models have protections against adding invalid values but the any call made should be double checked anyway
@@ -91,6 +92,20 @@ All models have protections against adding invalid values but the any call made 
  - `Description` -> nullable string storing additional information about the activity and error if one occurred
  - `IpAddress` -> the IP address of the user that called the logged activity
 
+- UserToken
+ - `Id` -> automatically assigned GUID
+ - `UserId` -> GUID storing the user's id the token is for
+ - `Token` -> string storing the actual token 
+ - `TokenType` -> string storing the type of the token
+ - `CreatedAt` -> date object storing the date the token was created
+ - `ExpiresAt` -> date object storing the date the token expires
+ - `UsedAt` -> date object storing the date the token was used
+ - `IpAddress` -> string storing the IP address of the person calling the endpoint that created the token
+ - `RedirectUrl` -> string that stores the URL to which the user should be redirected after clicking a link with the token 
+ - `DatabaseEntryAt` -> date object storing when the user was created in the database
+ - `LastEditedAt` -> date object storing when the user was last edited
+ - `Note` -> nullable string storing any staff-only information
+
 ## Controller methods
 To see what fields should be provided in an API request check the swagger documentation.
 
@@ -109,4 +124,13 @@ To see what fields should be provided in an API request check the swagger docume
  - only admins can modify component related objects
 
 ### User specific API calls
-- `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body 
+- `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
+
+### Auth specific API calls
+- `Auth/POST/login` allows anyone to login using their password and either Login or Email, sends confirmation email if enabled on user's account
+- `Auth/POST/verify-2fa` redirect endpoint that verifies user login with 2fa, never call manually
+- `Auth/POST/google-login` allows anyone to login using their google account, connects to google services, has some fields missing and requires further user account setup in the frontend (missing birth date)
+- `Auth/POST/register` allows anyone to register a new account, requires providing all user account fields, sends confirmation email
+- `Auth/POST/confirm-register` redirect endpoint that verifies user registration, never call manually, redirects to frontend
+- `Auth/POST/reset-password` allows anyone to reset user's password, requires providing the old and new passwords, sends confirmation email
+- `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend
