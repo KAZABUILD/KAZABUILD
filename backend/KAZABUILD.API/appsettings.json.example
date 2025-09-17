@@ -1,12 +1,67 @@
 {
   "Logging": {
     "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+      "Default": "DEFAULT_WARNING_LEVEL", //ex. Information
+      "Microsoft.AspNetCore": "WARNING_LEVEL" //ex. Warning
     }
   },
   "AllowedHosts": "*",
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=KAZABUILD_DB;User Id=sa;Password=Passw0rd;TrustServerCertificate=True"
+    "DefaultConnection": "Server=YOUR_SERVER_HOST_NAME,YOUR_SERVER_HOST_PORT;Database=YOUR_DATABASE_NAME;User Id=YOUR_USER_ID;Password=YOUR_USER_PASSWORD;TrustServerCertificate=True"
+  },
+  "JwtSettings": {
+    "Secret": "YOUR_SECRET_HASHING_KEY", //must be at least 32 characters long
+    "Issuer": "YOUR_ISSUER_NAME",
+    "Audience": "YOUR_AUDIENCE_NAME",
+    "ExpiryMinutes": 3600
+  },
+  "SmtpSettings": {
+    "Host": "YOUR_HOST_ADDRESS", //ex. smtp.example.com
+    "Port": 587,
+    "Username": "YOUR_EMAIL_ADDRESS", //ec. no-reply@example.com
+    "Password": "YOUR_PASSWORD"
+  },
+  "RabbitMQ": {
+    "messaging": {
+      "HostName": "YOUR_HOST_NAME",
+      "Port": 5672,
+      "UserName": "YOUR_USERNAME",
+      "Password": "YOUR_PASSWORD",
+      "QueueName": "YOUR_QUEUE_NAME",
+      "PrefetchCount": 10
+    }
+  },
+  "Serilog": { //Dev console and file logging
+    "Using": [],
+    "MinimumLevel": "Information",
+    "WriteTo": [
+      { "Name": "Console" },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "Logs/log-.txt",
+          "rollingInterval": "Day"
+        }
+      }
+    ],
+    "Enrich": [ "FromLogContext" ]
+  },
+  "AllowedFrontendOrigins": {
+    "AllowedFrontendOrigins": [
+      "LIST_OFORIGINS" //ex. https://localhost:4200, https://yourfrontend.com
+    ]
+  },
+  "Frontend": {
+    "Host": "localhost:4200"
+  },
+  "SYSTEM_ADMIN": {
+    "Name": "SYSTEM_ADMIN_NAME",
+    "Password": "SYSTEM_ADMIN_PASSWORD"
+  },
+  "Authentication": {
+    "Google": {
+      "ClientId": "YOUR_GOOGLE_CLIENT_ID",
+      "ClientSecret": "YOUR_GOOGLE_CLIENT_SECRET"
+    }
   }
 }

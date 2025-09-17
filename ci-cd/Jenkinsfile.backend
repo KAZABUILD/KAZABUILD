@@ -7,15 +7,9 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/your-org/your-repo.git'
-            }
-        }
-
         stage('Restore') {
             steps {
-                dir('backend/src/KAZABUILD.Api') {
+                dir('backend/KAZABUILD.Api') {
                     sh 'dotnet restore'
                 }
             }
@@ -23,7 +17,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('backend/src/KAZABUILD.Api') {
+                dir('backend/KAZABUILD.Api') {
                     sh 'dotnet build --configuration Release'
                 }
             }
