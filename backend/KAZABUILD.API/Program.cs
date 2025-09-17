@@ -4,6 +4,7 @@ using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
+using KAZABUILD.Infrastructure.Middleware;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -173,6 +174,9 @@ namespace KAZABUILD.API
 
             //Enable authentication
             app.UseAuthentication();
+
+            //Enable middleware for handling guest user claims
+            app.UseMiddleware<GuestClaimsMiddleware>();
 
             //Enable authorization
             app.UseAuthorization();

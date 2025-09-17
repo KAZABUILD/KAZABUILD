@@ -19,8 +19,7 @@ namespace KAZABUILD.Domain.Entities
         [EmailAddress(ErrorMessage = "Invalid Email Format!")]
         public string Email { get; set; } = default!;
 
-        [Required]
-        public string PasswordHash { get; set; } = default!;
+        public string? PasswordHash { get; set; }
 
         [Required]
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
@@ -46,9 +45,8 @@ namespace KAZABUILD.Domain.Entities
         [Url(ErrorMessage = "Invalid image URL!")]
         public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
 
-        [Required]
         [DataType(DataType.DateTime)]
-        public DateTime Birth { get; set; } = default!;
+        public DateTime? Birth { get; set; }
 
         [Required]
         [DataType(DataType.DateTime)]
@@ -76,6 +74,11 @@ namespace KAZABUILD.Domain.Entities
         public bool ReceiveEmailNotifications { get; set; } = true;
 
         public bool EnableDoubleFactorAuthentication { get; set; } = false;
+
+        //Google OAuth fields
+        public string? GoogleId { get; set; }
+
+        public string? GoogleProfilePicture { get; set; }
 
         //Additional database information
         [DataType(DataType.DateTime)]

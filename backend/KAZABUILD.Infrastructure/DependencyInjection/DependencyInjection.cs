@@ -9,7 +9,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
         {
             services.AddDatabase(config)
                     .AddOptions(config)
-                    .AddAuthentication(config)
+                    .AddAppAuthentication(config)
                     .AddRolePolicies()
                     .AddAppHealthChecks()
                     .AddServices(config)

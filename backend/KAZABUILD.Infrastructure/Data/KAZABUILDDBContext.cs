@@ -51,6 +51,12 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasIndex(u => u.Email)
                 .IsUnique();
 
+            //Unique index on login
+            modelBuilder
+                .Entity<User>()
+                .HasIndex(u => u.Login)
+                .IsUnique();
+
             //Register address as a ValueObject
             modelBuilder.Entity<User>()
                 .OwnsOne(u => u.Address);

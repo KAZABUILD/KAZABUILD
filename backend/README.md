@@ -32,6 +32,8 @@
 - `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`
 - `AspNetCoreRateLimit`
 - `System.Linq.Dynamic.Core`
+- `Microsoft.AspNetCore.Authentication.Google`
+- `Google.Apis.Auth`
 
 ## Features
 - Swagger Documentation
@@ -86,7 +88,7 @@ All models have protections against adding invalid values but the any call made 
  - `ActivityType` -> string storing what is being logged
  - `TargetType` -> string storing where the activity happened
  - `TargetId` -> nullable string storing which object in the database was affected
- - `Description` -> nullable string storing additional information about the activity and error if one occured
+ - `Description` -> nullable string storing additional information about the activity and error if one occurred
  - `IpAddress` -> the IP address of the user that called the logged activity
 
 ## Controller methods
