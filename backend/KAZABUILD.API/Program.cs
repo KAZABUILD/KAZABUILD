@@ -169,14 +169,14 @@ namespace KAZABUILD.API
             else
                 app.UseCors("ProductionCorsPolicy");
 
-            //Enables rate limiting
-            app.UseRateLimiter();
-
             //Enable authentication
             app.UseAuthentication();
 
             //Enable middleware for handling guest user claims
             app.UseMiddleware<GuestClaimsMiddleware>();
+
+            //Enables rate limiting
+            app.UseRateLimiter();
 
             //Enable authorization
             app.UseAuthorization();
