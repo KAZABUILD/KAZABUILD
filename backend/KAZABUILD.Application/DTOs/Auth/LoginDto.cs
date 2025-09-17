@@ -7,11 +7,11 @@ namespace KAZABUILD.Application.DTOs.Auth
     [RequireAtLeastOne(nameof(Login), nameof(Email))]
     public class LoginDto
     {
-        public string? Login;
+        public string? Login { get; set; }
 
-        public string? Email;
+        public string? Email { get; set; }
 
         [Required]
-        public string Password = default!;
+        public string Password { get; set; } = default!;
     }
 }

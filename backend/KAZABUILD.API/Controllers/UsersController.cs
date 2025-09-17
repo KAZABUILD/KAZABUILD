@@ -438,7 +438,7 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Verify if the old password is correct
-            if (!_hasher.Verify(user.PasswordHash, dto.OldPassword))
+            if (!_hasher.Verify(dto.OldPassword, user.PasswordHash))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -662,11 +662,11 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Get users with paging
-            if (dto.Paging)
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
-                    .Skip((dto.Page - 1) * dto.PageLength)
-                    .Take(dto.PageLength);
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
             }
 
             //Log Description string declaration

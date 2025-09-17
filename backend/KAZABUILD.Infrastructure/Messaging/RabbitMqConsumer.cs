@@ -12,6 +12,7 @@ using ILoggerService = KAZABUILD.Application.Interfaces.ILoggerService;
 
 namespace KAZABUILD.Infrastructure.Messaging
 {
+    //Rabbit MQ consumer that gets request from a queue and performes whatever operations are needed on them
     public class RabbitMQConsumer(IRabbitMqConnection connection, IOptions<RabbitMQSettings> settings, IServiceProvider serviceProvider) : BackgroundService
     {
         private readonly IRabbitMqConnection _connection = connection;
@@ -21,14 +22,13 @@ namespace KAZABUILD.Infrastructure.Messaging
         //Background service that consumes the requests from the queue
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            //Declare variables to store the rabbitMQ connection
-            IConnection? connection = null;
+            //Declare variable necessary to store the rabbitMQ channel and close it later
             IChannel? channel = null;
 
             try
             {
                 //Get the connection
-                connection = await _connection.GetConnectionAsync().ConfigureAwait(false);
+                IConnection? connection = await _connection.GetConnectionAsync().ConfigureAwait(false);
 
                 //Create a new channel for the connection
                 channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken).ConfigureAwait(false);
@@ -72,9 +72,11 @@ namespace KAZABUILD.Infrastructure.Messaging
             }
             catch (Exception ex)
             {
+                //Create the scope and get the logger
                 using var scope = _serviceProvider.CreateScope();
                 var logger = scope.ServiceProvider.GetRequiredService<ILoggerService>();
 
+                //Log the service failure
                 await logger.LogAsync(
                     Guid.Empty,
                     "Consumer",

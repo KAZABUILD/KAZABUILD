@@ -16,7 +16,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
         {
             //Get jwt information from saved settings
             var jwt = config.GetSection("JwtSettings").Get<JwtSettings>()!;
-            var google = config.GetSection("OAuthSettings").Get<OAuthSettings>()!;
+            var google = config.GetSection("Authentication").Get<OAuthSettings>()!;
             var key = Encoding.UTF8.GetBytes(jwt.Secret);
 
             //Add authentication

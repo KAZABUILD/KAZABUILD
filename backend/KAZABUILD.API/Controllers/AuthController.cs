@@ -46,9 +46,25 @@ namespace KAZABUILD.API.Controllers
             {
                 user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
             }
-            else
+            else if (dto.Login != null)
             {
                 user = await _db.Users.FirstOrDefaultAsync(u => u.Login == dto.Login);
+            }
+            else
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Missing Email And Login"
+                );
+
+                //Return proper unauthorized response
+                return BadRequest(new { message = "Provide either an email or login!" });
             }
 
             //Return an appropriate unauthorized response if the user is not found or if the password is incorrect
@@ -68,7 +84,7 @@ namespace KAZABUILD.API.Controllers
                 //Return proper unauthorized response
                 return Unauthorized(new { message = "Invalid login!" });
             }
-            else if(!_hasher.Verify(user.PasswordHash, dto.Password))
+            else if (!_hasher.Verify(dto.Password, user.PasswordHash))
             {
                 //Log failure
                 await _logger.LogAsync(
