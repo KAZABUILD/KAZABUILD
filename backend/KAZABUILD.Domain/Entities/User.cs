@@ -70,7 +70,6 @@ namespace KAZABUILD.Domain.Entities
         [StringLength(100, ErrorMessage = "Location cannot be longer than 100 characters!")]
         public string? Location { get; set; }
 
-        [Required]
         public bool ReceiveEmailNotifications { get; set; } = true;
 
         public bool EnableDoubleFactorAuthentication { get; set; } = false;
@@ -94,5 +93,11 @@ namespace KAZABUILD.Domain.Entities
         public ICollection<UserFollow> Followers { get; set; } = [];
         public ICollection<UserFollow> Followed { get; set; } = [];
         public ICollection<UserToken> UserTokens { get; set; } = [];
+        public ICollection<UserPreference> UserPreferences { get; set; } = [];
+        public ICollection<UserComment> UserComments { get; set; } = [];
+        public ICollection<ForumPost> ForumPosts { get; set; } = [];
+        public ICollection<Message> ReceivedMessages { get; set; } = [];
+        public ICollection<Message> SentMessages { get; set; } = [];
+        public ICollection<Notification> Notifications { get; set; } = [];
     }
 }
