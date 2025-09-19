@@ -1,14 +1,15 @@
 using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.User
+namespace KAZABUILD.Application.DTOs.ForumPost
 {
-    public class GetUserDto
+    public class GetForumPostDto
     {
         //Filter By fields
-        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
-        public string? Gender { get; set; }
-        public UserRole? UserRole { get; set; }
+        [MaxLength(50, ErrorMessage = "Topic cannot be longer than 50 characters!")]
+        public string? Topic { get; set; }
+
+        public Guid? CreatorId { get; set; }
 
         //Paging related fields
         public bool Paging = false;

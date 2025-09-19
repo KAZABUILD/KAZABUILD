@@ -1,14 +1,19 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.User
+namespace KAZABUILD.Application.DTOs.UserFollow
 {
-    public class GetUserDto
+    public class GetUserFollowDto
     {
         //Filter By fields
-        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
-        public string? Gender { get; set; }
-        public UserRole? UserRole { get; set; }
+        public Guid? FollowerId { get; set; }
+
+        public Guid? FollowedId { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? FollowedAtStart { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? FollowedAtEnd { get; set; }
 
         //Paging related fields
         public bool Paging = false;

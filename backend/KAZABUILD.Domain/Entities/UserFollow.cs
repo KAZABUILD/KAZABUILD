@@ -5,11 +5,18 @@ namespace KAZABUILD.Domain.Entities
     public class UserFollow
     {
         //Follow fields
+        [Key]
         public Guid Id { get; set; }
 
-        public Guid FollowerId { get; set; }
+        [Required]
+        public Guid FollowerId { get; set; } = default!;
 
-        public Guid FollowedId { get; set; }
+        [Required]
+        public Guid FollowedId { get; set; } = default!;
+
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime FollowedAt { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
@@ -18,6 +25,7 @@ namespace KAZABUILD.Domain.Entities
         [DataType(DataType.DateTime)]
         public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
 
+        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }
 
         //Database relationships

@@ -1,14 +1,11 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.User
+namespace KAZABUILD.Application.DTOs.UserPreference
 {
-    public class GetUserDto
+    public class GetUserPreferenceDto
     {
         //Filter By fields
-        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
-        public string? Gender { get; set; }
-        public UserRole? UserRole { get; set; }
+        public Guid? UserId { get; set; }
 
         //Paging related fields
         public bool Paging = false;

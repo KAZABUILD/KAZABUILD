@@ -1,14 +1,11 @@
 using KAZABUILD.Domain.Enums;
+
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Application.DTOs.Notification
 {
-    public class Notification
+    public class CreateNotificationDto
     {
-        //Notification fields
-        [Key]
-        public Guid Id { get; set; } = default!;
-
         [Required]
         public Guid UserId { get; set; } = default!;
 
@@ -33,18 +30,5 @@ namespace KAZABUILD.Domain.Entities
         public DateTime SentAt { get; set; } = default!;
 
         public bool IsRead { get; set; } = false;
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public User? User { get; set; } = default!;
     }
 }

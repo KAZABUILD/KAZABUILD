@@ -11,6 +11,42 @@ namespace KAZABUILD.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "TokenType",
+                table: "UserTokens",
+                type: "nvarchar(max)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(25)",
+                oldMaxLength: 25);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Note",
+                table: "UserTokens",
+                type: "nvarchar(255)",
+                maxLength: 255,
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(max)",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Note",
+                table: "UserFollows",
+                type: "nvarchar(255)",
+                maxLength: 255,
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(max)",
+                oldNullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "FollowedAt",
+                table: "UserFollows",
+                type: "datetime2",
+                nullable: false,
+                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
             migrationBuilder.CreateTable(
                 name: "ForumPost",
                 columns: table => new
@@ -59,20 +95,19 @@ namespace KAZABUILD.Infrastructure.Migrations
                         name: "FK_Message_Message_ParentMessageId",
                         column: x => x.ParentMessageId,
                         principalTable: "Message",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Message_Users_ReceiverId",
                         column: x => x.ReceiverId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Message_Users_SenderId",
                         column: x => x.SenderId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -84,7 +119,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     NotificationType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Body = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     Title = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    LinkUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    LinkUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     SentAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsRead = table.Column<bool>(type: "bit", nullable: false),
                     DatabaseEntryAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -110,7 +145,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     DatabaseEntryAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     LastEditedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Note = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -145,13 +180,13 @@ namespace KAZABUILD.Infrastructure.Migrations
                         column: x => x.ForumPostId,
                         principalTable: "ForumPost",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_UserComment_UserComment_ParentCommentId",
                         column: x => x.ParentCommentId,
                         principalTable: "UserComment",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_UserComment_Users_UserId",
                         column: x => x.UserId,
@@ -223,6 +258,39 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "ForumPost");
+
+            migrationBuilder.DropColumn(
+                name: "FollowedAt",
+                table: "UserFollows");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "TokenType",
+                table: "UserTokens",
+                type: "nvarchar(25)",
+                maxLength: 25,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(max)");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Note",
+                table: "UserTokens",
+                type: "nvarchar(max)",
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(255)",
+                oldMaxLength: 255,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Note",
+                table: "UserFollows",
+                type: "nvarchar(max)",
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "nvarchar(255)",
+                oldMaxLength: 255,
+                oldNullable: true);
         }
     }
 }
