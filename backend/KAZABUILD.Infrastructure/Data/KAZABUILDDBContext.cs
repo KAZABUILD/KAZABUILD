@@ -144,7 +144,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.MessageType)
                 .HasConversion<string>();
 
-            //Register relationships
+            //Register relationships, deleting messages should be handles in api calls
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)

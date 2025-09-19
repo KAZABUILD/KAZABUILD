@@ -1,14 +1,27 @@
 using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.User
+namespace KAZABUILD.Application.DTOs.Message
 {
-    public class GetUserDto
+    public class GetMessageDto
     {
         //Filter By fields
-        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
-        public string? Gender { get; set; }
-        public UserRole? UserRole { get; set; }
+        public Guid? SenderId { get; set; }
+
+        public Guid? ReceiverId { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? SentAtStart { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? SentAtEnd { get; set; }
+
+        public bool? IsRead { get; set; }
+
+        public Guid? ParentMessageId { get; set; }
+
+        [EnumDataType(typeof(MessageType))]
+        public MessageType? MessageType { get; set; }
 
         //Paging related fields
         public bool Paging = false;

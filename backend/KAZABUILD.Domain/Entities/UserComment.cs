@@ -8,7 +8,7 @@ namespace KAZABUILD.Domain.Entities
     {
         //User Comment fields
         [Key]
-        public Guid Id { get; set; } = default!;
+        public Guid Id { get; set; }
 
         [Required]
         public Guid UserId { get; set; } = default!;
@@ -20,6 +20,7 @@ namespace KAZABUILD.Domain.Entities
         public Guid? ParentCommentId { get; set; }
 
         [Required]
+        [EnumDataType(typeof(CommentTargetType))]
         public CommentTargetType CommentTargetType { get; set; } = default!;
 
         //Possible references, only one should ever be set at a time

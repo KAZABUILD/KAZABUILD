@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KAZABUILD.Infrastructure.Migrations
 {
     [DbContext(typeof(KAZABUILDDBContext))]
-    [Migration("20250919184924_UserDomain")]
+    [Migration("20250919201528_UserDomain")]
     partial class UserDomain
     {
         /// <inheritdoc />
@@ -180,7 +180,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("LinkUrl")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -363,6 +362,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<DateTime>("DatabaseEntryAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("FollowedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("FollowedId")
                         .HasColumnType("uniqueidentifier");
 
@@ -373,7 +375,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.HasKey("Id");
 
@@ -397,7 +400,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -433,7 +437,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("RedirectUrl")
                         .IsRequired()
@@ -446,8 +451,7 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Property<string>("TokenType")
                         .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UsedAt")
                         .HasColumnType("datetime2");
@@ -478,18 +482,18 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Message", "ParentMessage")
                         .WithMany("ChildMessages")
                         .HasForeignKey("ParentMessageId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.User", "Receiver")
                         .WithMany("ReceivedMessages")
                         .HasForeignKey("ReceiverId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KAZABUILD.Domain.Entities.User", "Sender")
                         .WithMany("SentMessages")
                         .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ParentMessage");
@@ -566,12 +570,12 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.ForumPost", "ForumPost")
                         .WithMany("UserComments")
                         .HasForeignKey("ForumPostId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.UserComment", "ParentComment")
                         .WithMany("ChildComments")
                         .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.User", "User")
                         .WithMany("UserComments")

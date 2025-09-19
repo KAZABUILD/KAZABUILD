@@ -1,14 +1,11 @@
 using KAZABUILD.Domain.Enums;
+
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Application.DTOs.Message
 {
-    public class Message
+    public class CreateMessageDto
     {
-        //Message fields
-        [Key]
-        public Guid Id { get; set; } = default!;
-
         [Required]
         public Guid SenderId { get; set; } = default!;
 
@@ -34,21 +31,5 @@ namespace KAZABUILD.Domain.Entities
         [Required]
         [EnumDataType(typeof(MessageType))]
         public MessageType MessageType { get; set; } = default!;
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public User? Sender { get; set; } = default!;
-        public User? Receiver { get; set; } = default!;
-        public Message? ParentMessage { get; set; } = default!;
-        public ICollection<Message> ChildMessages { get; set; } = [];
     }
 }

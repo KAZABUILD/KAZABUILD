@@ -6,13 +6,13 @@ namespace KAZABUILD.Domain.Entities
     {
         //Forum Post fields
         [Key]
-        public Guid Id { get; set; } = default!;
+        public Guid Id { get; set; }
 
         [Required]
         public Guid CreatorId { get; set; } = default!;
 
         [Required]
-        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 50 characters!")]
+        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 1000 characters!")]
         public string Content { get; set; } = default!;
 
         [Required]
