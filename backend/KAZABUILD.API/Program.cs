@@ -57,7 +57,7 @@ namespace KAZABUILD.API
             });
 
             //Add CORS policy
-            var corsSettings = builder.Configuration.GetSection("AllowedFrontendOrigins").Get<FrontendSettings>()!;
+            var corsSettings = builder.Configuration.GetSection("Frontend").Get<FrontendSettings>()!;
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("DevelopmentCorsPolicy", policy =>

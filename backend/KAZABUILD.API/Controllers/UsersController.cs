@@ -110,7 +110,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "User craeted successfully!" });
+            return Ok(new { message = "User created successfully!" });
         }
 
         //API endpoint for updating the selected user
@@ -132,7 +132,7 @@ namespace KAZABUILD.API.Controllers
             var isSelf = currentUserId == id;
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
-            //Return unathorized access exception if the user does not have the correct permiossions
+            //Return unathorized access exception if the user does not have the correct permissions
             if (!isSelf && !isPrivileged)
             {
                 //Log failure
@@ -143,7 +143,7 @@ namespace KAZABUILD.API.Controllers
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Unathorized Access"
+                    "Operation Failed - Unauthorized Access"
                 );
 
                 //Return forbidden response
@@ -545,7 +545,7 @@ namespace KAZABUILD.API.Controllers
                     UserRole = user.UserRole
                 };
             }
-            if (!isSelf && !isPrivileged) //Return limited knowledge if not user or if no privilages
+            else if (!isSelf && !isPrivileged) //Return limited knowledge if not user or if no privilages
             {
                 //Change log description
                 logDescription = "Successful Operation - Limited Access";
@@ -699,7 +699,7 @@ namespace KAZABUILD.API.Controllers
                     var isSelf = currentUserId == user.Id;
 
                     //Return limited or restricted information based on user profile settings
-                    if(!isSelf && user.ProfileAccessibility == ProfileAccessibility.PRIVATE || (user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed))
+                    if(!isSelf && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE || (user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed)))
                     {
                         //Return restricted knowledge if the user set their profile to private or restricted access
                         return new UserReponseDto
@@ -837,7 +837,7 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "User not found!" });
             }
 
-            //Hamdle deleting followed user and followers to avoid conflicts with cascade deletes
+            //Handle deleting followed user and followers to avoid conflicts with cascade deletes
             //Get all followers' and followed users' follows
             var follows = _db.UserFollows.Where(f => f.FollowedId == user.Id || f.FollowerId == user.Id);
 

@@ -68,13 +68,13 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(f => f.Follower)
                 .WithMany(u => u.Followed)
                 .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a follower
+                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a follower, must be handled in API calls
 
             modelBuilder.Entity<UserFollow>()
                 .HasOne(f => f.Followed)
                 .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FollowedId)
-                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a followed user
+                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a followed user, must be handled in API calls
 
             //====================================== USER TOKEN ======================================//
 
@@ -84,11 +84,98 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.TokenType)
                 .HasConversion<string>();
 
-            //Register relationship
+            //Register relationship with user
             modelBuilder.Entity<UserToken>()
-                .HasOne(f => f.User)
+                .HasOne(t => t.User)
                 .WithMany(u => u.UserTokens)
-                .HasForeignKey(f => f.UserId)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER PREFERENCE ======================================//
+
+            //Register relationship with user
+            modelBuilder.Entity<UserPreference>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.UserPreferences)
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER COMMENT ======================================//
+
+            //Configure CommentTargetType enum as string
+            modelBuilder
+                .Entity<UserComment>()
+                .Property(u => u.CommentTargetType)
+                .HasConversion<string>();
+
+            //Register relationships
+            modelBuilder.Entity<UserComment>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.UserComments)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserComment>()
+                .HasOne(c => c.ForumPost)
+                .WithMany(u => u.UserComments)
+                .HasForeignKey(c => c.ForumPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserComment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(pc => pc.ChildComments)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== FORUM POST ======================================//
+
+            //Register relationship with user
+            modelBuilder.Entity<ForumPost>()
+                .HasOne(p => p.Creator)
+                .WithMany(u => u.ForumPosts)
+                .HasForeignKey(p => p.CreatorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== MESSAGE ======================================//
+
+            //Configure MessageType enum as string
+            modelBuilder
+                .Entity<Message>()
+                .Property(u => u.MessageType)
+                .HasConversion<string>();
+
+            //Register relationships
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany(u => u.SentMessages)
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Receiver)
+                .WithMany(u => u.ReceivedMessages)
+                .HasForeignKey(m => m.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.ParentMessage)
+                .WithMany(pm => pm.ChildMessages)
+                .HasForeignKey(m => m.ParentMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            //====================================== NOTFICATION ======================================//
+
+            //Configure NotificationType enum as string
+            modelBuilder
+                .Entity<Notification>()
+                .Property(u => u.NotificationType)
+                .HasConversion<string>();
+
+            //Register relationship with user
+            modelBuilder.Entity<Notification>()
+                .HasOne(m => m.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
