@@ -1,10 +1,9 @@
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
-using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.User
 {
-    public class UserReponseDto
+    public class UserResponseDto
     {
         public Guid? Id { get; set; }
 

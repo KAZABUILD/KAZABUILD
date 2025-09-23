@@ -27,17 +27,19 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-            //Get the allwed frontend origins from appsettings
+            //Get the allwed frontend origins and redirect urls from appsettings
             services.AddOptions<FrontendSettings>()
-                .Bind(config.GetSection("AllowedFrontendOrigins"))
+                .Bind(config.GetSection("Frontend"))
+                .ValidateDataAnnotations()
+                .Validate(settings => settings.AllowedFrontendOrigins != null, "Any frontend allowed URL has to be provided for the app to build!")
+                .ValidateOnStart();
+
+            //Get the backend url for link redirect in the auth controller from appsettings
+            services.AddOptions<BackendHost>()
+                .Bind(config.GetSection("Backend"))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-            //Get the frontend url for link redirect in the auth controller from appsettings
-            services.AddOptions<FrontendHost>()
-                .Bind(config.GetSection("Frontend"))
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
 
             //Get the frontend url for link redirect in the auth controller from appsettings
             services.AddOptions<SystemAdminSetings>()

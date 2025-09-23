@@ -8,7 +8,7 @@ namespace KAZABUILD.Application.DTOs.User
     public class UpdateUserDto
     {
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
-        [MinLength(8, ErrorMessage = "Display Name must be at least 8 characters long!")]
+        [MinLength(4, ErrorMessage = "Display Name must be at least 4 characters long!")]
         public string? DisplayName { get; set; }
 
         [StringLength(50, ErrorMessage = "Login cannot be longer than 50 characters!")]

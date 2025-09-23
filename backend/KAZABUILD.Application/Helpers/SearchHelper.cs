@@ -113,52 +113,38 @@ namespace KAZABUILD.Application.Helpers
                 body = Expression.Equal(left, right);
             }
 
-            //Wrap the expression into a lamda and return the filtered query
+            //Wrap the expression into a lambda and return the filtered query
             var lambda = Expression.Lambda<Func<T, bool>>(body, param);
             return query.Where(lambda);
         }
 
-        //Build the default contains expression, e.g. (x.Name.Contains("term"))
-        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value, int tolerance = 1)
+        //Build a full-text contains expression, e.g. (x.Name.Contains("term"))
+        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value, int minResults = 10, int levenshteinTolerance = 1, int soundexThreshold = 3)
         {
             //Get the parameter "x"
             var param = field.Parameters[0];
             //Declare the expression to build
             Expression body = field.Body;
 
-            //Unwrap the the expression body to the actual member if it's an object
+            //Unwrap the expression body to the actual member if it's an object
             if (body is UnaryExpression unary && unary.Operand is MemberExpression)
                 body = unary.Operand;
 
-            //Only strings should be searched in the general search convert to string if it's not
+            //Only strings should be searched in the full-text search
             if (body.Type != typeof(string))
-            {
-                //Get a toString method for the object
-                var toStringMethod = body.Type.GetMethod("ToString", Type.EmptyTypes);
+                return null!;
 
-                //Skip conversion if no ToString exists
-                if (toStringMethod == null)
-                    return null!;
+            //Call the contains function imported from SQL
+            var method = typeof(FullTextDbFunction).GetMethod(nameof(FullTextDbFunction.Contains))!;
 
-                //Add a to string method to the exression body
-                body = Expression.Call(body, toStringMethod);
-            }
+            //Build the contains expression
+            var containsCall = Expression.Call(method, body, Expression.Constant(value));
 
-            //Get the fuzzy matching method
-            var fuzzyMethod = typeof(SearchHelper).GetMethod(nameof(LevenshteinDistance), BindingFlags.Public | BindingFlags.Static)!;
+            //Build the expression into a lambda to test the amount of results
+            var containsLambda = Expression.Lambda<Func<T, bool>>(containsCall, field.Parameters);
 
-            //Call Fuzzy Match on every record
-            var distanceCall = Expression.Call(
-                fuzzyMethod,
-                body,
-                Expression.Constant(value)
-            );
-
-            //Compare distance <= tolerance
-            var compare = Expression.LessThanOrEqual(distanceCall, Expression.Constant(tolerance));
-
-            //Wrap the expression into a lamda and return it
-            return Expression.Lambda<Func<T, bool>>(compare, param);
+            //Wrap the expression into a lambda and return it
+            return Expression.Lambda<Func<T, bool>>(containsCall, param);
         }
 
         //Fuzzy matching helper function
@@ -171,7 +157,7 @@ namespace KAZABUILD.Application.Helpers
             return LevenshteinDistance(source.ToLower(), target.ToLower()) <= tolerance;
         }
 
-        //Check how far away the target is 
+        //Check how far away the target is for the fuzzy match
         public static int LevenshteinDistance(string s, string t)
         {
             //Check if the string length allows using the function
@@ -183,7 +169,7 @@ namespace KAZABUILD.Application.Helpers
             var m = t.Length;
             var d = new int[n + 1, m + 1]; //Helper array for storing the edit distance
 
-            //Fill the array edges with intial values for the string length
+            //Fill the array edges with initial values for the string length
             for (int i = 0; i <= n; i++) d[i, 0] = i;
             for (int j = 0; j <= m; j++) d[0, j] = j;
 
@@ -207,15 +193,15 @@ namespace KAZABUILD.Application.Helpers
         //Expression helper that combines two lambdas with a logical OR, e.g. Name.Contains("a") OR Email.Contains("a")
         private static Expression<Func<T, bool>> OrElse<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)
         {
-            //Ensure both lamndas use the same parameter "x" and join them together
+            //Ensure both lambdas use the same parameter "x" and join them together
             var param = expr1.Parameters[0];
             var body = Expression.OrElse(expr1.Body, new ReplaceParameterVisitor(expr2.Parameters[0], param).Visit(expr2.Body)!);
 
-            //Wrap the combined expression into a lamda and return it
+            //Wrap the combined expression into a lambda and return it
             return Expression.Lambda<Func<T, bool>>(body, param);
         }
 
-        //Helper for Swapping a parameter in a lambda, required because of EF functionining
+        //Helper for Swapping a parameter in a lambda, required because of EF functioning
         private class ReplaceParameterVisitor(ParameterExpression oldParam, ParameterExpression newParam) : ExpressionVisitor
         {
             private readonly ParameterExpression _oldParam = oldParam;

@@ -6,6 +6,7 @@ using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,10 @@ using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationSer
 
 namespace KAZABUILD.API.Controllers
 {
-    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendHost> frontendHost) : Controller
+    //Controller for Auth related endpoints
+    [ApiController]
+    [Route("[controller]")]
+    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendSettings> frontend, IOptions<BackendHost> backendHost) : Controller
     {
         private readonly KAZABUILDDBContext _db = db;
         private readonly IHashingService _hasher = hasher;
@@ -23,7 +27,8 @@ namespace KAZABUILD.API.Controllers
         private readonly IRabbitMQPublisher _publisher = publisher;
         private readonly IAuthorizationService _auth = auth;
         private readonly IEmailService _smtp = smtp;
-        private readonly string _frontendHost = frontendHost.Value.Host;
+        private readonly FrontendSettings _frontend = frontend.Value;
+        private readonly string _backendHost = backendHost.Value.Host;
 
         //API endpoint that allows the user to log into the website;
         //returns the jwt token
@@ -537,10 +542,8 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow,
             };
 
-            //Get the redirect to frontend
-            var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
-            //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token.Token}&userId={user.Id}";
+            //Create the confirmation backend call link
+            var confirmUrl = $"{_backendHost}/auth/confirm-register?token={token.Token}&userId={user.Id}";
             //Create the email message body with html
             var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
@@ -613,7 +616,7 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return proper conflict response
-                return BadRequest(new { message = "Invalid token" });
+                return Redirect($"{_frontend.Host}{_frontend.ErrorPage}/?error=InvalidToken");
             }
             else if (token.ExpiresAt < DateTime.UtcNow)
             {
@@ -629,7 +632,7 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return proper conflict response
-                return BadRequest(new { message = "Expired token" });
+                return Redirect($"{_frontend.Host}{_frontend.ErrorPage}/?error=ExpiredToken");
             }
 
             //Get the user the token was for
@@ -671,7 +674,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Ok(new { message = "Registration confirmed! You can now log in." });
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
         }
 
         //API endpoint for reseting the password,
@@ -739,10 +742,9 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Get the redirect to frontend
-            var redirectUrl = $"{_frontendHost}{dto.RedirectUrl}";
-            //Create the redirect url
-            var confirmUrl = $"{token.RedirectUrl}?token={token.Token}&userId={user.Id}";
+            //Create the confirmation backend call link
+            var confirmUrl = $"{_backendHost}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
+
             //Create the email message body with html
             var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
 
@@ -816,7 +818,7 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return proper conflict response
-                return BadRequest(new { message = "Invalid token" });
+                return Redirect($"{_frontend.Host}{_frontend.ErrorPage}/?error=InvalidToken");
             }
             else if (token.ExpiresAt < DateTime.UtcNow)
             {
@@ -832,7 +834,7 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return proper conflict response
-                return BadRequest(new { message = "Expired token" });
+                return Redirect($"{_frontend.Host}{_frontend.ErrorPage}/?error=ExpiredToken");
             }
 
             //Get the user the token was for
@@ -874,7 +876,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Ok(new { message = "Password reset successfully!" });
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
         }
     }
 }
