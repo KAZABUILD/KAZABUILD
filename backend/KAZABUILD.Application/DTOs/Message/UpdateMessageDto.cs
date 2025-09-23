@@ -6,7 +6,7 @@ namespace KAZABUILD.Application.DTOs.Message
 {
     public class UpdateMessageDto
     {
-        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 50 characters!")]
+        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 1000 characters!")]
         public string? Content { get; set; }
 
         [MaxLength(50, ErrorMessage = "Title cannot be longer than 50 characters!")]
