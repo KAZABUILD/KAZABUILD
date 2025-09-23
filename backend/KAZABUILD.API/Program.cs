@@ -1,15 +1,14 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
-using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
-using System.Reflection.Emit;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.API

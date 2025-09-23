@@ -37,6 +37,25 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
+            //Check if the User exists
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            if (user == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Notification",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned User Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "User not found!" });
+            }
+
             //Check if current user has admin permissions or if they are creating a notification for themselves
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;

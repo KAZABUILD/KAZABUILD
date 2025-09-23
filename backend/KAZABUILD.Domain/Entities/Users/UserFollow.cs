@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Domain.Entities.Users
 {
     public class UserFollow
     {

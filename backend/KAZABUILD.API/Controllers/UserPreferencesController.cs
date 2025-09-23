@@ -1,7 +1,7 @@
 using KAZABUILD.Application.DTOs.UserPreference;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -36,9 +36,9 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the user isn't already followed
-            var isUserPreferenceAvailable = await _db.UserPreferences.FirstOrDefaultAsync(p => p.UserId == dto.UserId);
-            if (isUserPreferenceAvailable != null)
+            //Check if the User exists
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            if (user == null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -46,13 +46,13 @@ namespace KAZABUILD.API.Controllers
                     "POST",
                     "UserPreference",
                     ip,
-                    isUserPreferenceAvailable.Id,
+                    Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - The selected users are already present in the follows"
+                    "Operation Failed - Assigned User Doesn't Exist"
                 );
 
-                //Return proper conflict response
-                return Conflict(new { message = "User already followed!" });
+                //Return proper error response
+                return BadRequest(new { message = "User not found!" });
             }
 
             //Check if current user has staff permissions or if they are creating a follow for themselves

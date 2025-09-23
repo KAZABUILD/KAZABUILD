@@ -1,7 +1,6 @@
 using KAZABUILD.Application.DTOs.UserFollow;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -10,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Linq.Dynamic.Core;
+using KAZABUILD.Domain.Entities.Users;
 
 namespace KAZABUILD.API.Controllers
 {
@@ -35,6 +35,26 @@ namespace KAZABUILD.API.Controllers
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if the Follower and Followed exists
+            var Follower = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowerId);
+            var Followed = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowedId);
+            if (Follower == null || Followed == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Message",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned Follower or Followed Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Assigned Follower or Followed not found!" });
+            }
 
             //Check if the user isn't already followed
             var isUserFollowAvailable = await _db.UserFollows.FirstOrDefaultAsync(f => f.FollowerId == dto.FollowerId && f.FollowedId == dto.FollowedId);

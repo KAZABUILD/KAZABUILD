@@ -2,7 +2,7 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Domain.Entities.Users
 {
     public class User
     {

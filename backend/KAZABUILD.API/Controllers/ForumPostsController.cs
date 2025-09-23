@@ -37,6 +37,25 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
+            //Check if the Creator exists
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.CreatorId);
+            if (user == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "ForumPost",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned User Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Creator not found!" });
+            }
+
             //Check if current user has staff permissions or if they are creating a forum post for themselves
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.CreatorId;

@@ -1,3 +1,4 @@
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 

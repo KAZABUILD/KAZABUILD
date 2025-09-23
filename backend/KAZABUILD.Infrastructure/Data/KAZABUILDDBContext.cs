@@ -1,5 +1,6 @@
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace KAZABUILD.Infrastructure.Data

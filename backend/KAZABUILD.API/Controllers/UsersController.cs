@@ -2,7 +2,7 @@ using KAZABUILD.Application.DTOs.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -59,7 +59,6 @@ namespace KAZABUILD.API.Controllers
                 else
                     return Conflict(new { message = "Login Already In Use" });
             }
-            
 
             //Create a user to add
             User user = new()

@@ -1,3 +1,4 @@
+using KAZABUILD.Domain.Entities.Users;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities
