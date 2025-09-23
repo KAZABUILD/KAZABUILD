@@ -2,14 +2,10 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities.Users
+namespace KAZABUILD.Application.DTOs.Users.User
 {
-    public class User
+    public class CreateUserDto
     {
-        //User Profile fields
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         [StringLength(50, ErrorMessage = "Login cannot be longer than 50 characters!")]
         [MinLength(8, ErrorMessage = "Login must be at least 8 characters long!")]
@@ -19,11 +15,13 @@ namespace KAZABUILD.Domain.Entities.Users
         [EmailAddress(ErrorMessage = "Invalid Email Format!")]
         public string Email { get; set; } = default!;
 
-        public string? PasswordHash { get; set; }
+        [Required]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long!")]
+        public string Password { get; set; } = default!;
 
         [Required]
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
-        [MinLength(8, ErrorMessage = "Display Name must be at least 8 characters long!")]
+        [MinLength(4, ErrorMessage = "Display Name must be at least 4 characters long!")]
         public string DisplayName { get; set; } = default!;
 
         [Phone(ErrorMessage = "Invalid phone number format!")]
@@ -45,25 +43,22 @@ namespace KAZABUILD.Domain.Entities.Users
         [Url(ErrorMessage = "Invalid image URL!")]
         public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
 
+        [Required]
         [DataType(DataType.DateTime)]
-        public DateTime? Birth { get; set; }
+        public DateTime Birth { get; set; }
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime RegisteredAt { get; set; } = default!;
+        public DateTime RegisteredAt { get; set; }
 
         public Address? Address { get; set; }
 
-        //User Settings fields
-        [Required]
         [EnumDataType(typeof(ProfileAccessibility))]
         public ProfileAccessibility ProfileAccessibility { get; set; } = ProfileAccessibility.FOLLOWS;
 
-        [Required]
         [EnumDataType(typeof(Theme))]
         public Theme Theme { get; set; } = Theme.DARK;
 
-        [Required]
         [EnumDataType(typeof(Language))]
         public Language Language { get; set; } = Language.ENGLISH;
 
@@ -73,31 +68,5 @@ namespace KAZABUILD.Domain.Entities.Users
         public bool ReceiveEmailNotifications { get; set; } = true;
 
         public bool EnableDoubleFactorAuthentication { get; set; } = false;
-
-        //Google OAuth fields
-        public string? GoogleId { get; set; }
-
-        public string? GoogleProfilePicture { get; set; }
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public ICollection<UserFollow> Followers { get; set; } = [];
-        public ICollection<UserFollow> Followed { get; set; } = [];
-        public ICollection<UserToken> UserTokens { get; set; } = [];
-        public ICollection<UserPreference> UserPreferences { get; set; } = [];
-        public ICollection<UserComment> UserComments { get; set; } = [];
-        public ICollection<ForumPost> ForumPosts { get; set; } = [];
-        public ICollection<Message> ReceivedMessages { get; set; } = [];
-        public ICollection<Message> SentMessages { get; set; } = [];
-        public ICollection<Notification> Notifications { get; set; } = [];
     }
 }

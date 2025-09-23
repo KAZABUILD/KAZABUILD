@@ -1,6 +1,10 @@
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Components.Components;
+using KAZABUILD.Domain.Entities.Components.SubComponents;
 using KAZABUILD.Domain.Entities.Users;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace KAZABUILD.Infrastructure.Data
@@ -75,18 +79,18 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== USER FOLLOW ======================================//
 
-            //Register relationships
+            //Register relationships, disable cascade delete, must be handled in API calls
             modelBuilder.Entity<UserFollow>()
                 .HasOne(f => f.Follower)
                 .WithMany(u => u.Followed)
                 .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a follower, must be handled in API calls
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserFollow>()
                 .HasOne(f => f.Followed)
                 .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FollowedId)
-                .OnDelete(DeleteBehavior.NoAction); //Disable cascade delete when removing a followed user, must be handled in API calls
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== USER TOKEN ======================================//
 
@@ -156,7 +160,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.MessageType)
                 .HasConversion<string>();
 
-            //Register relationships, deleting messages should be handles in API calls
+            //Register relationships, deleting messages should be handled in API calls
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)
@@ -189,6 +193,116 @@ namespace KAZABUILD.Infrastructure.Data
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== COMPONENT ======================================//
+
+            //Configure ComponentType as string
+            modelBuilder
+                .Entity<BaseComponent>()
+                .Property(u => u.Type)
+                .HasConversion<string>();
+
+            //Register a Table-Per-Table polymorphic relationship to subclasses
+            modelBuilder.Entity<BaseComponent>().ToTable("Components");
+            modelBuilder.Entity<CaseFanComponent>().ToTable("CaseFanComponents");
+            modelBuilder.Entity<GPUComponent>().ToTable("GPUComponents");
+            modelBuilder.Entity<CPUComponent>().ToTable("CPUComponents");
+            modelBuilder.Entity<MemoryComponent>().ToTable("MemoryComponents");
+            modelBuilder.Entity<MotherboardComponent>().ToTable("MotherboardComponents");
+            modelBuilder.Entity<MonitorComponent>().ToTable("MonitorComponents");
+            modelBuilder.Entity<CaseComponent>().ToTable("CaseComponents");
+            modelBuilder.Entity<PowerSupplyComponent>().ToTable("PowerSupplyComponents");
+            modelBuilder.Entity<StorageComponent>().ToTable("StorageComponents");
+            modelBuilder.Entity<CoolerComponent>().ToTable("CoolerComponents");
+
+            //====================================== COMPONENT COLOR ======================================//
+
+            //Register relationships, disable cascade delete for colors, must be handled in API calls
+            modelBuilder.Entity<ComponentColor>()
+                .HasOne(m => m.Component)
+                .WithMany(u => u.Colors)
+                .HasForeignKey(m => m.ComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ComponentColor>()
+                .HasOne(m => m.Color)
+                .WithMany(u => u.Components)
+                .HasForeignKey(m => m.ColorCode)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== COMPONENT COMPATIBILITY ======================================//
+
+            //Register relationships, disable cascade delete, must be handled in API calls
+            modelBuilder.Entity<ComponentCompatibility>()
+                .HasOne(m => m.Component)
+                .WithMany(u => u.CompatibleComponents)
+                .HasForeignKey(m => m.ComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ComponentCompatibility>()
+                .HasOne(m => m.CompatibleComponent)
+                .WithMany(u => u.CompatibleToComponents)
+                .HasForeignKey(m => m.CompatibleComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== COMPONENT PRICE ======================================//
+
+            //Register relationship with component
+            modelBuilder.Entity<ComponentPrice>()
+                .HasOne(m => m.Component)
+                .WithMany(u => u.Prices)
+                .HasForeignKey(m => m.ComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== COMPONENT REVIEW ======================================//
+
+            //Register relationship with component
+            modelBuilder.Entity<ComponentReview>()
+                .HasOne(m => m.Component)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(m => m.ComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== COMPONENT PART ======================================//
+
+            //Register relationships, disable cascade delete for subComponents, must be handled in API calls
+            modelBuilder.Entity<ComponentPart>()
+                .HasOne(m => m.Component)
+                .WithMany(u => u.SubComponents)
+                .HasForeignKey(m => m.ComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ComponentPart>()
+                .HasOne(m => m.SubComponent)
+                .WithMany(u => u.Components)
+                .HasForeignKey(m => m.SubComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== SUBCOMPONENT ======================================//
+
+            //Configure SubComponentType as string
+            modelBuilder
+                .Entity<BaseSubComponent>()
+                .Property(u => u.Type)
+                .HasConversion<string>();
+
+            //Register a Table-Per-Table polymorphic relationship to subclasses
+            modelBuilder.Entity<BaseSubComponent>().ToTable("SubComponents");
+
+            //====================================== SUBCOMPONENT PART ======================================//
+
+            //Register relationships, disable cascade delete for non-main subComponents, must be handled in API calls
+            modelBuilder.Entity<SubComponentPart>()
+                .HasOne(m => m.MainSubComponent)
+                .WithMany(u => u.SubComponents)
+                .HasForeignKey(m => m.MainSubComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SubComponentPart>()
+                .HasOne(m => m.SubComponent)
+                .WithMany(u => u.MainSubComponents)
+                .HasForeignKey(m => m.SubComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

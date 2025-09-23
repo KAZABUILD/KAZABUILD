@@ -47,7 +47,7 @@ namespace KAZABUILD.Domain.Entities.Users
         [DataType(DataType.DateTime)]
         public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
 
-        [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
+        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }
 
         //Database relationships

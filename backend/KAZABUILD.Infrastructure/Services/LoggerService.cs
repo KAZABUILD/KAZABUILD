@@ -33,7 +33,7 @@ namespace KAZABUILD.Infrastructure.Services
             _db.Logs.Add(log);
             await _db.SaveChangesAsync();
 
-            //Check if there is an ip address and format it correctly
+            //Check if there is an IP address and format it correctly
             var ip = string.IsNullOrEmpty(ipAddress) ? "" : $" ({ipAddress})";
 
             //Check if there is a target and format it correctly
@@ -42,7 +42,7 @@ namespace KAZABUILD.Infrastructure.Services
             //Check if there is a target and format it correctly
             var _userId = userId == Guid.Empty ? "" : $" by {userId}";
 
-            //Check if there is a decription and format it correctly
+            //Check if there is a description and format it correctly
             var _description = string.IsNullOrEmpty(description) ? "" : $" - {description}";
 
             //Crate a serilog message string
