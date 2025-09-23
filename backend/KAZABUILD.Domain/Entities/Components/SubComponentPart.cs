@@ -1,15 +1,19 @@
+using KAZABUILD.Domain.Entities.Components.SubComponents;
+
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities.Users
+namespace KAZABUILD.Domain.Entities.Components
 {
-    public class UserPreference
+    public class SubComponentPart
     {
-        //User Preferences fields
         [Key]
         public Guid Id { get; set; }
 
         [Required]
-        public Guid UserId { get; set; } = default!;
+        public Guid MainSubComponentId { get; set; } = default!;
+
+        [Required]
+        public Guid SubComponentId { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
@@ -22,6 +26,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public string? Note { get; set; }
 
         //Database relationships
-        public User? User { get; set; } = default!;
+        public BaseSubComponent? MainSubComponent { get; set; } = default!;
+        public BaseSubComponent? SubComponent { get; set; } = default!;
     }
 }
