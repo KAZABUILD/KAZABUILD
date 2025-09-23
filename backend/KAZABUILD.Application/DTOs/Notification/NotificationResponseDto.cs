@@ -1,26 +1,24 @@
 using KAZABUILD.Domain.Enums;
 
-namespace KAZABUILD.Application.DTOs.Message
+namespace KAZABUILD.Application.DTOs.Notification
 {
-    public class MessageReponseDto
+    public class NotificationResponseDto
     {
         public Guid Id { get; set; }
 
-        public Guid? SenderId { get; set; }
+        public Guid? UserId { get; set; }
 
-        public Guid? ReceiverId { get; set; }
+        public NotificationType? NotificationType { get; set; }
 
-        public string? Content { get; set; }
+        public string? Body { get; set; }
 
         public string? Title { get; set; }
+
+        public string? LinkUrl { get; set; }
 
         public DateTime? SentAt { get; set; }
 
         public bool? IsRead { get; set; }
-
-        public Guid? ParentMessageId { get; set; }
-
-        public MessageType? MessageType { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

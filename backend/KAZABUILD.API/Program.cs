@@ -181,7 +181,7 @@ namespace KAZABUILD.API
             //Enable authorization
             app.UseAuthorization();
 
-            //Map controllers' enpoints
+            //Map controllers' endpoints
             app.MapControllers();
 
             //Get the hasher and admin user settings

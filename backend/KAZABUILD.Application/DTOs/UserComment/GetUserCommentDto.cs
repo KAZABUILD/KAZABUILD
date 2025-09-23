@@ -1,21 +1,10 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.ForumPost
+namespace KAZABUILD.Application.DTOs.UserComment
 {
-    public class GetForumPostDto
+    public class GetUserCommentDto
     {
         //Filter By fields
-        [MaxLength(50, ErrorMessage = "Topic cannot be longer than 50 characters!")]
-        public string? Topic { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtStart { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtEnd { get; set; }
-
-        public Guid? CreatorId { get; set; }
 
         //Paging related fields
         public bool Paging = false;

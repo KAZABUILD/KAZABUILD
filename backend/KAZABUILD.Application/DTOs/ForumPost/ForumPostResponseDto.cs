@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.ForumPost
 {
-    public class ForumPostReponseDto
+    public class ForumPostResponseDto
     {
         public Guid Id { get; set; }
 
@@ -15,6 +15,8 @@ namespace KAZABUILD.Application.DTOs.ForumPost
         public string? Title { get; set; }
 
         public string? Topic { get; set; }
+
+        public DateTime? PostedAt { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

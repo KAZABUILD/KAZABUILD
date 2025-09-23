@@ -6,6 +6,7 @@ using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,9 @@ using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationSer
 
 namespace KAZABUILD.API.Controllers
 {
+    //Controller for Auth related endpoints
+    [ApiController]
+    [Route("[controller]")]
     public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendSettings> frontend, IOptions<BackendHost> backendHost) : Controller
     {
         private readonly KAZABUILDDBContext _db = db;

@@ -1,3 +1,4 @@
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,13 +15,23 @@ namespace KAZABUILD.Infrastructure.Data
 
         //User related tables
         public DbSet<User> Users { get; set; } = default!;
+        public DbSet<UserPreference> UserPreferences { get; set; } = default!;
         public DbSet<UserFollow> UserFollows { get; set; } = default!;
         public DbSet<UserToken> UserTokens { get; set; } = default!;
+        public DbSet<UserComment> UserComments { get; set; } = default!;
+        public DbSet<ForumPost> ForumPosts { get; set; } = default!;
+        public DbSet<Message> Messages { get; set; } = default!;
+        public DbSet<Notification> Notifications { get; set; } = default!;
 
         //Declare enums and cascade delete behaviour
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            //Register the db full-text search function
+            modelBuilder
+                .HasDbFunction(() => FullTextDbFunction.Contains(default!, default!))
+                .HasName("CONTAINS");
 
             //====================================== USER ======================================//
 
@@ -144,7 +155,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.MessageType)
                 .HasConversion<string>();
 
-            //Register relationships, deleting messages should be handles in api calls
+            //Register relationships, deleting messages should be handles in API calls
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)

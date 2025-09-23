@@ -3,7 +3,7 @@ using KAZABUILD.Domain.ValueObjects;
 
 namespace KAZABUILD.Application.DTOs.User
 {
-    public class UserReponseDto
+    public class UserResponseDto
     {
         public Guid? Id { get; set; }
 

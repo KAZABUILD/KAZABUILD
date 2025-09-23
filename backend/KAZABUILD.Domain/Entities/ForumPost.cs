@@ -24,6 +24,11 @@ namespace KAZABUILD.Domain.Entities
         public string Topic { get; set; } = default!;
 
         //Additional database information
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime PostedAt { get; set; } = DateTime.UtcNow;
+
+        //Additional database information
         [DataType(DataType.DateTime)]
         public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
 
