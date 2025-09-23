@@ -27,9 +27,6 @@ namespace KAZABUILD.Application.DTOs.Notification
         [DataType(DataType.DateTime)]
         public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
 
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
         //Paging related fields
         public bool Paging = false;
 

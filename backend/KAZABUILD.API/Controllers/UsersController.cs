@@ -14,7 +14,7 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers
 {
-    //Controller for user related endpoints
+    //Controller for User related endpoints
     [ApiController]
     [Route("[controller]")]
     // [EnableRateLimiting("Fixed")] <- Uncomment to add rate limiting
@@ -26,7 +26,7 @@ namespace KAZABUILD.API.Controllers
         private readonly IHashingService _hasher = hasher;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpont for creating a new user
+        //API Endpoint for creating a new user
         [HttpPost("add")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> AddUser([FromBody] CreateUserDto dto)
@@ -34,13 +34,13 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if the email is not already in use
-            var isUserAvailaible = await _db.Users.FirstOrDefaultAsync(u => u.Login == dto.Login || u.Email == dto.Email);
-            if (isUserAvailaible != null)
+            var isUserAvailable = await _db.Users.FirstOrDefaultAsync(u => u.Login == dto.Login || u.Email == dto.Email);
+            if (isUserAvailable != null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -48,13 +48,13 @@ namespace KAZABUILD.API.Controllers
                     "POST",
                     "User",
                     ip,
-                    isUserAvailaible.Id,
+                    isUserAvailable.Id,
                     PrivacyLevel.WARNING,
                     "Operation Failed - Email Already In Use"
                 );
 
                 //Return proper conflict response
-                if(dto.Email == isUserAvailaible.Email)
+                if(dto.Email == isUserAvailable.Email)
                     return Conflict(new { message = "Email Already In Use" });
                 else
                     return Conflict(new { message = "Login Already In Use" });
@@ -124,7 +124,7 @@ namespace KAZABUILD.API.Controllers
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -132,7 +132,7 @@ namespace KAZABUILD.API.Controllers
             var isSelf = currentUserId == id;
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
-            //Return unathorized access exception if the user does not have the correct permissions
+            //Return unauthorized access exception if the user does not have the correct permissions
             if (!isSelf && !isPrivileged)
             {
                 //Log failure
@@ -330,7 +330,7 @@ namespace KAZABUILD.API.Controllers
                 }
             }
 
-            //Update role based on user privilige
+            //Update role based on user privilege
             if (dto.UserRole != null)
             {
                 if(isPrivileged && dto.UserRole < UserRole.MODERATOR)
@@ -361,6 +361,9 @@ namespace KAZABUILD.API.Controllers
 
             //Update edit timestamp
             user.LastEditedAt = DateTime.UtcNow;
+
+            //Update the user
+            _db.Update(user);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -395,7 +398,7 @@ namespace KAZABUILD.API.Controllers
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordDto dto)
         {
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -411,7 +414,7 @@ namespace KAZABUILD.API.Controllers
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Unathorized Access"
+                    "Operation Failed - Unauthorized Access"
                 );
 
                 //Return forbidden response
@@ -484,16 +487,16 @@ namespace KAZABUILD.API.Controllers
         }
 
         //API endpoint for getting the user specified by id,
-        //different level of information returned based on privilages
+        //different level of information returned based on privileges
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserReponseDto>> GetUser(Guid id)
+        public async Task<ActionResult<UserResponseDto>> GetUser(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -520,7 +523,7 @@ namespace KAZABUILD.API.Controllers
             string logDescription;
 
             //Declare response variable
-            UserReponseDto response;
+            UserResponseDto response;
 
             //Check if current user is getting themselves or if they have staff permissions
             var isSelf = currentUserId == id;
@@ -538,20 +541,20 @@ namespace KAZABUILD.API.Controllers
                 logDescription = "Successful Operation - Protected Access";
 
                 //Create user response
-                response = new UserReponseDto
+                response = new UserResponseDto
                 {
                     Id = user.Id,
                     DisplayName = user.DisplayName,
                     UserRole = user.UserRole
                 };
             }
-            else if (!isSelf && !isPrivileged) //Return limited knowledge if not user or if no privilages
+            else if (!isSelf && !isPrivileged) //Return limited knowledge if not user or if no privileges
             {
                 //Change log description
                 logDescription = "Successful Operation - Limited Access";
 
                 //Create user response
-                response = new UserReponseDto
+                response = new UserResponseDto
                 {
                     Id = user.Id,
                     DisplayName = user.DisplayName,
@@ -560,13 +563,41 @@ namespace KAZABUILD.API.Controllers
                     UserRole = user.UserRole
                 };
             }
-            else //Return full knowledge if is user or if has privilages
+            else if (isSelf && !isPrivileged) //Return full knowledge if is user
             {
                 //Change log description
                 logDescription = "Successful Operation - Full Access";
 
                 //Create user response
-                response = new UserReponseDto
+                response = new UserResponseDto
+                {
+                    Id = user.Id,
+                    Login = user.Login,
+                    Email = user.Email,
+                    DisplayName = user.DisplayName,
+                    PhoneNumber = user.PhoneNumber,
+                    Description = user.Description,
+                    Gender = user.Gender,
+                    UserRole = user.UserRole,
+                    ImageUrl = user.ImageUrl,
+                    RegisteredAt = user.RegisteredAt,
+                    Birth = user.Birth,
+                    Address = user.Address,
+                    ProfileAccessibility = user.ProfileAccessibility,
+                    Theme = user.Theme,
+                    Language = user.Language,
+                    Location = user.Location,
+                    ReceiveEmailNotifications = user.ReceiveEmailNotifications,
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication
+                };
+            }
+            else //Return admin knowledge if has privileges
+            {
+                //Change log description
+                logDescription = "Successful Operation - Admin Access";
+
+                //Create user response
+                response = new UserResponseDto
                 {
                     Id = user.Id,
                     Login = user.Login,
@@ -590,7 +621,6 @@ namespace KAZABUILD.API.Controllers
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
                 };
-
             }
 
             //Log success
@@ -611,20 +641,21 @@ namespace KAZABUILD.API.Controllers
                 updatedBy = currentUserId
             });
 
+            //Return the user
             return Ok(response);
         }
 
         //API endpoint for getting users with pagination and search,
-        //different level of information returned based on privilages
+        //different level of information returned based on privileges
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserReponseDto>>> GetUsers([FromBody] GetUserDto dto)
+        public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers([FromBody] GetUserDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -634,25 +665,29 @@ namespace KAZABUILD.API.Controllers
             //Declare the query
             var query = _db.Users.AsNoTracking();
 
-            //Filter by the variables if included
-            if(dto.Gender != null)
+            //Filter by the variables if included in request
+            if (dto.Gender != null)
             {
-                query = query.Where(u =>  u.Gender == dto.Gender);
+                query = query.Where(u => u.Gender == dto.Gender);
             }
             if (dto.UserRole != null)
             {
                 query = query.Where(u => u.UserRole == dto.UserRole);
             }
 
-            //Apply search based on credentials
-            if (isPrivileged)
+            //Apply search based on credentials if query string included in request
+            if (!string.IsNullOrEmpty(dto.Query))
             {
-                query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description!,
-                    u => u.PhoneNumber!, u => u.Gender, u => u.RegisteredAt, u => u.Birth!, u => u.Language, u => u.Location!, u => u.Note!);
-            }
-            else
-            {
-                query = query.Search(dto.Query, u => u.DisplayName, u => u.UserRole, u => u.Description!);
+                //Apply the query based on user privilege
+                if (isPrivileged)
+                {
+                    query = query.Search(dto.Query, u => u.Login, u => u.Email, u => u.DisplayName, u => u.UserRole, u => u.Description!,
+                        u => u.PhoneNumber!, u => u.Gender, u => u.RegisteredAt, u => u.Birth!, u => u.Language, u => u.Location!, u => u.Note!);
+                }
+                else
+                {
+                    query = query.Search(dto.Query, u => u.DisplayName, u => u.UserRole, u => u.Description!);
+                }
             }
 
             //Order by specified field if provided
@@ -675,10 +710,10 @@ namespace KAZABUILD.API.Controllers
             List<User> users = await query.ToListAsync();
 
             //Declare response variable
-            List<UserReponseDto> responses;
+            List<UserResponseDto> responses;
 
             //Check what permissions user has and return respective information
-            if (!isPrivileged) //Return limited knowledge if no privilages
+            if(!isPrivileged) //Return limited knowledge if no privileges
             {
                 //Change log description
                 logDescription = "Successful Operation - Limited Access, Multiple Users";
@@ -702,7 +737,7 @@ namespace KAZABUILD.API.Controllers
                     if(!isSelf && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE || (user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed)))
                     {
                         //Return restricted knowledge if the user set their profile to private or restricted access
-                        return new UserReponseDto
+                        return new UserResponseDto
                         {
                             Id = user.Id,
                             DisplayName = user.DisplayName,
@@ -712,7 +747,7 @@ namespace KAZABUILD.API.Controllers
                     else if(!isSelf)
                     {
                         //Return limited knowledge if not user
-                        return new UserReponseDto
+                        return new UserResponseDto
                         {
                             Id = user.Id,
                             DisplayName = user.DisplayName,
@@ -724,7 +759,7 @@ namespace KAZABUILD.API.Controllers
                     else
                     {
                         //Return full knowledge if is user
-                        return new UserReponseDto
+                        return new UserResponseDto
                         {
                             Id = user.Id,
                             Login = user.Login,
@@ -751,13 +786,13 @@ namespace KAZABUILD.API.Controllers
                     }
                 })];
             }
-            else //Return full knowledge if has privilages
+            else //Return full knowledge if has privileges
             {
                 //Change log description
                 logDescription = "Successful Operation - Full Access, Multiple Users";
 
                 //Create a user response list
-                responses = [.. users.Select(user => new UserReponseDto
+                responses = [.. users.Select(user => new UserResponseDto
                 {
                     Id = user.Id,
                     Login = user.Login,
@@ -781,7 +816,6 @@ namespace KAZABUILD.API.Controllers
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
                 })];
-
             }
 
             //Log success
@@ -814,7 +848,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 

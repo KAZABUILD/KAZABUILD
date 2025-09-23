@@ -1,10 +1,8 @@
-namespace KAZABUILD.Application.DTOs.UserPreference
+namespace KAZABUILD.Application.DTOs.UserComment
 {
-    public class UserPreferenceReponseDto
+    public class UserCommentResponseDto
     {
         public Guid? Id { get; set; }
-
-        public Guid? UserId { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

@@ -1,18 +1,31 @@
 # KAZA BUILD - BACKEND
 
 ## How to run
- - `cd backend/KAZABUILD.API` to get into the backend application folder in terminal
- - `dotnet restore` to get the required packages
- - create and fill in the `launchSettings.json` file with correct information based on the example file
- - use visual studio to run or `dotnet watch run`
- - access automatic swagger documentation using `<ip_address>/swagger`
+ - `cd backend/KAZABUILD.API` to get into the backend application folder in terminal.
+ - `dotnet restore` to get the required packages.
+ - Create and fill in the `launchSettings.json` file with correct information based on the example file.
+ - Use visual studio to run or use `dotnet watch run` in the command line.
+ - Access automatic swagger documentation using `<ip_address>/swagger`.
 
 ## Migrations
- - `cd backend` to get into the main backend folder in terminal
- - `dotnet ef migrations add InitialCreate --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to create the initial database migration
- - `dotnet ef database update` to apply migration
- - migrations can be reviewed in `backend/KAZABUILD.Infrastructure/Migrations`
+ - `cd backend` to get into the main backend folder in terminal.
+ - `dotnet ef migrations add InitialCreate --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to create the initial database migration. If there is one already create a different one or just apply it.
+ - `dotnet ef database update` to apply all migrations.
+ - The app will automatically apply migrations when run.
+ - Migrations can be reviewed in `backend/KAZABUILD.Infrastructure/Migrations`.
 
+## Search function
+ - Whenever a new model is added to the database the user has to manually add the search index for it as well:
+   - Create a new migration.
+   - Add this to the up function:
+     - `migrationBuilder.Sql(@"`
+            `IF NOT EXISTS (SELECT * FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('dbo.[class_name]'))`
+                `CREATE FULLTEXT INDEX ON [class_name]([field_name1] LANGUAGE 0, [field_name2] LANGUAGE 0)`
+                `KEY INDEX PK_[class_name];`
+        `", suppressTransaction: true);`
+   - Add this to the down function:
+     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [class_name];", suppressTransaction: true);`
+    
 
 ## NuGet Packages:
 - `MediatR`

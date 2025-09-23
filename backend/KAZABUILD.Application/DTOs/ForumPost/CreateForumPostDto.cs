@@ -20,5 +20,9 @@ namespace KAZABUILD.Application.DTOs.ForumPost
         [Required]
         [MaxLength(50, ErrorMessage = "Topic cannot be longer than 50 characters!")]
         public string Topic { get; set; } = default!;
+
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime PostedAt { get; set; } = DateTime.UtcNow;
     }
 }

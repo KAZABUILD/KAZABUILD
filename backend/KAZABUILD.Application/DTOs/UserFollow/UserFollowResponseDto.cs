@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.UserFollow
 {
-    public class UserFollowReponseDto
+    public class UserFollowResponseDto
     {
         public Guid? Id { get; set; }
 
