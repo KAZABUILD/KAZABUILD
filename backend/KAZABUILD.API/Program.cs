@@ -57,7 +57,7 @@ namespace KAZABUILD.API
             });
 
             //Add CORS policy
-            var corsSettings = builder.Configuration.GetSection("AllowedFrontendOrigins").Get<FrontendSettings>()!;
+            var corsSettings = builder.Configuration.GetSection("Frontend").Get<FrontendSettings>()!;
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("DevelopmentCorsPolicy", policy =>
@@ -181,7 +181,7 @@ namespace KAZABUILD.API
             //Enable authorization
             app.UseAuthorization();
 
-            //Map controllers' enpoints
+            //Map controllers' endpoints
             app.MapControllers();
 
             //Get the hasher and admin user settings

@@ -8,7 +8,7 @@ namespace KAZABUILD.Domain.Entities
     {
         //User Token fields
         [Key]
-        public Guid Id { get; set; } = default!;
+        public Guid Id { get; set; }
 
         [Required]
         public Guid UserId { get; set; } = default!;
@@ -17,7 +17,7 @@ namespace KAZABUILD.Domain.Entities
         public string Token { get; set; } = default!;
 
         [Required]
-        [StringLength(25, ErrorMessage = "Token Type cannot be longer than 25 characters!")]
+        [EnumDataType(typeof(TokenType))]
         public TokenType TokenType { get; set; } = default!;
 
         [Required]
@@ -47,6 +47,7 @@ namespace KAZABUILD.Domain.Entities
         [DataType(DataType.DateTime)]
         public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
 
+        [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
         public string? Note { get; set; }
 
         //Database relationships

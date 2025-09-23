@@ -46,13 +46,12 @@
     ],
     "Enrich": [ "FromLogContext" ]
   },
-  "AllowedFrontendOrigins": {
-    "AllowedFrontendOrigins": [
-      "LIST_OFORIGINS" //ex. https://localhost:4200, https://yourfrontend.com
-    ]
-  },
   "Frontend": {
-    "Host": "localhost:4200"
+    "Host": "FRONTEND_ORIGIN", //ex. https://localhost:4200,
+    "ErrorPage": "YOUR_ERROR_PAGE", //ex. /error
+    "AllowedFrontendOrigins": [
+      "LIST_ORIGINS" //ex. https://localhost:4200, https://yourfrontend.com
+    ]
   },
   "SYSTEM_ADMIN": {
     "Name": "SYSTEM_ADMIN_NAME",
@@ -63,5 +62,8 @@
       "ClientId": "YOUR_GOOGLE_CLIENT_ID",
       "ClientSecret": "YOUR_GOOGLE_CLIENT_SECRET"
     }
+  },
+  "backend": {
+    "Host": "FRONTEND_ORIGIN" //ex. https://localhost:5100
   }
 }
