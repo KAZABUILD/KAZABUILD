@@ -4,6 +4,7 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -39,7 +40,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -141,7 +142,7 @@ namespace KAZABUILD.API.Controllers
             //Check if the user has double factor authentication enabled
             if (user.EnableDoubleFactorAuthentication)
             {
-                //Check if the ip address exists
+                //Check if the IP address exists
                 if (string.IsNullOrEmpty(ip))
                 {
                     //Log failure
@@ -252,7 +253,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -344,7 +345,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -365,7 +366,7 @@ namespace KAZABUILD.API.Controllers
                     "Operation Failed - Invalid Google Login Token"
                 );
 
-                //Return an anauthorized response
+                //Return an unauthorized response
                 return Unauthorized(new { message = "Invalid Google token." });
             }
 
@@ -457,7 +458,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -507,7 +508,7 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Check if the ip address exists
+            //Check if the IP address exists
             if (string.IsNullOrEmpty(ip))
             {
                 //Log failure
@@ -586,7 +587,7 @@ namespace KAZABUILD.API.Controllers
             return Ok(new { message = "User registered! Please confirm via email." });
         }
 
-        //Api confirm register endpoint
+        //API confirm register endpoint
         [HttpPost("confirm-register")]
         [AllowAnonymous]
         public async Task<IActionResult> ConfirmRegister([FromBody] ConfirmRegisterDto dto)
@@ -594,7 +595,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -677,7 +678,7 @@ namespace KAZABUILD.API.Controllers
             return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
         }
 
-        //API endpoint for reseting the password,
+        //API endpoint for resetting the password,
         //sends an email for resetting the password
         [HttpPost("reset-password")]
         [AllowAnonymous]
@@ -686,7 +687,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -708,10 +709,10 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User not found!" });
+                return BadRequest(new { message = "User not found!" });
             }
 
-            //Check if the ip address exists
+            //Check if the IP address exists
             if (string.IsNullOrEmpty(ip))
             {
                 //Log failure
@@ -796,7 +797,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 

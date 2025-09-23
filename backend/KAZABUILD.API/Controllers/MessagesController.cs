@@ -37,6 +37,26 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
+            //Check if the Receiver and Sender exists
+            var sender = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.SenderId);
+            var receiver = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.SenderId);
+            if (receiver == null || sender == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Message",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned Receiver or Sender Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Assigned receiver or sender not found!" });
+            }
+
             //Check if current user has admin permissions or if they are creating a message for themselves
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.SenderId;

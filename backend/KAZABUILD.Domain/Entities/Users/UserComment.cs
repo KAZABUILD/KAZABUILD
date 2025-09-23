@@ -2,7 +2,7 @@ using KAZABUILD.Domain.Enums;
 
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities
+namespace KAZABUILD.Domain.Entities.Users
 {
     public class UserComment
     {
