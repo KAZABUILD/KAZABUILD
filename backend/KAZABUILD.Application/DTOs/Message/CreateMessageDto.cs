@@ -13,7 +13,7 @@ namespace KAZABUILD.Application.DTOs.Message
         public Guid ReceiverId { get; set; } = default!;
 
         [Required]
-        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 50 characters!")]
+        [MaxLength(1000, ErrorMessage = "Content cannot be longer than 1000 characters!")]
         public string Content { get; set; } = default!;
 
         [Required]
