@@ -64,7 +64,7 @@
 ## Models
 All models have protections against adding invalid values but the any call made should be double checked anyway
 
-- User:
+- User (individual user account, profile and settings):
   - `Id` -> automatically assigned GUID
   - `Login` -> string storing user's username
   - `Email` -> string storing a unique email
@@ -90,11 +90,11 @@ All models have protections against adding invalid values but the any call made 
   - `Language` -> Enum storing which language the user uses globally 
   - `Location` -> nullable string storing user's noted location
   - `ReceiveEmailNotifications` -> string storing whether the user wants to receive email notifications
-  - `DatabaseEntryAt` -> date object storing when the user was created in the database
-  - `LastEditedAt` -> date object storing when the user was last edited
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
   - `Note` -> nullable string storing any staff-only information
 
-- Log
+- Log (events happening in the application, like API calls, errors, database connection info)
   - `Id` -> automatically assigned GUID
   - `UserId` -> GUID storing the id of the user that called the logged activity
   - `Timestamp` -> date object storing when the activity happened
@@ -105,7 +105,7 @@ All models have protections against adding invalid values but the any call made 
   - `Description` -> nullable string storing additional information about the activity and error if one occurred
   - `IpAddress` -> the IP address of the user that called the logged activity
 
-- UserToken
+- UserToken (temporary token for authorization)
   - `Id` -> automatically assigned GUID
   - `UserId` -> GUID storing the user's id the token is for
   - `Token` -> string storing the actual token 
@@ -115,26 +115,95 @@ All models have protections against adding invalid values but the any call made 
   - `UsedAt` -> date object storing the date the token was used
   - `IpAddress` -> string storing the IP address of the person calling the endpoint that created the token
   - `RedirectUrl` -> string that stores the URL to which the user should be redirected after clicking a link with the token 
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- UserPreference (data from polls and quizzes)
+  - `Id` -> automatically assigned GUID
+  - `UserId` -> GUID storing the user's id the preference is for
   - `DatabaseEntryAt` -> date object storing when the user was created in the database
   - `LastEditedAt` -> date object storing when the user was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- UserFollow (which user follows which user)
+  - `Id` -> automatically assigned GUID
+  - `FollowerId` -> GUID storing the user's id for the user that is following
+  - `FollowedId` -> GUID storing the user's id for the user that is being followed
+  - `FollowedAt` -> date object storing when the user was followed
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- UserComment (replies to different types of objects)
+  - `Id` -> automatically assigned GUID
+  - `UserId` -> GUID storing the user's id that wrote the comment
+  - `Content` -> string storing the html text in the comment
+  - `ParentCommentId` -> nullable GUID storing which comment is being replied to
+  - `CommentTargetType` -> Enum storing what type of entity is this commented under
+  - `ForumPostId` -> nullable GUID storing which forum post is being replied to
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- Notification (notification about something happening, e.g. a discount for a liked product)
+  - `Id` -> automatically assigned GUID
+  - `UserId` -> GUID storing the user's id that received the notification
+  - `NotificationType` -> Enum storing the type of notification
+  - `Body` -> string storing the html text in the notification
+  - `Title` -> string storing the title of the notification
+  - `LinkUrl` -> string storing the link to any related page
+  - `SentAt` -> date object storing when the notification has been or will be received
+  - `IsRead` -> bool storing whether the notification weas read by the user
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- Message (private message sent or received by the user)
+  - `Id` -> automatically assigned GUID
+  - `SenderId` -> GUID storing the user's id that sent the message
+  - `ReceiverId` -> GUID storing the user's id that received the message
+  - `Content` -> string storing the html text in the message
+  - `Title` -> string storing the title of the message
+  - `SentAt` -> date object storing when the message has been sent
+  - `IsRead` -> bool storing whether the message weas read by the user
+  - `ParentMessageId` -> nullable GUID storing which message is being replied to
+  - `MessageType` -> Enum storing type of the message
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- ForumPost (private message sent by the user)
+  - `Id` -> automatically assigned GUID
+  - `CreatorId` -> GUID storing the user's id that posted the ForumPost
+  - `Content` -> string storing the html text in the ForumPost
+  - `Title` -> string storing the title of the ForumPost
+  - `Topic` -> string storing the topic in which the ForumPost has been posted in
+  - `PostedAt` -> date object storing when the ForumPost has been posted
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
   - `Note` -> nullable string storing any staff-only information
 
 ## Controller methods
 To see what fields should be provided in an API request check the swagger documentation.
 
 ### Basic CRUD API calls
-- `GET/id` gets the specified object from the database using the id
-  - all users have access but returns different amount of information
-- `POST/add` creates a new object with elements provided in the Body
-  - only staff has access
+- `GET/id` gets the specified object from the database using the id:
+  - all users have access but returns differing amount of information.
+- `POST/add` creates a new object with elements provided in the Body:
+  - usually the user can create objects belonging to them;
+  - staff can create objects related to user activity;
+  - admins can create any object.
 - `DELETE/id` removes the specified object from the database
-  - only staff has access
-- `POST/get` gets a list of objects depending on the provided: allowed field values, sort order, page length and number
-  - all users have access but returns different amount of information
+  - usually the user can delete objects belonging to them;
+  - staff can delete objects related to user activity;
+  - admins can delete any object.
+- `POST/get` gets a list of objects depending on the provided: allowed field values, sort order, page length and number:
+  - all users have access but returns differing amount of information.
 - `PUT/id` updates the specified object with the fields provided, only fields specified in the body get updated
-  - all users can edit information related to themselves
-  - only staff can edit sensitive user related info
-  - only admins can modify component related objects
+  - all users can edit information related to themselves;
+  - staff can edit sensitive user related information;
+  - admins can modify any object.
 
 ### User specific API calls
 - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
