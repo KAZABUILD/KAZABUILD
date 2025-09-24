@@ -1,15 +1,10 @@
-using KAZABUILD.Domain.Entities.Components.Components;
-
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace KAZABUILD.Domain.Entities.Components
+namespace KAZABUILD.Application.DTOs.Components.ComponentColor
 {
-    public class ComponentColor
+    public class CreateComponentColorDto
     {
-        [Key]
-        public Guid Id { get; set; }
-
         [Required]
         public Guid ComponentId { get; set; } = default!;
 
@@ -18,6 +13,10 @@ namespace KAZABUILD.Domain.Entities.Components
         [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
         public string ColorCode { get; set; } = default!;
 
+        [StringLength(30, ErrorMessage = "Color Name cannot be longer than 30 characters!")]
+        [MinLength(3, ErrorMessage = "Color Name must be at least 3 characters long!")]
+        public string? ColorName { get; set; } = default!;
+
         [Required]
         public bool IsAvailable { get; set; } = true;
 
@@ -25,20 +24,5 @@ namespace KAZABUILD.Domain.Entities.Components
         [Range(-9999999.99, 9999999.99, ErrorMessage = "Additional Price must be between -9,999,999.99 and 9,999,999.99")]
         [DataType(DataType.Currency)]
         public decimal? AdditionalPrice { get; set; }
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public Color? Color { get; set; } = default!;
-
-        public BaseComponent? Component { get; set; } = default!;
     }
 }

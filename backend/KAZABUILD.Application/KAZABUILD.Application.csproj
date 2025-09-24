@@ -39,4 +39,8 @@
     <ProjectReference Include="..\KAZABUILD.Domain\KAZABUILD.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\Components\SubComponents\" />
+  </ItemGroup>
+
 </Project>

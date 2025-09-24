@@ -1,5 +1,3 @@
-using KAZABUILD.Domain.Enums;
-using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Users.ForumPost
