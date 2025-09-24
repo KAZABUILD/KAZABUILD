@@ -35,4 +35,8 @@
     <ProjectReference Include="..\KAZABUILD.Infrastructure\KAZABUILD.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\Components\" />
+  </ItemGroup>
+
 </Project>
