@@ -215,6 +215,10 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<StorageComponent>().ToTable("StorageComponents");
             modelBuilder.Entity<CoolerComponent>().ToTable("CoolerComponents");
 
+            //Register dimension as a ValueObject
+            modelBuilder.Entity<CaseComponent>()
+                .OwnsOne(u => u.Dimensions);
+
             //====================================== COMPONENT COLOR ======================================//
 
             //Register relationships, disable cascade delete for colors, must be handled in API calls
