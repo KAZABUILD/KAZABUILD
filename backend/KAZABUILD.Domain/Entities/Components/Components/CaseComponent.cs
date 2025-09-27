@@ -1,8 +1,12 @@
 using KAZABUILD.Domain.ValueObjects;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
 {
+    /// <summary>
+    /// Represents the Case which stores all the other components inside and allows additional outlets for the user.
+    /// </summary>
     public class CaseComponent : BaseComponent
     {
         /// <summary>
@@ -19,7 +23,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public bool PowerSupplyShrouded { get; set; } = default!;
 
         /// <summary>
-        /// Nullable amount of power in the built-in power supply in Watts.
+        /// Amount of power in the built-in power supply in Watts.
+        /// leave empty if no power supply.
         /// </summary>
         [Range(0, 2500, ErrorMessage = "Power Supply must be between 0 and 2,500 Watts")]
         public int? PowerSupplyAmount { get; set; }
@@ -31,7 +36,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public bool HasTransparentSidePanel { get; set; } = default!;
 
         /// <summary>
-        /// What type of side panel is the case, (e.g., Tempered Glass, Acrylic, Solid).
+        /// What type of side panel, if any, is in the case, (e.g., Tempered Glass, Acrylic, Solid).
         /// </summary>
         [StringLength(50, ErrorMessage = "Side Panel Type cannot be longer than 50 characters!")]
         public string? SidePanelType { get; set; }
@@ -40,14 +45,14 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Maximum supported length of a video card that can fit in inside the case in mm.
         /// </summary>
         [Required]
-        [Range(0, 600, ErrorMessage = "Maximum Video Card Length must be between 0 and 600.00 mm")]
+        [Range(10, 600, ErrorMessage = "Maximum Video Card Length must be between 10 and 600 mm")]
         public decimal MaxVideoCardLength { get; set; } = default!;
 
         /// <summary>
         /// Maximum supported height of a CPU Cooler that can fit in inside the case in mm.
         /// </summary>
         [Required]
-        [Range(0, 400, ErrorMessage = "Max CPU Cooler Height must be between 0 and 400.00 mm")]
+        [Range(10, 400, ErrorMessage = "Max CPU Cooler Height must be between 10 and 400 mm")]
         public decimal MaxCPUCoolerHeight { get; set; } = default!;
 
         /// <summary>
