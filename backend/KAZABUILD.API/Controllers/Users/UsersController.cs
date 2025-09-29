@@ -9,6 +9,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -172,7 +173,7 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrEmpty(dto.DisplayName))
+            if (!string.IsNullOrWhiteSpace(dto.DisplayName))
             {
                 changedFields.Add("DisplayName: " + user.DisplayName);
 
@@ -182,21 +183,27 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 changedFields.Add("PhoneNumber: " + user.PhoneNumber);
 
-                user.PhoneNumber = dto.PhoneNumber;
+                if (string.IsNullOrWhiteSpace(dto.PhoneNumber))
+                    user.PhoneNumber = null;
+                else
+                    user.PhoneNumber = dto.PhoneNumber;
             }
             if (dto.Description != null)
             {
                 changedFields.Add("Description: " + user.Description);
 
-                user.Description = dto.Description;
+                if(string.IsNullOrWhiteSpace(dto.Description))
+                    user.Description = null;
+                else
+                    user.Description = dto.Description;
             }
-            if (!string.IsNullOrEmpty(dto.Gender))
+            if (!string.IsNullOrWhiteSpace(dto.Gender))
             {
                 changedFields.Add("Gender: " + user.Gender);
 
                 user.Gender = dto.Gender;
             }
-            if (!string.IsNullOrEmpty(dto.ImageUrl))
+            if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
             {
                 changedFields.Add("ImageUrl: " + user.ImageUrl);
 
@@ -220,45 +227,51 @@ namespace KAZABUILD.API.Controllers.Users
                 {
                     if (dto.Address.Country != null)
                     {
-                        user.Address.Country = dto.Address.Country;
-
                         changedFields.Add("Country: " + user.Address.Country);
+
+                        user.Address.Country = dto.Address.Country;
                     }
                     if (dto.Address.Province != null)
                     {
-                        user.Address.Province = dto.Address.Province;
-
                         changedFields.Add("Province: " + user.Address.Province);
+
+                        if (string.IsNullOrWhiteSpace(dto.Address.Province))
+                            user.Address.Province = null;
+                        else
+                            user.Address.Province = dto.Address.Province;
                     }
                     if (dto.Address.City != null)
                     {
-                        user.Address.City = dto.Address.City;
-
                         changedFields.Add("City: " + user.Address.City);
+
+                        user.Address.City = dto.Address.City;
                     }
                     if (dto.Address.Street != null)
                     {
-                        user.Address.Street = dto.Address.Street;
-
                         changedFields.Add("Street: " + user.Address.Street);
+
+                        user.Address.Street = dto.Address.Street;
                     }
                     if (dto.Address.StreetNumber != null)
                     {
-                        user.Address.StreetNumber = dto.Address.StreetNumber;
-
                         changedFields.Add("StreetNumber: " + user.Address.StreetNumber);
+
+                        user.Address.StreetNumber = dto.Address.StreetNumber;
                     }
                     if (dto.Address.PostalCode != null)
                     {
-                        user.Address.PostalCode = dto.Address.PostalCode;
-
                         changedFields.Add("PostalCode: " + user.Address.PostalCode);
+
+                        user.Address.PostalCode = dto.Address.PostalCode;
                     }
                     if (dto.Address.ApartmentNumber != null)
                     {
                         changedFields.Add("ApartmentNumber: " + user.Address.ApartmentNumber);
 
-                        user.Address.ApartmentNumber = dto.Address.ApartmentNumber;
+                        if (string.IsNullOrWhiteSpace(dto.Address.ApartmentNumber))
+                            user.Address.ApartmentNumber = null;
+                        else
+                            user.Address.ApartmentNumber = dto.Address.ApartmentNumber;
                     }
                 }
             }
@@ -280,7 +293,7 @@ namespace KAZABUILD.API.Controllers.Users
 
                 user.Language = (Language)dto.Language;
             }
-            if (!string.IsNullOrEmpty(dto.Location))
+            if (!string.IsNullOrWhiteSpace(dto.Location))
             {
                 changedFields.Add("Location: " + user.Location);
 
@@ -302,26 +315,29 @@ namespace KAZABUILD.API.Controllers.Users
             //Update allowed fields - administration
             if (isPrivileged)
             {
-                if (!string.IsNullOrEmpty(dto.Email))
+                if (!string.IsNullOrWhiteSpace(dto.Email))
                 {
                     changedFields.Add("Email: " + user.Email);
 
                     user.Email = dto.Email;
                 }
-                if (!string.IsNullOrEmpty(dto.Login))
+                if (!string.IsNullOrWhiteSpace(dto.Login))
                 {
                     changedFields.Add("Login: " + user.Login);
 
                     user.Login = dto.Login;
                 }
-                if (!string.IsNullOrEmpty(dto.Note))
+                if (dto.Note != null)
                 {
                     changedFields.Add("Note: " + user.Note);
 
-                    user.Note = dto.Note;
+                    if (string.IsNullOrWhiteSpace(dto.Note))
+                        user.Note = null;
+                    else
+                        user.Note = dto.Note;
                 }
                 //Hash password if provided
-                if (!string.IsNullOrEmpty(dto.Password))
+                if (!string.IsNullOrWhiteSpace(dto.Password))
                 {
                     user.PasswordHash = _hasher.Hash(dto.Password);
 
@@ -667,15 +683,15 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included in request
             if (dto.Gender != null)
             {
-                query = query.Where(u => u.Gender == dto.Gender);
+                query = query.Where(u => dto.Gender.Contains(u.Gender));
             }
             if (dto.UserRole != null)
             {
-                query = query.Where(u => u.UserRole == dto.UserRole);
+                query = query.Where(u => dto.UserRole.Contains(u.UserRole));
             }
 
             //Apply search based on credentials if query string included in request
-            if (!string.IsNullOrEmpty(dto.Query))
+            if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 //Apply the query based on user privilege
                 if (isPrivileged)
@@ -690,7 +706,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }

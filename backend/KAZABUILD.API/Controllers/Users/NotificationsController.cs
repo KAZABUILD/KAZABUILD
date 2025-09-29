@@ -189,13 +189,13 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (isPrivileged)
             {
-                if (!string.IsNullOrEmpty(dto.Body))
+                if (!string.IsNullOrWhiteSpace(dto.Body))
                 {
                     changedFields.Add("Body: " + notification.Body);
 
                     notification.Body = dto.Body;
                 }
-                if (!string.IsNullOrEmpty(dto.Title))
+                if (!string.IsNullOrWhiteSpace(dto.Title))
                 {
                     changedFields.Add("Title: " + notification.Title);
 
@@ -205,7 +205,10 @@ namespace KAZABUILD.API.Controllers.Users
                 {
                     changedFields.Add("LinkUrl: " + notification.LinkUrl);
 
-                    notification.LinkUrl = dto.LinkUrl;
+                    if (string.IsNullOrWhiteSpace(dto.LinkUrl))
+                        notification.LinkUrl = null;
+                    else
+                        notification.LinkUrl = dto.LinkUrl;
                 }
                 if (dto.SentAt != null)
                 {
@@ -217,7 +220,10 @@ namespace KAZABUILD.API.Controllers.Users
                 {
                     changedFields.Add("Note: " + notification.Note);
 
-                    notification.Note = dto.Note;
+                    if (string.IsNullOrWhiteSpace(dto.Note))
+                        notification.Note = null;
+                    else
+                        notification.Note = dto.Note;
                 }
             }
 
@@ -402,37 +408,33 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(m => m.UserId == dto.UserId);
+                query = query.Where(m => dto.UserId.Contains(m.UserId));
             }
             if (dto.NotificationType != null)
             {
-                query = query.Where(m => m.NotificationType == dto.NotificationType);
+                query = query.Where(m => dto.NotificationType.Contains(m.NotificationType));
             }
             if (dto.IsRead != null)
             {
                 query = query.Where(m => m.IsRead == dto.IsRead);
             }
-            if (dto.SentAtStart != null && dto.SentAtEnd != null)
-            {
-                query = query.Where(m => m.SentAt >= dto.SentAtStart && m.SentAt <= dto.SentAtEnd);
-            }
-            else if (dto.SentAtStart != null)
+            if (dto.SentAtStart != null)
             {
                 query = query.Where(m => m.SentAt >= dto.SentAtEnd);
             }
-            else if (dto.SentAtEnd != null)
+            if (dto.SentAtEnd != null)
             {
                 query = query.Where(m => m.SentAt <= dto.SentAtEnd);
             }
 
             //Apply search based om credentials
-            if (!string.IsNullOrEmpty(dto.Query))
+            if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(m => m.User).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Body);
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
