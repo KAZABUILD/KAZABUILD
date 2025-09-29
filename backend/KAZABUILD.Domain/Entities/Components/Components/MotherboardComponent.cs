@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -39,6 +40,6 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// The Amount of expansion Slots available for RAM.
         /// </summary>
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
-        public decimal? RAMSlotsAmount { get; set; } = default!;
+        public int? RAMSlotsAmount { get; set; } = default!;
     }
 }

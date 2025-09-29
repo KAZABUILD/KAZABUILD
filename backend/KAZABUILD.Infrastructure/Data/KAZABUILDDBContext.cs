@@ -27,6 +27,15 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<Message> Messages { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
+        public DbSet<BaseComponent> Components { get; set; } = default!;
+        public DbSet<BaseSubComponent> SubComponents { get; set; } = default!;
+        public DbSet<Color> Colors { get; set; } = default!;
+        public DbSet<ComponentColor> ComponentColors { get; set; } = default!;
+        public DbSet<ComponentCompatibility> ComponentCompatibilities { get; set; } = default!;
+        public DbSet<ComponentPart> ComponentParts { get; set; } = default!;
+        public DbSet<ComponentPrice> ComponentPrices { get; set; } = default!;
+        public DbSet<ComponentReview> ComponentReviews { get; set; } = default!;
+        public DbSet<SubComponentPart> SubComponentParts { get; set; } = default!;
 
         //Declare enums and cascade delete behaviour
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,17 +43,20 @@ namespace KAZABUILD.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
 
             //Set the default precision for all decimal values in the database
-            foreach (var property in modelBuilder.Model
-                .GetEntityTypes()
-                .SelectMany(t => t.GetProperties())
-                .Where(p => p.ClrType == typeof(decimal)))
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                property.SetPrecision(18);
-                property.SetScale(6);
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(decimal) || property.ClrType == typeof(decimal?))
+                    {
+                        property.SetPrecision(18);
+                        property.SetScale(6);
+                    }
+                }
             }
 
-                //Register the db full-text search function
-                modelBuilder
+            //Register the db full-text search function
+            modelBuilder
                 .HasDbFunction(() => FullTextDbFunction.Contains(default!, default!))
                 .HasName("CONTAINS");
 
@@ -302,6 +314,16 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register a Table-Per-Table polymorphic relationship to subclasses
             modelBuilder.Entity<BaseSubComponent>().ToTable("SubComponents");
+            modelBuilder.Entity<CoolerSocketSubComponent>().ToTable("CoolerSocketSubComponents");
+            modelBuilder.Entity<IntegratedGraphicsSubComponent>().ToTable("IntegratedGraphicsSubComponents");
+            modelBuilder.Entity<PortSubComponent>().ToTable("PortSubComponents");
+
+
+            //Configure PortType as string
+            modelBuilder
+                .Entity<PortSubComponent>()
+                .Property(u => u.PortType)
+                .HasConversion<string>();
 
             //====================================== SUBCOMPONENT PART ======================================//
 

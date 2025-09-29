@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KAZABUILD.Infrastructure.Migrations
 {
     [DbContext(typeof(KAZABUILDDBContext))]
-    partial class KAZABUILDDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250929220205_ComponentsDomainPrecisionFix")]
+    partial class ComponentsDomainPrecisionFix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -45,7 +48,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal?>("AdditionalPrice")
-                        .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ColorCode")
@@ -791,20 +793,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
 
                     b.Property<decimal?>("BaseEfficiencySpeed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("BasePerformanceSpeed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("BoostEfficiencySpeed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("BoostPerformanceSpeed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("CoreFamily")
                         .IsRequired()
@@ -821,20 +819,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("L1")
-                        .HasPrecision(10, 6)
-                        .HasColumnType("decimal(10,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("L2")
-                        .HasPrecision(10, 6)
-                        .HasColumnType("decimal(10,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("L3")
-                        .HasPrecision(8, 6)
-                        .HasColumnType("decimal(8,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("L4")
-                        .HasPrecision(10, 6)
-                        .HasColumnType("decimal(10,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Lithography")
                         .IsRequired()
@@ -876,8 +870,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal>("ThermalDesignPower")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("ThreadsAmount")
                         .HasColumnType("int");
@@ -913,16 +906,13 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("MaxCPUCoolerHeight")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MaxVideoCardLength")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("PowerSupplyAmount")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("PowerSupplyShrouded")
                         .HasColumnType("bit");
@@ -935,8 +925,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal>("Weight")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.ToTable("CaseComponents", (string)null);
                 });
@@ -963,20 +952,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal?>("MaxAirflow")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("decimal(4,2)");
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("MaxNoiseLevel")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("decimal(6,3)");
+                    b.Property<int?>("MaxNoiseLevel")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("MinAirflow")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("decimal(4,2)");
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("MinNoiseLevel")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("decimal(6,3)");
+                    b.Property<int>("MinNoiseLevel")
+                        .HasColumnType("int");
 
                     b.Property<bool>("PulseWidthModulation")
                         .HasColumnType("bit");
@@ -985,12 +970,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Size")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("StaticPressureAmount")
-                        .HasPrecision(6, 4)
-                        .HasColumnType("decimal(6,4)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.ToTable("CaseFanComponents", (string)null);
                 });
@@ -1006,35 +989,28 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal?>("FanSize")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("Height")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsWaterCooled")
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("MaxFanRotationSpeed")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("MaxNoiseLevel")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("MinFanRotationSpeed")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("MinNoiseLevel")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("RadiatorSize")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.ToTable("CoolerComponents", (string)null);
                 });
@@ -1057,19 +1033,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("CoreBaseClockSpeed")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("CoreBoostClockSpeed")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CoreCount")
                         .HasColumnType("int");
 
                     b.Property<decimal>("EffectiveMemoryClockSpeed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FrameSync")
                         .IsRequired()
@@ -1077,22 +1050,19 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("Length")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("MemoryBusWidth")
                         .HasColumnType("int");
 
                     b.Property<decimal>("ThermalDesignPower")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TotalSlotWidth")
                         .HasColumnType("int");
 
                     b.Property<decimal>("VideoMemoryAmount")
-                        .HasPrecision(8, 2)
-                        .HasColumnType("decimal(8,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("VideoMemoryType")
                         .IsRequired()
@@ -1107,12 +1077,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
 
                     b.Property<decimal>("Capacity")
-                        .HasPrecision(13, 6)
-                        .HasColumnType("decimal(13,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ColumnAddressStrobeLatency")
-                        .HasPrecision(9, 6)
-                        .HasColumnType("decimal(9,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FormFactor")
                         .IsRequired()
@@ -1120,8 +1088,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("ModuleCapacity")
-                        .HasPrecision(8, 2)
-                        .HasColumnType("decimal(8,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("ModuleQuantity")
                         .HasColumnType("int");
@@ -1132,8 +1099,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("Speed")
-                        .HasPrecision(7, 2)
-                        .HasColumnType("decimal(7,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Timings")
                         .HasMaxLength(50)
@@ -1164,12 +1130,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal?>("MaxBrightness")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MaxRefreshRate")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("PanelType")
                         .IsRequired()
@@ -1177,12 +1141,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("ResponseTime")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ScreenSize")
-                        .HasPrecision(9, 6)
-                        .HasColumnType("decimal(9,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("VerticalResolution")
                         .HasColumnType("int");
@@ -1209,8 +1171,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int?>("RAMSlotsAmount")
-                        .HasColumnType("int");
+                    b.Property<decimal?>("RAMSlotsAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("RAMType")
                         .IsRequired()
@@ -1242,8 +1204,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal>("Length")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ModularityType")
                         .IsRequired()
@@ -1251,8 +1212,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("PowerOutput")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.ToTable("PowerSupplyComponents", (string)null);
                 });
@@ -1262,8 +1222,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
 
                     b.Property<decimal>("Capacity")
-                        .HasPrecision(13, 6)
-                        .HasColumnType("decimal(13,6)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("DriveType")
                         .IsRequired()
@@ -1620,16 +1579,13 @@ namespace KAZABUILD.Infrastructure.Migrations
                                 .HasColumnType("uniqueidentifier");
 
                             b1.Property<decimal>("Depth")
-                                .HasPrecision(6, 2)
-                                .HasColumnType("decimal(6,2)");
+                                .HasColumnType("decimal(18,2)");
 
                             b1.Property<decimal>("Height")
-                                .HasPrecision(6, 2)
-                                .HasColumnType("decimal(6,2)");
+                                .HasColumnType("decimal(18,2)");
 
                             b1.Property<decimal>("Width")
-                                .HasPrecision(6, 2)
-                                .HasColumnType("decimal(6,2)");
+                                .HasColumnType("decimal(18,2)");
 
                             b1.HasKey("CaseComponentId");
 
