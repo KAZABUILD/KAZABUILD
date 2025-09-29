@@ -9,6 +9,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -191,13 +192,13 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (isPrivileged)
             {
-                if (!string.IsNullOrEmpty(dto.Content))
+                if (!string.IsNullOrWhiteSpace(dto.Content))
                 {
                     changedFields.Add("Content: " + message.Content);
 
                     message.Content = dto.Content;
                 }
-                if (!string.IsNullOrEmpty(dto.Title))
+                if (!string.IsNullOrWhiteSpace(dto.Title))
                 {
                     changedFields.Add("Title: " + message.Title);
 
@@ -213,7 +214,10 @@ namespace KAZABUILD.API.Controllers.Users
                 {
                     changedFields.Add("ParentMessageId: " + message.ParentMessageId);
 
-                    message.ParentMessageId = dto.ParentMessageId;
+                    if (dto.ParentMessageId == Guid.Empty)
+                        message.ParentMessageId = null;
+                    else
+                        message.ParentMessageId = dto.ParentMessageId;
                 }
                 if (dto.MessageType != null)
                 {
@@ -221,11 +225,14 @@ namespace KAZABUILD.API.Controllers.Users
 
                     message.MessageType = (MessageType)dto.MessageType;
                 }
-                if (!string.IsNullOrEmpty(dto.Note))
+                if (dto.Note != null)
                 {
                     changedFields.Add("Note: " + message.Note);
 
-                    message.Note = dto.Note;
+                    if (string.IsNullOrWhiteSpace(dto.Note))
+                        message.Note = null;
+                    else
+                        message.Note = dto.Note;
                 }
             }
 
@@ -408,11 +415,11 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.SenderId != null)
             {
-                query = query.Where(m => m.SenderId == dto.SenderId);
+                query = query.Where(m => dto.SenderId.Contains(m.SenderId));
             }
             if (dto.ReceiverId != null)
             {
-                query = query.Where(m => m.ReceiverId == dto.ReceiverId);
+                query = query.Where(m => dto.ReceiverId.Contains(m.ReceiverId));
             }
             if (dto.IsRead != null)
             {
@@ -420,29 +427,25 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.ParentMessageId != null)
             {
-                query = query.Where(m => m.ParentMessageId == dto.ParentMessageId);
+                query = query.Where(m => m.ParentMessageId != null && dto.ParentMessageId.Contains((Guid)m.ParentMessageId));
             }
-            if (dto.SentAtStart != null && dto.SentAtEnd != null)
-            {
-                query = query.Where(m => m.SentAt >= dto.SentAtStart && m.SentAt <= dto.SentAtEnd);
-            }
-            else if (dto.SentAtStart != null)
+            if (dto.SentAtStart != null)
             {
                 query = query.Where(m => m.SentAt >= dto.SentAtEnd);
             }
-            else if (dto.SentAtEnd != null)
+            if (dto.SentAtEnd != null)
             {
                 query = query.Where(m => m.SentAt <= dto.SentAtEnd);
             }
 
             //Apply search based on credentials
-            if (!string.IsNullOrEmpty(dto.Query))
+            if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(m => m.Sender).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Content, m => m.Sender!.DisplayName);
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }

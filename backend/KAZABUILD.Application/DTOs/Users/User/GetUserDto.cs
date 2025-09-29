@@ -6,9 +6,9 @@ namespace KAZABUILD.Application.DTOs.Users.User
     public class GetUserDto
     {
         //Filter By fields
-        [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
-        public string? Gender { get; set; }
-        public UserRole? UserRole { get; set; }
+        public List<string>? Gender { get; set; }
+
+        public List<UserRole>? UserRole { get; set; }
 
         //Paging related fields
         public bool Paging = false;
