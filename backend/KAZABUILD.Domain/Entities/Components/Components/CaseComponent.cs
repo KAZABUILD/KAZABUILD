@@ -27,7 +27,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// leave empty if no power supply.
         /// </summary>
         [Range(0, 2500, ErrorMessage = "Power Supply must be between 0 and 2,500 Watts")]
-        public int? PowerSupplyAmount { get; set; }
+        public decimal? PowerSupplyAmount { get; set; }
 
         /// <summary>
         /// Does the case include a transparent side panel.
@@ -103,7 +103,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The volume of the case in liters.
         /// </summary>
-        public decimal Volume => Dimensions.Height * Dimensions.Width * Dimensions.Depth;
+        public decimal Volume => Dimensions.Height * Dimensions.Width * Dimensions.Depth / 1000000;
 
         /// <summary>
         /// The weight of the case in kg.

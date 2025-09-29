@@ -154,38 +154,6 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(1, 600, ErrorMessage = "Thermal Design Power must be between 1 and 1000 W")]
-        public int ThermalDesignPower { get; set; } = default!;
-
-        /// <summary>
-        /// The model of the integrated Graphics Card.
-        /// If none leave as null.
-        /// </summary>
-        [Required]
-        [StringLength(100, ErrorMessage = "Integrated Graphics Model cannot be longer than 100 characters!")]
-        public string? IntegratedGraphicsModel { get; set; } = default!;
-
-        /// <summary>
-        /// Base clock speed of integrated graphics in MHz.
-        /// If no integrated graphics leave as null.
-        /// </summary>
-        [Required]
-        [Range(100, 10000, ErrorMessage = "Integrated Graphics Base Clock Speed must be between 100 and 10000 MHz")]
-        public int? IntegratedGraphicsBaseClockSpeed { get; set; } = default!;
-
-        /// <summary>
-        /// Maximum boosted clock speed of the integrated graphics card in MHz.
-        /// If no integrated graphics leave as null.
-        /// </summary>
-        [Required]
-        [Range(100, 10000, ErrorMessage = "Integrated Graphics Boost Clock Speed must be between 100 and 10000 MHz")]
-        public int? IntegratedGraphicsBoostClockSpeed { get; set; } = default!;
-
-        /// <summary>
-        /// Number of cores/shaders in the integrated graphics card.
-        /// If no integrated graphics leave as null.
-        /// </summary>
-        [Required]
-        [Range(1, 50000, ErrorMessage = "Integrated Graphics Core Count must be between 1 and 10000")]
-        public int? IntegratedGraphicsCoreCount { get; set; } = default!;
+        public decimal ThermalDesignPower { get; set; } = default!;
     }
 }
