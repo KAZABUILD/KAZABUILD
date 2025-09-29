@@ -38,8 +38,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The Amount of expansion Slots available for RAM.
         /// </summary>
-        [Required]
-        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 1 and 15")]
-        public string? RAMSlotsAmount { get; set; }
+        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
+        public decimal? RAMSlotsAmount { get; set; } = default!;
     }
 }

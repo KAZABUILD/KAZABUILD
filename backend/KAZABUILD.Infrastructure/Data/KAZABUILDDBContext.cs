@@ -33,8 +33,18 @@ namespace KAZABUILD.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            //Register the db full-text search function
-            modelBuilder
+            //Set the default precision for all decimal values in the database
+            foreach (var property in modelBuilder.Model
+                .GetEntityTypes()
+                .SelectMany(t => t.GetProperties())
+                .Where(p => p.ClrType == typeof(decimal)))
+            {
+                property.SetPrecision(18);
+                property.SetScale(6);
+            }
+
+                //Register the db full-text search function
+                modelBuilder
                 .HasDbFunction(() => FullTextDbFunction.Contains(default!, default!))
                 .HasName("CONTAINS");
 

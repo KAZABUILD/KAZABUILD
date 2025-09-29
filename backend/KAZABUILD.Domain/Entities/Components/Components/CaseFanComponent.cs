@@ -59,7 +59,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// What type of LED type, if any, is in the Fan (e.g., RGB, ARGB, None).
         /// </summary>
         [StringLength(50, ErrorMessage = "LED type cannot be longer than 50 characters!")]
-        public string? LED { get; set; }
+        public string? LEDType { get; set; }
 
         /// <summary>
         /// What Connector type, if any, the fan uses (e.g., 3-pin, 4-pin).

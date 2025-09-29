@@ -12,7 +12,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 5000, ErrorMessage = "Power Output must be between 10 and 5000 W")]
-        public int PowerOutput { get; set; } = default!;
+        public decimal PowerOutput { get; set; } = default!;
 
         /// <summary>
         /// Design aspect that defines the size, shape, and other physical specifications of the Power Supply (e.g., ATX, SFX, TFX).

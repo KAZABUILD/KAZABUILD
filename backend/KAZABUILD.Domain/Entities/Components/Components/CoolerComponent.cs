@@ -10,30 +10,28 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Minimum fan rotation speed in RPM (Rotations Per Minute).
         /// </summary>
-        [Required]
         [Range(0, 6000, ErrorMessage = "Minimum Fan Rotation Speed must be between 0 and 6000 RPM")]
-        public int MinFanRotationSpeed { get; set; } = default!;
+        public decimal? MinFanRotationSpeed { get; set; } = default!;
 
         /// <summary>
         /// Maximum fan rotation speed in RPM (Rotations Per Minute).
         /// Leave as null if a constant and just fill in the Min Fan Rotation Speed.
         /// </summary>
         [Range(0, 6000, ErrorMessage = "Maximum Fan Rotation Speed must be between 0 and 6000 RPM")]
-        public int? MaxFanRotationSpeed { get; set; }
+        public decimal? MaxFanRotationSpeed { get; set; }
 
         /// <summary>
         /// Minimum noise level in dBA.
         /// </summary>
-        [Required]
         [Range(0, 100, ErrorMessage = "Minimum Noise Level must be between 0 and 100 dB")]
-        public int MinNoiseLevel { get; set; } = default!;
+        public decimal? MinNoiseLevel { get; set; } = default!;
 
         /// <summary>
         /// Maximum noise level in dB.
         /// Leave as null if a constant and just fill in the Min Noise Level.
         /// </summary>
         [Range(0, 100, ErrorMessage = "Maximum Noise Level must be between 0 and 100 dB")]
-        public int? MaxNoiseLevel { get; set; }
+        public decimal? MaxNoiseLevel { get; set; }
 
         /// <summary>
         /// Height of the cooler in mm.

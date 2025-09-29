@@ -1,10 +1,14 @@
+using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
+namespace KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent
 {
-    public class GetBaseComponentDto
+    public class GetBaseSubComponentDto
     {
         //Filter By fields
+        public List<string>? Name { get; set; }
+
+        public List<SubComponentType>? Type { get; set; }
 
         //Paging related fields
         public bool Paging = false;

@@ -22,7 +22,359 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.ForumPost", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>
+                {
+                    b.Property<string>("ColorCode")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("ColorName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("ColorCode");
+
+                    b.ToTable("Color");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("AdditionalPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ColorCode")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ColorCode");
+
+                    b.HasIndex("ComponentId");
+
+                    b.ToTable("ComponentColor");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompatibleComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompatibleComponentId");
+
+                    b.HasIndex("ComponentId");
+
+                    b.ToTable("ComponentCompatibility");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentPart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("SubComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId");
+
+                    b.HasIndex("SubComponentId");
+
+                    b.ToTable("ComponentPart");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("nvarchar(4)");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SourceUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("VendorName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId");
+
+                    b.ToTable("ComponentPrice");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<decimal>("Rating")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ReviewText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ReviewerName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SourceUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId");
+
+                    b.ToTable("ComponentReview");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("Release")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Components", (string)null);
+
+                    b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponentPart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("MainSubComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("SubComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MainSubComponentId");
+
+                    b.HasIndex("SubComponentId");
+
+                    b.ToTable("SubComponentPart");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Log", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SeverityLevel")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Logs");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -66,44 +418,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("ForumPosts");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Log", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ActivityType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("SeverityLevel")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("TargetId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("TargetType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Logs");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Message", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -159,7 +474,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("Messages");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Notification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -209,7 +524,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.User", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -308,7 +623,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserComment", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -353,7 +668,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserComments");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserFollow", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFollow", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -387,7 +702,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserFollows");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserPreference", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -413,7 +728,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserPreferences");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserToken", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -466,9 +781,569 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserTokens");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.ForumPost", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CPUComponent", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "Creator")
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<decimal?>("BaseEfficiencySpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("BasePerformanceSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("BoostEfficiencySpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("BoostPerformanceSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CoreFamily")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("CoreTotal")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EfficiencyAmount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IncludesCooler")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("L1")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("L2")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("L3")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("L4")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Lithography")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MemoryType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Microarchitecture")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PackagingType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("PerformanceAmount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Series")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SocketType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("SupportsErrorCorrectingCode")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SupportsSimultaneousMultithreading")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("ThermalDesignPower")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ThreadsAmount")
+                        .HasColumnType("int");
+
+                    b.ToTable("CPUComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CaseComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<int>("ExpansionSlotAmount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("External35BayAmount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("External525BayAmount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FormFactor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("HasTransparentSidePanel")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Internal25BayAmount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Internal35BayAmount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MaxCPUCoolerHeight")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MaxVideoCardLength")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("PowerSupplyAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("PowerSupplyShrouded")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SidePanelType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("SupportsRearConnectingMotherboard")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Weight")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable("CaseComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CaseFanComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<string>("ConnectorType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ControllerType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FlowDirection")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("LEDType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("MaxAirflow")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("MaxNoiseLevel")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MinAirflow")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MinNoiseLevel")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PulseWidthModulation")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Size")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("StaticPressureAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable("CaseFanComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CoolerComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<bool>("CanOperateFanless")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("FanQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("FanSize")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Height")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsWaterCooled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("MaxFanRotationSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MaxNoiseLevel")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinFanRotationSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinNoiseLevel")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("RadiatorSize")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable("CoolerComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.GPUComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<int>("CaseExpansionSlotWidth")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Chipset")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CoolingType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("CoreBaseClockSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("CoreBoostClockSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CoreCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("EffectiveMemoryClockSpeed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FrameSync")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("Length")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MemoryBusWidth")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ThermalDesignPower")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TotalSlotWidth")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("VideoMemoryAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("VideoMemoryType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.ToTable("GPUComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MemoryComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<decimal>("Capacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ColumnAddressStrobeLatency")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FormFactor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("ModuleCapacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ModuleQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RAMType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("Speed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Timings")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.ToTable("MemoryComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MonitorComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<string>("AdaptiveSyncType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AspectRatio")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("HighDynamicRangeType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("HorizontalResolution")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("MaxBrightness")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MaxRefreshRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PanelType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("ResponseTime")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ScreenSize")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("VerticalResolution")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ViewingAngle")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.ToTable("MonitorComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MotherboardComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<string>("ChipsetType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FormFactor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("RAMSlotsAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RAMType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SocketType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.ToTable("MotherboardComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.PowerSupplyComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<string>("EfficiencyRating")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FormFactor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsFanless")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("Length")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ModularityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("PowerOutput")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable("PowerSupplyComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.StorageComponent", b =>
+                {
+                    b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
+
+                    b.Property<decimal>("Capacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("DriveType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FormFactor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("HasNVMe")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Interface")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Series")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.ToTable("StorageComponents", (string)null);
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Color", "Color")
+                        .WithMany("Components")
+                        .HasForeignKey("ColorCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("Colors")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Color");
+
+                    b.Navigation("Component");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "CompatibleComponent")
+                        .WithMany("CompatibleToComponents")
+                        .HasForeignKey("CompatibleComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("CompatibleComponents")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CompatibleComponent");
+
+                    b.Navigation("Component");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentPart", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("SubComponents")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", "SubComponent")
+                        .WithMany("Components")
+                        .HasForeignKey("SubComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Component");
+
+                    b.Navigation("SubComponent");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentPrice", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("Prices")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Component");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentReview", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("Reviews")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Component");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponentPart", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", "MainSubComponent")
+                        .WithMany("SubComponents")
+                        .HasForeignKey("MainSubComponentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", "SubComponent")
+                        .WithMany("MainSubComponents")
+                        .HasForeignKey("SubComponentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MainSubComponent");
+
+                    b.Navigation("SubComponent");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Creator")
                         .WithMany("ForumPosts")
                         .HasForeignKey("CreatorId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -477,20 +1352,20 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Creator");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Message", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.Message", "ParentMessage")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.Message", "ParentMessage")
                         .WithMany("ChildMessages")
                         .HasForeignKey("ParentMessageId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "Receiver")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Receiver")
                         .WithMany("ReceivedMessages")
                         .HasForeignKey("ReceiverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "Sender")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Sender")
                         .WithMany("SentMessages")
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -503,9 +1378,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Sender");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Notification", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "User")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -514,7 +1389,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.User", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
                     b.OwnsOne("KAZABUILD.Domain.ValueObjects.Address", "Address", b1 =>
                         {
@@ -565,19 +1440,19 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Address");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserComment", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.ForumPost", "ForumPost")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
                         .WithMany("UserComments")
                         .HasForeignKey("ForumPostId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("KAZABUILD.Domain.Entities.UserComment", "ParentComment")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "ParentComment")
                         .WithMany("ChildComments")
                         .HasForeignKey("ParentCommentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "User")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserComments")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -590,15 +1465,15 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserFollow", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFollow", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "Followed")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Followed")
                         .WithMany("Followers")
                         .HasForeignKey("FollowedId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "Follower")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Follower")
                         .WithMany("Followed")
                         .HasForeignKey("FollowerId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -609,9 +1484,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Follower");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserPreference", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "User")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserPreferences")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -620,9 +1495,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserToken", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserToken", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.User", "User")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -631,17 +1506,161 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.ForumPost", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CPUComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.CPUComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CaseComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.CaseComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("KAZABUILD.Domain.ValueObjects.Dimension", "Dimensions", b1 =>
+                        {
+                            b1.Property<Guid>("CaseComponentId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal>("Depth")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<decimal>("Height")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<decimal>("Width")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.HasKey("CaseComponentId");
+
+                            b1.ToTable("CaseComponents");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CaseComponentId");
+                        });
+
+                    b.Navigation("Dimensions")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CaseFanComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.CaseFanComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.CoolerComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.CoolerComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.GPUComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.GPUComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MemoryComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.MemoryComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MonitorComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.MonitorComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.MotherboardComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.MotherboardComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.PowerSupplyComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.PowerSupplyComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.StorageComponent", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", null)
+                        .WithOne()
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.Components.StorageComponent", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>
+                {
+                    b.Navigation("Components");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", b =>
+                {
+                    b.Navigation("Colors");
+
+                    b.Navigation("CompatibleComponents");
+
+                    b.Navigation("CompatibleToComponents");
+
+                    b.Navigation("Prices");
+
+                    b.Navigation("Reviews");
+
+                    b.Navigation("SubComponents");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", b =>
+                {
+                    b.Navigation("Components");
+
+                    b.Navigation("MainSubComponents");
+
+                    b.Navigation("SubComponents");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
                 {
                     b.Navigation("UserComments");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Message", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
                 {
                     b.Navigation("ChildMessages");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.User", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
                     b.Navigation("Followed");
 
@@ -662,7 +1681,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("UserTokens");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.UserComment", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
                 {
                     b.Navigation("ChildComments");
                 });

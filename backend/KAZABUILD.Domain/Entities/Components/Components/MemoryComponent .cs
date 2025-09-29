@@ -12,7 +12,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(100, 20000, ErrorMessage = "Speed must be between 100 MHz and 20000 MHz")]
-        public int Speed { get; set; } = default!;
+        public decimal Speed { get; set; } = default!;
 
         /// <summary>
         /// Which generation of the DDR (Double Data Rate) the Memory belongs to (e.g., DDR4, DDR5, LPDDR5).
@@ -33,7 +33,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(256, 8388608, ErrorMessage = "Capacity must be between 256 MB and 8 TB (8388608 MB)")]
-        public int Capacity { get; set; } = default!;
+        public decimal Capacity { get; set; } = default!;
 
         /// <summary>
         /// The delay in clock cycles between the READ command and the moment data is available (e.g., CL16).
@@ -61,6 +61,6 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
-        public int ModuleCapacity { get; set; } = default!;
+        public decimal ModuleCapacity { get; set; } = default!;
     }
 }
