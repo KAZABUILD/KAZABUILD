@@ -19,10 +19,10 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent
         public decimal? MaxAirflow { get; set; }
 
         [Range(0, 100, ErrorMessage = "Minimum noise level must be between 0 and 100 dB")]
-        public int? MinNoiseLevel { get; set; }
+        public decimal? MinNoiseLevel { get; set; }
 
         [Range(0, 100, ErrorMessage = "Maximum noise level must be between 0 and 100 dB")]
-        public int? MaxNoiseLevel { get; set; }
+        public decimal? MaxNoiseLevel { get; set; }
 
         public bool? PulseWidthModulation { get; set; }
 

@@ -13,6 +13,6 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public string? RAMType { get; set; }
 
-        public decimal? RAMSlotsAmount { get; set; }
+        public int? RAMSlotsAmount { get; set; }
     }
 }

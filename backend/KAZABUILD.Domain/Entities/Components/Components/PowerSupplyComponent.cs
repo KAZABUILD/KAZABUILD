@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -12,6 +13,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 5000, ErrorMessage = "Power Output must be between 10 and 5000 W")]
+        [Precision(6, 2)]
         public decimal PowerOutput { get; set; } = default!;
 
         /// <summary>
@@ -39,6 +41,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 500, ErrorMessage = "Length must be between 0 and 500 mm")]
+        [Precision(5,2)]
         public decimal Length { get; set; } = default!;
 
         /// <summary>

@@ -13,9 +13,9 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent
 
         public decimal? MaxAirflow { get; set; }
 
-        public int MinNoiseLevel { get; set; }
+        public decimal MinNoiseLevel { get; set; }
 
-        public int? MaxNoiseLevel { get; set; }
+        public decimal? MaxNoiseLevel { get; set; }
 
         public bool PulseWidthModulation { get; set; }
 

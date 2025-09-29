@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -12,6 +13,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(20, 500, ErrorMessage = "Fan size must be between 20 mm and 500 mm")]
+        [Precision(5, 2)]
         public decimal Size { get; set; } = default!;
 
         /// <summary>
@@ -26,6 +28,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 30, ErrorMessage = "Minimum airflow must be between 0 and 30 CMM")]
+        [Precision(4, 2)]
         public decimal MinAirflow { get; set; } = default!;
 
         /// <summary>
@@ -33,6 +36,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Leave as null if a constant and just fill in the Min Air flow.
         /// </summary>
         [Range(0, 30, ErrorMessage = "Maximum airflow must be between 0 and 30 CMM")]
+        [Precision(4, 2)]
         public decimal? MaxAirflow { get; set; }
 
         /// <summary>
@@ -40,14 +44,16 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 100, ErrorMessage = "Minimum noise level must be between 0 and 100 dB")]
-        public int MinNoiseLevel { get; set; } = default!;
+        [Precision(6, 3)]
+        public decimal MinNoiseLevel { get; set; } = default!;
 
         /// <summary>
         /// Maximum noise level in dBA.
         /// Leave as null if a constant and just fill in the Min Noise Level.
         /// </summary>
         [Range(0, 100, ErrorMessage = "Maximum noise level must be between 0 and 100 dB")]
-        public int? MaxNoiseLevel { get; set; }
+        [Precision(6, 3)]
+        public decimal? MaxNoiseLevel { get; set; }
 
         /// <summary>
         /// Whether the fan supports Pulse Width Modulation for speed control.
@@ -78,6 +84,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 20, ErrorMessage = "Static pressure must be between 0 and 20 mmH2O")]
+        [Precision(6, 4)]
         public decimal StaticPressureAmount { get; set; } = default!;
 
         /// <summary>

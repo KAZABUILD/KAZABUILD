@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -11,6 +12,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Minimum fan rotation speed in RPM (Rotations Per Minute).
         /// </summary>
         [Range(0, 6000, ErrorMessage = "Minimum Fan Rotation Speed must be between 0 and 6000 RPM")]
+        [Precision(6, 2)]
         public decimal? MinFanRotationSpeed { get; set; } = default!;
 
         /// <summary>
@@ -18,12 +20,14 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Leave as null if a constant and just fill in the Min Fan Rotation Speed.
         /// </summary>
         [Range(0, 6000, ErrorMessage = "Maximum Fan Rotation Speed must be between 0 and 6000 RPM")]
+        [Precision(6, 2)]
         public decimal? MaxFanRotationSpeed { get; set; }
 
         /// <summary>
         /// Minimum noise level in dBA.
         /// </summary>
         [Range(0, 100, ErrorMessage = "Minimum Noise Level must be between 0 and 100 dB")]
+        [Precision(5, 2)]
         public decimal? MinNoiseLevel { get; set; } = default!;
 
         /// <summary>
@@ -31,6 +35,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Leave as null if a constant and just fill in the Min Noise Level.
         /// </summary>
         [Range(0, 100, ErrorMessage = "Maximum Noise Level must be between 0 and 100 dB")]
+        [Precision(5, 2)]
         public decimal? MaxNoiseLevel { get; set; }
 
         /// <summary>
@@ -38,6 +43,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 400, ErrorMessage = "Height must be between 0 and 400 mm")]
+        [Precision(5, 2)]
         public decimal Height { get; set; } = default!;
 
         /// <summary>
@@ -51,6 +57,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Applies only if water-cooled.
         /// </summary>
         [Range(0, 1000, ErrorMessage = "Radiator Size must be between 0 and 1000 mm")]
+        [Precision(6, 2)]
         public decimal? RadiatorSize { get; set; }
 
         /// <summary>
@@ -63,6 +70,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Size of the fan(s) included with the cooler in mm.
         /// </summary>
         [Range(40, 500, ErrorMessage = "Fan Size must be between 10 and 500 mm")]
+        [Precision(5, 2)]
         public decimal? FanSize { get; set; }
 
         /// <summary>

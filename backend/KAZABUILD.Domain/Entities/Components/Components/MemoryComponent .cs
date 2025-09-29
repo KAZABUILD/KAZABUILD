@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -12,6 +13,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(100, 20000, ErrorMessage = "Speed must be between 100 MHz and 20000 MHz")]
+        [Precision(7, 2)]
         public decimal Speed { get; set; } = default!;
 
         /// <summary>
@@ -33,6 +35,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(256, 8388608, ErrorMessage = "Capacity must be between 256 MB and 8 TB (8388608 MB)")]
+        [Precision(13, 6)]
         public decimal Capacity { get; set; } = default!;
 
         /// <summary>
@@ -41,6 +44,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 200, ErrorMessage = "Column Address Strobe Latency must be between 0 and 200")]
+        [Precision(9, 6)]
         public decimal ColumnAddressStrobeLatency { get; set; } = default!;
 
         /// <summary>
@@ -61,6 +65,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
+        [Precision(8, 2)]
         public decimal ModuleCapacity { get; set; } = default!;
     }
 }

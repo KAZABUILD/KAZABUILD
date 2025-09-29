@@ -24,6 +24,6 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         [Required]
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 1 and 15")]
-        public decimal? RAMSlotsAmount { get; set; }
+        public int? RAMSlotsAmount { get; set; }
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -12,6 +13,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(1, 200, ErrorMessage = "Screen Size must be between 1 and 200 inches")]
+        [Precision(9, 6)]
         public decimal ScreenSize { get; set; } = default!;
 
         /// <summary>
@@ -33,6 +35,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(5, 2000, ErrorMessage = "Refresh Rate must be between 5 and 2000 Hz")]
+        [Precision(6, 2)]
         public decimal MaxRefreshRate { get; set; } = default!;
 
         /// <summary>
@@ -48,6 +51,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 200, ErrorMessage = "Response Time must be between 0 and 200 ms")]
+        [Precision(5, 2)]
         public decimal ResponseTime { get; set; } = default!;
 
         /// <summary>
@@ -70,6 +74,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Maximum brightness of the Monitor in nits (cd/m2).
         /// </summary>
         [Range(0, 100, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
+        [Precision(6, 2)]
         public decimal? MaxBrightness { get; set; }
 
         /// <summary>

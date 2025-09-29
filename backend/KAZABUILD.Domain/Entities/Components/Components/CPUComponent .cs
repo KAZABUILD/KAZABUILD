@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -65,48 +66,56 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Base clock Speed for a Performance core.
         /// </summary>
         [Range(100, 10000, ErrorMessage = "Base Performance Speed must be between 100 and 10000 MHz")]
+        [Precision(7, 2)]
         public decimal? BasePerformanceSpeed { get; set; }
 
         /// <summary>
         /// Max boosted clock Speed for a Performance core.
         /// </summary>
         [Range(100, 10000, ErrorMessage = "Boost Performance Speed must be between 100 and 10000 MHz")]
+        [Precision(7, 2)]
         public decimal? BoostPerformanceSpeed { get; set; }
 
         /// <summary>
         /// Base clock Speed for an Efficiency core..
         /// </summary>
         [Range(100, 10000, ErrorMessage = "Base Efficiency Speed must be between 100 and 10000 MHz")]
+        [Precision(7, 2)]
         public decimal? BaseEfficiencySpeed { get; set; }
 
         /// <summary>
         /// Max boosted clock Speed for an Efficiency core.
         /// </summary>
         [Range(100, 10000, ErrorMessage = "Boost Efficiency Speed must be between 100 and 10000 MHz")]
+        [Precision(7, 2)]
         public decimal? BoostEfficiencySpeed { get; set; }
 
         /// <summary>
         /// The size of the Level 1 cache in KB.
         /// </summary>
         [Range(0, 1024, ErrorMessage = "L1 cache must be between 0 KB and 1 MB")]
+        [Precision(10, 6)]
         public decimal? L1 { get; set; }
 
         /// <summary>
         /// The size of the Level 2 cache in KB.
         /// </summary>
         [Range(1, 5120, ErrorMessage = "L2 cache must be between 1 KB and 5 MB")]
+        [Precision(10, 6)]
         public decimal? L2 { get; set; }
 
         /// <summary>
         /// The size of the Level 3 cache in MB.
         /// </summary>
         [Range(0.5, 16, ErrorMessage = "L3 cache must be between 0.5 and 64 MB")]
+        [Precision(8, 6)]
         public decimal? L3 { get; set; }
 
         /// <summary>
         /// The size of the Level 4 cache in MB.
         /// </summary>
         [Range(0, 1024, ErrorMessage = "L4 cache must be between 0 and 1024 MB")]
+        [Precision(10, 6)]
         public decimal? L4 { get; set; }
 
         /// <summary>
@@ -154,6 +163,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(1, 600, ErrorMessage = "Thermal Design Power must be between 1 and 1000 W")]
+        [Precision(6, 2)]
         public decimal ThermalDesignPower { get; set; } = default!;
     }
 }
