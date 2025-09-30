@@ -150,11 +150,14 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrEmpty(dto.Note))
+            if (dto.Note != null)
             {
                 changedFields.Add("Note: " + userPreference.Note);
 
-                userPreference.Note = dto.Note;
+                if (string.IsNullOrWhiteSpace(dto.Note))
+                    userPreference.Note = null;
+                else
+                    userPreference.Note = dto.Note;
             }
 
             //Update edit timestamp
@@ -326,17 +329,17 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(f => f.UserId == dto.UserId);
+                query = query.Where(p => dto.UserId.Contains(p.UserId));
             }
 
             //Apply search based on credentials
-            if (!string.IsNullOrEmpty(dto.Query))
+            if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 //query = query.Search(dto.Query, );
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }

@@ -7,10 +7,9 @@ namespace KAZABUILD.Application.DTOs.Users.Notification
     public class GetNotificationDto
     {
         //Filter By fields
-        public Guid? UserId { get; set; }
+        public List<Guid>? UserId { get; set; }
 
-        [EnumDataType(typeof(NotificationType))]
-        public NotificationType? NotificationType { get; set; }
+        public List<NotificationType>? NotificationType { get; set; }
 
         [DataType(DataType.DateTime)]
         public DateTime? SentAtStart { get; set; }

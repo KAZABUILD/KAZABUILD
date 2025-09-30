@@ -5,7 +5,7 @@ namespace KAZABUILD.Application.DTOs.Users.UserPreference
     public class GetUserPreferenceDto
     {
         //Filter By fields
-        public Guid? UserId { get; set; }
+        public List<Guid>? UserId { get; set; }
 
         //Paging related fields
         public bool Paging = false;

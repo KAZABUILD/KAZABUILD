@@ -143,7 +143,7 @@ namespace KAZABUILD.API.Controllers
             if (user.EnableDoubleFactorAuthentication)
             {
                 //Check if the IP address exists
-                if (string.IsNullOrEmpty(ip))
+                if (string.IsNullOrWhiteSpace(ip))
                 {
                     //Log failure
                     await _logger.LogAsync(
@@ -509,7 +509,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Check if the IP address exists
-            if (string.IsNullOrEmpty(ip))
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -713,7 +713,7 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Check if the IP address exists
-            if (string.IsNullOrEmpty(ip))
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 //Log failure
                 await _logger.LogAsync(
