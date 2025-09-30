@@ -1,32 +1,34 @@
-using KAZABUILD.Application.DTOs.Users.UserPreference;
+using KAZABUILD.Application.DTOs.Components.Color;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+using KAZABUILD.Domain.Entities.Components;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Dynamic.Core;
 using System.Security.Claims;
+using System.Linq.Dynamic.Core;
 
-namespace KAZABUILD.API.Controllers.Users
+namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for User Preference related endpoints
-    [ApiController]
-    [Route("[controller]")]
-    public class UserPreferencesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new UserPreference
+        /// <summary>
+        /// API Endpoint for creating a new Color for administration.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
-        [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> AddColor([FromBody] CreateColorDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -36,88 +38,75 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the User exists
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            //Check if the Color already exists
+            var user = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == dto.ColorCode);
             if (user == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "Color",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned User Doesn't Exist"
+                    "Operation Failed - Color Already Created"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "User not found!" });
+                return Conflict(new { message = "Color already exists!" });
             }
 
-            //Check if current user has staff permissions or if they are creating a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == dto.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
+            //Create a color to add
+            Color color = new()
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserPreference",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
-            }
-
-            //Create a userPreference to add
-            UserPreference userPreference = new()
-            {
+                ColorCode = dto.ColorCode,
+                ColorName = dto.ColorName,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the userPreference to the database
-            _db.UserPreferences.Add(userPreference);
+            //Add the color to the database
+            _db.Colors.Add(color);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
+
+            //Convert the hex code string into a guid
+            Guid guidId = GuidConversionHelper.FromString(dto.ColorCode);
 
             //Log the creation
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "UserPreference",
+                "Color",
                 ip,
-                userPreference.Id,
+                guidId,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New UserPreference Created"
+                "Successful Operation - New Color Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.created", new
+            await _publisher.PublishAsync("color.created", new
             {
-                userPreferenceId = userPreference.Id,
-                createdBy = currentUserId
+                colorId = dto.ColorCode,
+                updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference created successfully!" });
+            return Ok(new { color = "Color added successfully!" });
         }
 
-        //API endpoint for updating the selected UserPreference
-        //User can modify only their own Preferences,
-        //while admins can modify all
-        [HttpPut("{id:Guid}")]
+        /// <summary>
+        /// API endpoint for updating the selected Color for Administration,
+        /// the id is a string representing the hex code of the Color.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPut("{id:string}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateUserPreference(Guid id, [FromBody] UpdateUserPreferenceDto dto)
+        public async Task<IActionResult> UpdateColor(string id, [FromBody] UpdateColorDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -127,44 +116,55 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to edit
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
-            if (userPreference == null)
+            //Get the color to edit
+            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
+
+            //Convert the hex code string into a guid
+            Guid guidId = GuidConversionHelper.FromString(id);
+
+            //Check if the color exists
+            if (color == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "UserPreference",
+                    "Color",
                     ip,
-                    id,
+                    guidId,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such Color"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { color = "Color not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
-            //Update allowed fields
+            //Update fields
+            if (!string.IsNullOrWhiteSpace(dto.ColorName))
+            {
+                changedFields.Add("ColorName: " + color.ColorName);
+
+                color.ColorName = dto.ColorName;
+            }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + userPreference.Note);
+                changedFields.Add("Note: " + color.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    userPreference.Note = null;
+                    color.Note = null;
                 else
-                    userPreference.Note = dto.Note;
+                    color.Note = dto.Note;
             }
 
             //Update edit timestamp
-            userPreference.LastEditedAt = DateTime.UtcNow;
+            color.LastEditedAt = DateTime.UtcNow;
 
-            //Update the userPreference
-            _db.UserPreferences.Update(userPreference);
+            //Update the color
+            _db.Colors.Update(color);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -176,29 +176,33 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "UserPreference",
+                "Color",
                 ip,
-                userPreference.Id,
+                guidId,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.updated", new
+            await _publisher.PublishAsync("color.updated", new
             {
-                userPreferenceId = id,
+                colorId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference updated successfully!" });
+            return Ok(new { color = "Color updated successfully!" });
         }
 
-        //API endpoint for getting the UserPreference specified by id,
-        //different level of information returned based on privileges
-        [HttpGet("{id:Guid}")]
+        /// <summary>
+        /// API endpoint for getting the Color specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id:string}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserPreferenceResponseDto>> GetUserPreference(Guid id)
+        public async Task<ActionResult<ColorResponseDto>> GetColor(string id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -208,64 +212,48 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to return
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
-            if (userPreference == null)
+            //Convert the hex code string into a guid
+            Guid guidId = GuidConversionHelper.FromString(id);
+
+            //Get the color to return
+            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
+            if (color == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserPreference",
+                    "Color",
                     ip,
-                    id,
+                    guidId,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such Color"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { color = "Color not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            UserPreferenceResponseDto response;
+            ColorResponseDto response;
 
-            //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == userPreference.UserId;
+            //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
-            //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isSelf && !isPrivileged)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "UserPreference",
-                    ip,
-                    id,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return not found response
-                return Forbid();
-            }
-
-            //Check if has staff privilege
+            //Check if has admin privilege
             if (!isPrivileged)
             {
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create color response
+                response = new ColorResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId
+                    ColorCode = color.ColorCode,
+                    ColorName = color.ColorName
                 };
             }
             else
@@ -273,14 +261,14 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create color response
+                response = new ColorResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note,
+                    ColorCode = color.ColorCode,
+                    ColorName = color.ColorName,
+                    DatabaseEntryAt = color.DatabaseEntryAt,
+                    LastEditedAt = color.LastEditedAt,
+                    Note = color.Note,
                 };
             }
 
@@ -288,31 +276,35 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "Color",
                 ip,
-                id,
+                guidId,
                 PrivacyLevel.INFORMATION,
                 logDescription
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.got", new
+            await _publisher.PublishAsync("color.got", new
             {
-                userPreferenceId = id,
+                colorId = id,
                 gotBy = currentUserId
             });
 
-            //Return the userPreference
+            //Return the color
             return Ok(response);
         }
 
-        //API endpoint for getting UserPreferences with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting Colors with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserPreferenceResponseDto>>> GetUserPreferences([FromBody] GetUserPreferenceDto dto)
+        public async Task<ActionResult<IEnumerable<ColorResponseDto>>> GetColors([FromBody] GetColorDto dto)
         {
-            //Get userPreference id and claims from the request
+            //Get color id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -324,18 +316,12 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserPreferences.AsNoTracking();
+            var query = _db.Colors.AsNoTracking();
 
-            //Filter by the variables if included
-            if (dto.UserId != null)
-            {
-                query = query.Where(p => dto.UserId.Contains(p.UserId));
-            }
-
-            //Apply search based on credentials
+            //Apply search based om credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                //query = query.Search(dto.Query, );
+                query = query.Search(dto.Query, c => c.ColorCode, c => c.ColorName);
             }
 
             //Order by specified field if provided
@@ -344,7 +330,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get userPreferences with paging
+            //Get colors with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -355,41 +341,41 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.Where(f => f.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<Color> colors = await query.ToListAsync();
 
             //Declare response variable
-            List<UserPreferenceResponseDto> responses;
+            List<ColorResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - User Access, Multiple Colors";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference =>
+                //Create a color response list
+                responses = [.. colors.Select(color =>
                 {
                     //Return a follow response
-                    return new UserPreferenceResponseDto
+                    return new ColorResponseDto
                     {
-                        Id = userPreference.Id,
-                        UserId = userPreference.UserId
+                        ColorCode = color.ColorCode,
+                        ColorName = color.ColorName
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - Admin Access, Multiple Colors";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference => new UserPreferenceResponseDto
+                //Create a color response list
+                responses = [.. colors.Select(color => new ColorResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note
+                    ColorCode = color.ColorCode,
+                    ColorName = color.ColorName,
+                    DatabaseEntryAt = color.DatabaseEntryAt,
+                    LastEditedAt = color.LastEditedAt,
+                    Note = color.Note,
                 })];
 
             }
@@ -398,7 +384,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "Color",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -406,22 +392,26 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.gotUserPreferences", new
+            await _publisher.PublishAsync("color.gotColors", new
             {
-                userPreferenceIds = userPreferences.Select(u => u.Id),
-                gotBy = currentUserId
+                colorIds = colors.Select(u => u.ColorCode),
+                gotdBy = currentUserId
             });
 
-            //Return the userPreferences
+            //Return the colors
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected UserPreference for administration
-        [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteUserPreference(Guid id)
+        /// <summary>
+        /// API endpoint for deleting the selected Color for administration.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpDelete("{id:string}")]
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> DeleteColor(string id)
         {
-            //Get userPreference id and role from the request claims
+            //Get color id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -429,37 +419,39 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
-            if (userPreference == null)
+            //Convert the hex code string into a guid
+            Guid guidId = GuidConversionHelper.FromString(id);
+
+            //Get the color to delete
+            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
+            if (color == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "UserPreference",
+                    "Color",
                     ip,
-                    id,
+                    guidId,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such Color"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserPreference not found!" });
+                return NotFound(new { color = "Color not found!" });
             }
 
-            //Check if current user has staff permissions or if they are deleting their own preference
+            //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userPreference.UserId;
 
             //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
+            if (!isPrivileged)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "UserFollow",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -470,8 +462,8 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Delete the userPreference
-            _db.UserPreferences.Remove(userPreference);
+            //Delete the color
+            _db.Colors.Remove(color);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -480,22 +472,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "UserPreference",
+                "Color",
                 ip,
-                userPreference.Id,
+                guidId,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.deleted", new
+            await _publisher.PublishAsync("color.deleted", new
             {
-                userPreferenceId = id,
+                colorId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "UserPreference deleted successfully!" });
+            return Ok(new { color = "Color deleted successfully!" });
         }
     }
 }

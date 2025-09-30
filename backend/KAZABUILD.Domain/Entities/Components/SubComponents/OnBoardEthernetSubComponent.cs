@@ -6,7 +6,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
     /// <summary>
     /// SubComponent representing motherboard Onboard Ethernet.
     /// </summary>
-    public class M2SlotSubcomponent : BaseSubComponent
+    public class OnBoardEthernetSubComponent : BaseSubComponent
     {
         /// <summary>
         /// The network speed (e.g., 2.5 Gb/s, 1 Gb/s).

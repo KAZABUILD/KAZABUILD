@@ -12,6 +12,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
         /// Type of the port.
         /// </summary>
         [Required]
+        [EnumDataType(typeof(PortType))]
         public PortType PortType { get; set; } = default!;
     }
 }

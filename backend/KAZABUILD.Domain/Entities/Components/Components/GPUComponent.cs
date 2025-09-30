@@ -81,7 +81,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 600, ErrorMessage = "GPU length must be between 10 and 600 mm")]
-        [Precision(5, 2)]
+        [Precision(7, 4)]
         public decimal Length { get; set; } = default!;
 
         /// <summary>

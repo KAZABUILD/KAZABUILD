@@ -5,9 +5,9 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPart
     public class GetComponentPartDto
     {
         //Filter By fields
-        public Guid? ComponentId { get; set; }
+        public List<Guid>? ComponentId { get; set; }
 
-        public Guid? SubComponentId { get; set; }
+        public List<Guid>? SubComponentId { get; set; }
 
         //Paging related fields
         public bool Paging = false;

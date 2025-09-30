@@ -6,15 +6,15 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentColor
     public class GetComponentColorDto
     {
         //Filter by fields
-        public Guid? ComponentId { get; set; }
+        public List<Guid>? ComponentId { get; set; }
 
         [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
         [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
-        public string? ColorCode { get; set; }
+        public List<string>? ColorCode { get; set; }
 
         [StringLength(30, ErrorMessage = "Color Name cannot be longer than 30 characters!")]
         [MinLength(3, ErrorMessage = "Color Name must be at least 3 characters long!")]
-        public string? ColorName { get; set; }
+        public List<string>? ColorName { get; set; }
 
         public bool? IsAvailable { get; set; }
 

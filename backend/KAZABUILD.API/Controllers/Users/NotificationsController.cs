@@ -113,7 +113,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("notification.created", new
             {
                 notificationId = notification.Id,
-                updatedBy = currentUserId
+                createdBy = currentUserId
             });
 
             //Return success response
@@ -231,7 +231,7 @@ namespace KAZABUILD.API.Controllers.Users
             notification.LastEditedAt = DateTime.UtcNow;
 
             //Update the notification
-            _db.Update(notification);
+            _db.Notifications.Update(notification);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -378,7 +378,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("notification.got", new
             {
                 notificationId = id,
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the notification
@@ -388,7 +388,7 @@ namespace KAZABUILD.API.Controllers.Users
         //API endpoint for getting Notifications with pagination and search,
         //different level of information returned based on privileges
         [HttpPost("get")]
-        [Authorize(Policy = "AllNotifications")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<NotificationResponseDto>>> GetNotifications([FromBody] GetNotificationDto dto)
         {
             //Get notification id and claims from the request
@@ -399,7 +399,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current notification has admin permissions
+            //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
@@ -430,7 +430,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Apply search based om credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(m => m.User).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Body);
+                query = query.Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Body);
             }
 
             //Order by specified field if provided
@@ -455,7 +455,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Declare response variable
             List<NotificationResponseDto> responses;
 
-            //Check what permissions notification has and return respective information
+            //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
@@ -516,7 +516,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("notification.gotNotifications", new
             {
                 notificationIds = notifications.Select(u => u.Id),
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the notifications
@@ -598,7 +598,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("notification.deleted", new
             {
                 notificationId = id,
-                updatedBy = currentUserId
+                deletedBy = currentUserId
             });
 
             //Return success response

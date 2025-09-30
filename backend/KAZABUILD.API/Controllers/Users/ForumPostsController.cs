@@ -111,7 +111,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("forumPost.created", new
             {
                 forumPostId = forumPost.Id,
-                updatedBy = currentUserId
+                createdBy = currentUserId
             });
 
             //Return success response
@@ -215,7 +215,7 @@ namespace KAZABUILD.API.Controllers.Users
             forumPost.LastEditedAt = DateTime.UtcNow;
 
             //Update the forumPost
-            _db.Update(forumPost);
+            _db.ForumPosts.Update(forumPost);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -340,7 +340,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("forumPost.got", new
             {
                 forumPostId = id,
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the forumPost
@@ -350,7 +350,7 @@ namespace KAZABUILD.API.Controllers.Users
         //API endpoint for getting ForumPosts with pagination and search,
         //different level of information returned based on privileges
         [HttpPost("get")]
-        [Authorize(Policy = "AllForumPosts")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<ForumPostResponseDto>>> GetForumPosts([FromBody] GetForumPostDto dto)
         {
             //Get forumPost id and claims from the request
@@ -361,7 +361,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current forumPost has staff permissions
+            //Check if current user has staff permissions
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
@@ -413,7 +413,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Declare response variable
             List<ForumPostResponseDto> responses;
 
-            //Check what permissions forumPost has and return respective information
+            //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
@@ -470,7 +470,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("forumPost.gotForumPosts", new
             {
                 forumPostIds = forumPosts.Select(u => u.Id),
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the forumPosts
@@ -552,7 +552,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("forumPost.deleted", new
             {
                 forumPostId = id,
-                updatedBy = currentUserId
+                deletedBy = currentUserId
             });
 
             //Return success response

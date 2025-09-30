@@ -116,7 +116,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("message.created", new
             {
                 messageId = message.Id,
-                updatedBy = currentUserId
+                createdBy = currentUserId
             });
 
             //Return success response
@@ -240,7 +240,7 @@ namespace KAZABUILD.API.Controllers.Users
             message.LastEditedAt = DateTime.UtcNow;
 
             //Update the message
-            _db.Update(message);
+            _db.Messages.Update(message);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -385,7 +385,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("message.got", new
             {
                 messageId = id,
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the message
@@ -395,7 +395,7 @@ namespace KAZABUILD.API.Controllers.Users
         //API endpoint for getting Messages with pagination and search,
         //different level of information returned based on privileges
         [HttpPost("get")]
-        [Authorize(Policy = "AllMessages")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<MessageResponseDto>>> GetMessages([FromBody] GetMessageDto dto)
         {
             //Get message id and claims from the request
@@ -406,7 +406,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current message has admin permissions
+            //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
@@ -466,7 +466,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Declare response variable
             List<MessageResponseDto> responses;
 
-            //Check what permissions message has and return respective information
+            //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
@@ -525,7 +525,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("message.gotMessages", new
             {
                 messageIds = messages.Select(u => u.Id),
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the messages
@@ -607,7 +607,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("message.deleted", new
             {
                 messageId = id,
-                updatedBy = currentUserId
+                deletedBy = currentUserId
             });
 
             //Return success response

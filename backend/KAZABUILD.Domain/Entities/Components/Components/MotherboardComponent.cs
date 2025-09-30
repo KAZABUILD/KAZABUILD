@@ -99,8 +99,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Number of CPU optional fan headers.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Cpu Opt Fan Header Amount must be between 0 and 20")]
-        public int? CpuOptFanHeaderAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "CPU Opt Fan Header Amount must be between 0 and 20")]
+        public int? CPUOptFanHeaderAmount { get; set; }
 
         /// <summary>
         /// Number of Addressable RGB headers (5V, 3-pin).

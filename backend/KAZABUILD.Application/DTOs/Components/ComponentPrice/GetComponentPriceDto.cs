@@ -9,7 +9,7 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
         public Guid? ComponentId { get; set; }
 
         [StringLength(50, ErrorMessage = "Vendor Name cannot be longer than 50 characters!")]
-        public string? VendorName { get; set; } 
+        public List<string>? VendorName { get; set; } 
 
         [DataType(DataType.DateTime)]
         public DateTime? FetchedAtStart { get; set; } = default!;
@@ -18,7 +18,7 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
         public DateTime? FetchedAtEnd { get; set; } = default!;
 
         [StringLength(4, ErrorMessage = "Currency cannot be longer than 4 characters!")]
-        public string? Currency { get; set; } = default!;
+        public List<string>? Currency { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
