@@ -316,13 +316,15 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<BaseSubComponent>().ToTable("SubComponents");
             modelBuilder.Entity<CoolerSocketSubComponent>().ToTable("CoolerSocketSubComponents");
             modelBuilder.Entity<IntegratedGraphicsSubComponent>().ToTable("IntegratedGraphicsSubComponents");
+            modelBuilder.Entity<M2SlotSubComponent>().ToTable("M2SlotSubcomponent");
+            modelBuilder.Entity<OnBoardEthernetSubComponent>().ToTable("OnBoardEthernetSubComponent");
+            modelBuilder.Entity<PCIeSlotSubComponent>().ToTable("PCIeSlotSubComponent");
             modelBuilder.Entity<PortSubComponent>().ToTable("PortSubComponents");
-
 
             //Configure PortType as string
             modelBuilder
                 .Entity<PortSubComponent>()
-                .Property(u => u.PortType)
+                .Property(p => p.PortType)
                 .HasConversion<string>();
 
             //====================================== SUBCOMPONENT PART ======================================//

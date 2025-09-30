@@ -6,7 +6,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
     /// <summary>
     /// SubComponent representing motherboard slots (e.g., PCIe, M.2).
     /// </summary>
-    public class M2SlotSubcomponent : BaseSubComponent
+    public class M2SlotSubComponent : BaseSubComponent
     {
         /// <summary>
         /// M.2 form factor size (e.g., 2280, 22110)

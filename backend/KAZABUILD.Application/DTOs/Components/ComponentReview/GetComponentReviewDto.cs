@@ -6,10 +6,9 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentReview
     public class GetComponentReviewDto
     {
         //Filter By fields
-        [StringLength(50, ErrorMessage = "Reviewer Name cannot be longer than 50 characters!")]
-        public string? ReviewerName { get; set; } = default!;
+        public List<string>? ReviewerName { get; set; } = default!;
 
-        public Guid? ComponentId { get; set; } = default!;
+        public List<Guid>? ComponentId { get; set; } = default!;
 
         [DataType(DataType.DateTime)]
         public DateTime? FetchedAtStart { get; set; } = default!;
@@ -25,7 +24,11 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentReview
 
         [Column(TypeName = "decimal(18,2)")]
         [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]
-        public decimal? Rating { get; set; } = default!;
+        public decimal? RatingStart { get; set; } = default!;
+
+        [Column(TypeName = "decimal(18,2)")]
+        [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]
+        public decimal? RatingEnd { get; set; } = default!;
 
         //Paging related fields
         public bool Paging = false;

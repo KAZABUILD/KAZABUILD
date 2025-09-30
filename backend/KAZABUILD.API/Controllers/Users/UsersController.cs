@@ -106,7 +106,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("user.created", new
             {
                 userId = user.Id,
-                updatedBy = currentUserId
+                createdBy = currentUserId
             });
 
             //Return success response
@@ -378,7 +378,7 @@ namespace KAZABUILD.API.Controllers.Users
             user.LastEditedAt = DateTime.UtcNow;
 
             //Update the user
-            _db.Update(user);
+            _db.Users.Update(user);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -653,7 +653,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("user.got", new
             {
                 userId = id,
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the user
@@ -848,7 +848,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("user.gotUsers", new
             {
                 userIds = users.Select(u => u.Id),
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the users
@@ -914,7 +914,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("user.deleted", new
             {
                 userId = id,
-                updatedBy = currentUserId
+                deletedBy = currentUserId
             });
 
             //Return success response

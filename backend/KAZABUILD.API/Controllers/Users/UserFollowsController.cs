@@ -128,7 +128,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("userFollow.created", new
             {
                 userFollowId = userFollow.Id,
-                updatedBy = currentUserId
+                craetedBy = currentUserId
             });
 
             //Return success response
@@ -186,7 +186,7 @@ namespace KAZABUILD.API.Controllers.Users
             userFollow.LastEditedAt = DateTime.UtcNow;
 
             //Update the userFollow
-            _db.Update(userFollow);
+            _db.UserFollows.Update(userFollow);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -325,17 +325,17 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("userFollow.got", new
             {
                 userFollowId = id,
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the userFollow
             return Ok(response);
         }
 
-        //API endpoint for getting UserFollows with pagination and search,
+        //API endpoint for getting UserFollows with pagination,
         //different level of information returned based on privileges
         [HttpPost("get")]
-        [Authorize(Policy = "AllUserFollows")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<UserFollowResponseDto>>> GetUserFollows([FromBody] GetUserFollowDto dto)
         {
             //Get userFollow id and claims from the request
@@ -346,7 +346,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current userFollow has staff permissions
+            //Check if current user has staff permissions
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
@@ -392,7 +392,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Declare response variable
             List<UserFollowResponseDto> responses;
 
-            //Check what permissions userFollow has and return respective information
+            //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
@@ -445,7 +445,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("userFollow.gotUserFollows", new
             {
                 userFollowIds = userFollows.Select(u => u.Id),
-                updatedBy = currentUserId
+                gotBy = currentUserId
             });
 
             //Return the userFollows
@@ -527,7 +527,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _publisher.PublishAsync("userFollow.deleted", new
             {
                 userFollowId = id,
-                updatedBy = currentUserId
+                deletedBy = currentUserId
             });
 
             //Return success response

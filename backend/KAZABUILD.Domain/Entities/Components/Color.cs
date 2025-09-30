@@ -14,6 +14,16 @@ namespace KAZABUILD.Domain.Entities.Components
         [MinLength(3, ErrorMessage = "Color Name must be at least 3 characters long!")]
         public string ColorName { get; set; } = default!;
 
+        //Additional database information
+        [DataType(DataType.DateTime)]
+        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
+
+        [DataType(DataType.DateTime)]
+        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
+
+        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
+        public string? Note { get; set; }
+
         //Database relationships
         public ICollection<ComponentColor> Components { get; set; } = [];
     }

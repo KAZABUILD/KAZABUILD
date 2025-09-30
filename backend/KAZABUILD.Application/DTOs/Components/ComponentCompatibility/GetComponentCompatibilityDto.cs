@@ -5,9 +5,9 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentCompatibility
     public class GetComponentCompatibilityDto
     {
         //Filter By fields
-        public Guid? ComponentId { get; set; }
+        public List<Guid>? ComponentId { get; set; }
 
-        public Guid? CompatibleComponentId { get; set; }
+        public List<Guid>? CompatibleComponentId { get; set; }
 
         //Paging related fields
         public bool Paging = false;
