@@ -1,5 +1,6 @@
 using KAZABUILD.Domain.ValueObjects;
 
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -27,7 +28,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// leave empty if no power supply.
         /// </summary>
         [Range(0, 2500, ErrorMessage = "Power Supply must be between 0 and 2,500 Watts")]
-        public int? PowerSupplyAmount { get; set; }
+        [Precision(6, 2)]
+        public decimal? PowerSupplyAmount { get; set; }
 
         /// <summary>
         /// Does the case include a transparent side panel.
@@ -46,6 +48,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 600, ErrorMessage = "Maximum Video Card Length must be between 10 and 600 mm")]
+        [Precision(5, 2)]
         public decimal MaxVideoCardLength { get; set; } = default!;
 
         /// <summary>
@@ -53,6 +56,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 400, ErrorMessage = "Max CPU Cooler Height must be between 10 and 400 mm")]
+        [Precision(5, 2)]
         public decimal MaxCPUCoolerHeight { get; set; } = default!;
 
         /// <summary>
@@ -103,13 +107,15 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The volume of the case in liters.
         /// </summary>
-        public decimal Volume => Dimensions.Height * Dimensions.Width * Dimensions.Depth;
+        [Precision(12, 8)]
+        public decimal Volume => Dimensions.Height * Dimensions.Width * Dimensions.Depth / 1000000;
 
         /// <summary>
         /// The weight of the case in kg.
         /// </summary>
         [Required]
         [Range(0, 100, ErrorMessage = "Weight must be between 0 and 100 kg")]
+        [Precision(5, 2)]
         public decimal Weight { get; set; } = default!;
 
         /// <summary>

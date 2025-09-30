@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -12,7 +13,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(100, 20000, ErrorMessage = "Speed must be between 100 MHz and 20000 MHz")]
-        public int Speed { get; set; } = default!;
+        [Precision(7, 2)]
+        public decimal Speed { get; set; } = default!;
 
         /// <summary>
         /// Which generation of the DDR (Double Data Rate) the Memory belongs to (e.g., DDR4, DDR5, LPDDR5).
@@ -33,7 +35,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(256, 8388608, ErrorMessage = "Capacity must be between 256 MB and 8 TB (8388608 MB)")]
-        public int Capacity { get; set; } = default!;
+        [Precision(13, 6)]
+        public decimal Capacity { get; set; } = default!;
 
         /// <summary>
         /// The delay in clock cycles between the READ command and the moment data is available (e.g., CL16).
@@ -41,6 +44,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 200, ErrorMessage = "Column Address Strobe Latency must be between 0 and 200")]
+        [Precision(9, 6)]
         public decimal ColumnAddressStrobeLatency { get; set; } = default!;
 
         /// <summary>
@@ -61,44 +65,47 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
+        [Precision(8, 2)]
         public int ModuleCapacity { get; set; } = default!;
 
         /// <summary>
-        /// Does the RAM support Error-Correcting Code (e.g., Non-ECC, ECC)
+        /// Does the RAM support Error-Correcting Code (e.g., Non-ECC, ECC).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
         public string ErrorCorrectingCode { get; set; } = default;
 
         /// <summary>
-        /// Whether the RAM is registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced)
+        /// Whether the RAM is registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Registered cannot be longer than 50 characters!")]
         public string Registered { get; set; } = default;
 
         /// <summary>
-        /// Whether the RAM modules have a heat spreader
+        /// Whether the RAM modules have a heat spreader.
         /// </summary>
         [Required]
         public bool HasHeatSpreader { get; set; } = default!;
 
         /// <summary>
-        /// Whether the RAM modules have a RGB lighting
+        /// Whether the RAM modules have a RGB lighting.
         /// </summary>
         [Required]
         public bool RGB { get; set; } = default!;
 
         /// <summary>
-        /// The height of the RAM module in mm
+        /// The height of the RAM module in mm.
         /// </summary>
-        [Range(100, 20000, ErrorMessage = "Height must be between 10 mm and 65 mm")]
+        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        [Precision(6, 2)]
         public decimal? Height { get; set; }
 
         /// <summary>
-        /// The operating voltage of the RAM
+        /// The operating voltage of the RAM.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Voltage must be between 0V and 20V")]
+        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        [Precision(4, 2)]
         public decimal? Voltage { get; set; }
     }
 }

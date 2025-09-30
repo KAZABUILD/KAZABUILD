@@ -34,7 +34,7 @@ namespace KAZABUILD.Infrastructure.Services
             await _db.SaveChangesAsync();
 
             //Check if there is an IP address and format it correctly
-            var ip = string.IsNullOrEmpty(ipAddress) ? "" : $" ({ipAddress})";
+            var ip = string.IsNullOrWhiteSpace(ipAddress) ? "" : $" ({ipAddress})";
 
             //Check if there is a target and format it correctly
             var _targetId = targetId == Guid.Empty ? "" : $" (Target: {targetId})";
@@ -43,7 +43,7 @@ namespace KAZABUILD.Infrastructure.Services
             var _userId = userId == Guid.Empty ? "" : $" by {userId}";
 
             //Check if there is a description and format it correctly
-            var _description = string.IsNullOrEmpty(description) ? "" : $" - {description}";
+            var _description = string.IsNullOrWhiteSpace(description) ? "" : $" - {description}";
 
             //Crate a serilog message string
             string message = $"{DateOnly.FromDateTime(DateTime.UtcNow)}: {activityType} on {targetType}{_userId}{ip}{_targetId}{_description}";
