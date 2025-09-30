@@ -39,7 +39,162 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The Amount of expansion Slots available for RAM.
         /// </summary>
+        [Required]
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
-        public int? RAMSlotsAmount { get; set; } = default!;
+        public string RAMSlotsAmount { get; set; } = default!;
+
+        /// <summary>
+        /// The maximum amount of RAM the motherboard can support in GB.
+        /// </summary>
+        [Required]
+        [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
+        public int MaxRAMAmount { get; set; } = default!;
+
+        /// <summary>
+        /// The amount of sata_6_gb_s available in the motherboard.
+        /// </summary>
+        [Required]
+        [Range(0, 20, ErrorMessage = "Sata6Gbs Amount must be between 0 and 20")]
+        public int Sata6GbsAmount { get; set; } = default!;
+
+        /// <summary>
+        /// The amount of sata_3_gb_s ports available in the motherboard.
+        /// </summary>
+        [Required]
+        [Range(0, 20, ErrorMessage = "Sata3Gbs Amount must be between 0 and 20")]
+        public int Sata3GbsAmount { get; set; } = default!;
+
+        /// <summary>
+        /// The Amount of U2 ports available in the motherboard.
+        /// </summary>
+        [Required]
+        [Range(0, 20, ErrorMessage = "U2 Amount must be between 0 and 20")]
+        public int U2Amount { get; set; } = default!;
+
+        /// <summary>
+        /// Supported wifi standards. E.g. Wifi 6E, Wifi 7, etc.
+        /// </summary>
+        [Required]
+        [StringLength(50, ErrorMessage = "Wireless Networking Type cannot be longer than 50 characters!")]
+        public string WirelessNetworkingType { get; set; } = default!;
+
+        /// <summary>
+        /// Number of CPU fan headers (typically 4-pin PWM).
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Cpu Fan Amount must be between 0 and 20")]
+        public int? CpuFanAmount { get; set; }
+
+        /// <summary>
+        /// Number of case/chassis fan headers (typically 4-pin PWM).
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Case Fan Amount must be between 0 and 20")]
+        public int? CaseFanAmount { get; set; }
+
+        /// <summary>
+        /// Number of dedicated pump headers for AIO coolers.
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Pump Header Amount must be between 0 and 20")]
+        public int? PumpHeaderAmount { get; set; }
+
+        /// <summary>
+        /// Number of CPU optional fan headers.
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Cpu Opt Fan Header Amount must be between 0 and 20")]
+        public int? CpuOptFanHeaderAmount { get; set; }
+
+        /// <summary>
+        /// Number of Addressable RGB headers (5V, 3-pin).
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "CpuOptFan Amount must be between 0 and 20")]
+        public int? ARGB5vAmount { get; set; }
+
+        /// <summary>
+        /// Number of standard RGB headers (12V, 4-pin).
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Rgb12v Amount must be between 0 and 20")]
+        public int? RGB12vAmount { get; set; }
+
+        /// <summary>
+        /// Whether the motherboard has a power button header (could not be listed in the database).
+        /// </summary>
+        public bool? HasPowerButton { get; set; }
+
+        /// <summary>
+        /// Whether the motherboard has a reset button header (could not be listed in the database).
+        /// </summary>
+        public bool? HasResetButton { get; set; }
+
+        /// <summary>
+        /// Whether the motherboard has a power led header (could not be listed in the database).
+        /// </summary>
+        public bool? HasPowerLED { get; set; }
+
+        /// <summary>
+        /// Whether the motherboard has a hard drive activity light header (could not be listed in the database).
+        /// </summary>
+        public bool? HasHDDLED { get; set; }
+
+        /// <summary>
+        /// Number of temperature sensor headers.
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Temprature Sensor Amount must be between 0 and 20")]
+        public int? TempratureSensorAmount { get; set; }
+
+        /// <summary>
+        /// Number of thunderbolt headers.
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Thunderbolt Amount must be between 0 and 20")]
+        public int? ThunderboltAmount { get; set; }
+
+        /// <summary>
+        /// Number of COM port headers.
+        /// </summary>
+        [Range(0, 20, ErrorMessage = "Com Port Amount must be between 0 and 20")]
+        public int? ComPortAmount { get; set; }
+
+        /// <summary>
+        /// Main power connector specification (e.g., '24-pin').
+        /// </summary>
+        [StringLength(50, ErrorMessage = "Main power type cannot be longer than 50 characters!")]
+        public string? MainPower { get; set; }
+
+        /// <summary>
+        /// Whether the motherboard supports ECC memory.
+        /// <summary>
+        [Required]
+        public bool HasEccSupport { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the motherboard supports RAID configurations.
+        /// <summary>
+        [Required]
+        public bool HasRaidSupport { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the board has BIOS flashback capability.
+        /// <summary>
+        [Required]
+        public bool HasFlashback { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the board has a clear Complementary Metal-Oxide-Semiconductor (CMOS) button.
+        /// <summary>
+        [Required]
+        public bool HasClearCmos { get; set; } = default!;
+
+        /// <summary>
+        /// Details on the audio chipset used.
+        /// </summary>
+        [Required]
+        [StringLength(50, ErrorMessage = "Audio Chipset must be between 0 and 20!")]
+        public string AudioChipset { get; set; } = default!;
+
+        /// <summary>
+        /// Number of audio channels supported.
+        /// </summary>
+        [Required]
+        [Range(1, 32, ErrorMessage = "Channels type cannot be longer than 50 characters!")]
+        [Precision(3, 1)]
+        public decimal AudioChannelsAmount { get; set; } = default!;
     }
 }
