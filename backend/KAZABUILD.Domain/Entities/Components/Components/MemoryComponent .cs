@@ -66,6 +66,46 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         [Required]
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
         [Precision(8, 2)]
-        public decimal ModuleCapacity { get; set; } = default!;
+        public int ModuleCapacity { get; set; } = default!;
+
+        /// <summary>
+        /// Does the RAM support Error-Correcting Code (e.g., Non-ECC, ECC).
+        /// </summary>
+        [Required]
+        [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
+        public string ErrorCorrectingCode { get; set; } = default;
+
+        /// <summary>
+        /// Whether the RAM is registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced).
+        /// </summary>
+        [Required]
+        [StringLength(50, ErrorMessage = "Registered cannot be longer than 50 characters!")]
+        public string Registered { get; set; } = default;
+
+        /// <summary>
+        /// Whether the RAM modules have a heat spreader.
+        /// </summary>
+        [Required]
+        public bool HasHeatSpreader { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the RAM modules have a RGB lighting.
+        /// </summary>
+        [Required]
+        public bool RGB { get; set; } = default!;
+
+        /// <summary>
+        /// The height of the RAM module in mm.
+        /// </summary>
+        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        [Precision(6, 2)]
+        public decimal? Height { get; set; }
+
+        /// <summary>
+        /// The operating voltage of the RAM.
+        /// </summary>
+        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        [Precision(4, 2)]
+        public decimal? Voltage { get; set; }
     }
 }
