@@ -1,3 +1,5 @@
+// Ignore Spelling: RGB ARGB
+
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
@@ -40,161 +42,165 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// The Amount of expansion Slots available for RAM.
         /// </summary>
         [Required]
-        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
+        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15!")]
         public string RAMSlotsAmount { get; set; } = default!;
 
         /// <summary>
-        /// The maximum amount of RAM the motherboard can support in GB.
+        /// The maximum Amount of RAM the Motherboard can support in GB.
         /// </summary>
         [Required]
-        [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
+        [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024!")]
         public int MaxRAMAmount { get; set; } = default!;
 
         /// <summary>
-        /// The amount of sata_6_gb_s available in the motherboard.
+        /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
+        /// SATA is a computer bus interface that connects host bus adapters to mass storage devices.
         /// </summary>
         [Required]
-        [Range(0, 20, ErrorMessage = "Sata6Gbs Amount must be between 0 and 20")]
-        public int Sata6GbsAmount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20!")]
+        public int SerialATAttachment6GBsAmount { get; set; } = default!;
 
         /// <summary>
-        /// The amount of sata_3_gb_s ports available in the motherboard.
+        /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
+        /// SATA is a computer bus interface that connects host bus adapters to mass storage devices.
         /// </summary>
         [Required]
-        [Range(0, 20, ErrorMessage = "Sata3Gbs Amount must be between 0 and 20")]
-        public int Sata3GbsAmount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20!")]
+        public int SerialATAttachment3GBsAmount { get; set; } = default!;
 
         /// <summary>
-        /// The Amount of U2 ports available in the motherboard.
+        /// The Amount of U2 Ports used to connect SSD's available in the Motherboard.
         /// </summary>
         [Required]
-        [Range(0, 20, ErrorMessage = "U2 Amount must be between 0 and 20")]
-        public int U2Amount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "U2 Amount must be between 0 and 20!")]
+        public int U2PortAmount { get; set; } = default!;
 
         /// <summary>
-        /// Supported wifi standards. E.g. Wifi 6E, Wifi 7, etc.
+        /// Supported WiFi Standard (E.g., WiFi 6E, WiFi 7).
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Wireless Networking Type cannot be longer than 50 characters!")]
-        public string WirelessNetworkingType { get; set; } = default!;
+        [StringLength(50, ErrorMessage = "Wireless Networking Standard cannot be longer than 50 characters!")]
+        public string WirelessNetworkingStandard { get; set; } = default!;
 
         /// <summary>
-        /// Number of CPU fan headers (typically 4-pin PWM).
+        /// Number of CPU Fan Headers (typically 4-pin PWM) in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Cpu Fan Amount must be between 0 and 20")]
-        public int? CpuFanAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "CPU Fan Header Amount must be between 0 and 20!")]
+        public int? CpuFanHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of case/chassis fan headers (typically 4-pin PWM).
+        /// Number of Case/chassis fan Headers (typically 4-pin PWM) in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Case Fan Amount must be between 0 and 20")]
-        public int? CaseFanAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Case Fan Header Amount must be between 0 and 20!")]
+        public int? CaseFanHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of dedicated pump headers for AIO coolers.
+        /// Number of dedicated pump Headers for liquid (AIO) coolers in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Pump Header Amount must be between 0 and 20")]
+        [Range(0, 20, ErrorMessage = "Pump Header Amount must be between 0 and 20!")]
         public int? PumpHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of CPU optional fan headers.
+        /// Number of Optional CPU Fan Headers in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "CPU Opt Fan Header Amount must be between 0 and 20")]
-        public int? CPUOptFanHeaderAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "CPU Optional Fan Header Amount must be between 0 and 20!")]
+        public int? CPUOptionalFanHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of Addressable RGB headers (5V, 3-pin).
+        /// Number of Addressable RGB headers (5V, 3-pin) in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "CpuOptFan Amount must be between 0 and 20")]
-        public int? ARGB5vAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Addressable RGB 5v Header Amount must be between 0 and 20!")]
+        public int? ARGB5vHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of standard RGB headers (12V, 4-pin).
+        /// Number of standard RGB headers (12V, 4-pin) in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Rgb12v Amount must be between 0 and 20")]
-        public int? RGB12vAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "RGB 12v Header Amount must be between 0 and 20!")]
+        public int? RGB12vHeaderAmount { get; set; }
 
         /// <summary>
-        /// Whether the motherboard has a power button header (could not be listed in the database).
+        /// Whether the Motherboard has a Power Button Header.
         /// </summary>
-        public bool? HasPowerButton { get; set; }
+        public bool? HasPowerButtonHeader { get; set; }
 
         /// <summary>
-        /// Whether the motherboard has a reset button header (could not be listed in the database).
+        /// Whether the Motherboard has a Reset Button Header.
         /// </summary>
-        public bool? HasResetButton { get; set; }
+        public bool? HasResetButtonHeader { get; set; }
 
         /// <summary>
-        /// Whether the motherboard has a power led header (could not be listed in the database).
+        /// Whether the Motherboard has a Power LED Header.
         /// </summary>
-        public bool? HasPowerLED { get; set; }
+        public bool? HasPowerLEDHeader { get; set; }
 
         /// <summary>
-        /// Whether the motherboard has a hard drive activity light header (could not be listed in the database).
+        /// Whether the Motherboard has a Hard Drive Activity Light Header.
         /// </summary>
-        public bool? HasHDDLED { get; set; }
+        public bool? HasHDDLEDHeader { get; set; }
 
         /// <summary>
-        /// Number of temperature sensor headers.
+        /// Number of temperature sensor Headers in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Temprature Sensor Amount must be between 0 and 20")]
-        public int? TempratureSensorAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Temperature Sensor Amount must be between 0 and 20!")]
+        public int? TemperatureSensorHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of thunderbolt headers.
+        /// Number of Thunderbolt Headers in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Thunderbolt Amount must be between 0 and 20")]
-        public int? ThunderboltAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Thunderbolt Header Amount must be between 0 and 20!")]
+        public int? ThunderboltHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of COM port headers.
+        /// Number of COM port headers in the Motherboard.
         /// </summary>
-        [Range(0, 20, ErrorMessage = "Com Port Amount must be between 0 and 20")]
-        public int? ComPortAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Com Port Header Amount must be between 0 and 20!")]
+        public int? COMPortHeaderAmount { get; set; }
 
         /// <summary>
         /// Main power connector specification (e.g., '24-pin').
         /// </summary>
-        [StringLength(50, ErrorMessage = "Main power type cannot be longer than 50 characters!")]
-        public string? MainPower { get; set; }
+        [StringLength(50, ErrorMessage = "Main Power Type cannot be longer than 50 characters!")]
+        public string? MainPowerType { get; set; }
 
         /// <summary>
-        /// Whether the motherboard supports ECC memory.
+        /// Whether the motherboard supports Error Connection Code (ECC) memory.
+        /// ECC detects and corrects errors in data transmission or storage, it does so by adding extra bits to the original data.
         /// <summary>
         [Required]
-        public bool HasEccSupport { get; set; } = default!;
+        public bool HasECCSupport { get; set; } = default!;
 
         /// <summary>
-        /// Whether the motherboard supports RAID configurations.
+        /// Whether the motherboard supports Redundant Array of Independent Disks (RAID) configurations.
+        /// RAID stores the same data in different places on multiple drives.
         /// <summary>
         [Required]
-        public bool HasRaidSupport { get; set; } = default!;
+        public bool HasRAIDSupport { get; set; } = default!;
 
         /// <summary>
-        /// Whether the board has BIOS flashback capability.
+        /// Whether the board has BIOS backup capability in flashback.
         /// <summary>
         [Required]
         public bool HasFlashback { get; set; } = default!;
 
         /// <summary>
-        /// Whether the board has a clear Complementary Metal-Oxide-Semiconductor (CMOS) button.
+        /// Whether the Motherboard has a Clear Complementary Metal-Oxide-Semiconductor (CMOS) button which resets the BIOS to default settings.
         /// <summary>
         [Required]
-        public bool HasClearCmos { get; set; } = default!;
+        public bool HasCMOS { get; set; } = default!;
 
         /// <summary>
-        /// Details on the audio chipset used.
+        /// Details of the Audio Chipset used.
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Audio Chipset must be between 0 and 20!")]
+        [StringLength(50, ErrorMessage = "Audio Chipset cannot be longer than 50 characters!")]
         public string AudioChipset { get; set; } = default!;
 
         /// <summary>
-        /// Number of audio channels supported.
+        /// The Maximum number of Audio Channels in the Motherboard.
         /// </summary>
         [Required]
-        [Range(1, 32, ErrorMessage = "Channels type cannot be longer than 50 characters!")]
+        [Range(1, 32, ErrorMessage = "Audio Channels must be between 0 and 20!")]
         [Precision(3, 1)]
-        public decimal AudioChannelsAmount { get; set; } = default!;
+        public decimal MaxAudioChannels { get; set; } = default!;
     }
 }

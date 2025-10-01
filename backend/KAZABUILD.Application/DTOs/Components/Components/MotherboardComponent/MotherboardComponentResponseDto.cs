@@ -1,4 +1,7 @@
+// Ignore Spelling: ARGB RGB
+
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
@@ -13,56 +16,56 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public string? RAMType { get; set; }
 
-        public int? RAMSlotsAmount { get; set; }
+        public string? RAMSlotsAmount { get; set; }
 
         public int? MaxRAMAmount { get; set; }
 
-        public int? Sata6GbsAmount { get; set; }
+        public int? SerialATAttachment6GBsAmount { get; set; }
 
-        public int? Sata3GbsAmount { get; set; }
+        public int? SerialATAttachment3GBsAmount { get; set; }
 
-        public int? U2Amount { get; set; }
+        public int? U2PortAmount { get; set; }
 
-        public string? WirelessNetworkingType { get; set; }
+        public string? WirelessNetworkingStandard { get; set; }
 
-        public int? CpuFanAmount { get; set; }
+        public int? CpuFanHeaderAmount { get; set; }
 
-        public int? CaseFanAmount { get; set; }
+        public int? CaseFanHeaderAmount { get; set; }
 
         public int? PumpHeaderAmount { get; set; }
 
-        public int? CpuOptFanHeaderAmount { get; set; }
+        public int? CPUOptionalFanHeaderAmount { get; set; }
 
-        public int? ARGB5vAmount { get; set; }
+        public int? ARGB5vHeaderAmount { get; set; }
 
-        public int? RGB12vAmount { get; set; }
+        public int? RGB12vHeaderAmount { get; set; }
 
-        public bool? HasPowerButton { get; set; }
+        public bool? HasPowerButtonHeader { get; set; }
 
-        public bool? HasResetButton { get; set; }
+        public bool? HasResetButtonHeader { get; set; }
 
-        public bool? HasPowerLED { get; set; }
+        public bool? HasPowerLEDHeader { get; set; }
 
-        public bool? HasHDDLED { get; set; }
+        public bool? HasHDDLEDHeader { get; set; }
 
-        public int? TempratureSensorAmount { get; set; }
+        public int? TemperatureSensorHeaderAmount { get; set; }
 
-        public int? ThunderboltAmount { get; set; }
+        public int? ThunderboltHeaderAmount { get; set; }
 
-        public int? ComPortAmount { get; set; }
+        public int? ComPortHeaderAmount { get; set; }
 
-        public string? MainPower { get; set; }
+        public string? MainPowerType { get; set; }
 
-        public bool? HasEccSupport { get; set; }
+        public bool? HasECCSupport { get; set; }
 
-        public bool? HasRaidSupport { get; set; }
+        public bool? HasRAIDSupport { get; set; }
 
         public bool? HasFlashback { get; set; }
 
-        public bool? HasClearCmos { get; set; }
+        public bool? HasCMOS { get; set; }
 
         public string? AudioChipset { get; set; }
 
-        public decimal? AudioChannelsAmount { get; set; }
+        public decimal? MaxAudioChannels { get; set; }
     }
 }

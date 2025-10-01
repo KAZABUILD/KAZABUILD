@@ -23,10 +23,10 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public decimal? CapacityEnd { get; set; }
 
         [Range(0, 200, ErrorMessage = "Column Address Strobe Latency must be between 0 and 200")]
-        public decimal? ColumnAddressStrobeLatencyStart { get; set; }
+        public decimal? CASLatencyStart { get; set; }
 
         [Range(0, 200, ErrorMessage = "Column Address Strobe Latency must be between 0 and 200")]
-        public decimal? ColumnAddressStrobeLatencyEnd { get; set; }
+        public decimal? CASLatencyEnd { get; set; }
 
         public List<string>? Timings { get; set; }
 
@@ -37,18 +37,18 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public int? ModuleQuantityEnd { get; set; }
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
-        public decimal? ModuleCapacityStart { get; set; }
+        public int? ModuleCapacityStart { get; set; }
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
-        public decimal? ModuleCapacityEnd { get; set; }
+        public int? ModuleCapacityEnd { get; set; }
 
         public List<string>? ErrorCorrectingCode { get; set; }
 
-        public List<string>? Registered { get; set; }
+        public List<string>? RegisteredType { get; set; }
 
-        public bool? HasHeatSpreader { get; set; }
+        public bool? HaveHeatSpreader { get; set; }
 
-        public bool? RGB { get; set; }
+        public bool? HaveRGB { get; set; } = default!;
 
         [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
         public decimal? HeightStart { get; set; }

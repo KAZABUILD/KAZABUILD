@@ -9,7 +9,5 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.PCIeSlotSubCompone
 
         public string? Lanes { get; set; }
 
-        public int? Quantity { get; set; }
-
     }
 }

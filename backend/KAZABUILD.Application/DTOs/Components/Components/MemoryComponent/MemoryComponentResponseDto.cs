@@ -1,3 +1,5 @@
+// Ignore Spelling: RGB
+
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 using System.ComponentModel.DataAnnotations;
 
@@ -13,21 +15,21 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
 
         public decimal? Capacity { get; set; }
 
-        public decimal? ColumnAddressStrobeLatency { get; set; }
+        public decimal? CASLatency { get; set; }
 
         public string? Timings { get; set; }
 
         public int? ModuleQuantity { get; set; }
 
-        public decimal? ModuleCapacity { get; set; }
+        public int? ModuleCapacity { get; set; }
 
         public string? ErrorCorrectingCode { get; set; }
 
-        public string? Registered { get; set; }
+        public string? RegisteredType { get; set; }
 
-        public bool? HasHeatSpreader { get; set; }
+        public bool? HaveHeatSpreader { get; set; }
 
-        public bool? RGB { get; set; }
+        public bool? HaveRGB { get; set; }
 
         public decimal? Height { get; set; }
 

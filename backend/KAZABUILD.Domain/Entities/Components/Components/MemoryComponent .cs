@@ -45,7 +45,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         [Required]
         [Range(0, 200, ErrorMessage = "Column Address Strobe Latency must be between 0 and 200")]
         [Precision(9, 6)]
-        public decimal ColumnAddressStrobeLatency { get; set; } = default!;
+        public decimal CASLatency { get; set; } = default!;
 
         /// <summary>
         /// Specification of the clock latency of certain specific commands issued to RAM (e.g., 30-36-36-76).
@@ -69,30 +69,31 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public int ModuleCapacity { get; set; } = default!;
 
         /// <summary>
-        /// Does the RAM support Error-Correcting Code (e.g., Non-ECC, ECC).
+        /// The type of RAM support Error-Correcting Code used by the RAM (e.g., Non-ECC, ECC).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
-        public string ErrorCorrectingCode { get; set; } = default;
+        public string ErrorCorrectingCode { get; set; } = default!;
 
         /// <summary>
-        /// Whether the RAM is registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced).
+        /// Whether the RAM is Registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced).
+        /// Registered means there is a buffer between the memory and the bus to the CPU.
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Registered cannot be longer than 50 characters!")]
-        public string Registered { get; set; } = default;
+        [StringLength(50, ErrorMessage = "Registered Type cannot be longer than 50 characters!")]
+        public string RegisteredType { get; set; } = default!;
 
         /// <summary>
-        /// Whether the RAM modules have a heat spreader.
+        /// Whether the RAM modules have a heat spreader used to dissipate excess heat.
         /// </summary>
         [Required]
-        public bool HasHeatSpreader { get; set; } = default!;
+        public bool HaveHeatSpreader { get; set; } = default!;
 
         /// <summary>
-        /// Whether the RAM modules have a RGB lighting.
+        /// Whether the RAM modules have RGB lighting.
         /// </summary>
         [Required]
-        public bool RGB { get; set; } = default!;
+        public bool HaveRGB { get; set; } = default!;
 
         /// <summary>
         /// The height of the RAM module in mm.
