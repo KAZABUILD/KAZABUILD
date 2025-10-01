@@ -151,7 +151,7 @@ namespace KAZABUILD.Application.Helpers
         public static bool FuzzyMatch(string? source, string target, int tolerance)
         {
             //Check if the string is not empty
-            if (string.IsNullOrEmpty(source)) return false;
+            if (string.IsNullOrWhiteSpace(source)) return false;
 
             //return if the value is within tolerance
             return LevenshteinDistance(source.ToLower(), target.ToLower()) <= tolerance;
@@ -161,8 +161,8 @@ namespace KAZABUILD.Application.Helpers
         public static int LevenshteinDistance(string s, string t)
         {
             //Check if the string length allows using the function
-            if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
-            if (string.IsNullOrEmpty(t)) return s.Length;
+            if (string.IsNullOrWhiteSpace(s)) return t?.Length ?? 0;
+            if (string.IsNullOrWhiteSpace(t)) return s.Length;
 
             //Declare necessary variables
             var n = s.Length;

@@ -1,16 +1,16 @@
+using KAZABUILD.Application.DTOs.Users.ForumPost;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Domain.Entities.Users;
-using KAZABUILD.Application.DTOs.Users.ForumPost;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using System.Linq;
 using System.Linq.Dynamic.Core;
+using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
@@ -180,13 +180,13 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrEmpty(dto.Content))
+            if (!string.IsNullOrWhiteSpace(dto.Content))
             {
                 changedFields.Add("Content: " + forumPost.Content);
 
                 forumPost.Content = dto.Content;
             }
-            if (!string.IsNullOrEmpty(dto.Title))
+            if (!string.IsNullOrWhiteSpace(dto.Title))
             {
                 changedFields.Add("Title: " + forumPost.Title);
 
@@ -194,17 +194,20 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if(isPrivileged)
             {
-                if (!string.IsNullOrEmpty(dto.Topic))
+                if (!string.IsNullOrWhiteSpace(dto.Topic))
                 {
                     changedFields.Add("Topic: " + forumPost.Topic);
 
                     forumPost.Topic = dto.Topic;
                 }
-                if (!string.IsNullOrEmpty(dto.Note))
+                if (dto.Note != null)
                 {
                     changedFields.Add("Note: " + forumPost.Note);
 
-                    forumPost.Note = dto.Note;
+                    if (string.IsNullOrWhiteSpace(dto.Note))
+                        forumPost.Note = null;
+                    else
+                        forumPost.Note = dto.Note;
                 }
             }
 
@@ -367,33 +370,29 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.Topic != null)
             {
-                query = query.Where(p => p.Topic == dto.Topic);
+                query = query.Where(p => dto.Topic.Contains(p.Topic));
             }
             if (dto.CreatorId != null)
             {
-                query = query.Where(p => p.CreatorId == dto.CreatorId);
+                query = query.Where(p => dto.CreatorId.Contains(p.CreatorId));
             }
-            if (dto.PostedAtStart != null && dto.PostedAtEnd != null)
-            {
-                query = query.Where(p => p.PostedAt >= dto.PostedAtStart && p.PostedAt <= dto.PostedAtEnd);
-            }
-            else if (dto.PostedAtStart != null)
+            if (dto.PostedAtStart != null)
             {
                 query = query.Where(p => p.PostedAt >= dto.PostedAtStart);
             }
-            else if (dto.PostedAtEnd != null)
+            if (dto.PostedAtEnd != null)
             {
                 query = query.Where(p => p.PostedAt <= dto.PostedAtEnd);
             }
 
             //Apply search based on credentials
-            if (!string.IsNullOrEmpty(dto.Query))
+            if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(p => p.Creator).Search(dto.Query, p => p.PostedAt, p => p.Title, p => p.Content, p => p.Topic, p => p.Creator!.DisplayName);
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }

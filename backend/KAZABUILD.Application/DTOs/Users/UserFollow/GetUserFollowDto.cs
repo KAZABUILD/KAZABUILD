@@ -5,9 +5,9 @@ namespace KAZABUILD.Application.DTOs.Users.UserFollow
     public class GetUserFollowDto
     {
         //Filter By fields
-        public Guid? FollowerId { get; set; }
+        public List<Guid>? FollowerId { get; set; }
 
-        public Guid? FollowedId { get; set; }
+        public List<Guid>? FollowedId { get; set; }
 
         [DataType(DataType.DateTime)]
         public DateTime? FollowedAtStart { get; set; }

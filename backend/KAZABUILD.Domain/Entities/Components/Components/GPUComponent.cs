@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components.Components
@@ -19,7 +20,8 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(256, 262144, ErrorMessage = "Video Memory must be between 256 MB and 262144 MB (256 GB)")]
-        public int VideoMemoryAmount { get; set; } = default!;
+        [Precision(8, 2)]
+        public decimal VideoMemoryAmount { get; set; } = default!;
 
         /// <summary>
         /// What type of Video Memory the GPU uses (e.g., GDDR6, GDDR6X, HBM2).
@@ -33,14 +35,16 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(100, 8000, ErrorMessage = "Core Base Clock Speed must be between 100 MHz and 8000 MHz")]
-        public int CoreBaseClockSpeed { get; set; } = default!;
+        [Precision(6, 2)]
+        public decimal CoreBaseClockSpeed { get; set; } = default!;
 
         /// <summary>
         /// GPU boost core clock speed in MHz.
         /// </summary>
         [Required]
         [Range(100, 8000, ErrorMessage = "Core Boost Clock Speed must be between 100 MHz and 8000 MHz")]
-        public int CoreBoostClockSpeed { get; set; } = default!;
+        [Precision(6, 2)]
+        public decimal CoreBoostClockSpeed { get; set; } = default!;
 
         /// <summary>
         /// Number of specialized GPU cores/shaders for task division.
@@ -54,6 +58,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(100, 50000, ErrorMessage = "Effective Memory Clock Speed must be between 100 MHz and 50000 MHz")]
+        [Precision(7, 2)]
         public decimal EffectiveMemoryClockSpeed { get; set; } = default!;
 
         /// <summary>
@@ -76,14 +81,16 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(10, 600, ErrorMessage = "GPU length must be between 10 and 600 mm")]
-        public int Length { get; set; } = default!;
+        [Precision(5, 2)]
+        public decimal Length { get; set; } = default!;
 
         /// <summary>
         /// Thermal Design Power (TDP), the maximum heat the CPU can generate in Watts.
         /// </summary>
         [Required]
         [Range(1, 2000, ErrorMessage = "Thermal design power must be between 1 and 2000 W")]
-        public int ThermalDesignPower { get; set; } = default!;
+        [Precision(6, 2)]
+        public decimal ThermalDesignPower { get; set; } = default!;
 
         /// <summary>
         /// Number of case expansion slots the GPU occupies.
