@@ -8,6 +8,7 @@ namespace KAZABUILD.Domain.Enums
         VIDEO, //Outlets connected to the monitor in order to display graphics
         POWER, //Outlets that charge the computer with electricity
         USB, //Outlets allowing the user to attach appliances and access the computer and its data
+        PIN,
         OTHER
     }
 }

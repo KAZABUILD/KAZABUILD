@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace KAZABUILD.Domain.Entities.Components.SubComponents
 {
     /// <summary>
-    /// SubComponent representing motherboard slots (e.g., PCIe, M.2).
+    /// SubComponent representing motherboard M2 slots .
     /// </summary>
     public class M2SlotSubComponent : BaseSubComponent
     {

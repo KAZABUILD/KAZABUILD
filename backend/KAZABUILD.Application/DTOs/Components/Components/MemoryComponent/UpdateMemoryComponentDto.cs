@@ -29,5 +29,21 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
         public decimal? ModuleCapacity { get; set; }
+
+        [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
+        public string? ErrorCorrectingCode { get; set; }
+
+        [StringLength(50, ErrorMessage = "Registered cannot be longer than 50 characters!")]
+        public string? Registered { get; set; } 
+
+        public bool? HasHeatSpreader { get; set; } 
+
+        public bool? RGB { get; set; } 
+
+        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        public decimal? Height { get; set; }
+
+        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        public decimal? Voltage { get; set; }
     }
 }

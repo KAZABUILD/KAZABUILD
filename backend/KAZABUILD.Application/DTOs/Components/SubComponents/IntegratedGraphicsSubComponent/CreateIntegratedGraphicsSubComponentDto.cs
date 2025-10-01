@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.IntegratedGraphics
     public class CreateIntegratedGraphicsSubComponentDto : CreateBaseSubComponentDto
     {
         [StringLength(100, ErrorMessage = "Model cannot be longer than 100 characters!")]
-        public string? Model { get; set; } = default!;
+        public string? Model { get; set; }
 
         [Required]
         [Range(100, 10000, ErrorMessage = "Base Clock Speed must be between 100 and 10000 MHz")]
