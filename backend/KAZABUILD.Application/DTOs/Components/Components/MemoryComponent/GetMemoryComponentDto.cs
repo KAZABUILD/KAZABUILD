@@ -14,7 +14,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
 
         public List<string>? RAMType { get; set; }
 
-        public string? FormFactor { get; set; }
+        public List<string>? FormFactor { get; set; }
 
         [Range(256, 8388608, ErrorMessage = "Capacity must be between 256 MB and 8 TB (8388608 MB)")]
         public decimal? CapacityStart { get; set; }
@@ -41,5 +41,25 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
         public decimal? ModuleCapacityEnd { get; set; }
+
+        public List<string>? ErrorCorrectingCode { get; set; }
+
+        public List<string>? Registered { get; set; }
+
+        public bool? HasHeatSpreader { get; set; }
+
+        public bool? RGB { get; set; }
+
+        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        public decimal? HeightStart { get; set; }
+
+        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        public decimal? HeightEnd { get; set; }
+
+        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        public decimal? VoltageStart { get; set; }
+
+        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        public decimal? VoltageEnd { get; set; }
     }
 }
