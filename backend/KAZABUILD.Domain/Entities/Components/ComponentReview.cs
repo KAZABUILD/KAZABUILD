@@ -24,11 +24,11 @@ namespace KAZABUILD.Domain.Entities.Components
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime? FetchedAt { get; set; } = default!;
+        public DateTime FetchedAt { get; set; } = default!;
 
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime? CreatedAt { get; set; } = default!;
+        public DateTime CreatedAt { get; set; } = default!;
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
