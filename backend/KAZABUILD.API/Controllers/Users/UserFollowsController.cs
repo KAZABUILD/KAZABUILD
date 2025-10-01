@@ -172,11 +172,14 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrEmpty(dto.Note))
+            if (dto.Note != null)
             {
                 changedFields.Add("Note: " + userFollow.Note);
 
-                userFollow.Note = dto.Note;
+                if (string.IsNullOrWhiteSpace(dto.Note))
+                    userFollow.Note = null;
+                else
+                    userFollow.Note = dto.Note;
             }
 
             //Update edit timestamp
@@ -352,27 +355,23 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.FollowerId != null)
             {
-                query = query.Where(f => f.FollowerId == dto.FollowerId);
+                query = query.Where(f => dto.FollowerId.Contains(f.FollowerId));
             }
             if (dto.FollowedId != null)
             {
-                query = query.Where(f => f.FollowedId == dto.FollowedId);
+                query = query.Where(f => dto.FollowedId.Contains(f.FollowedId));
             }
-            if (dto.FollowedAtStart != null && dto.FollowedAtEnd != null)
-            {
-                query = query.Where(f => f.FollowedAt >= dto.FollowedAtStart && f.FollowedAt <= dto.FollowedAtEnd);
-            }
-            else if (dto.FollowedAtStart != null)
+            if (dto.FollowedAtStart != null)
             {
                 query = query.Where(f => f.FollowedAt >= dto.FollowedAtStart);
             }
-            else if (dto.FollowedAtEnd != null)
+            if (dto.FollowedAtEnd != null)
             {
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
             //Order by specified field if provided
-            if (!string.IsNullOrEmpty(dto.OrderBy))
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }

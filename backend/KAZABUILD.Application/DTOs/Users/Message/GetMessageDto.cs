@@ -6,9 +6,9 @@ namespace KAZABUILD.Application.DTOs.Users.Message
     public class GetMessageDto
     {
         //Filter By fields
-        public Guid? SenderId { get; set; }
+        public List<Guid>? SenderId { get; set; }
 
-        public Guid? ReceiverId { get; set; }
+        public List<Guid>? ReceiverId { get; set; }
 
         [DataType(DataType.DateTime)]
         public DateTime? SentAtStart { get; set; }
@@ -18,10 +18,9 @@ namespace KAZABUILD.Application.DTOs.Users.Message
 
         public bool? IsRead { get; set; }
 
-        public Guid? ParentMessageId { get; set; }
+        public List<Guid>? ParentMessageId { get; set; }
 
-        [EnumDataType(typeof(MessageType))]
-        public MessageType? MessageType { get; set; }
+        public List<MessageType>? MessageType { get; set; }
 
         //Paging related fields
         public bool Paging = false;
