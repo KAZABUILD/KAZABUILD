@@ -13,7 +13,7 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.M2SlotSubComponent
 
         [Required]
         [StringLength(50, ErrorMessage = "Key Type cannot be longer than 50 characters!")]
-        public string Key { get; set; } = default!;
+        public string KeyType { get; set; } = default!;
 
         [Required]
         [StringLength(50, ErrorMessage = "cannot be longer than 50 characters!")]

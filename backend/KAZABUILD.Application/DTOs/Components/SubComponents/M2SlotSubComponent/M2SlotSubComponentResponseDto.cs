@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.M2SlotSubComponent
     {
         public string? Size { get; set; }
 
-        public string? Key { get; set; }
+        public string? KeyType { get; set; }
 
         public string? Interface { get; set; }
     }

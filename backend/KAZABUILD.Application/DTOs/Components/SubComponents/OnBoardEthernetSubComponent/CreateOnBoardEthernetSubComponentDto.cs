@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.OnBoardEthernetSub
     public class CreateOnBoardEthernetSubComponentDto : CreateBaseSubComponentDto
     {
         [Required]
-        [StringLength(50, ErrorMessage = "Size cannot be longer than 50 characters!")]
+        [StringLength(50, ErrorMessage = "Speed cannot be longer than 50 characters!")]
         public string Speed { get; set; } = default!;
 
         [Required]

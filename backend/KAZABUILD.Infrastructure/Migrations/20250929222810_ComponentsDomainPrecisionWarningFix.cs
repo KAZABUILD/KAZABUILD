@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -111,7 +111,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 oldType: "decimal(18,2)");
 
             migrationBuilder.AlterColumn<decimal>(
-                name: "ColumnAddressStrobeLatency",
+                name: "CASLatency",
                 table: "MemoryComponents",
                 type: "decimal(9,6)",
                 precision: 9,
@@ -602,7 +602,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 oldScale: 2);
 
             migrationBuilder.AlterColumn<decimal>(
-                name: "ColumnAddressStrobeLatency",
+                name: "CASLatency",
                 table: "MemoryComponents",
                 type: "decimal(18,2)",
                 nullable: false,

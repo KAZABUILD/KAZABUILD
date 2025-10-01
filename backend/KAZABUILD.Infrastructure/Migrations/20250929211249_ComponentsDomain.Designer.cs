@@ -1075,7 +1075,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<decimal>("Capacity")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("ColumnAddressStrobeLatency")
+                    b.Property<decimal>("CASLatency")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FormFactor")

@@ -1,3 +1,5 @@
+// Ignore Spelling: RGB ARGB
+
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 
 using System.ComponentModel.DataAnnotations;
@@ -18,74 +20,74 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         [StringLength(50, ErrorMessage = "RAM type cannot be longer than 50 characters!")]
         public string? RAMType { get; set; }
 
-        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 1 and 15")]
-        public int? RAMSlotsAmount { get; set; }
+        [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
+        public string? RAMSlotsAmount { get; set; }
 
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
-        public int? MaxRAMAmount { get; set; } = default!;
+        public int? MaxRAMAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Sata6Gbs Amount must be between 0 and 20")]
-        public int? Sata6GbsAmount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20")]
+        public int? SerialATAttachment6GBsAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Sata3Gbs Amount must be between 0 and 20")]
-        public int? Sata3GbsAmount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20")]
+        public int? SerialATAttachment3GBsAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "U2 Amount must be between 0 and 20")]
-        public int? U2Amount { get; set; } = default!;
+        [Range(0, 20, ErrorMessage = "U2 Port Amount must be between 0 and 20")]
+        public int? U2PortAmount { get; set; }
 
-        [StringLength(50, ErrorMessage = "Wireless Networking Type cannot be longer than 50 characters!")]
-        public string? WirelessNetworkingType { get; set; } = default!;
+        [StringLength(50, ErrorMessage = "Wireless Networking Standard cannot be longer than 50 characters!")]
+        public string? WirelessNetworkingStandard { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Cpu Fan Amount must be between 0 and 20")]
-        public int? CpuFanAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "CPU Fan Header Amount must be between 0 and 20")]
+        public int? CpuFanHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Case Fan Amount must be between 0 and 20")]
-        public int? CaseFanAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Case Fan Header Amount must be between 0 and 20")]
+        public int? CaseFanHeaderAmount { get; set; }
 
         [Range(0, 20, ErrorMessage = "Pump Header Amount must be between 0 and 20")]
         public int? PumpHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Cpu Opt Fan Header Amount must be between 0 and 20")]
-        public int? CpuOptFanHeaderAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "CPU Optional Fan Header Amount must be between 0 and 20")]
+        public int? CPUOptionalFanHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "CpuOptFan Amount must be between 0 and 20")]
-        public int? ARGB5vAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Addressable RGB 5v Header Amount must be between 0 and 20")]
+        public int? ARGB5vHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Rgb12v Amount must be between 0 and 20")]
-        public int? RGB12vAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "RGB 12v Header Amount must be between 0 and 20")]
+        public int? RGB12vHeaderAmount { get; set; }
 
-        public bool? HasPowerButton { get; set; }
+        public bool? HasPowerButtonHeader { get; set; }
 
-        public bool? HasResetButton { get; set; }
+        public bool? HasResetButtonHeader { get; set; }
 
-        public bool? HasPowerLED { get; set; }
+        public bool? HasPowerLEDHeader { get; set; }
 
-        public bool? HasHDDLED { get; set; }
+        public bool? HasHDDLEDHeader { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Temprature Sensor Amount must be between 0 and 20")]
-        public int? TempratureSensorAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Temperature Sensor Header Amount must be between 0 and 20")]
+        public int? TemperatureSensorHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Thunderbolt Amount must be between 0 and 20")]
-        public int? ThunderboltAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Thunderbolt Header Amount must be between 0 and 20")]
+        public int? ThunderboltHeaderAmount { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Com Port Amount must be between 0 and 20")]
-        public int? ComPortAmount { get; set; }
+        [Range(0, 20, ErrorMessage = "Com Port Header Amount must be between 0 and 20")]
+        public int? ComPortHeaderAmount { get; set; }
 
-        [StringLength(50, ErrorMessage = "Main power type cannot be longer than 50 characters!")]
-        public string? MainPower { get; set; }
+        [StringLength(50, ErrorMessage = "Main Power Type cannot be longer than 50 characters!")]
+        public string? MainPowerType { get; set; }
 
-        public bool? HasEccSupport { get; set; } = default!;
+        public bool? HasECCSupport { get; set; }
 
-        public bool? HasRaidSupport { get; set; } = default!;
+        public bool? HasRAIDSupport { get; set; }
 
-        public bool? HasFlashback { get; set; } = default!;
+        public bool? HasFlashback { get; set; }
 
-        public bool? HasClearCmos { get; set; } = default!;
+        public bool? HasCMOS { get; set; }
 
-        [StringLength(50, ErrorMessage = "Audio Chipset must be between 0 and 20!")]
-        public string? AudioChipset { get; set; } = default!;
+        [StringLength(50, ErrorMessage = "Audio Chipset cannot be longer than 50 characters!")]
+        public string? AudioChipset { get; set; }
 
-        [Range(1, 32, ErrorMessage = "Channels type cannot be longer than 50 characters!")]
-        public decimal? AudioChannelsAmount { get; set; } = default!;
+        [Range(1, 32, ErrorMessage = "Audio Channels must be between 0 and 20!")]
+        public decimal? MaxAudioChannels { get; set; }
     }
 }
