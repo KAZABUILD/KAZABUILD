@@ -1,4 +1,4 @@
-using KAZABUILD.Application.DTOs.Components.ComponentColor;
+using KAZABUILD.Application.DTOs.Components.ComponentReview;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
@@ -14,7 +14,7 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    public class ComponentColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentReviewController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -22,14 +22,13 @@ namespace KAZABUILD.API.Controllers.Components
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new ComponentColor for administration.
-        /// Callers can create new colors if they provide a color name.
+        /// API Endpoint for creating a new ComponentReview for administration.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddComponentColor([FromBody] CreateComponentColorDto dto)
+        public async Task<IActionResult> AddComponentReview([FromBody] CreateComponentReviewDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -47,7 +46,7 @@ namespace KAZABUILD.API.Controllers.Components
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "ComponentColor",
+                    "ComponentReview",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -58,53 +57,22 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "Component not found!" });
             }
 
-            //Check if the Color exists, if not create it
-            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == dto.ColorCode);
-            if (color == null && dto.ColorName != null)
+            //Create a ComponentReview to add
+            ComponentReview componentReview = new()
             {
-                //Create a color to add
-                color = new()
-                {
-                    ColorCode = dto.ColorCode,
-                    ColorName = dto.ColorName,
-                    DatabaseEntryAt = DateTime.UtcNow,
-                    LastEditedAt = DateTime.UtcNow
-                };
-
-                //Add the color to the database
-                _db.Colors.Add(color);
-            }
-            //Return a failure response if new color name not provided
-            if (color == null && dto.ColorName == null)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "ComponentColor",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned Color Doesn't Exist"
-                );
-
-                //Return proper error response
-                return BadRequest(new { message = "Color unable to be created! Provide a Color Name or an existing color." });
-            }
-
-            //Create a componentColor to add
-            ComponentColor componentColor = new()
-            {
+                SourceUrl = dto.SourceUrl,
+                ReviewerName = dto.ReviewerName,
                 ComponentId = dto.ComponentId,
-                ColorCode = dto.ColorCode,
-                IsAvailable = dto.IsAvailable,
-                AdditionalPrice = dto.AdditionalPrice,
+                FetchedAt = dto.FetchedAt,
+                CreatedAt = dto.CreatedAt,
+                Rating = dto.Rating,
+                ReviewText = dto.ReviewText,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the componentColor to the database
-            _db.ComponentColors.Add(componentColor);
+            //Add the componentReview to the database
+            _db.ComponentReviews.Add(componentReview);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -113,34 +81,33 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "ComponentColor",
+                "ComponentReview",
                 ip,
-                componentColor.Id,
+                componentReview.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New ComponentColor Created"
+                "Successful Operation - New ComponentReview Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.created", new
+            await _publisher.PublishAsync("componentReview.created", new
             {
-                componentColorId = componentColor.Id,
+                componentReviewId = componentReview.Id,
                 createdBy = currentUserId
             });
 
-            //Return success response
-            return Ok(new { componentColor = "ComponentColor created successfully!" });
+            //Return a success response
+            return Ok(new { componentReview = "ComponentsPrice created successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected ComponentColor for administration,
-        /// can update the Colors's name as well.
+        /// API endpoint for updating the selected ComponentReview's Note for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateComponentColor(Guid id, [FromBody] UpdateComponentColorDto dto)
+        public async Task<IActionResult> UpdateComponentReview(Guid id, [FromBody] UpdateComponentReviewDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -150,118 +117,125 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to edit
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            //Check if the componentColor exists
-            if (componentColor == null)
+            //Get the componentReview to edit
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            //Check if the componentReview exists
+            if (componentReview == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "ComponentColor",
+                    "ComponentReview",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentReview"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentReview = "ComponentReview not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrWhiteSpace(dto.ColorName))
+            if (!string.IsNullOrWhiteSpace(dto.SourceUrl))
             {
-                //Get the color
-                var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == componentColor.ColorCode);
+                changedFields.Add("SourceUrl: " + componentReview.SourceUrl);
 
-                changedFields.Add("ColorName: " + color!.ColorName);
-
-                //Update the color name and last edit date
-                color!.ColorName = dto.ColorName;
-                color!.LastEditedAt = DateTime.UtcNow;
-
-                //Update the color in the database
-                _db.Colors.Update(color);
+                componentReview.SourceUrl = dto.SourceUrl;
             }
-            if (!string.IsNullOrWhiteSpace(dto.ColorCode))
+            if (!string.IsNullOrWhiteSpace(dto.ReviewerName))
             {
-                changedFields.Add("ColorCode: " + componentColor.ColorCode);
+                changedFields.Add("ReviewerName: " + componentReview.ReviewerName);
 
-                componentColor.ColorCode = dto.ColorCode;
+                componentReview.ReviewerName = dto.ReviewerName;
             }
-            if (dto.IsAvailable != null)
+            if (dto.ComponentId != null)
             {
-                changedFields.Add("IsAvailable: " + componentColor.IsAvailable);
+                changedFields.Add("ComponentId: " + componentReview.ComponentId);
 
-                componentColor.IsAvailable = (bool)dto.IsAvailable;
+                componentReview.ComponentId = (Guid)dto.ComponentId;
             }
-            if (dto.AdditionalPrice != null)
+            if (dto.FetchedAt != null)
             {
-                changedFields.Add("AdditionalPrice: " + componentColor.AdditionalPrice);
+                changedFields.Add("FetchedAt: " + componentReview.FetchedAt);
 
-                if (dto.AdditionalPrice == 0)
-                    componentColor.AdditionalPrice = null;
-                else
-                    componentColor.AdditionalPrice = dto.AdditionalPrice;
+                componentReview.FetchedAt = (DateTime)dto.FetchedAt;
+            }
+            if (dto.CreatedAt != null)
+            {
+                changedFields.Add("CreatedAt: " + componentReview.CreatedAt);
+
+                componentReview.CreatedAt = (DateTime)dto.CreatedAt;
+            }
+            if (dto.Rating != null)
+            {
+                changedFields.Add("Rating: " + componentReview.Rating);
+
+                componentReview.Rating = (decimal)dto.Rating;
+            }
+            if (!string.IsNullOrWhiteSpace(dto.ReviewText))
+            {
+                changedFields.Add("ReviewText: " + componentReview.ReviewText);
+
+                componentReview.ReviewText = dto.ReviewText;
             }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + componentColor.Note);
+                changedFields.Add("Note: " + componentReview.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    componentColor.Note = null;
+                    componentReview.Note = null;
                 else
-                    componentColor.Note = dto.Note;
+                    componentReview.Note = dto.Note;
             }
 
             //Update edit timestamp
-            componentColor.LastEditedAt = DateTime.UtcNow;
+            componentReview.LastEditedAt = DateTime.UtcNow;
 
-            //Update the componentColor
-            _db.ComponentColors.Update(componentColor);
+            //Update the componentReview
+            _db.ComponentReviews.Update(componentReview);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description with all the changed fields
+            //Logging description of the changed fields
             var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "ComponentColor",
+                "ComponentReview",
                 ip,
-                componentColor.Id,
+                componentReview.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.updated", new
+            await _publisher.PublishAsync("componentReview.updated", new
             {
-                componentColorId = id,
+                componentReviewId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentColor = "ComponentColor updated successfully!" });
+            return Ok(new { componentReview = "ComponentReview updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the ComponentColor specified by id,
+        /// API endpoint for getting the ComponentReview specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<ComponentColorResponseDto>> GetComponentColor(Guid id)
+        public async Task<ActionResult<ComponentReviewResponseDto>> GetComponentReview(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -271,30 +245,30 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to return
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentColor == null)
+            //Get the componentReview to return
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentReview == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "ComponentColor",
+                    "ComponentReview",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentReview"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentReview = "ComponentReview not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            ComponentColorResponseDto response;
+            ComponentReviewResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
@@ -305,14 +279,17 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create componentColor response
-                response = new ComponentColorResponseDto
+                //Create componentReview response
+                response = new ComponentReviewResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice
+                    Id = componentReview.Id,
+                    SourceUrl = componentReview.SourceUrl,
+                    ReviewerName = componentReview.ReviewerName,
+                    ComponentId = componentReview.ComponentId,
+                    FetchedAt = componentReview.FetchedAt,
+                    CreatedAt = componentReview.CreatedAt,
+                    Rating = componentReview.Rating,
+                    ReviewText = componentReview.ReviewText
                 };
             }
             else
@@ -320,17 +297,20 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create componentColor response
-                response = new ComponentColorResponseDto
+                //Create componentReview response
+                response = new ComponentReviewResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice,
-                    DatabaseEntryAt = componentColor.DatabaseEntryAt,
-                    LastEditedAt = componentColor.LastEditedAt,
-                    Note = componentColor.Note,
+                    Id = componentReview.Id,
+                    SourceUrl = componentReview.SourceUrl,
+                    ReviewerName = componentReview.ReviewerName,
+                    ComponentId = componentReview.ComponentId,
+                    FetchedAt = componentReview.FetchedAt,
+                    CreatedAt = componentReview.CreatedAt,
+                    Rating = componentReview.Rating,
+                    ReviewText = componentReview.ReviewText,
+                    DatabaseEntryAt = componentReview.DatabaseEntryAt,
+                    LastEditedAt = componentReview.LastEditedAt,
+                    Note = componentReview.Note,
                 };
             }
 
@@ -338,7 +318,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentColor",
+                "ComponentReview",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -346,27 +326,27 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.got", new
+            await _publisher.PublishAsync("componentReview.got", new
             {
-                componentColorId = id,
+                componentReviewId = id,
                 gotBy = currentUserId
             });
 
-            //Return the componentColor
+            //Return the ComponentReview
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting ComponentColors with pagination and search,
+        /// API endpoint for getting ComponentReviews with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<ComponentColorResponseDto>>> GetComponentColors([FromBody] GetComponentColorDto dto)
+        public async Task<ActionResult<IEnumerable<ComponentReviewResponseDto>>> GetComponentReviews([FromBody] GetComponentReviewDto dto)
         {
-            //Get componentColor id and claims from the request
+            //Get componentReview id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -378,30 +358,42 @@ namespace KAZABUILD.API.Controllers.Components
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.ComponentColors.AsNoTracking();
+            var query = _db.ComponentReviews.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.ComponentId != null)
             {
-                query = query.Where(c => dto.ComponentId.Contains(c.ComponentId));
+                query = query.Where(p => dto.ComponentId.Contains(p.ComponentId));
             }
-            if (dto.ColorCode != null)
+            if (dto.FetchedAtStart != null)
             {
-                query = query.Where(c => dto.ColorCode.Contains(c.ColorCode));
+                query = query.Where(p => p.FetchedAt >= dto.FetchedAtStart);
             }
-            if (dto.ColorName != null)
+            if (dto.FetchedAtEnd != null)
             {
-                query = query.Include(c => c.Color).Where(c => dto.ColorName.Contains(c.Color!.ColorName));
+                query = query.Where(p => p.FetchedAt <= dto.FetchedAtEnd);
             }
-            if (dto.IsAvailable != null)
+            if (dto.CreatedAtStart != null)
             {
-                query = query.Where(c => c.IsAvailable == dto.IsAvailable);
+                query = query.Where(p => p.CreatedAt >= dto.CreatedAtStart);
+            }
+            if (dto.CreatedAtEnd != null)
+            {
+                query = query.Where(p => p.CreatedAt <= dto.CreatedAtEnd);
+            }
+            if (dto.RatingStart != null)
+            {
+                query = query.Where(p => p.Rating >= dto.RatingStart);
+            }
+            if (dto.RatingEnd != null)
+            {
+                query = query.Where(p => p.Rating <= dto.RatingEnd);
             }
 
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.Color).Search(dto.Query, c => c.Color!.ColorName, c => c.ColorCode);
+                query = query.Include(p => p.Component).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.ReviewerName, p => p.FetchedAt!, p => p.CreatedAt!);
             }
 
             //Order by specified field if provided
@@ -410,7 +402,7 @@ namespace KAZABUILD.API.Controllers.Components
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get componentColors with paging
+            //Get componentReviews with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -421,47 +413,53 @@ namespace KAZABUILD.API.Controllers.Components
             //Log Description string declaration
             string logDescription;
 
-            List<ComponentColor> componentColors = await query.ToListAsync();
+            List<ComponentReview> componentReviews = await query.ToListAsync();
 
             //Declare response variable
-            List<ComponentColorResponseDto> responses;
+            List<ComponentReviewResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple ComponentColors";
+                logDescription = "Successful Operation - User Access, Multiple ComponentReviews";
 
-                //Create a componentColor response list
-                responses = [.. componentColors.Select(componentColor =>
+                //Create a componentReview response list
+                responses = [.. componentReviews.Select(componentReview =>
                 {
                     //Return a follow response
-                    return new ComponentColorResponseDto
+                    return new ComponentReviewResponseDto
                     {
-                        Id = componentColor.Id,
-                        ComponentId = componentColor.ComponentId,
-                        ColorCode = componentColor.ColorCode,
-                        IsAvailable = componentColor.IsAvailable,
-                        AdditionalPrice = componentColor.AdditionalPrice
+                        Id = componentReview.Id,
+                        SourceUrl = componentReview.SourceUrl,
+                        ReviewerName = componentReview.ReviewerName,
+                        ComponentId = componentReview.ComponentId,
+                        FetchedAt = componentReview.FetchedAt,
+                        CreatedAt = componentReview.CreatedAt,
+                        Rating = componentReview.Rating,
+                        ReviewText = componentReview.ReviewText
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple ComponentColors";
+                logDescription = "Successful Operation - Admin Access, Multiple ComponentReviews";
 
-                //Create a componentColor response list
-                responses = [.. componentColors.Select(componentColor => new ComponentColorResponseDto
+                //Create a componentReview response list
+                responses = [.. componentReviews.Select(componentReview => new ComponentReviewResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice,
-                    DatabaseEntryAt = componentColor.DatabaseEntryAt,
-                    LastEditedAt = componentColor.LastEditedAt,
-                    Note = componentColor.Note
+                    Id = componentReview.Id,
+                    SourceUrl = componentReview.SourceUrl,
+                    ReviewerName = componentReview.ReviewerName,
+                    ComponentId = componentReview.ComponentId,
+                    FetchedAt = componentReview.FetchedAt,
+                    CreatedAt = componentReview.CreatedAt,
+                    Rating = componentReview.Rating,
+                    ReviewText = componentReview.ReviewText,
+                    DatabaseEntryAt = componentReview.DatabaseEntryAt,
+                    LastEditedAt = componentReview.LastEditedAt,
+                    Note = componentReview.Note
                 })];
 
             }
@@ -470,7 +468,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentColor",
+                "ComponentReview",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -478,26 +476,26 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.gotComponentColors", new
+            await _publisher.PublishAsync("componentReview.gotComponentReviews", new
             {
-                componentColorIds = componentColors.Select(u => u.Id),
+                componentReviewIds = componentReviews.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
-            //Return the componentColors
+            //Return the componentReviews
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected ComponentColor for administration.
+        /// API endpoint for deleting the selected ComponentReview for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteComponentColor(Guid id)
+        public async Task<IActionResult> DeleteComponentReview(Guid id)
         {
-            //Get componentColor id and role from the request claims
+            //Get componentReview id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -505,27 +503,27 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to delete
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentColor == null)
+            //Get the componentReview to delete
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentReview == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "ComponentColor",
+                    "ComponentReview",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentReview"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentReview = "ComponentReview not found!" });
             }
 
-            //Delete the componentColor
-            _db.ComponentColors.Remove(componentColor);
+            //Delete the componentReview
+            _db.ComponentReviews.Remove(componentReview);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -534,22 +532,22 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "ComponentColor",
+                "ComponentReview",
                 ip,
-                componentColor.Id,
+                componentReview.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.deleted", new
+            await _publisher.PublishAsync("componentReview.deleted", new
             {
-                componentColorId = id,
+                componentReviewId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentColor = "ComponentColor deleted successfully!" });
+            return Ok(new { componentReview = "ComponentsPrice deleted successfully!" });
         }
     }
 }

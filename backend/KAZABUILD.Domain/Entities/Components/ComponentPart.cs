@@ -16,6 +16,10 @@ namespace KAZABUILD.Domain.Entities.Components
         [Required]
         public Guid SubComponentId { get; set; } = default!;
 
+        [Required]
+        [Range(1, 50, ErrorMessage = "Amount must be between 1 and 50!")]
+        public int Amount { get; set; }
+
         //Additional database information
         [DataType(DataType.DateTime)]
         public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;

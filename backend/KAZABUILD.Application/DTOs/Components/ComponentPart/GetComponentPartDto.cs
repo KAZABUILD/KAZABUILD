@@ -9,6 +9,12 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPart
 
         public List<Guid>? SubComponentId { get; set; }
 
+        [Range(1, 50, ErrorMessage = "Amount must be between 1 and 50!")]
+        public int? AmountStart { get; set; }
+
+        [Range(1, 50, ErrorMessage = "Amount must be between 1 and 50!")]
+        public int? AmountEnd { get; set; }
+
         //Paging related fields
         public bool Paging = false;
 

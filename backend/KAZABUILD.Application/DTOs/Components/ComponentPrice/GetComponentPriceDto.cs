@@ -6,7 +6,7 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
     public class GetComponentPriceDto
     {
         //Filter By fields
-        public Guid? ComponentId { get; set; }
+        public List<Guid>? ComponentId { get; set; }
 
         [StringLength(50, ErrorMessage = "Vendor Name cannot be longer than 50 characters!")]
         public List<string>? VendorName { get; set; } 
@@ -19,16 +19,6 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
 
         [StringLength(4, ErrorMessage = "Currency cannot be longer than 4 characters!")]
         public List<string>? Currency { get; set; } = default!;
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
 
         //Paging related fields
         public bool Paging = false;

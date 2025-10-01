@@ -1,20 +1,20 @@
-using KAZABUILD.Application.DTOs.Components.Color;
+using KAZABUILD.Application.DTOs.Components.SubComponentPart;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Components;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Domain.Entities.Components;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using System.Linq.Dynamic.Core;
+using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    public class ColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class SubSubComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -22,13 +22,13 @@ namespace KAZABUILD.API.Controllers.Components
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new Color for administration.
+        /// API Endpoint for creating a new SubComponentPart for administration.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddColor([FromBody] CreateColorDto dto)
+        public async Task<IActionResult> AddSubComponentPart([FromBody] CreateSubComponentPartDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -38,75 +38,90 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Color already exists
-            var user = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == dto.ColorCode);
-            if (user == null)
+            //Check if the Main SubComponent exists
+            var mainSubComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == dto.MainSubComponentId);
+            if (mainSubComponent == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "Color",
+                    "SubComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Color Already Created"
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
                 );
 
                 //Return proper error response
-                return Conflict(new { message = "Color already exists!" });
+                return BadRequest(new { message = "SubComponent not found!" });
             }
 
-            //Create a color to add
-            Color color = new()
+            //Check if the SubComponent exists
+            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == dto.SubComponentId);
+            if (subComponent == null)
             {
-                ColorCode = dto.ColorCode,
-                ColorName = dto.ColorName,
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "SubComponentPart",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "SubComponent not found!" });
+            }
+
+            //Create a subComponentPart to add
+            SubComponentPart subComponentPart = new()
+            {
+                MainSubComponentId = dto.MainSubComponentId,
+                SubComponentId = dto.SubComponentId,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the color to the database
-            _db.Colors.Add(color);
+            //Add the subComponentPart to the database
+            _db.SubComponentParts.Add(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
-
-            //Convert the hex code string into a guid
-            Guid guidId = GuidConversionHelper.FromString(dto.ColorCode);
 
             //Log the creation
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "Color",
+                "SubComponentPart",
                 ip,
-                guidId,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New Color Created"
+                "Successful Operation - New SubComponentPart Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("color.created", new
+            await _publisher.PublishAsync("subComponentPart.created", new
             {
-                colorId = dto.ColorCode,
-                updatedBy = currentUserId
+                subComponentPartId = subComponentPart.Id,
+                createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { color = "Color added successfully!" });
+            return Ok(new { subComponentPart = "SubComponentPart created successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected Color for Administration,
-        /// the id is a string representing the hex code of the Color.
+        /// API endpoint for updating the selected SubComponentPart's Note for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
-        [HttpPut("{id:string}")]
+        [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateColor(string id, [FromBody] UpdateColorDto dto)
+        public async Task<IActionResult> UpdateSubComponentPart(Guid id, [FromBody] UpdateSubComponentPartDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -116,93 +131,83 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the color to edit
-            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
-
-            //Convert the hex code string into a guid
-            Guid guidId = GuidConversionHelper.FromString(id);
-
-            //Check if the color exists
-            if (color == null)
+            //Get the subComponentPart to edit
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            //Check if the subComponentPart exists
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "Color",
+                    "SubComponentPart",
                     ip,
-                    guidId,
+                    id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Color"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { color = "Color not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
-            //Update fields
-            if (!string.IsNullOrWhiteSpace(dto.ColorName))
-            {
-                changedFields.Add("ColorName: " + color.ColorName);
-
-                color.ColorName = dto.ColorName;
-            }
+            //Update allowed fields
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + color.Note);
+                changedFields.Add("Note: " + subComponentPart.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    color.Note = null;
+                    subComponentPart.Note = null;
                 else
-                    color.Note = dto.Note;
+                    subComponentPart.Note = dto.Note;
             }
 
             //Update edit timestamp
-            color.LastEditedAt = DateTime.UtcNow;
+            subComponentPart.LastEditedAt = DateTime.UtcNow;
 
-            //Update the color
-            _db.Colors.Update(color);
+            //Update the subComponentPart
+            _db.SubComponentParts.Update(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description with all the changed fields
-            var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
+            //Logging description if the note was edited or not
+            var description = changedFields.Count > 0 ? $"Updated {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "Color",
+                "SubComponentPart",
                 ip,
-                guidId,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("color.updated", new
+            await _publisher.PublishAsync("subComponentPart.updated", new
             {
-                colorId = id,
+                subComponentPartId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { color = "Color updated successfully!" });
+            return Ok(new { subComponentPart = "SubComponentPart updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the Color specified by id,
+        /// API endpoint for getting the SubComponentPart specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpGet("{id:string}")]
+        [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<ColorResponseDto>> GetColor(string id)
+        public async Task<ActionResult<SubComponentPartResponseDto>> GetSubComponentPart(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -212,35 +217,32 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Convert the hex code string into a guid
-            Guid guidId = GuidConversionHelper.FromString(id);
-
-            //Get the color to return
-            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
-            if (color == null)
+            //Get the subComponentPart to return
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "Color",
+                    "SubComponentPart",
                     ip,
-                    guidId,
+                    id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Color"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { color = "Color not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            ColorResponseDto response;
+            SubComponentPartResponseDto response;
 
-            //Check if current user has admin permissions
+            //Check if current user is getting themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Check if has admin privilege
@@ -249,11 +251,12 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create color response
-                response = new ColorResponseDto
+                //Create subComponentPart response
+                response = new SubComponentPartResponseDto
                 {
-                    ColorCode = color.ColorCode,
-                    ColorName = color.ColorName
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId
                 };
             }
             else
@@ -261,14 +264,15 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create color response
-                response = new ColorResponseDto
+                //Create subComponentPart response
+                response = new SubComponentPartResponseDto
                 {
-                    ColorCode = color.ColorCode,
-                    ColorName = color.ColorName,
-                    DatabaseEntryAt = color.DatabaseEntryAt,
-                    LastEditedAt = color.LastEditedAt,
-                    Note = color.Note,
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId,
+                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
+                    LastEditedAt = subComponentPart.LastEditedAt,
+                    Note = subComponentPart.Note,
                 };
             }
 
@@ -276,35 +280,35 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Color",
+                "SubComponentPart",
                 ip,
-                guidId,
+                id,
                 PrivacyLevel.INFORMATION,
                 logDescription
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("color.got", new
+            await _publisher.PublishAsync("subComponentPart.got", new
             {
-                colorId = id,
+                subComponentPartId = id,
                 gotBy = currentUserId
             });
 
-            //Return the color
+            //Return the subComponentPart
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting Colors with pagination and search,
+        /// API endpoint for getting SubComponentParts with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<ColorResponseDto>>> GetColors([FromBody] GetColorDto dto)
+        public async Task<ActionResult<IEnumerable<SubComponentPartResponseDto>>> GetSubComponentParts([FromBody] GetSubComponentPartDto dto)
         {
-            //Get color id and claims from the request
+            //Get subComponentPart id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -316,12 +320,22 @@ namespace KAZABUILD.API.Controllers.Components
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.Colors.AsNoTracking();
+            var query = _db.SubComponentParts.AsNoTracking();
 
-            //Apply search based om credentials
+            //Filter by the variables if included
+            if (dto.MainSubComponentId != null)
+            {
+                query = query.Where(p => dto.MainSubComponentId.Contains(p.MainSubComponentId));
+            }
+            if (dto.SubComponentId != null)
+            {
+                query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
+            }
+
+            //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Search(dto.Query, c => c.ColorCode, c => c.ColorName);
+                query = query.Include(p => p.SubComponent).Include(p => p.MainSubComponent).Search(dto.Query, p => p.MainSubComponent!.Name, p => p.SubComponent!.Name);
             }
 
             //Order by specified field if provided
@@ -330,7 +344,7 @@ namespace KAZABUILD.API.Controllers.Components
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get colors with paging
+            //Get subComponentParts with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -341,41 +355,43 @@ namespace KAZABUILD.API.Controllers.Components
             //Log Description string declaration
             string logDescription;
 
-            List<Color> colors = await query.ToListAsync();
+            List<SubComponentPart> subComponentParts = await query.ToListAsync();
 
             //Declare response variable
-            List<ColorResponseDto> responses;
+            List<SubComponentPartResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple Colors";
+                logDescription = "Successful Operation - User Access, Multiple SubComponentParts";
 
-                //Create a color response list
-                responses = [.. colors.Select(color =>
+                //Create a subComponentPart response list
+                responses = [.. subComponentParts.Select(subComponentPart =>
                 {
                     //Return a follow response
-                    return new ColorResponseDto
+                    return new SubComponentPartResponseDto
                     {
-                        ColorCode = color.ColorCode,
-                        ColorName = color.ColorName
+                        Id = subComponentPart.Id,
+                        MainSubComponentId = subComponentPart.MainSubComponentId,
+                        SubComponentId = subComponentPart.SubComponentId
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple Colors";
+                logDescription = "Successful Operation - Admin Access, Multiple SubComponentParts";
 
-                //Create a color response list
-                responses = [.. colors.Select(color => new ColorResponseDto
+                //Create a subComponentPart response list
+                responses = [.. subComponentParts.Select(subComponentPart => new SubComponentPartResponseDto
                 {
-                    ColorCode = color.ColorCode,
-                    ColorName = color.ColorName,
-                    DatabaseEntryAt = color.DatabaseEntryAt,
-                    LastEditedAt = color.LastEditedAt,
-                    Note = color.Note,
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId,
+                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
+                    LastEditedAt = subComponentPart.LastEditedAt,
+                    Note = subComponentPart.Note
                 })];
 
             }
@@ -384,7 +400,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Color",
+                "SubComponentPart",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -392,26 +408,26 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("color.gotColors", new
+            await _publisher.PublishAsync("subComponentPart.gotSubComponentParts", new
             {
-                colorIds = colors.Select(u => u.ColorCode),
-                gotdBy = currentUserId
+                subComponentPartIds = subComponentParts.Select(u => u.Id),
+                gotBy = currentUserId
             });
 
-            //Return the colors
+            //Return the subComponentParts
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected Color for administration.
+        /// API endpoint for deleting the selected SubComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpDelete("{id:string}")]
+        [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteColor(string id)
+        public async Task<IActionResult> DeleteSubComponentPart(Guid id)
         {
-            //Get color id and role from the request claims
+            //Get subComponentPart id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -419,36 +435,27 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Convert the hex code string into a guid
-            Guid guidId = GuidConversionHelper.FromString(id);
-
-            //Get the color to delete
-            var color = await _db.Colors.Include(c => c.Components).FirstOrDefaultAsync(u => u.ColorCode == id);
-            if (color == null)
+            //Get the subComponentPart to delete
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "Color",
+                    "SubComponentPart",
                     ip,
-                    guidId,
+                    id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Color"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { color = "Color not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
-            //Delete all associated ComponentColors
-            if(color.Components.Count != 0)
-{
-                _db.ComponentColors.RemoveRange(color.Components);
-            }
-
-            //Delete the color
-            _db.Colors.Remove(color);
+            //Delete the subComponentPart
+            _db.SubComponentParts.Remove(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -457,22 +464,22 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "Color",
+                "SubComponentPart",
                 ip,
-                guidId,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("color.deleted", new
+            await _publisher.PublishAsync("subComponentPart.deleted", new
             {
-                colorId = id,
+                subComponentPartId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { color = "Color deleted successfully!" });
+            return Ok(new { subComponentPart = "SubComponentPart deleted successfully!" });
         }
     }
 }

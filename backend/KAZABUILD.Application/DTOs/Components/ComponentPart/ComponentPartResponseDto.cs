@@ -10,6 +10,8 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPart
 
         public Guid? SubComponentId { get; set; }
 
+        public int? Amount { get; set; }
+
         public DateTime? DatabaseEntryAt { get; set; }
 
         public DateTime? LastEditedAt { get; set; }
