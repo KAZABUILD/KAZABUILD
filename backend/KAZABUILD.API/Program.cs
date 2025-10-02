@@ -8,6 +8,7 @@ using KAZABUILD.Infrastructure.Middleware;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text.Json.Serialization;
 
@@ -53,6 +54,15 @@ namespace KAZABUILD.API
                         Array.Empty<string>()
                     }
                 });
+
+                //Enable comments in the swagger endpoint
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+
+                //Add comments from an XML file
+                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
+
             });
 
             //Add CORS policy

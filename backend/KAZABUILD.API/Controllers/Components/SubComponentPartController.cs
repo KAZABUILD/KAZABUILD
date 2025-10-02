@@ -14,7 +14,10 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    public class SubSubComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    //Controller for endpoints related to a connector for SubComponents which are a part of another SubComponent
+    [ApiController]
+    [Route("[controller]")]
+    public class SubComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
