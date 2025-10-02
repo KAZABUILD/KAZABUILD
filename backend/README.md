@@ -57,7 +57,7 @@
 - CORS Middleware
 - RabbitMQ Queues
 - Health Checks Endpoints
-- Smtp Email Service
+- SMTP Email Service
 - Hashing Service
 - Guest User Handling Middleware
 
@@ -154,7 +154,7 @@ All models have protections against adding invalid values but the any call made 
   - `Title` -> string storing the title of the notification
   - `LinkUrl` -> string storing the link to any related page
   - `SentAt` -> date object storing when the notification has been or will be received
-  - `IsRead` -> bool storing whether the notification weas read by the user
+  - `IsRead` -> bool storing whether the notification was read by the user
   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
   - `LastEditedAt` -> date object storing when the entry was last edited
   - `Note` -> nullable string storing any staff-only information
@@ -166,7 +166,7 @@ All models have protections against adding invalid values but the any call made 
   - `Content` -> string storing the html text in the message
   - `Title` -> string storing the title of the message
   - `SentAt` -> date object storing when the message has been sent
-  - `IsRead` -> bool storing whether the message weas read by the user
+  - `IsRead` -> bool storing whether the message was read by the user
   - `ParentMessageId` -> nullable GUID storing which message is being replied to
   - `MessageType` -> Enum storing type of the message
   - `DatabaseEntryAt` -> date object storing when the entry was created in the database

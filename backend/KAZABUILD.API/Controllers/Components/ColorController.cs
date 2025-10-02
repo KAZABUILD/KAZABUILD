@@ -14,6 +14,9 @@ using System.Linq.Dynamic.Core;
 
 namespace KAZABUILD.API.Controllers.Components
 {
+    //Controller for Color related endpoints
+    [ApiController]
+    [Route("[controller]")]
     public class ColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
@@ -104,7 +107,7 @@ namespace KAZABUILD.API.Controllers.Components
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
-        [HttpPut("{id:string}")]
+        [HttpPut("{id}")]
         [Authorize(Policy = "Admins")]
         public async Task<IActionResult> UpdateColor(string id, [FromBody] UpdateColorDto dto)
         {
@@ -200,7 +203,7 @@ namespace KAZABUILD.API.Controllers.Components
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpGet("{id:string}")]
+        [HttpGet("{id}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<ColorResponseDto>> GetColor(string id)
         {
@@ -407,7 +410,7 @@ namespace KAZABUILD.API.Controllers.Components
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpDelete("{id:string}")]
+        [HttpDelete("{id}")]
         [Authorize(Policy = "Admins")]
         public async Task<IActionResult> DeleteColor(string id)
         {

@@ -14,6 +14,9 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
+    //Controller for ComponentReview related endpoints
+    [ApiController]
+    [Route("[controller]")]
     public class ComponentReviewController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller

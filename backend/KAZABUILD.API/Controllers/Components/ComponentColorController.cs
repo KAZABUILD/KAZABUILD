@@ -14,6 +14,9 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
+    //Controller for endpoints related to a connector for Colors which are assigned to a Component
+    [ApiController]
+    [Route("[controller]")]
     public class ComponentColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
