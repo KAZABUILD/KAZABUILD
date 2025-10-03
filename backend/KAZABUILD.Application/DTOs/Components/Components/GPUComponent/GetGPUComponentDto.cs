@@ -46,7 +46,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
         [Range(32, 4096, ErrorMessage = "Memory Bus must be between 32-bit and 4096-bit")]
         public int? MemoryBusWidthEnd { get; set; }
 
-        public string? FrameSync { get; set; }
+        public List<string>? FrameSync { get; set; }
 
         [Range(10, 600, ErrorMessage = "GPU length must be between 10 and 600 mm")]
         public decimal? LengthStart { get; set; }

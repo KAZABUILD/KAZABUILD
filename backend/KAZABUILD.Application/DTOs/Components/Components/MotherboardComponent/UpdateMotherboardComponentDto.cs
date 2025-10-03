@@ -21,7 +21,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public string? RAMType { get; set; }
 
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
-        public string? RAMSlotsAmount { get; set; }
+        public int? RAMSlotsAmount { get; set; }
 
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
         public int? MaxRAMAmount { get; set; }
@@ -39,7 +39,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public string? WirelessNetworkingStandard { get; set; }
 
         [Range(0, 20, ErrorMessage = "CPU Fan Header Amount must be between 0 and 20")]
-        public int? CpuFanHeaderAmount { get; set; }
+        public int? CPUFanHeaderAmount { get; set; }
 
         [Range(0, 20, ErrorMessage = "Case Fan Header Amount must be between 0 and 20")]
         public int? CaseFanHeaderAmount { get; set; }
@@ -71,7 +71,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public int? ThunderboltHeaderAmount { get; set; }
 
         [Range(0, 20, ErrorMessage = "Com Port Header Amount must be between 0 and 20")]
-        public int? ComPortHeaderAmount { get; set; }
+        public int? COMPortHeaderAmount { get; set; }
 
         [StringLength(50, ErrorMessage = "Main Power Type cannot be longer than 50 characters!")]
         public string? MainPowerType { get; set; }
@@ -87,7 +87,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         [StringLength(50, ErrorMessage = "Audio Chipset cannot be longer than 50 characters!")]
         public string? AudioChipset { get; set; }
 
-        [Range(1, 32, ErrorMessage = "Audio Channels must be between 0 and 20!")]
+        [Range(1, 32, ErrorMessage = "Audio Channels must be between 1 and 32!")]
         public decimal? MaxAudioChannels { get; set; }
     }
 }

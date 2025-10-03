@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -54,7 +54,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
-                name: "CpuFanHeaderAmount",
+                name: "CPUFanHeaderAmount",
                 table: "MotherboardComponents",
                 type: "int",
                 nullable: true);
@@ -377,7 +377,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 table: "MotherboardComponents");
 
             migrationBuilder.DropColumn(
-                name: "CpuFanHeaderAmount",
+                name: "CPUFanHeaderAmount",
                 table: "MotherboardComponents");
 
             migrationBuilder.DropColumn(

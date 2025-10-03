@@ -117,7 +117,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { notification = "Notification sent successfully!" });
+            return Ok(new { notification = "Notification sent successfully!", id = notification.Id });
         }
 
         //API endpoint for updating the selected Notification

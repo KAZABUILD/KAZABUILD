@@ -1,8 +1,6 @@
 // Ignore Spelling: ARGB RGB
 
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 {
@@ -16,7 +14,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public string? RAMType { get; set; }
 
-        public string? RAMSlotsAmount { get; set; }
+        public int? RAMSlotsAmount { get; set; }
 
         public int? MaxRAMAmount { get; set; }
 
@@ -28,7 +26,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public string? WirelessNetworkingStandard { get; set; }
 
-        public int? CpuFanHeaderAmount { get; set; }
+        public int? CPUFanHeaderAmount { get; set; }
 
         public int? CaseFanHeaderAmount { get; set; }
 
@@ -52,7 +50,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public int? ThunderboltHeaderAmount { get; set; }
 
-        public int? ComPortHeaderAmount { get; set; }
+        public int? COMPortHeaderAmount { get; set; }
 
         public string? MainPowerType { get; set; }
 

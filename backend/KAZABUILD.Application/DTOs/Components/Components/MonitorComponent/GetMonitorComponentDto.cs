@@ -38,13 +38,17 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MonitorComponent
         [Range(0, 200, ErrorMessage = "Response Time must be between 0 and 200 ms")]
         public decimal? ResponseTimeEnd { get; set; }
 
-        public List<string>? ViewingAngleStart { get; set; }
+        public List<string>? ViewingAngle { get; set; }
 
-        public List<string>? ViewingAngleEnd { get; set; }
+        public string? ViewingAngleStart { get; set; }
 
-        public List<string>? AspectRatioStart { get; set; }
+        public string? ViewingAngleEnd { get; set; }
 
-        public List<string>? AspectRatioEnd { get; set; }
+        public List<string>? AspectRatio { get; set; }
+
+        public string? AspectRatioStart { get; set; }
+
+        public string? AspectRatioEnd { get; set; }
 
         [Range(0, 100, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
         public decimal? MaxBrightnessStart { get; set; }

@@ -46,13 +46,13 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The total number of Performance cores (hybrid CPUs only) in the CPU.
         /// </summary>
-        [Range(100, 512, ErrorMessage = "Performance Amount must be between 1 and 512")]
+        [Range(0, 512, ErrorMessage = "Performance Amount must be between 0 and 512")]
         public int? PerformanceAmount { get; set; }
 
         /// <summary>
         /// The total number of Efficiency cores (hybrid CPUs only) in the CPU.
         /// </summary>
-        [Range(1, 512, ErrorMessage = "Efficiency Amount must be between 1 and 512")]
+        [Range(0, 512, ErrorMessage = "Efficiency Amount must be between 0 and 512")]
         public int? EfficiencyAmount { get; set; }
 
         /// <summary>
@@ -65,28 +65,28 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Base clock Speed for a Performance core.
         /// </summary>
-        [Range(100, 10000, ErrorMessage = "Base Performance Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Base Performance Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BasePerformanceSpeed { get; set; }
 
         /// <summary>
         /// Max boosted clock Speed for a Performance core.
         /// </summary>
-        [Range(100, 10000, ErrorMessage = "Boost Performance Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Boost Performance Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BoostPerformanceSpeed { get; set; }
 
         /// <summary>
         /// Base clock Speed for an Efficiency core..
         /// </summary>
-        [Range(100, 10000, ErrorMessage = "Base Efficiency Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Base Efficiency Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BaseEfficiencySpeed { get; set; }
 
         /// <summary>
         /// Max boosted clock Speed for an Efficiency core.
         /// </summary>
-        [Range(100, 10000, ErrorMessage = "Boost Efficiency Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Boost Efficiency Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BoostEfficiencySpeed { get; set; }
 
@@ -100,14 +100,14 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// The size of the Level 2 cache in KB.
         /// </summary>
-        [Range(1, 5120, ErrorMessage = "L2 cache must be between 1 KB and 5 MB")]
+        [Range(0, 5120, ErrorMessage = "L2 cache must be between 0 KB and 5 MB")]
         [Precision(10, 6)]
         public decimal? L2 { get; set; }
 
         /// <summary>
         /// The size of the Level 3 cache in MB.
         /// </summary>
-        [Range(0.5, 16, ErrorMessage = "L3 cache must be between 0.5 and 64 MB")]
+        [Range(0, 64, ErrorMessage = "L3 cache must be between 0 and 64 MB")]
         [Precision(8, 6)]
         public decimal? L3 { get; set; }
 

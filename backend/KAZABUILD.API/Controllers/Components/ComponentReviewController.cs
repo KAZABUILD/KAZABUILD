@@ -3,6 +3,7 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -99,7 +100,7 @@ namespace KAZABUILD.API.Controllers.Components
             });
 
             //Return a success response
-            return Ok(new { componentReview = "ComponentsPrice created successfully!" });
+            return Ok(new { componentReview = "ComponentsPrice created successfully!", id = componentReview.Id });
         }
 
         /// <summary>

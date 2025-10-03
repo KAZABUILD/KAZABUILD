@@ -21,7 +21,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CoolerComponent
         [Range(0, 400, ErrorMessage = "Height must be between 0 and 400 mm")]
         public decimal? Height { get; set; }
 
-        public bool IsWaterCooled { get; set; }
+        public bool? IsWaterCooled { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Radiator Size must be between 0 and 1000 mm")]
         public decimal? RadiatorSize { get; set; }
