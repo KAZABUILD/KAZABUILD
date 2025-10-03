@@ -41,7 +41,11 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseComponent
         [Range(0, 20, ErrorMessage = "ExpansionSlotAmount must be between 0 and 20")]
         public int? ExpansionSlotAmount { get; set; }
 
-        public Dimension? Dimensions { get; set; }
+        public decimal? Width { get; set; }
+
+        public decimal? Height { get; set; }
+
+        public decimal? Depth { get; set; }
 
         [Range(0, 100, ErrorMessage = "Weight must be between 0 and 100 kg")]
         public decimal? Weight { get; set; }

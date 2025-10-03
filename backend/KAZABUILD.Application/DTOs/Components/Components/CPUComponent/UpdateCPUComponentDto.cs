@@ -21,34 +21,34 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CPUComponent
         [Range(1, 512, ErrorMessage = "Core Total must be between 1 and 512")]
         public int? CoreTotal { get; set; } = default!;
 
-        [Range(100, 512, ErrorMessage = "Performance Amount must be between 1 and 512")]
+        [Range(0, 512, ErrorMessage = "Performance Amount must be between 0 and 512")]
         public int? PerformanceAmount { get; set; }
 
-        [Range(1, 512, ErrorMessage = "Efficiency Amount must be between 1 and 512")]
+        [Range(0, 512, ErrorMessage = "Efficiency Amount must be between 0 and 512")]
         public int? EfficiencyAmount { get; set; }
 
         [Range(1, 256, ErrorMessage = "Threads Amount must be between 1 and 2048")]
         public int? ThreadsAmount { get; set; } = default!;
 
-        [Range(100, 10000, ErrorMessage = "Base Performance Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Base Performance Speed must be between 0 and 10000 MHz")]
         public decimal? BasePerformanceSpeed { get; set; }
 
-        [Range(100, 10000, ErrorMessage = "Boost Performance Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Boost Performance Speed must be between 0 and 10000 MHz")]
         public decimal? BoostPerformanceSpeed { get; set; }
 
-        [Range(100, 10000, ErrorMessage = "Base Efficiency Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Base Efficiency Speed must be between 0 and 10000 MHz")]
         public decimal? BaseEfficiencySpeed { get; set; }
 
-        [Range(100, 10000, ErrorMessage = "Boost Efficiency Speed must be between 100 and 10000 MHz")]
+        [Range(0, 10000, ErrorMessage = "Boost Efficiency Speed must be between 0 and 10000 MHz")]
         public decimal? BoostEfficiencySpeed { get; set; }
 
         [Range(0, 1024, ErrorMessage = "L1 cache must be between 0 KB and 1 MB")]
         public decimal? L1 { get; set; }
 
-        [Range(1, 5120, ErrorMessage = "L2 cache must be between 1 KB and 5 MB")]
+        [Range(0, 5120, ErrorMessage = "L2 cache must be between 0 KB and 5 MB")]
         public decimal? L2 { get; set; }
 
-        [Range(0.5, 16, ErrorMessage = "L3 cache must be between 0.5 and 64 MB")]
+        [Range(0, 64, ErrorMessage = "L3 cache must be between 0 and 64 MB")]
         public decimal? L3 { get; set; }
 
         [Range(0, 1024, ErrorMessage = "L4 cache must be between 0 and 1024 MB")]

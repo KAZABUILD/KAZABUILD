@@ -1,3 +1,5 @@
+using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities.Users;
@@ -30,20 +32,20 @@ namespace KAZABUILD.API
             builder.Services.AddSwaggerGen(c =>
             {
                 //Enable adding a jwt security token
-                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     BearerFormat = "JWT",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header
+                    In = ParameterLocation.Header
                 });
 
                 //Inform swagger that endpoints require authorization
-                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        new OpenApiSecurityScheme
                         {
                             Reference = new Microsoft.OpenApi.Models.OpenApiReference
                             {
@@ -62,6 +64,12 @@ namespace KAZABUILD.API
                 var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                 c.IncludeXmlComments(xmlPath);
+
+                //Register detection of polymorphic classes
+                c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseComponentDto>>();
+                c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseComponentDto>>();
+                c.SchemaFilter<PolymorphismSchemaFilter<GetBaseComponentDto>>();
+                c.SchemaFilter<PolymorphismSchemaFilter<BaseComponentResponseDto>>();
 
             });
 

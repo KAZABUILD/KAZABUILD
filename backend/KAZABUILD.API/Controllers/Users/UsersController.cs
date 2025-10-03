@@ -110,7 +110,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { message = "User created successfully!" });
+            return Ok(new { message = "User created successfully!", id = user.Id });
         }
 
         //API endpoint for updating the selected user

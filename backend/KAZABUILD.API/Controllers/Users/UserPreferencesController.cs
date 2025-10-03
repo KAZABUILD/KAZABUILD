@@ -109,7 +109,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { message = "User Preference created successfully!" });
+            return Ok(new { message = "User Preference created successfully!", id = userPreference.Id });
         }
 
         //API endpoint for updating the selected UserPreference

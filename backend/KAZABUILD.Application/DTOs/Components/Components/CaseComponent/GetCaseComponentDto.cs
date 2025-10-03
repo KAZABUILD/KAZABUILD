@@ -66,18 +66,18 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseComponent
         public decimal? DepthStart { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Height must be between 0 and 1000 mm")]
+        public decimal? DepthEnd { get; set; }
+
+        [Range(0, 1000, ErrorMessage = "Height must be between 0 and 1000 mm")]
         public decimal? HeightStart { get; set; }
+
+        [Range(0, 1000, ErrorMessage = "Width must be between 0 and 1000 mm")]
+        public decimal? HeightEnd { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Width must be between 0 and 1000 mm")]
         public decimal? WidthStart { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Depth must be between 0 and 1000 mm")]
-        public decimal? DepthEnd { get; set; }
-
-        [Range(0, 1000, ErrorMessage = "Height must be between 0 and 1000 mm")]
-        public decimal? HeightEnd { get; set; }
-
-        [Range(0, 1000, ErrorMessage = "Width must be between 0 and 1000 mm")]
         public decimal? WidthEnd { get; set; }
 
         [Range(0, 1000, ErrorMessage = "Volume must be between 0 and 1000 l")]

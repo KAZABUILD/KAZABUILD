@@ -132,7 +132,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { message = "User followed successfully!" });
+            return Ok(new { message = "User followed successfully!", id = userFollow.Id });
         }
 
         //API endpoint for updating the selected UserFollow

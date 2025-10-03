@@ -43,7 +43,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15!")]
-        public string RAMSlotsAmount { get; set; } = default!;
+        public int RAMSlotsAmount { get; set; } = default!;
 
         /// <summary>
         /// The maximum Amount of RAM the Motherboard can support in GB.
@@ -86,7 +86,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Number of CPU Fan Headers (typically 4-pin PWM) in the Motherboard.
         /// </summary>
         [Range(0, 20, ErrorMessage = "CPU Fan Header Amount must be between 0 and 20!")]
-        public int? CpuFanHeaderAmount { get; set; }
+        public int? CPUFanHeaderAmount { get; set; }
 
         /// <summary>
         /// Number of Case/chassis fan Headers (typically 4-pin PWM) in the Motherboard.
@@ -121,22 +121,26 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Whether the Motherboard has a Power Button Header.
         /// </summary>
-        public bool? HasPowerButtonHeader { get; set; }
+        [Required]
+        public bool HasPowerButtonHeader { get; set; }
 
         /// <summary>
         /// Whether the Motherboard has a Reset Button Header.
         /// </summary>
-        public bool? HasResetButtonHeader { get; set; }
+        [Required]
+        public bool HasResetButtonHeader { get; set; }
 
         /// <summary>
         /// Whether the Motherboard has a Power LED Header.
         /// </summary>
-        public bool? HasPowerLEDHeader { get; set; }
+        [Required]
+        public bool HasPowerLEDHeader { get; set; }
 
         /// <summary>
         /// Whether the Motherboard has a Hard Drive Activity Light Header.
         /// </summary>
-        public bool? HasHDDLEDHeader { get; set; }
+        [Required]
+        public bool HasHDDLEDHeader { get; set; }
 
         /// <summary>
         /// Number of temperature sensor Headers in the Motherboard.
@@ -199,7 +203,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// The Maximum number of Audio Channels in the Motherboard.
         /// </summary>
         [Required]
-        [Range(1, 32, ErrorMessage = "Audio Channels must be between 0 and 20!")]
+        [Range(1, 32, ErrorMessage = "Audio Channels must be between 1 and 32!")]
         [Precision(3, 1)]
         public decimal MaxAudioChannels { get; set; } = default!;
     }

@@ -2,15 +2,15 @@ using KAZABUILD.Application.DTOs.Components.Color;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Domain.Entities.Components;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using System.Linq.Dynamic.Core;
+using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
@@ -97,7 +97,7 @@ namespace KAZABUILD.API.Controllers.Components
             });
 
             //Return success response
-            return Ok(new { color = "Color added successfully!" });
+            return Ok(new { color = "Color added successfully!", id = color.ColorCode });
         }
 
         /// <summary>

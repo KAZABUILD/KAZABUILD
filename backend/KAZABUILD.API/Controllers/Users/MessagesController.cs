@@ -120,7 +120,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { message = "Message sent successfully!" });
+            return Ok(new { message = "Message sent successfully!", id = message.Id });
         }
 
         //API endpoint for updating the selected Message

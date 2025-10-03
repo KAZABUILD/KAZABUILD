@@ -115,7 +115,7 @@ namespace KAZABUILD.API.Controllers.Users
             });
 
             //Return success response
-            return Ok(new { message = "New Forum Entry Posted successfully!" });
+            return Ok(new { message = "New Forum Entry Posted successfully!", id = forumPost.Id });
         }
 
         //API endpoint for updating the selected ForumPost
