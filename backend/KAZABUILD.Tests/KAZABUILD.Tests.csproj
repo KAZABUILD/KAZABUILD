@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-  <ProjectReference Include="../KAZABUILD.API\KAZABUILD.API.csproj" />
   <ProjectReference Include="../KAZABUILD.Infrastructure\KAZABUILD.Infrastructure.csproj" />
   <ProjectReference Include="../KAZABUILD.Domain\KAZABUILD.Domain.csproj" />
+  <ProjectReference Include="..\KAZABUILD.API\KAZABUILD.API.csproj" />
   </ItemGroup>
 
 </Project>
