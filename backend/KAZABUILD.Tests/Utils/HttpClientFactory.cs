@@ -1,6 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using KAZABUILD.Domain.Entities;
 using Microsoft.AspNetCore.Mvc.Testing;
 namespace KAZABUILD.Tests.Utils
@@ -16,7 +21,6 @@ namespace KAZABUILD.Tests.Utils
             };
 
             var response = await client.PostAsJsonAsync("/Auth/login", loginPayload);
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new Exception($"Login failed with status code: {response.StatusCode}");
