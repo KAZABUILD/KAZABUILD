@@ -16,7 +16,7 @@ using System.Text.Json.Serialization;
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
     /// <summary>
-    /// Only used for polymorphism and is inherited by other component classes.
+    /// Only used for polymorphism and inheritance by other component classes.
     /// </summary>
     [JsonDerivedType(typeof(GetCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(GetCaseFanComponentDto), "CaseFan")]
@@ -31,25 +31,13 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     public class GetBaseComponentDto
     {
         //Filter By fields
-        /// <summary>
-        /// List of Names.
-        /// </summary>
         public List<string>? Name { get; set; }
 
-        /// <summary>
-        /// List of Manufacturers.
-        /// </summary>
         public List<string>? Manufacturer { get; set; }
 
-        /// <summary>
-        /// Start of the bounding range for Release.
-        /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseStart { get; set; }
 
-        /// <summary>
-        /// End of the bounding range for Release.
-        /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseEnd { get; set; }
 

@@ -9,6 +9,9 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent
 {
+    /// <summary>
+    /// Only used for polymorphism and inheritance by other subComponent classes.
+    /// </summary>
     [JsonDerivedType(typeof(UpdateCoolerSocketSubComponentDto), "CoolerSocket")]
     [JsonDerivedType(typeof(UpdateIntegratedGraphicsSubComponentDto), "IntegratedGraphics")]
     [JsonDerivedType(typeof(UpdateM2SlotSubComponentDto), "M2Slot")]
@@ -17,9 +20,15 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent
     [JsonDerivedType(typeof(UpdatePortSubComponentDto), "Port")]
     public abstract class UpdateBaseSubComponentDto
     {
+        /// <summary>
+        /// The name of the SubComponent. 
+        /// </summary>
         [StringLength(255, ErrorMessage = "Name cannot be longer than 255 characters!")]
         public string? Name { get; set; }
 
+        /// <summary>
+        /// Type of the SubComponent. Used to distinguish between inherited classes in the database.
+        /// </summary>
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }
     }

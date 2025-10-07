@@ -1,4 +1,5 @@
 using KAZABUILD.Domain.Entities.Components.Components;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -35,14 +36,14 @@ namespace KAZABUILD.Domain.Entities.Components
         public Guid ComponentId { get; set; } = default!;
 
         /// <summary>
-        /// The date when the review was fetched from the website.
+        /// Date when the review was fetched from the website.
         /// </summary>
         [Required]
         [DataType(DataType.DateTime)]
         public DateTime FetchedAt { get; set; } = default!;
 
         /// <summary>
-        /// The date when the review was created.
+        /// Date when the review was created.
         /// </summary>
         [Required]
         [DataType(DataType.DateTime)]
@@ -52,15 +53,15 @@ namespace KAZABUILD.Domain.Entities.Components
         /// Rating given in the review on a scale 0-100 (e.g. 1/5 <=> 20/100).
         /// </summary>
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
         [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]
+        [Precision(8,5)]
         public decimal Rating { get; set; } = default!;
 
         /// <summary>
         /// Text content of the review.
         /// </summary>
         [Required]
-        [StringLength(1000, ErrorMessage = "Review Text cannot be longer than 4 characters!")]
+        [StringLength(1000, ErrorMessage = "Review Text cannot be longer than 1000 characters!")]
         public string ReviewText { get; set; } = default!;
 
         //Additional database information

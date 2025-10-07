@@ -39,7 +39,9 @@ namespace KAZABUILD.Domain.Entities.Users
         [MaxLength(50, ErrorMessage = "Topic cannot be longer than 50 characters!")]
         public string Topic { get; set; } = default!;
 
-        //Additional database information
+        /// <summary>
+        /// Date of the user posting to the forum.
+        /// </summary>
         [Required]
         [DataType(DataType.DateTime)]
         public DateTime PostedAt { get; set; } = DateTime.UtcNow;

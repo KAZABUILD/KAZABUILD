@@ -6,6 +6,9 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.CoolerSocketSubCom
 {
     public class CreateCoolerSocketSubComponentDto : CreateBaseSubComponentDto
     {
+        /// <summary>
+        /// Socket Type supported by the cooler (e.g., AM5, LGA1700, TR4).
+        /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Socket type cannot be longer than 50 characters!")]
         public string SocketType { get; set; } = default!;
