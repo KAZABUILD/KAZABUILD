@@ -317,7 +317,7 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<CoolerSocketSubComponent>().ToTable("CoolerSocketSubComponents");
             modelBuilder.Entity<IntegratedGraphicsSubComponent>().ToTable("IntegratedGraphicsSubComponents");
             modelBuilder.Entity<M2SlotSubComponent>().ToTable("M2SlotSubcomponent");
-            modelBuilder.Entity<OnBoardEthernetSubComponent>().ToTable("OnBoardEthernetSubComponent");
+            modelBuilder.Entity<OnboardEthernetSubComponent>().ToTable("OnboardEthernetSubComponent");
             modelBuilder.Entity<PCIeSlotSubComponent>().ToTable("PCIeSlotSubComponent");
             modelBuilder.Entity<PortSubComponent>().ToTable("PortSubComponents");
 

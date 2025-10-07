@@ -1,9 +1,23 @@
+using KAZABUILD.Application.DTOs.Components.SubComponents.CoolerSocketSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.IntegratedGraphicsSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.M2SlotSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.PCIeSlotSubComponent;
+using KAZABUILD.Application.DTOs.Components.SubComponents.PortSubComponent;
 using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent
 {
-    public class GetBaseSubComponentDto
+    [JsonDerivedType(typeof(GetCoolerSocketSubComponentDto), "CoolerSocket")]
+    [JsonDerivedType(typeof(GetIntegratedGraphicsSubComponentDto), "IntegratedGraphics")]
+    [JsonDerivedType(typeof(GetM2SlotSubComponentDto), "M2Slot")]
+    [JsonDerivedType(typeof(GetOnboardEthernetSubComponentDto), "OnboardEthernet")]
+    [JsonDerivedType(typeof(GetPCIeSlotSubComponentDto), "PCIeSlot")]
+    [JsonDerivedType(typeof(GetPortSubComponentDto), "Port")]
+    public abstract class GetBaseSubComponentDto
     {
         //Filter By fields
         public List<string>? Name { get; set; }

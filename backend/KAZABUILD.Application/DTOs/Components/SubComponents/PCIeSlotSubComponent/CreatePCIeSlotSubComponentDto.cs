@@ -7,11 +7,11 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.PCIeSlotSubCompone
     public class CreatePCIeSlotSubComponentDto : CreateBaseSubComponentDto
     {
         [Required]
-        [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
+        [StringLength(5, ErrorMessage = "Gen cannot be longer than 5 characters!")]
         public string Gen { get; set; } = default!;
 
         [Required]
-        [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
+        [StringLength(5, ErrorMessage = "Lanes cannot be longer than 5 characters!")]
         public string Lanes { get; set; } = default!;
     }
 }

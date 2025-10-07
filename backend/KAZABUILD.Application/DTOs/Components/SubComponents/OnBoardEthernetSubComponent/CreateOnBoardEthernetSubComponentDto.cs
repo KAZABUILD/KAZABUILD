@@ -2,9 +2,9 @@ using KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent;
 
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Components.SubComponents.OnBoardEthernetSubComponent
+namespace KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSubComponent
 {
-    public class CreateOnBoardEthernetSubComponentDto : CreateBaseSubComponentDto
+    public class CreateOnboardEthernetSubComponentDto : CreateBaseSubComponentDto
     {
         [Required]
         [StringLength(50, ErrorMessage = "Speed cannot be longer than 50 characters!")]

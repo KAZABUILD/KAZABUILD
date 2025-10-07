@@ -1,4 +1,3 @@
-using Azure;
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent;
@@ -56,7 +55,6 @@ namespace KAZABUILD.API.Controllers.Components
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
@@ -350,9 +348,13 @@ namespace KAZABUILD.API.Controllers.Components
             return Ok(new { component = "Component sent successfully!", id = component.Id });
         }
 
-        //API endpoint for updating the selected Component
-        //User can modify only their own Components,
-        //while admins can modify all 
+        /// <summary>
+        /// API endpoint for updating the selected Component.
+        /// The updated component has to receive the correct dto to undergo any changes.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
         public async Task<IActionResult> UpdateComponent(Guid id, [FromBody] UpdateBaseComponentDto dto)
@@ -1471,8 +1473,13 @@ namespace KAZABUILD.API.Controllers.Components
             return Ok(new { component = "Component updated successfully!" });
         }
 
-        //API endpoint for getting the Component specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the Component specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<BaseComponentResponseDto>> GetComponent(Guid id)
@@ -1789,8 +1796,13 @@ namespace KAZABUILD.API.Controllers.Components
             return Ok(response);
         }
 
-        //API endpoint for getting Components with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting Components with pagination and search custom for each subclass,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<BaseComponentResponseDto>>> GetComponents([FromBody] GetBaseComponentDto dto)
@@ -1825,12 +1837,6 @@ namespace KAZABUILD.API.Controllers.Components
             if (dto.ReleaseEnd != null)
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
-            }
-
-            //Apply search for the Base Component
-            if (!string.IsNullOrWhiteSpace(dto.Query))
-            {
-                query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
             }
 
             //Filter by the specific subclass variables
@@ -1879,7 +1885,7 @@ namespace KAZABUILD.API.Controllers.Components
                     //Apply search for the Case Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        caseQuery = caseQuery.Search(dto.Query, c => c.FormFactor);
+                        caseQuery = caseQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor);
                     }
 
                     query = caseQuery;
@@ -1917,7 +1923,7 @@ namespace KAZABUILD.API.Controllers.Components
                     //Apply search for the Case Fan Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        caseFanQuery = caseFanQuery.Search(dto.Query, c => c.LEDType!, c => c.ConnectorType!, c => c.ControllerType!);
+                        caseFanQuery = caseFanQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.LEDType!, c => c.ConnectorType!, c => c.ControllerType!);
                     }
 
                     query = caseFanQuery;
@@ -1951,10 +1957,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the Cooler Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        //coolerQuery = coolerQuery.Search(dto.Query, );
+                        coolerQuery = coolerQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
                     }
 
                     query = coolerQuery;
@@ -2006,10 +2012,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the CPU Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        cpuQuery = cpuQuery.Search(dto.Query, c => c.Series, c => c.Microarchitecture, c => c.CoreFamily, c => c.SocketType, c => c.Lithography, c => c.MemoryType, c => c.PackagingType);
+                        cpuQuery = cpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.Microarchitecture, c => c.CoreFamily, c => c.SocketType, c => c.Lithography, c => c.MemoryType, c => c.PackagingType);
                     }
 
                     query = cpuQuery;
@@ -2050,10 +2056,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the GPU Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        gpuQuery = gpuQuery.Search(dto.Query, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                        gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
                     }
 
                     query = gpuQuery;
@@ -2090,10 +2096,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the memory Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        memoryQuery = memoryQuery.Search(dto.Query, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ErrorCorrectingCode, c => c.RegisteredType);
+                        memoryQuery = memoryQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ErrorCorrectingCode, c => c.RegisteredType);
                     }
 
                     query = memoryQuery;
@@ -2130,10 +2136,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the Monitor Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        monitorQuery = monitorQuery.Search(dto.Query, c => c.PanelType, c => c.ViewingAngle, c => c.AspectRatio, c => c.HighDynamicRangeType!, c => c.AdaptiveSyncType);
+                        monitorQuery = monitorQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.PanelType, c => c.ViewingAngle, c => c.AspectRatio, c => c.HighDynamicRangeType!, c => c.AdaptiveSyncType);
                     }
 
                     query = monitorQuery;
@@ -2194,10 +2200,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the Motherboard Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        motherboardQuery = motherboardQuery.Search(dto.Query, c => c.SocketType, c => c.FormFactor, c => c.ChipsetType, c => c.RAMType, c => c.AudioChipset, c => c.WirelessNetworkingStandard, c => c.MainPowerType!);
+                        motherboardQuery = motherboardQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.SocketType, c => c.FormFactor, c => c.ChipsetType, c => c.RAMType, c => c.AudioChipset, c => c.WirelessNetworkingStandard, c => c.MainPowerType!);
                     }
 
                     query = motherboardQuery;
@@ -2221,10 +2227,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (powerSupplyDto.LengthEnd == null || powerSupplyDto.LengthEnd >= c.Length)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the Power Supply Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        powerSupplyQuery = powerSupplyQuery.Search(dto.Query, c => c.FormFactor, c => c.EfficiencyRating!, c => c.ModularityType);
+                        powerSupplyQuery = powerSupplyQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor, c => c.EfficiencyRating!, c => c.ModularityType);
                     }
 
                     query = powerSupplyQuery;
@@ -2247,10 +2253,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (storageDto.CapacityEnd == null || storageDto.CapacityEnd >= c.Capacity)
                     );
 
-                    //Apply search for the Case Fan Component
+                    //Apply search for the Storage Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        storageQuery = storageQuery.Search(dto.Query, c => c.Series, c => c.DriveType, c => c.FormFactor, c => c.Interface);
+                        storageQuery = storageQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.DriveType, c => c.FormFactor, c => c.Interface);
                     }
 
                     query = storageQuery;

@@ -1467,7 +1467,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("M2SlotSubcomponent", (string)null);
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.OnBoardEthernetSubComponent", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.OnboardEthernetSubComponent", b =>
                 {
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent");
 
@@ -1481,7 +1481,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.ToTable("OnBoardEthernetSubComponent", (string)null);
+                    b.ToTable("OnboardEthernetSubComponent", (string)null);
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.PCIeSlotSubComponent", b =>
@@ -1920,11 +1920,11 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.OnBoardEthernetSubComponent", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.SubComponents.OnboardEthernetSubComponent", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", null)
                         .WithOne()
-                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.SubComponents.OnBoardEthernetSubComponent", "Id")
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Components.SubComponents.OnboardEthernetSubComponent", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
