@@ -28,50 +28,8 @@ namespace KAZABUILD.API
             //Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
-            //Documentation with swagger
-            builder.Services.AddSwaggerGen(c =>
-            {
-                //Enable adding a jwt security token
-                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header
-                });
-
-                //Inform swagger that endpoints require authorization
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                            {
-                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
-
-                //Enable comments in the swagger endpoint
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
-
-                //Add comments from an XML file
-                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
-
-                //Register detection of polymorphic classes
-                c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<GetBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<BaseComponentResponseDto>>();
-
-            });
+            //Register Swagger
+            builder.Services.AddSwaggerSettings();
 
             //Add CORS policy
             var corsSettings = builder.Configuration.GetSection("Frontend").Get<FrontendSettings>()!;

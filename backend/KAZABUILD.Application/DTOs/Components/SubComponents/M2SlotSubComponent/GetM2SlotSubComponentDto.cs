@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Components.SubComponents.M2SlotSubComponent
 {
-    public class GetM2SlotSubComponentDto : CreateBaseSubComponentDto
+    public class GetM2SlotSubComponentDto : GetBaseSubComponentDto
     {
         public List<string>? Size { get; set; }
 

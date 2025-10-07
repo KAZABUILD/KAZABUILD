@@ -306,7 +306,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "OnBoardEthernetSubComponent",
+                name: "OnboardEthernetSubComponent",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -315,9 +315,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OnBoardEthernetSubComponent", x => x.Id);
+                    table.PrimaryKey("PK_OnboardEthernetSubComponent", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_OnBoardEthernetSubComponent_SubComponents_Id",
+                        name: "FK_OnboardEthernetSubComponent_SubComponents_Id",
                         column: x => x.Id,
                         principalTable: "SubComponents",
                         principalColumn: "Id",
@@ -351,7 +351,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 name: "M2SlotSubcomponent");
 
             migrationBuilder.DropTable(
-                name: "OnBoardEthernetSubComponent");
+                name: "OnboardEthernetSubComponent");
 
             migrationBuilder.DropTable(
                 name: "PCIeSlotSubComponent");
