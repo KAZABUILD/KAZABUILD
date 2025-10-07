@@ -14,7 +14,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for Notification related endpoints
+    /// <summary>
+    /// Controller for Notification related endpoints.
+    /// The users, administration and the system can all send them.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class NotificationsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -24,7 +30,12 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new Notification
+        /// <summary>
+        /// API Endpoint for creating a new Notification.
+        /// Used to send the notifications.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> AddNotification([FromBody] CreateNotificationDto dto)
@@ -120,9 +131,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { notification = "Notification sent successfully!", id = notification.Id });
         }
 
-        //API endpoint for updating the selected Notification
-        //User can modify only their own Notifications,
-        //while admins can modify all 
+        /// <summary>
+        /// API endpoint for updating the selected Notification.
+        /// User can modify only whether they read the notification, while staff can modify all fields.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> UpdateNotification(Guid id, [FromBody] UpdateNotificationDto dto)
@@ -261,8 +276,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { notification = "Notification updated successfully!" });
         }
 
-        //API endpoint for getting the Notification specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the Notification specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<NotificationResponseDto>> GetNotification(Guid id)
@@ -385,8 +404,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting Notifications with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting Notifications with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<NotificationResponseDto>>> GetNotifications([FromBody] GetNotificationDto dto)
@@ -523,9 +546,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected Notification for administration
+        /// <summary>
+        /// API endpoint for deleting the selected Notification for staff.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "AllUsers")]
+        [Authorize(Policy = "Staff")]
         public async Task<IActionResult> DeleteNotification(Guid id)
         {
             //Get notification id and role from the request claims
@@ -553,28 +580,6 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { notification = "Notification not found!" });
-            }
-
-            //Check if current user has admin permissions or if they are deleting their own post
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == notification.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserFollow",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
             }
 
             //Delete the notification

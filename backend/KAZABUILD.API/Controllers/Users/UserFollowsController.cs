@@ -13,7 +13,13 @@ using System.Linq.Dynamic.Core;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for User Follow related endpoints
+    /// <summary>
+    /// Controller for User Follow related endpoints.
+    /// Used to control following based interactions between users.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class UserFollowsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -23,7 +29,11 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new UserFollow
+        /// <summary>
+        /// API Endpoint for creating a new UserFollow
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> AddUserFollow([FromBody] CreateUserFollowDto dto)
@@ -135,8 +145,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User followed successfully!", id = userFollow.Id });
         }
 
-        //API endpoint for updating the selected UserFollow
-        //Only staff can modify them to add notes
+        /// <summary>
+        /// API endpoint for updating the selected UserFollow.
+        /// Only staff can modify them to add notes.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> UpdateUserFollow(Guid id, [FromBody] UpdateUserFollowDto dto)
@@ -216,8 +231,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User Follow note updated successfully!" });
         }
 
-        //API endpoint for getting the UserFollow specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the UserFollow specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<UserFollowResponseDto>> GetUserFollow(Guid id)
@@ -332,8 +351,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting UserFollows with pagination,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting UserFollows with pagination,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<UserFollowResponseDto>>> GetUserFollows([FromBody] GetUserFollowDto dto)
@@ -452,7 +475,11 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected UserFollow for administration
+        /// <summary>
+        /// API endpoint for deleting the selected UserFollow, i.e. unfollowing.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DeleteUserFollow(Guid id)

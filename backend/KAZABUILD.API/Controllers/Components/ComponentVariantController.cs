@@ -1,9 +1,8 @@
-using KAZABUILD.Application.DTOs.Components.ComponentColor;
+using KAZABUILD.Application.DTOs.Components.ComponentVariant;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -15,10 +14,16 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for endpoints related to a connector for Colors which are assigned to a Component
+    /// <summary>
+    /// Controller for ComponentVariant related endpoints.
+    /// Used to connect a Color with a Component, where the color is an available version of the component.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentVariantController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -26,14 +31,14 @@ namespace KAZABUILD.API.Controllers.Components
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new ComponentColor for administration.
+        /// API Endpoint for creating a new ComponentVariant for administration.
         /// Callers can create new colors if they provide a color name.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddComponentColor([FromBody] CreateComponentColorDto dto)
+        public async Task<IActionResult> AddComponentVariant([FromBody] CreateComponentVariantDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -51,7 +56,7 @@ namespace KAZABUILD.API.Controllers.Components
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "ComponentColor",
+                    "ComponentVariant",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -85,7 +90,7 @@ namespace KAZABUILD.API.Controllers.Components
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "ComponentColor",
+                    "ComponentVariant",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -96,8 +101,8 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "Color unable to be created! Provide a Color Name or an existing color." });
             }
 
-            //Create a componentColor to add
-            ComponentColor componentColor = new()
+            //Create a componentVariant to add
+            ComponentVariant componentVariant = new()
             {
                 ComponentId = dto.ComponentId,
                 ColorCode = dto.ColorCode,
@@ -107,8 +112,8 @@ namespace KAZABUILD.API.Controllers.Components
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the componentColor to the database
-            _db.ComponentColors.Add(componentColor);
+            //Add the componentVariant to the database
+            _db.ComponentVariants.Add(componentVariant);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -117,26 +122,26 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "ComponentColor",
+                "ComponentVariant",
                 ip,
-                componentColor.Id,
+                componentVariant.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New ComponentColor Created"
+                "Successful Operation - New ComponentVariant Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.created", new
+            await _publisher.PublishAsync("componentVariant.created", new
             {
-                componentColorId = componentColor.Id,
+                componentVariantId = componentVariant.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentColor = "ComponentColor created successfully!", id = componentColor.Id });
+            return Ok(new { componentVariant = "ComponentVariant created successfully!", id = componentVariant.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected ComponentColor for administration,
+        /// API endpoint for updating the selected ComponentVariant for administration,
         /// can update the Colors's name as well.
         /// </summary>
         /// <param name="id"></param>
@@ -144,7 +149,7 @@ namespace KAZABUILD.API.Controllers.Components
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateComponentColor(Guid id, [FromBody] UpdateComponentColorDto dto)
+        public async Task<IActionResult> UpdateComponentVariant(Guid id, [FromBody] UpdateComponentVariantDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -154,24 +159,24 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to edit
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            //Check if the componentColor exists
-            if (componentColor == null)
+            //Get the componentVariant to edit
+            var componentVariant = await _db.ComponentVariants.FirstOrDefaultAsync(u => u.Id == id);
+            //Check if the componentVariant exists
+            if (componentVariant == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "ComponentColor",
+                    "ComponentVariant",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentVariant"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentVariant = "ComponentVariant not found!" });
             }
 
             //Track changes for logging
@@ -181,7 +186,7 @@ namespace KAZABUILD.API.Controllers.Components
             if (!string.IsNullOrWhiteSpace(dto.ColorName))
             {
                 //Get the color
-                var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == componentColor.ColorCode);
+                var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == componentVariant.ColorCode);
 
                 changedFields.Add("ColorName: " + color!.ColorName);
 
@@ -194,40 +199,40 @@ namespace KAZABUILD.API.Controllers.Components
             }
             if (!string.IsNullOrWhiteSpace(dto.ColorCode))
             {
-                changedFields.Add("ColorCode: " + componentColor.ColorCode);
+                changedFields.Add("ColorCode: " + componentVariant.ColorCode);
 
-                componentColor.ColorCode = dto.ColorCode;
+                componentVariant.ColorCode = dto.ColorCode;
             }
             if (dto.IsAvailable != null)
             {
-                changedFields.Add("IsAvailable: " + componentColor.IsAvailable);
+                changedFields.Add("IsAvailable: " + componentVariant.IsAvailable);
 
-                componentColor.IsAvailable = (bool)dto.IsAvailable;
+                componentVariant.IsAvailable = (bool)dto.IsAvailable;
             }
             if (dto.AdditionalPrice != null)
             {
-                changedFields.Add("AdditionalPrice: " + componentColor.AdditionalPrice);
+                changedFields.Add("AdditionalPrice: " + componentVariant.AdditionalPrice);
 
                 if (dto.AdditionalPrice == 0)
-                    componentColor.AdditionalPrice = null;
+                    componentVariant.AdditionalPrice = null;
                 else
-                    componentColor.AdditionalPrice = dto.AdditionalPrice;
+                    componentVariant.AdditionalPrice = dto.AdditionalPrice;
             }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + componentColor.Note);
+                changedFields.Add("Note: " + componentVariant.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    componentColor.Note = null;
+                    componentVariant.Note = null;
                 else
-                    componentColor.Note = dto.Note;
+                    componentVariant.Note = dto.Note;
             }
 
             //Update edit timestamp
-            componentColor.LastEditedAt = DateTime.UtcNow;
+            componentVariant.LastEditedAt = DateTime.UtcNow;
 
-            //Update the componentColor
-            _db.ComponentColors.Update(componentColor);
+            //Update the componentVariant
+            _db.ComponentVariants.Update(componentVariant);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -239,33 +244,33 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "ComponentColor",
+                "ComponentVariant",
                 ip,
-                componentColor.Id,
+                componentVariant.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.updated", new
+            await _publisher.PublishAsync("componentVariant.updated", new
             {
-                componentColorId = id,
+                componentVariantId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentColor = "ComponentColor updated successfully!" });
+            return Ok(new { componentVariant = "ComponentVariant updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the ComponentColor specified by id,
+        /// API endpoint for getting the ComponentVariant specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<ComponentColorResponseDto>> GetComponentColor(Guid id)
+        public async Task<ActionResult<ComponentVariantResponseDto>> GetComponentVariant(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -275,30 +280,30 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to return
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentColor == null)
+            //Get the componentVariant to return
+            var componentVariant = await _db.ComponentVariants.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentVariant == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "ComponentColor",
+                    "ComponentVariant",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentVariant"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentVariant = "ComponentVariant not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            ComponentColorResponseDto response;
+            ComponentVariantResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
@@ -309,14 +314,14 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create componentColor response
-                response = new ComponentColorResponseDto
+                //Create componentVariant response
+                response = new ComponentVariantResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice
+                    Id = componentVariant.Id,
+                    ComponentId = componentVariant.ComponentId,
+                    ColorCode = componentVariant.ColorCode,
+                    IsAvailable = componentVariant.IsAvailable,
+                    AdditionalPrice = componentVariant.AdditionalPrice
                 };
             }
             else
@@ -324,17 +329,17 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create componentColor response
-                response = new ComponentColorResponseDto
+                //Create componentVariant response
+                response = new ComponentVariantResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice,
-                    DatabaseEntryAt = componentColor.DatabaseEntryAt,
-                    LastEditedAt = componentColor.LastEditedAt,
-                    Note = componentColor.Note,
+                    Id = componentVariant.Id,
+                    ComponentId = componentVariant.ComponentId,
+                    ColorCode = componentVariant.ColorCode,
+                    IsAvailable = componentVariant.IsAvailable,
+                    AdditionalPrice = componentVariant.AdditionalPrice,
+                    DatabaseEntryAt = componentVariant.DatabaseEntryAt,
+                    LastEditedAt = componentVariant.LastEditedAt,
+                    Note = componentVariant.Note,
                 };
             }
 
@@ -342,7 +347,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentColor",
+                "ComponentVariant",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -350,27 +355,27 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.got", new
+            await _publisher.PublishAsync("componentVariant.got", new
             {
-                componentColorId = id,
+                componentVariantId = id,
                 gotBy = currentUserId
             });
 
-            //Return the componentColor
+            //Return the componentVariant
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting ComponentColors with pagination and search,
+        /// API endpoint for getting ComponentVariants with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<ComponentColorResponseDto>>> GetComponentColors([FromBody] GetComponentColorDto dto)
+        public async Task<ActionResult<IEnumerable<ComponentVariantResponseDto>>> GetComponentVariants([FromBody] GetComponentVariantDto dto)
         {
-            //Get componentColor id and claims from the request
+            //Get componentVariant id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -382,7 +387,7 @@ namespace KAZABUILD.API.Controllers.Components
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.ComponentColors.AsNoTracking();
+            var query = _db.ComponentVariants.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.ComponentId != null)
@@ -414,7 +419,7 @@ namespace KAZABUILD.API.Controllers.Components
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get componentColors with paging
+            //Get componentVariants with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -425,47 +430,47 @@ namespace KAZABUILD.API.Controllers.Components
             //Log Description string declaration
             string logDescription;
 
-            List<ComponentColor> componentColors = await query.ToListAsync();
+            List<ComponentVariant> componentVariants = await query.ToListAsync();
 
             //Declare response variable
-            List<ComponentColorResponseDto> responses;
+            List<ComponentVariantResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple ComponentColors";
+                logDescription = "Successful Operation - User Access, Multiple ComponentVariants";
 
-                //Create a componentColor response list
-                responses = [.. componentColors.Select(componentColor =>
+                //Create a componentVariant response list
+                responses = [.. componentVariants.Select(componentVariant =>
                 {
                     //Return a follow response
-                    return new ComponentColorResponseDto
+                    return new ComponentVariantResponseDto
                     {
-                        Id = componentColor.Id,
-                        ComponentId = componentColor.ComponentId,
-                        ColorCode = componentColor.ColorCode,
-                        IsAvailable = componentColor.IsAvailable,
-                        AdditionalPrice = componentColor.AdditionalPrice
+                        Id = componentVariant.Id,
+                        ComponentId = componentVariant.ComponentId,
+                        ColorCode = componentVariant.ColorCode,
+                        IsAvailable = componentVariant.IsAvailable,
+                        AdditionalPrice = componentVariant.AdditionalPrice
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple ComponentColors";
+                logDescription = "Successful Operation - Admin Access, Multiple ComponentVariants";
 
-                //Create a componentColor response list
-                responses = [.. componentColors.Select(componentColor => new ComponentColorResponseDto
+                //Create a componentVariant response list
+                responses = [.. componentVariants.Select(componentVariant => new ComponentVariantResponseDto
                 {
-                    Id = componentColor.Id,
-                    ComponentId = componentColor.ComponentId,
-                    ColorCode = componentColor.ColorCode,
-                    IsAvailable = componentColor.IsAvailable,
-                    AdditionalPrice = componentColor.AdditionalPrice,
-                    DatabaseEntryAt = componentColor.DatabaseEntryAt,
-                    LastEditedAt = componentColor.LastEditedAt,
-                    Note = componentColor.Note
+                    Id = componentVariant.Id,
+                    ComponentId = componentVariant.ComponentId,
+                    ColorCode = componentVariant.ColorCode,
+                    IsAvailable = componentVariant.IsAvailable,
+                    AdditionalPrice = componentVariant.AdditionalPrice,
+                    DatabaseEntryAt = componentVariant.DatabaseEntryAt,
+                    LastEditedAt = componentVariant.LastEditedAt,
+                    Note = componentVariant.Note
                 })];
 
             }
@@ -474,7 +479,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentColor",
+                "ComponentVariant",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -482,26 +487,26 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.gotComponentColors", new
+            await _publisher.PublishAsync("componentVariant.gotComponentVariants", new
             {
-                componentColorIds = componentColors.Select(u => u.Id),
+                componentVariantIds = componentVariants.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
-            //Return the componentColors
+            //Return the componentVariants
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected ComponentColor for administration.
+        /// API endpoint for deleting the selected ComponentVariant for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteComponentColor(Guid id)
+        public async Task<IActionResult> DeleteComponentVariant(Guid id)
         {
-            //Get componentColor id and role from the request claims
+            //Get componentVariant id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -509,27 +514,27 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentColor to delete
-            var componentColor = await _db.ComponentColors.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentColor == null)
+            //Get the componentVariant to delete
+            var componentVariant = await _db.ComponentVariants.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentVariant == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "ComponentColor",
+                    "ComponentVariant",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentColor"
+                    "Operation Failed - No Such ComponentVariant"
                 );
 
                 //Return not found response
-                return NotFound(new { componentColor = "ComponentColor not found!" });
+                return NotFound(new { componentVariant = "ComponentVariant not found!" });
             }
 
-            //Delete the componentColor
-            _db.ComponentColors.Remove(componentColor);
+            //Delete the componentVariant
+            _db.ComponentVariants.Remove(componentVariant);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -538,22 +543,22 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "ComponentColor",
+                "ComponentVariant",
                 ip,
-                componentColor.Id,
+                componentVariant.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentColor.deleted", new
+            await _publisher.PublishAsync("componentVariant.deleted", new
             {
-                componentColorId = id,
+                componentVariantId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentColor = "ComponentColor deleted successfully!" });
+            return Ok(new { componentVariant = "ComponentVariant deleted successfully!" });
         }
     }
 }

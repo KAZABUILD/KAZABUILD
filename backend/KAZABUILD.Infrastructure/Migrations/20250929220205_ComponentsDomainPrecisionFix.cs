@@ -12,12 +12,12 @@ namespace KAZABUILD.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_ComponentColor_Color_ColorCode",
-                table: "ComponentColor");
+                name: "FK_ComponentVariant_Color_ColorCode",
+                table: "ComponentVariant");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_ComponentColor_Components_ComponentId",
-                table: "ComponentColor");
+                name: "FK_ComponentVariant_Components_ComponentId",
+                table: "ComponentVariant");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_ComponentCompatibility_Components_CompatibleComponentId",
@@ -72,8 +72,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 table: "ComponentCompatibility");
 
             migrationBuilder.DropPrimaryKey(
-                name: "PK_ComponentColor",
-                table: "ComponentColor");
+                name: "PK_ComponentVariant",
+                table: "ComponentVariant");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_Color",
@@ -100,8 +100,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 newName: "ComponentCompatibilities");
 
             migrationBuilder.RenameTable(
-                name: "ComponentColor",
-                newName: "ComponentColors");
+                name: "ComponentVariant",
+                newName: "ComponentVariants");
 
             migrationBuilder.RenameTable(
                 name: "Color",
@@ -148,14 +148,14 @@ namespace KAZABUILD.Infrastructure.Migrations
                 newName: "IX_ComponentCompatibilities_CompatibleComponentId");
 
             migrationBuilder.RenameIndex(
-                name: "IX_ComponentColor_ComponentId",
-                table: "ComponentColors",
-                newName: "IX_ComponentColors_ComponentId");
+                name: "IX_ComponentVariant_ComponentId",
+                table: "ComponentVariants",
+                newName: "IX_ComponentVariants_ComponentId");
 
             migrationBuilder.RenameIndex(
-                name: "IX_ComponentColor_ColorCode",
-                table: "ComponentColors",
-                newName: "IX_ComponentColors_ColorCode");
+                name: "IX_ComponentVariant_ColorCode",
+                table: "ComponentVariants",
+                newName: "IX_ComponentVariants_ColorCode");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_SubComponentParts",
@@ -183,8 +183,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 column: "Id");
 
             migrationBuilder.AddPrimaryKey(
-                name: "PK_ComponentColors",
-                table: "ComponentColors",
+                name: "PK_ComponentVariants",
+                table: "ComponentVariants",
                 column: "Id");
 
             migrationBuilder.AddPrimaryKey(
@@ -250,16 +250,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                 });
 
             migrationBuilder.AddForeignKey(
-                name: "FK_ComponentColors_Colors_ColorCode",
-                table: "ComponentColors",
+                name: "FK_ComponentVariants_Colors_ColorCode",
+                table: "ComponentVariants",
                 column: "ColorCode",
                 principalTable: "Colors",
                 principalColumn: "ColorCode",
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_ComponentColors_Components_ComponentId",
-                table: "ComponentColors",
+                name: "FK_ComponentVariants_Components_ComponentId",
+                table: "ComponentVariants",
                 column: "ComponentId",
                 principalTable: "Components",
                 principalColumn: "Id",
@@ -334,12 +334,12 @@ namespace KAZABUILD.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_ComponentColors_Colors_ColorCode",
-                table: "ComponentColors");
+                name: "FK_ComponentVariants_Colors_ColorCode",
+                table: "ComponentVariants");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_ComponentColors_Components_ComponentId",
-                table: "ComponentColors");
+                name: "FK_ComponentVariants_Components_ComponentId",
+                table: "ComponentVariants");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_ComponentCompatibilities_Components_CompatibleComponentId",
@@ -403,8 +403,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 table: "ComponentCompatibilities");
 
             migrationBuilder.DropPrimaryKey(
-                name: "PK_ComponentColors",
-                table: "ComponentColors");
+                name: "PK_ComponentVariants",
+                table: "ComponentVariants");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_Colors",
@@ -431,8 +431,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 newName: "ComponentCompatibility");
 
             migrationBuilder.RenameTable(
-                name: "ComponentColors",
-                newName: "ComponentColor");
+                name: "ComponentVariants",
+                newName: "ComponentVariant");
 
             migrationBuilder.RenameTable(
                 name: "Colors",
@@ -479,14 +479,14 @@ namespace KAZABUILD.Infrastructure.Migrations
                 newName: "IX_ComponentCompatibility_CompatibleComponentId");
 
             migrationBuilder.RenameIndex(
-                name: "IX_ComponentColors_ComponentId",
-                table: "ComponentColor",
-                newName: "IX_ComponentColor_ComponentId");
+                name: "IX_ComponentVariants_ComponentId",
+                table: "ComponentVariant",
+                newName: "IX_ComponentVariant_ComponentId");
 
             migrationBuilder.RenameIndex(
-                name: "IX_ComponentColors_ColorCode",
-                table: "ComponentColor",
-                newName: "IX_ComponentColor_ColorCode");
+                name: "IX_ComponentVariants_ColorCode",
+                table: "ComponentVariant",
+                newName: "IX_ComponentVariant_ColorCode");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_SubComponentPart",
@@ -514,8 +514,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 column: "Id");
 
             migrationBuilder.AddPrimaryKey(
-                name: "PK_ComponentColor",
-                table: "ComponentColor",
+                name: "PK_ComponentVariant",
+                table: "ComponentVariant",
                 column: "Id");
 
             migrationBuilder.AddPrimaryKey(
@@ -524,16 +524,16 @@ namespace KAZABUILD.Infrastructure.Migrations
                 column: "ColorCode");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_ComponentColor_Color_ColorCode",
-                table: "ComponentColor",
+                name: "FK_ComponentVariant_Color_ColorCode",
+                table: "ComponentVariant",
                 column: "ColorCode",
                 principalTable: "Color",
                 principalColumn: "ColorCode",
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_ComponentColor_Components_ComponentId",
-                table: "ComponentColor",
+                name: "FK_ComponentVariant_Components_ComponentId",
+                table: "ComponentVariant",
                 column: "ComponentId",
                 principalTable: "Components",
                 principalColumn: "Id",

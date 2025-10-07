@@ -13,7 +13,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for User Preference related endpoints
+    /// <summary>
+    /// Controller for User Preference related endpoints.
+    /// Used to save user answered questionnaires.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class UserPreferencesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -23,7 +29,11 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new UserPreference
+        /// <summary>
+        /// API Endpoint for creating a new UserPreference.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
@@ -112,9 +122,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User Preference created successfully!", id = userPreference.Id });
         }
 
-        //API endpoint for updating the selected UserPreference
-        //User can modify only their own Preferences,
-        //while admins can modify all
+        /// <summary>
+        /// API endpoint for updating the selected UserPreference.
+        /// User can modify only their own Preferences, while admins can modify all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
         public async Task<IActionResult> UpdateUserPreference(Guid id, [FromBody] UpdateUserPreferenceDto dto)
@@ -194,8 +208,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User Preference updated successfully!" });
         }
 
-        //API endpoint for getting the UserPreference specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the UserPreference specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<UserPreferenceResponseDto>> GetUserPreference(Guid id)
@@ -306,8 +324,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting UserPreferences with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting UserPreferences with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<UserPreferenceResponseDto>>> GetUserPreferences([FromBody] GetUserPreferenceDto dto)
@@ -416,7 +438,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected UserPreference for administration
+        /// <summary>
+        /// API endpoint for deleting the selected UserPreference.
+        /// Staff can delete all preferences, while users only their own.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DeleteUserPreference(Guid id)

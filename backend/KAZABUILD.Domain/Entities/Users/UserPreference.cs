@@ -2,14 +2,24 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Users
 {
+    /// <summary>
+    /// Model storing the answers user selected while answering a questionnaire.
+    /// </summary>
     public class UserPreference
     {
         //User Preferences fields
         [Key]
         public Guid Id { get; set; }
 
+        /// <summary>
+        /// Id of the user that set the preferences.
+        /// </summary>
         [Required]
         public Guid UserId { get; set; } = default!;
+
+        /// <summary>
+        /// TODO
+        /// </summary>
 
         //Additional database information
         [DataType(DataType.DateTime)]

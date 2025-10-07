@@ -10,10 +10,21 @@ using System.Text;
 
 namespace KAZABUILD.Infrastructure.Services
 {
+    /// <summary>
+    /// Service responsible for generating authorization tokens.
+    /// </summary>
+    /// <param name="jwtOptions"></param>
     public class AuthorizationService(IOptions<JwtSettings> jwtOptions) : IAuthorizationService
     {
         private readonly JwtSettings _jwt = jwtOptions.Value;
 
+        /// <summary>
+        /// Generates tokens based on provided user data.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="email"></param>
+        /// <param name="role"></param>
+        /// <returns>A generated security token.</returns>
         public string GenerateJwtToken(Guid userId, string email, UserRole role)
         {
             //Create claims for id, email and role

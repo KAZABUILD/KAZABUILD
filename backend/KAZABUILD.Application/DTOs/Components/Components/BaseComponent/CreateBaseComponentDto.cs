@@ -15,6 +15,9 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
+    /// <summary>
+    /// Only used for polymorphism and is inherited by other component classes.
+    /// </summary>
     [JsonDerivedType(typeof(CreateCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(CreateCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(CreateCoolerComponentDto), "Cooler")]
@@ -27,19 +30,31 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     [JsonDerivedType(typeof(CreateStorageComponentDto), "Storage")]
     public abstract class CreateBaseComponentDto
     {
+        /// <summary>
+        /// The Component's name.
+        /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Name cannot be longer than 255 characters!")]
         public string Name { get; set; } = default!;
 
+        /// <summary>
+        /// Who created the Component.
+        /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Manufacturer cannot be longer than 50 characters!")]
         public string Manufacturer { get; set; } = default!;
 
+        /// <summary>
+        /// The release date of the Component. Often just the year.
+        /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? Release { get; set; }
 
+        /// <summary>
+        /// Type of the Component. Used to distinguish between inherited classes in the database.
+        /// </summary>
         [Required]
         [EnumDataType(typeof(ComponentType))]
-        public ComponentType Type { get; set; } = default!;
+        public ComponentType Type { get; set; }
     }
 }

@@ -5,19 +5,32 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KAZABUILD.Domain.Entities.Components
 {
-    public class ComponentColor
+    /// <summary>
+    /// Model storing the connection between components and colors.
+    /// Represents which color variants a component is available in.
+    /// </summary>
+    public class ComponentVariant
     {
         [Key]
         public Guid Id { get; set; }
 
+        /// <summary>
+        /// Id of the component the color is for.
+        /// </summary>
         [Required]
         public Guid ComponentId { get; set; } = default!;
 
+        /// <summary>
+        /// Id of the color variant.
+        /// </summary>
         [Required]
         [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
         [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
         public string ColorCode { get; set; } = default!;
 
+        /// <summary>
+        /// Whether the color variant is available in online shops.
+        /// </summary>
         [Required]
         public bool IsAvailable { get; set; } = true;
 

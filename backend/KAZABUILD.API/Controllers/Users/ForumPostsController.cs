@@ -5,16 +5,21 @@ using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for Forum Post related endpoints
+    /// <summary>
+    /// Controller for Forum Post related endpoints.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ForumPostsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -24,7 +29,11 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new ForumPost
+        /// <summary>
+        /// API Endpoint for posting on the forum.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> AddForumPost([FromBody] CreateForumPostDto dto)
@@ -118,9 +127,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "New Forum Entry Posted successfully!", id = forumPost.Id });
         }
 
-        //API endpoint for updating the selected ForumPost
-        //User can modify only their own messages,
-        //while staff can modify all 
+        /// <summary>
+        /// API endpoint for updating the selected ForumPost
+        /// User can modify only their own posts, while staff can modify all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> UpdateForumPost(Guid id, [FromBody] UpdateForumPostDto dto)
@@ -245,8 +258,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "Forum Post updated successfully!" });
         }
 
-        //API endpoint for getting the ForumPost specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the ForumPost specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<ForumPostResponseDto>> GetForumPost(Guid id)
@@ -347,8 +364,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting ForumPosts with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        ///  API endpoint for getting ForumPosts with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<ForumPostResponseDto>>> GetForumPosts([FromBody] GetForumPostDto dto)
@@ -477,7 +498,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected ForumPost for administration
+        /// <summary>
+        /// API endpoint for deleting the selected ForumPost.
+        /// Users can delete their own posts, while staff can delete all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DeleteForumPost(Guid id)

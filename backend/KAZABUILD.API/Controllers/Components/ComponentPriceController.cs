@@ -15,7 +15,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for ComponentPrice related endpoints
+    /// <summary>
+    /// Controller for ComponentPrice related endpoints.
+    /// Used to store and operate with price listing in external online shops.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ComponentPriceController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase

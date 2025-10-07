@@ -54,7 +54,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public string? Note { get; set; }
 
         //Database relationships
-        public ICollection<ComponentColor> Colors { get; set; } = [];
+        public ICollection<ComponentVariant> Colors { get; set; } = [];
         public ICollection<ComponentPart> SubComponents { get; set; } = [];
         public ICollection<ComponentCompatibility> CompatibleComponents { get; set; } = [];
         public ICollection<ComponentCompatibility> CompatibleToComponents { get; set; } = [];

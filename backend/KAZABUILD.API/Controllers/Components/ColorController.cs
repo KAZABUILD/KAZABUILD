@@ -3,9 +3,9 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,12 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for Color related endpoints
+    /// <summary>
+    /// Controller for Color related endpoints.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -444,10 +449,10 @@ namespace KAZABUILD.API.Controllers.Components
                 return NotFound(new { color = "Color not found!" });
             }
 
-            //Delete all associated ComponentColors
+            //Delete all associated ComponentVariants
             if(color.Components.Count != 0)
 {
-                _db.ComponentColors.RemoveRange(color.Components);
+                _db.ComponentVariants.RemoveRange(color.Components);
             }
 
             //Delete the color

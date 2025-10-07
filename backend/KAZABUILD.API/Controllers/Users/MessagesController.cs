@@ -9,13 +9,18 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for Message related endpoints
+    /// <summary>
+    /// Controller for Message related endpoints.
+    /// Messages can be sent between all users, staff, system and bots.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class MessagesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -25,7 +30,11 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new Message
+        /// <summary>
+        /// API Endpoint for sending a new Message.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> AddMessage([FromBody] CreateMessageDto dto)
@@ -123,9 +132,13 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "Message sent successfully!", id = message.Id });
         }
 
-        //API endpoint for updating the selected Message
-        //User can modify only their own Messages,
-        //while admins can modify all 
+        /// <summary>
+        /// API endpoint for updating the selected Message
+        /// User can modify only if the Messages they received were read, while staff can modify all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> UpdateMessage(Guid id, [FromBody] UpdateMessageDto dto)
@@ -160,7 +173,7 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Check if current user has admin permissions or if they are creating a follow for themselves
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == message.SenderId;
+            var isSelf = currentUserId == message.ReceiverId;
 
             //Return unauthorized access exception if the user does not have the correct permissions
             if (!isSelf && !isPrivileged)
@@ -270,8 +283,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "Message updated successfully!" });
         }
 
-        //API endpoint for getting the Message specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the Message specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<MessageResponseDto>> GetMessage(Guid id)
@@ -392,8 +409,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting Messages with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting Messages with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<MessageResponseDto>>> GetMessages([FromBody] GetMessageDto dto)
@@ -532,7 +553,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected Message for administration
+        /// <summary>
+        /// API endpoint for deleting the selected Message.
+        /// Users can delete messages they sent and staff can delete all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DeleteMessage(Guid id)

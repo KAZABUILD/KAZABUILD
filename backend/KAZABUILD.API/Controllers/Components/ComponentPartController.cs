@@ -15,7 +15,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for endpoints related to a connector for SubComponents which are a part of a Component
+    /// <summary>
+    /// Controller for ComponentPart related endpoints.
+    /// Used to connect SubComponents with a Component which they are a part of.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase

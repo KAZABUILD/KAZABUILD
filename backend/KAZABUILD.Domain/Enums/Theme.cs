@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace KAZABUILD.Domain.Enums
 {
+    /// <summary>
+    /// Used to store which themes are available and used by users in the main website.
+    /// </summary>
     public enum Theme
     {
         DARK,

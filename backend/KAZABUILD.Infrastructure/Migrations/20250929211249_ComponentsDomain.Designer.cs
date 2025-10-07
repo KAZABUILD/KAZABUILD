@@ -41,7 +41,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("Color");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -77,7 +77,7 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.HasIndex("ComponentId");
 
-                    b.ToTable("ComponentColor");
+                    b.ToTable("ComponentVariant");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
@@ -1246,7 +1246,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("StorageComponents", (string)null);
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Color", "Color")
                         .WithMany("Components")

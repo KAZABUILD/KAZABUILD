@@ -2,7 +2,6 @@ using KAZABUILD.Application.DTOs.Components.SubComponents.CoolerSocketSubCompone
 using KAZABUILD.Application.DTOs.Components.SubComponents.IntegratedGraphicsSubComponent;
 using KAZABUILD.Application.DTOs.Components.SubComponents.M2SlotSubComponent;
 using KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSubComponent;
-using KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSubComponent;
 using KAZABUILD.Application.DTOs.Components.SubComponents.PCIeSlotSubComponent;
 using KAZABUILD.Application.DTOs.Components.SubComponents.PortSubComponent;
 using KAZABUILD.Domain.Enums;
