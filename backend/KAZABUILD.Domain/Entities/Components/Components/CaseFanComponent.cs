@@ -8,7 +8,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
     /// </summary>
     public class CaseFanComponent : BaseComponent
     {
-        // <summary>
+        /// <summary>
         /// The size of the fan in mm.
         /// </summary>
         [Required]

@@ -14,7 +14,6 @@ namespace KAZABUILD.Domain.Entities.Users
         [Key]
         public Guid Id { get; set; } = default!;
 
-
         /// <summary>
         /// Id of the user receiving the notification.
         /// </summary>

@@ -6,10 +6,16 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.OnboardEthernetSub
 {
     public class CreateOnboardEthernetSubComponentDto : CreateBaseSubComponentDto
     {
+        /// <summary>
+        /// The network Speed (e.g., 2.5 GB/s, 1 GB/s).
+        /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Speed cannot be longer than 50 characters!")]
         public string Speed { get; set; } = default!;
 
+        /// <summary>
+        /// The network controller model.
+        /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Controller cannot be longer than 50 characters!")]
         public string Controller { get; set; } = default!;

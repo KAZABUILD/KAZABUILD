@@ -15,7 +15,7 @@ namespace KAZABUILD.Domain.Entities.Components
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Website url of the website the price is from.
+        /// Url of the website the price is from.
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]

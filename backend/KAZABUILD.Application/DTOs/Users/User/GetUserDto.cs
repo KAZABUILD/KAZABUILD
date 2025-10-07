@@ -6,14 +6,8 @@ namespace KAZABUILD.Application.DTOs.Users.User
     public class GetUserDto
     {
         //Filter By fields
-        /// <summary>
-        /// List of user genders.
-        /// </summary>
         public List<string>? Gender { get; set; }
 
-        /// <summary>
-        /// List of user UserRoles.
-        /// </summary>
         public List<UserRole>? UserRole { get; set; }
 
         //Paging related fields

@@ -21,7 +21,7 @@ namespace KAZABUILD.Domain.Entities.Components
         public Guid ComponentId { get; set; } = default!;
 
         /// <summary>
-        /// Id of the color variant.
+        /// Id of the color.
         /// </summary>
         [Required]
         [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
@@ -34,6 +34,10 @@ namespace KAZABUILD.Domain.Entities.Components
         [Required]
         public bool IsAvailable { get; set; } = true;
 
+        /// <summary>
+        /// Additional price for this color variant.
+        /// Can be a discount.
+        /// </summary>
         [Column(TypeName = "decimal(18,2)")]
         [Range(-9999999.99, 9999999.99, ErrorMessage = "Additional Price must be between -9,999,999.99 and 9,999,999.99")]
         [DataType(DataType.Currency)]

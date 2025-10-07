@@ -15,7 +15,7 @@ using System.Text.Json.Serialization;
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
     /// <summary>
-    /// Only used for polymorphism and is inherited by other component classes.
+    /// Only used for polymorphism and inheritance by other component classes.
     /// </summary>
     [JsonDerivedType(typeof(CaseComponentResponseDto), "Case")]
     [JsonDerivedType(typeof(CaseFanComponentResponseDto), "CaseFan")]
