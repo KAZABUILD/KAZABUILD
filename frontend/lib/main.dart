@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_theme.dart';
+import '../screens/home/homepage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,19 +11,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'theme for app',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system, // auto switch (light/dark)
-      home: Scaffold(
-        appBar: AppBar(title: Text("Theme Example")),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {},
-            child: Text("Themed Button"),
-          ),
-        ),
-      ),
+      title: 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const HomePage(),
     );
   }
 }
