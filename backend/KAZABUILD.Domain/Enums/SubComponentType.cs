@@ -1,5 +1,8 @@
 namespace KAZABUILD.Domain.Enums
 {
+    /// <summary>
+    /// List of relevant subComponents present in the program.
+    /// </summary>
     public enum SubComponentType
     {
         PSU_CONNECTOR,

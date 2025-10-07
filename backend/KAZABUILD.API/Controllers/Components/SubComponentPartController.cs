@@ -3,7 +3,6 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -15,7 +14,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for endpoints related to a connector for SubComponents which are a part of another SubComponent
+    /// <summary>
+    /// Controller for SubComponentPart related endpoints.
+    /// Used to connect SubComponents with other SubComponent which they are a part of.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class SubComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
@@ -85,6 +90,7 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 MainSubComponentId = dto.MainSubComponentId,
                 SubComponentId = dto.SubComponentId,
+                Amount = dto.Amount,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -118,7 +124,7 @@ namespace KAZABUILD.API.Controllers.Components
         }
 
         /// <summary>
-        /// API endpoint for updating the selected SubComponentPart's Note for administration.
+        /// API endpoint for updating the selected SubComponentPart's fields for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
@@ -159,6 +165,12 @@ namespace KAZABUILD.API.Controllers.Components
             var changedFields = new List<string>();
 
             //Update allowed fields
+            if (dto.Amount != null)
+            {
+                changedFields.Add("Amount: " + subComponentPart.Amount);
+
+                subComponentPart.Amount = (int)dto.Amount;
+            }
             if (dto.Note != null)
             {
                 changedFields.Add("Note: " + subComponentPart.Note);
@@ -260,7 +272,8 @@ namespace KAZABUILD.API.Controllers.Components
                 {
                     Id = subComponentPart.Id,
                     MainSubComponentId = subComponentPart.MainSubComponentId,
-                    SubComponentId = subComponentPart.SubComponentId
+                    SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount
                 };
             }
             else
@@ -274,6 +287,7 @@ namespace KAZABUILD.API.Controllers.Components
                     Id = subComponentPart.Id,
                     MainSubComponentId = subComponentPart.MainSubComponentId,
                     SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount,
                     DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
                     LastEditedAt = subComponentPart.LastEditedAt,
                     Note = subComponentPart.Note,
@@ -335,6 +349,14 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
             }
+            if (dto.AmountStart != null)
+            {
+                query = query.Where(p => dto.AmountStart <= p.Amount);
+            }
+            if (dto.AmountEnd != null)
+            {
+                query = query.Where(p => dto.AmountEnd >= p.Amount);
+            }
 
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
@@ -378,7 +400,8 @@ namespace KAZABUILD.API.Controllers.Components
                     {
                         Id = subComponentPart.Id,
                         MainSubComponentId = subComponentPart.MainSubComponentId,
-                        SubComponentId = subComponentPart.SubComponentId
+                        SubComponentId = subComponentPart.SubComponentId,
+                        Amount = subComponentPart.Amount
                     };
                 })];
             }
@@ -393,6 +416,7 @@ namespace KAZABUILD.API.Controllers.Components
                     Id = subComponentPart.Id,
                     MainSubComponentId = subComponentPart.MainSubComponentId,
                     SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount,
                     DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
                     LastEditedAt = subComponentPart.LastEditedAt,
                     Note = subComponentPart.Note

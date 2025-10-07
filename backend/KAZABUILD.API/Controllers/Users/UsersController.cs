@@ -15,7 +15,14 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
-    //Controller for User related endpoints
+    /// <summary>
+    /// Controller for User related endpoints.
+    /// Controls both user account information and user settings.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="hasher"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     // [EnableRateLimiting("Fixed")] <- Uncomment to add rate limiting
@@ -27,13 +34,19 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IHashingService _hasher = hasher;
         private readonly IRabbitMQPublisher _publisher = publisher;
 
-        //API Endpoint for creating a new user
+        /// <summary>
+        /// API Endpoint for creating a new user for staff.
+        /// Regular users should use auth endpoints instead.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> AddUser([FromBody] CreateUserDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
@@ -59,6 +72,24 @@ namespace KAZABUILD.API.Controllers.Users
                     return Conflict(new { message = "Email Already In Use" });
                 else
                     return Conflict(new { message = "Login Already In Use" });
+            }
+
+            //Check if the user has sufficient permissions
+            if (currentUserRole <= dto.UserRole)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "User",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Email Already In Use"
+                );
+
+                //Return forbidden response
+                return Forbid();
             }
 
             //Create a user to add
@@ -113,9 +144,14 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User created successfully!", id = user.Id });
         }
 
-        //API endpoint for updating the selected user
-        //Users can only update their own profiles and settings
-        //Admins can update all information
+        /// <summary>
+        /// API endpoint for updating the selected user.
+        /// Users can only update their own profiles and settings.
+        /// Admins can update all information.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
@@ -346,32 +382,11 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Update role based on user privilege
-            if (dto.UserRole != null)
+            if (dto.UserRole != null && dto.UserRole < currentUserRole)
             {
-                if(isPrivileged && dto.UserRole < UserRole.MODERATOR)
-                {
-                    changedFields.Add("UserRole: " + user.UserRole);
+                changedFields.Add("UserRole: " + user.UserRole);
 
-                    user.UserRole = (UserRole)dto.UserRole;
-                }
-                else if(currentUserRole == UserRole.ADMINISTRATOR && dto.UserRole < UserRole.ADMINISTRATOR)
-                {
-                    changedFields.Add("UserRole: " + user.UserRole);
-
-                    user.UserRole = (UserRole)dto.UserRole;
-                }
-                else if (currentUserRole == UserRole.OWNER && dto.UserRole < UserRole.OWNER)
-                {
-                    changedFields.Add("UserRole: " + user.UserRole);
-
-                    user.UserRole = (UserRole)dto.UserRole;
-                }
-                else if (currentUserRole == UserRole.SYSTEM && dto.UserRole < UserRole.SYSTEM)
-                {
-                    changedFields.Add("UserRole: " + user.UserRole);
-
-                    user.UserRole = (UserRole)dto.UserRole;
-                }
+                user.UserRole = (UserRole)dto.UserRole;
             }
 
             //Update edit timestamp
@@ -408,7 +423,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "User updated successfully!" });
         }
 
-        //API endpoint for changing the password, users can change their own password
+        /// <summary>
+        /// API endpoint for changing passwords, users can only change their own password.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPut("{id:guid}/change-password")]
         [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordDto dto)
@@ -501,8 +521,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(new { message = "Password changed successfully!" });
         }
 
-        //API endpoint for getting the user specified by id,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting the user specified by id,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<UserResponseDto>> GetUser(Guid id)
@@ -660,8 +684,12 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(response);
         }
 
-        //API endpoint for getting users with pagination and search,
-        //different level of information returned based on privileges
+        /// <summary>
+        /// API endpoint for getting users with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers([FromBody] GetUserDto dto)
@@ -855,13 +883,18 @@ namespace KAZABUILD.API.Controllers.Users
             return Ok(responses);
         }
 
-        //API endpoint for deleting the selected user for administration
+        /// <summary>
+        /// API endpoint for deleting the selected user for staff.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Staff")]
         public async Task<IActionResult> DeleteUser(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
@@ -884,6 +917,24 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { message = "User not found!" });
+            }
+
+            //Check if the user has sufficient permissions
+            if (currentUserRole <= user.UserRole)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "User",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Email Already In Use"
+                );
+
+                //Return forbidden response
+                return Forbid();
             }
 
             //Handle deleting followed user and followers to avoid conflicts with cascade deletes

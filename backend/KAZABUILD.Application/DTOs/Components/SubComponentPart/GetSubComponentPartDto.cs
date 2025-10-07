@@ -9,6 +9,10 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponentPart
 
         public List<Guid>? SubComponentId { get; set; }
 
+        public int? AmountStart { get; set; }
+
+        public int? AmountEnd { get; set; }
+
         //Paging related fields
         public bool Paging = false;
 

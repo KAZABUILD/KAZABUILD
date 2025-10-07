@@ -1,9 +1,6 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace KAZABUILD.Application.DTOs.Components.ComponentColor
+namespace KAZABUILD.Application.DTOs.Components.ComponentVariant
 {
-    public class ComponentColorResponseDto
+    public class ComponentVariantResponseDto
     {
         public Guid? Id { get; set; }
 

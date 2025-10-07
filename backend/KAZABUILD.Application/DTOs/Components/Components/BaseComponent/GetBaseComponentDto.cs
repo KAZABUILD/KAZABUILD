@@ -9,12 +9,15 @@ using KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent;
 using KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent;
 using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
 using KAZABUILD.Domain.Enums;
-using System.ComponentModel;
+
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
+    /// <summary>
+    /// Only used for polymorphism and is inherited by other component classes.
+    /// </summary>
     [JsonDerivedType(typeof(GetCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(GetCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(GetCoolerComponentDto), "Cooler")]
@@ -28,33 +31,63 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     public class GetBaseComponentDto
     {
         //Filter By fields
+        /// <summary>
+        /// List of Names.
+        /// </summary>
         public List<string>? Name { get; set; }
 
+        /// <summary>
+        /// List of Manufacturers.
+        /// </summary>
         public List<string>? Manufacturer { get; set; }
 
+        /// <summary>
+        /// Start of the bounding range for Release.
+        /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseStart { get; set; }
 
+        /// <summary>
+        /// End of the bounding range for Release.
+        /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseEnd { get; set; }
 
         public List<ComponentType>? Type { get; set; }
 
         //Paging related fields
-        public bool Paging { get; set; } = false;
+        /// <summary>
+        /// Whether the paging should be used.
+        /// </summary>
+        public bool Paging = false;
 
+        /// <summary>
+        /// Which page should be gotten if paging enabled.
+        /// </summary>
         [MinLength(1, ErrorMessage = "Page number must be greater than 0")]
         public int? Page { get; set; }
 
+        /// <summary>
+        /// How many objects should be in the response if paging enabled.
+        /// </summary>
         [MinLength(1, ErrorMessage = "Page length must be greater than 0")]
         public int? PageLength { get; set; }
 
         //Query search string
+        /// <summary>
+        /// Query string with words to be looked for in the search.
+        /// </summary>
         public string? Query { get; set; } = "";
 
         //Sorting related fields
+        /// <summary>
+        /// By which should the return items be sorted by.
+        /// </summary>
         public string? OrderBy { get; set; }
 
+        /// <summary>
+        /// Sort direction - either asc or desc.
+        /// </summary>
         public string SortDirection { get; set; } = "asc";
     }
 }

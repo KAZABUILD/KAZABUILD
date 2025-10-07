@@ -8,6 +8,12 @@ using Serilog.Core;
 
 namespace KAZABUILD.Infrastructure.Services
 {
+    /// <summary>
+    /// Service which logs information in the database, log files and the console.
+    /// It's used in other services, controllers and the application startup.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="serilogLogger"></param>
     public class LoggerService(KAZABUILDDBContext db, ILogger<Logger> serilogLogger) : ILoggerService
     {
         private readonly KAZABUILDDBContext _db = db;

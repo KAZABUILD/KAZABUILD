@@ -15,7 +15,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for endpoints related to a connector for Components which are a compatible to another Component
+    /// <summary>
+    /// Controller for ComponentCompatibility related endpoints.
+    /// Used to connect Components with other Component which they are compatible with.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ComponentCompatibilityController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase

@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace KAZABUILD.Application.DTOs.Components.ComponentColor
+namespace KAZABUILD.Application.DTOs.Components.ComponentVariant
 {
-    public class GetComponentColorDto
+    public class GetComponentVariantDto
     {
         //Filter by fields
         public List<Guid>? ComponentId { get; set; }

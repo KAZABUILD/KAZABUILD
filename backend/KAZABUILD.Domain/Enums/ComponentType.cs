@@ -1,5 +1,8 @@
 namespace KAZABUILD.Domain.Enums
 {
+    /// <summary>
+    /// List of relevant components present in the program.
+    /// </summary>
     public enum ComponentType
     {
         CASE_FAN,

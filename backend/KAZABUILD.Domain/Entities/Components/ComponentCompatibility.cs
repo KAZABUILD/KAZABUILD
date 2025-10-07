@@ -4,14 +4,23 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Components
 {
+    /// <summary>
+    /// Model defining a connection between a components if they are compatible to each other.
+    /// </summary>
     public class ComponentCompatibility
     {
         [Key]
         public Guid Id { get; set; }
 
+        /// <summary>
+        /// Id of a component to set compatibility for.s
+        /// </summary>
         [Required]
         public Guid ComponentId { get; set; } = default!;
 
+        /// <summary>
+        /// Id of a component compatible to the other one.
+        /// </summary>
         [Required]
         public Guid CompatibleComponentId { get; set; } = default!;
 

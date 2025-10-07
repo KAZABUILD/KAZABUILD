@@ -3,7 +3,6 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -15,7 +14,13 @@ using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Components
 {
-    //Controller for ComponentReview related endpoints
+    /// <summary>
+    /// Controller for ComponentReview related endpoints.
+    /// Used to store and work with external component reviews.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
     public class ComponentReviewController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase

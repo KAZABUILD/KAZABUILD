@@ -48,7 +48,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("Colors");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -85,7 +85,7 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.HasIndex("ComponentId");
 
-                    b.ToTable("ComponentColors");
+                    b.ToTable("ComponentVariants");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
@@ -1509,7 +1509,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("PortSubComponents", (string)null);
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentColor", b =>
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Color", "Color")
                         .WithMany("Components")

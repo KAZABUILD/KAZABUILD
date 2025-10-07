@@ -121,7 +121,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ComponentColor",
+                name: "ComponentVariant",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -135,15 +135,15 @@ namespace KAZABUILD.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ComponentColor", x => x.Id);
+                    table.PrimaryKey("PK_ComponentVariant", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ComponentColor_Color_ColorCode",
+                        name: "FK_ComponentVariant_Color_ColorCode",
                         column: x => x.ColorCode,
                         principalTable: "Color",
                         principalColumn: "ColorCode",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_ComponentColor_Components_ComponentId",
+                        name: "FK_ComponentVariant_Components_ComponentId",
                         column: x => x.ComponentId,
                         principalTable: "Components",
                         principalColumn: "Id",
@@ -507,13 +507,13 @@ namespace KAZABUILD.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ComponentColor_ColorCode",
-                table: "ComponentColor",
+                name: "IX_ComponentVariant_ColorCode",
+                table: "ComponentVariant",
                 column: "ColorCode");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ComponentColor_ComponentId",
-                table: "ComponentColor",
+                name: "IX_ComponentVariant_ComponentId",
+                table: "ComponentVariant",
                 column: "ComponentId");
 
             migrationBuilder.CreateIndex(
@@ -567,7 +567,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 name: "CaseFanComponents");
 
             migrationBuilder.DropTable(
-                name: "ComponentColor");
+                name: "ComponentVariant");
 
             migrationBuilder.DropTable(
                 name: "ComponentCompatibility");
