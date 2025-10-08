@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 /// General color scheme for the application.
 class AppColorsDark {
-
   // ----------------------------
   // Background Colors
   // ----------------------------
@@ -34,7 +33,6 @@ class AppColorsDark {
 }
 
 class AppColorsLight {
-
   // ----------------------------
   // Background Colors
   // ----------------------------

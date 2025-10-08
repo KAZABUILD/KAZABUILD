@@ -9,5 +9,5 @@ class AppLocalizationsTr extends AppLocalizations {
   AppLocalizationsTr([String locale = 'tr']) : super(locale);
 
   @override
-  String get language => 'Turkish';
+  String get language => 'Türkçe';
 }

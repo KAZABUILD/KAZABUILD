@@ -9,9 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  
+  carousel_slider: ^5.1.1
   cupertino_icons: ^1.0.8
   dio: ^5.9.0
-  flutter_riverpod: ^3.0.2  # Updated to latest compatible version
+  flutter_riverpod: ^2.5.1 # Updated to latest compatible version
   flutter_dotenv: ^6.0.0
   json_annotation: ^4.9.0
   intl_utils: ^2.8.11  # Downgraded to resolve analyzer conflict
@@ -32,4 +36,6 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
-    - assets/
+    - assets/uk_flag.png
+    - assets/tr_flag.png
+    - assets/pl_flag.png
