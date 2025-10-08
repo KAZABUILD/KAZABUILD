@@ -9,7 +9,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
     public class CaseFanComponent : BaseComponent
     {
         /// <summary>
-        /// The size of the fan in mm.
+        /// The size of the Fan in mm.
         /// </summary>
         [Required]
         [Range(20, 500, ErrorMessage = "Fan size must be between 20 mm and 500 mm")]
@@ -56,7 +56,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public decimal? MaxNoiseLevel { get; set; }
 
         /// <summary>
-        /// Whether the fan supports Pulse Width Modulation for speed control.
+        /// Whether the Fan supports Pulse Width Modulation for speed control.
         /// </summary>
         [Required]
         public bool PulseWidthModulation { get; set; } = default!;
@@ -68,19 +68,20 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public string? LEDType { get; set; }
 
         /// <summary>
-        /// What Connector type, if any, the fan uses (e.g., 3-pin, 4-pin).
+        /// What Connector Type, if any, the Fan uses (e.g., 3-pin, 4-pin).
         /// </summary>
         [StringLength(50, ErrorMessage = "Connector Type cannot be longer than 50 characters!")]
         public string? ConnectorType { get; set; }
 
         /// <summary>
-        /// What type of Controller, if any, does the fan include (e.g., Motherboard, External Hub, Remote, None).
+        /// What type of Controller, if any, does the Fan include (e.g., Motherboard, External Hub, Remote, None).
         /// </summary>
         [StringLength(50, ErrorMessage = "Controller type cannot be longer than 50 characters!")]
         public string? ControllerType { get; set; }
 
         /// <summary>
         /// Static pressure in mmH2O (Millimetre of Water Column).
+        /// Measures how much power the Fan can exert to move air.
         /// </summary>
         [Required]
         [Range(0, 20, ErrorMessage = "Static pressure must be between 0 and 20 mmH2O")]

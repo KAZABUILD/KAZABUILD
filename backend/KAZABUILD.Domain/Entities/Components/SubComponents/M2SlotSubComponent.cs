@@ -23,7 +23,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
         public string KeyType { get; set; } = default!;
 
         /// <summary>
-        /// The M.2 interface specification (e.g., PCIe 4.0 x4)
+        /// The M.2 Interface specification (e.g., PCIe 4.0 x4)
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "cannot be longer than 50 characters!")]

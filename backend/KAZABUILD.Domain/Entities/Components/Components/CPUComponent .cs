@@ -30,14 +30,14 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public string CoreFamily { get; set; } = default!;
 
         /// <summary>
-        /// The type of socket the CPU uses to connect to the motherboard (e.g., LGA 1851, AM5).
+        /// The Type of Socket the CPU uses to connect to the motherboard (e.g., LGA 1851, AM5).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Socket Type cannot be longer than 50 characters!")]
         public string SocketType { get; set; } = default!;
 
         /// <summary>
-        /// The total number of physical cores in the CPU.
+        /// The total number of physical Cores in the CPU.
         /// </summary>
         [Required]
         [Range(1, 512, ErrorMessage = "Core Total must be between 1 and 512")]
@@ -56,35 +56,35 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public int? EfficiencyAmount { get; set; }
 
         /// <summary>
-        /// The number of logical threads the CPU can handle.
+        /// The number of logical Threads the CPU can handle.
         /// </summary>
         [Required]
         [Range(1, 256, ErrorMessage = "Threads Amount must be between 1 and 2048")]
         public int ThreadsAmount { get; set; } = default!;
 
         /// <summary>
-        /// Base clock Speed for a Performance core.
+        /// Base clock Speed for a Performance core in MHz.
         /// </summary>
         [Range(0, 10000, ErrorMessage = "Base Performance Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BasePerformanceSpeed { get; set; }
 
         /// <summary>
-        /// Max boosted clock Speed for a Performance core.
+        /// Max boosted clock Speed for a Performance core in MHz.
         /// </summary>
         [Range(0, 10000, ErrorMessage = "Boost Performance Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BoostPerformanceSpeed { get; set; }
 
         /// <summary>
-        /// Base clock Speed for an Efficiency core..
+        /// Base clock Speed for an Efficiency core in MHz.
         /// </summary>
         [Range(0, 10000, ErrorMessage = "Base Efficiency Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
         public decimal? BaseEfficiencySpeed { get; set; }
 
         /// <summary>
-        /// Max boosted clock Speed for an Efficiency core.
+        /// Max boosted clock Speed for an Efficiency core in MHz.
         /// </summary>
         [Range(0, 10000, ErrorMessage = "Boost Efficiency Speed must be between 0 and 10000 MHz")]
         [Precision(7, 2)]
@@ -119,7 +119,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public decimal? L4 { get; set; }
 
         /// <summary>
-        /// Whether the CPU includes a stock cooler.
+        /// Whether the CPU includes a stock Cooler.
         /// </summary>
         [Required]
         public bool IncludesCooler { get; set; } = default!;
@@ -133,20 +133,20 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public string Lithography { get; set; } = default!;
 
         /// <summary>
-        /// Whether the CPU supports simultaneous multithreading (SMT), also known as hyperthreading.
+        /// Whether the CPU Supports Simultaneous Multithreading (SMT), also known as hyperthreading.
         /// </summary>
         [Required]
         public bool SupportsSimultaneousMultithreading { get; set; } = default!;
 
         /// <summary>
-        /// Supported memory type (e.g., DDR4, DDR5).
+        /// Supported Memory Type (e.g., DDR4, DDR5).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Memory Type cannot be longer than 50 characters!")]
         public string MemoryType { get; set; } = default!;
 
         /// <summary>
-        /// The type of packaging the CPU comes in (e.g., Box, Tray/OEM).
+        /// The type of Packaging the CPU comes in (e.g., Box, Tray/OEM).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Packaging Type cannot be longer than 50 characters!")]
@@ -156,7 +156,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// Whether the CPU supports detecting and correcting errors in data transmission or storage via ECC (Error-Correcting Code) memory.
         /// </summary>
         [Required]
-        public bool SupportsErrorCorrectingCode { get; set; } = default!;
+        public bool SupportsECC { get; set; } = default!;
 
         /// <summary>
         /// Thermal Design Power (TDP), the maximum heat the CPU can generate in Watts.

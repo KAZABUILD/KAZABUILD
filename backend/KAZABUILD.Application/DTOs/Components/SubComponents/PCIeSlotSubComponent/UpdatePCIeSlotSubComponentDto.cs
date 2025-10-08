@@ -13,7 +13,7 @@ namespace KAZABUILD.Application.DTOs.Components.SubComponents.PCIeSlotSubCompone
         public string? Gen { get; set; } = default!;
 
         /// <summary>
-        /// The number of lanes for the PCIe slot (e.g., x1, x4, x8, x16).
+        /// The number of Lanes for the PCIe slot (e.g., x1, x4, x8, x16).
         /// </summary>
         [StringLength(5, ErrorMessage = "Lanes cannot be longer than 5 characters!")]
         public string? Lanes { get; set; } = default!;

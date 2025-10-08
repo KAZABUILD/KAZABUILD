@@ -9,7 +9,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
     public class PortSubComponent : BaseSubComponent
     {
         /// <summary>
-        /// Type of the port.
+        /// Type of the Port.
         /// </summary>
         [Required]
         [EnumDataType(typeof(PortType))]

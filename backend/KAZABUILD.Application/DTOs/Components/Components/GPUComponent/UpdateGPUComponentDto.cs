@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
     public class UpdateGPUComponentDto : UpdateBaseComponentDto
     {
         /// <summary>
-        /// The GPU chipset (e.g., NVIDIA RTX 4090, AMD Radeon RX 7900 XTX, ARC B580).
+        /// The GPU Chipset name (e.g., NVIDIA RTX 4090, AMD Radeon RX 7900 XTX, ARC B580).
         /// </summary>
         [StringLength(100, ErrorMessage = "Chipset cannot be longer than 100 characters!")]
         public string? Chipset { get; set; }
@@ -25,38 +25,38 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
         public string? VideoMemoryType { get; set; }
 
         /// <summary>
-        /// GPU base core clock speed in MHz.
+        /// GPU Base Core Clock Speed in MHz.
         /// </summary>
         [Range(100, 8000, ErrorMessage = "Core Base Clock Speed must be between 100 MHz and 8000 MHz")]
         public decimal? CoreBaseClockSpeed { get; set; }
 
         /// <summary>
-        /// GPU boost core clock speed in MHz.
+        /// GPU Boost Core Clock Speed in MHz.
         /// </summary>
         [Range(100, 8000, ErrorMessage = "Core Boost Clock Speed must be between 100 MHz and 8000 MHz")]
         public decimal? CoreBoostClockSpeed { get; set; }
 
         /// <summary>
-        /// Number of specialized GPU cores/shaders for task division.
+        /// Number of specialized GPU Cores/Shaders for task division.
         /// </summary>
         [Range(1, 50000, ErrorMessage = "Core count must be between 1 and 50000")]
         public int? CoreCount { get; set; }
 
         /// <summary>
-        /// Effective memory clock speed in MHz.
+        /// Effective Memory Clock Speed in MHz.
         /// </summary>
         [Range(100, 50000, ErrorMessage = "Effective Memory Clock Speed must be between 100 MHz and 50000 MHz")]
         public decimal? EffectiveMemoryClockSpeed { get; set; }
 
         /// <summary>
-        /// How much data can be transferred on a bus in bits per second.
+        /// How much data can be transferred on a Bus in bits per second.
         /// </summary>
         [Range(32, 4096, ErrorMessage = "Memory Bus must be between 32-bit and 4096-bit")]
         public int? MemoryBusWidth { get; set; }
 
         /// <summary>
-        /// Frame synchronization technology supported by the GPU (e.g., G-SYNC, FreeSync, None).
-        /// FrameSync is a technology used 
+        /// Frame Synchronization technology supported by the GPU (e.g., G-SYNC, FreeSync, None).
+        /// FrameSync is used to identify the frame boundaries, permitting the data bits within the frame to be extracted
         /// </summary>
         [StringLength(50, ErrorMessage = "Frame sync value cannot be longer than 50 characters!")]
         public string? FrameSync { get; set; }
@@ -74,19 +74,19 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
         public decimal? ThermalDesignPower { get; set; }
 
         /// <summary>
-        /// Number of case expansion slots the GPU occupies.
+        /// Number of Case Expansion Slots the GPU occupies.
         /// </summary>
         [Range(1, 10, ErrorMessage = "Expansion Slot Width must be between 1 and 5")]
         public int? CaseExpansionSlotWidth { get; set; }
 
         /// <summary>
-        /// Total number of expansion slots the GPU occupies, accounting for the cooler size.
+        /// Total number of expansion Slots the GPU occupies, accounting for the cooler size.
         /// </summary>
         [Range(1, 10, ErrorMessage = "Total Slot Width must be between 1 and 10")]
-        public int? TotalSlotWidth { get; set; }
+        public int? TotalSlotAmount { get; set; }
 
         /// <summary>
-        /// Type of cooling solution (e.g., 3 Fans, 2 Fans, Blower, Water Cooled).
+        /// Type of Cooling solution (e.g., 3 Fans, 2 Fans, Blower, Water Cooled).
         /// </summary>
         [StringLength(50, ErrorMessage = "Cooling Type cannot be longer than 50 characters!")]
         public string? CoolingType { get; set; }

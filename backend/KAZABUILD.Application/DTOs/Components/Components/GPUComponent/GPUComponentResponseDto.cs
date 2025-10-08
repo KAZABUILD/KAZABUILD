@@ -30,7 +30,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
 
         public int? CaseExpansionSlotWidth { get; set; }
 
-        public int? TotalSlotWidth { get; set; }
+        public int? TotalSlotAmount { get; set; }
 
         public string? CoolingType { get; set; }
     }

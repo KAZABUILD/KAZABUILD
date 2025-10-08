@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
     public class CreateMemoryComponentDto : CreateBaseComponentDto
     {
         /// <summary>
-        /// Memory speed in MHz.
+        /// Memory Speed in MHz.
         /// </summary>
         [Required]
         [Range(100, 20000, ErrorMessage = "Speed must be between 100 MHz and 20000 MHz")]
@@ -28,7 +28,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public string FormFactor { get; set; } = default!;
 
         /// <summary>
-        /// Total capacity of the RAM kit in MB.
+        /// Total Capacity of the RAM kit in MB.
         /// </summary>
         [Required]
         [Range(256, 8388608, ErrorMessage = "Capacity must be between 256 MB and 8 TB (8388608 MB)")]
@@ -60,14 +60,14 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         /// </summary>
         [Required]
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
-        public int ModuleCapacity { get; set; } = default!;
+        public decimal ModuleCapacity { get; set; } = default!;
 
         /// <summary>
-        /// The type of RAM support Error-Correcting Code used by the RAM (e.g., Non-ECC, ECC).
+        /// The type of Error-Correcting Code used by the RAM (e.g., Non-ECC, ECC).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Error-Correcting Code cannot be longer than 50 characters!")]
-        public string ErrorCorrectingCode { get; set; } = default!;
+        public string ECC { get; set; } = default!;
 
         /// <summary>
         /// Whether the RAM is Registered or unbuffered (e.g., Unbuffered, Registered, Load Reduced).
@@ -78,7 +78,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public string RegisteredType { get; set; } = default!;
 
         /// <summary>
-        /// Whether the RAM modules have a heat spreader used to dissipate excess heat.
+        /// Whether the RAM modules have a Heat Spreader used to dissipate excess heat.
         /// </summary>
         [Required]
         public bool HaveHeatSpreader { get; set; } = default!;
@@ -90,13 +90,13 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public bool HaveRGB { get; set; } = default!;
 
         /// <summary>
-        /// The height of the RAM module in mm.
+        /// The Height of the RAM module in mm.
         /// </summary>
         [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
         public decimal? Height { get; set; }
 
         /// <summary>
-        /// Total capacity of the RAM kit in MB.
+        /// The operating Voltage of the RAM.
         /// </summary>
         [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
         public decimal? Voltage { get; set; }

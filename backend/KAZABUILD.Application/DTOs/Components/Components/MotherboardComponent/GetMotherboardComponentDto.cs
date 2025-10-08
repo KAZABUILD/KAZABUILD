@@ -1,5 +1,3 @@
-// Ignore Spelling: ARGB RGB
-
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 
 using System.ComponentModel.DataAnnotations;
@@ -27,22 +25,22 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public int? RAMSlotsAmountEnd { get; set; }
 
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
-        public int? MaxRAMAmountStart { get; set; }
+        public decimal? MaxRAMAmountStart { get; set; }
 
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
         public int? MaxRAMAmountEnd { get; set; }
 
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment6GBsAmountStart { get; set; }
+        public int? SATA6GBsAmountStart { get; set; }
 
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment6GBsAmountEnd { get; set; }
+        public int? SATA6GBsAmountEnd { get; set; }
 
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment3GBsAmountStart { get; set; }
+        public int? SATA3GBsAmountStart { get; set; }
 
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment3GBsAmountEnd { get; set; }
+        public int? SATA3GBsAmountEnd { get; set; }
 
         [Range(0, 20, ErrorMessage = "U2 Port Amount must be between 0 and 20")]
         public int? U2PortAmountStart { get; set; }

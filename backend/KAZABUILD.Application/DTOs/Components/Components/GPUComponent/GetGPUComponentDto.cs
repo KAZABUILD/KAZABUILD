@@ -67,10 +67,10 @@ namespace KAZABUILD.Application.DTOs.Components.Components.GPUComponent
         public int? CaseExpansionSlotWidthEnd { get; set; }
 
         [Range(1, 10, ErrorMessage = "Total Slot Width must be between 1 and 10")]
-        public int? TotalSlotWidthStart { get; set; }
+        public int? TotalSlotAmountStart { get; set; }
 
         [Range(1, 10, ErrorMessage = "Total Slot Width must be between 1 and 10")]
-        public int? TotalSlotWidthEnd { get; set; }
+        public int? TotalSlotAmountEnd { get; set; }
 
         public List<string>? CoolingType { get; set; }
     }

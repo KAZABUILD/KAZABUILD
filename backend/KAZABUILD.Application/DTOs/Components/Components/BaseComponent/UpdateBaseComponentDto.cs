@@ -48,10 +48,9 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
         public DateTime? Release { get; set; }
 
         /// <summary>
-        /// Type of the Component. Used to distinguish between inherited classes in the database.
+        /// Staff only note.
         /// </summary>
-        [Required]
-        [EnumDataType(typeof(ComponentType))]
-        public ComponentType? Type { get; set; }
+        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
+        public string? Note { get; set; }
     }
 }

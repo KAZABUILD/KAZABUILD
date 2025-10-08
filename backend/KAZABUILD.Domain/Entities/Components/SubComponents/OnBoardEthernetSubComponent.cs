@@ -16,7 +16,7 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
         public string Speed { get; set; } = default!;
 
         /// <summary>
-        /// The network controller model.
+        /// The network Controller model.
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Controller cannot be longer than 50 characters!")]

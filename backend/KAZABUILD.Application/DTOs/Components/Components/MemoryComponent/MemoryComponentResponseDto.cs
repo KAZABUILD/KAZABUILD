@@ -21,9 +21,9 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
 
         public int? ModuleQuantity { get; set; }
 
-        public int? ModuleCapacity { get; set; }
+        public decimal? ModuleCapacity { get; set; }
 
-        public string? ErrorCorrectingCode { get; set; }
+        public string? ECC { get; set; }
 
         public string? RegisteredType { get; set; }
 

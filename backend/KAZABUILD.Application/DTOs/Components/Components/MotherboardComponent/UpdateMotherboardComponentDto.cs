@@ -40,21 +40,21 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         /// The maximum Amount of RAM the Motherboard can support in GB.
         /// </summary>
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024")]
-        public int? MaxRAMAmount { get; set; }
+        public decimal? MaxRAMAmount { get; set; }
 
         /// <summary>
         /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
         /// SATA is a computer bus interface that connects host bus adapters to mass storage devices.
         /// </summary>
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment6GBsAmount { get; set; }
+        public int? SATA6GBsAmount { get; set; }
 
         /// <summary>
         /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
         /// SATA is a computer bus interface that connects host bus adapters to mass storage devices.
         /// </summary>
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20")]
-        public int? SerialATAttachment3GBsAmount { get; set; }
+        public int? SATA3GBsAmount { get; set; }
 
         /// <summary>
         /// The Amount of U2 Ports used to connect SSD's available in the Motherboard.
@@ -75,7 +75,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public int? CPUFanHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of Case/chassis fan Headers (typically 4-pin PWM) in the Motherboard.
+        /// Number of Case/Chassis fan Headers (typically 4-pin PWM) in the Motherboard.
         /// </summary>
         [Range(0, 20, ErrorMessage = "Case Fan Header Amount must be between 0 and 20")]
         public int? CaseFanHeaderAmount { get; set; }
@@ -161,7 +161,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         public bool? HasRAIDSupport { get; set; }
 
         /// <summary>
-        /// Whether the board has BIOS backup capability in flashback.
+        /// Whether the board has BIOS backup capability in Flashback.
         /// <summary>
         public bool? HasFlashback { get; set; }
 
