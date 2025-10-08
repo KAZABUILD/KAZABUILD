@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
-import '../screens/home/homepage.dart';
-import '../l10n/app_localization.dart';
-import '../l10n/l10n.dart';
-import '../models/locale.dart';
-import 'l10n/app_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/theme/app_theme.dart';
+import 'widgets/theme_provider.dart';
+import 'screens/home/homepage.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      //home: const HomePage(),
+      title: 'Kaza Build',
+
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+
+      themeMode: themeMode,
+      home: const HomePage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

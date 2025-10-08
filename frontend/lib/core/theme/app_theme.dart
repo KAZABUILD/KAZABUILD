@@ -2,76 +2,57 @@ import 'package:flutter/material.dart';
 import '../constants/app_color.dart';
 
 class AppTheme {
-
-  /// TODO fix colors
-  /// Dark Theme
-  static ThemeData darkTheme = ThemeData(
+  // -------------------
+  // DARK THEME
+  // -------------------
+  static final darkTheme = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColorsDark.backgroundPrimary,
-    textTheme: TextTheme(
-      bodyLarge: TextStyle(color: AppColorsDark.textWhite),
-      bodyMedium: TextStyle(color: AppColorsDark.textNeon),
-      labelLarge: TextStyle(color: AppColorsDark.textPurple),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColorsDark.buttonBlue,
-        foregroundColor: Colors.white,
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: AppColorsDark.buttonGreen,
-      ),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColorsDark.buttonPurple,
-      ),
-    ),
-    colorScheme: ColorScheme.dark(
-      primary: AppColorsDark.buttonBlue,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColorsDark.buttonPurple,
       secondary: AppColorsDark.buttonGreen,
+      background: AppColorsDark.backgroundPrimary,
       surface: AppColorsDark.backgroundSecondary,
+      onPrimary: AppColorsDark.textWhite,
+      onSecondary: AppColorsDark.textWhite,
+      onBackground: AppColorsDark.textWhite,
+      onSurface: AppColorsDark.textWhite,
       error: AppColorsDark.error,
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
+      onError: AppColorsDark.textWhite,
     ),
+    textTheme: ThemeData.dark().textTheme.apply(
+      fontFamily: 'Inter',
+      bodyColor: AppColorsDark.textWhite,
+      displayColor: AppColorsDark.textWhite,
+    ),
+    iconTheme: const IconThemeData(color: AppColorsDark.textWhite),
   );
 
-  /// Light Theme
-  static ThemeData lightTheme = ThemeData(
+  // -------------------
+  // LIGHT THEME
+  // -------------------
+  static final lightTheme = ThemeData(
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColorsLight.backgroundPrimary,
-    textTheme: TextTheme(
-      bodyLarge: TextStyle(color: AppColorsLight.textBlack),
-      bodyMedium: TextStyle(color: AppColorsLight.textNeon),
-      labelLarge: TextStyle(color: AppColorsLight.textPurple),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColorsLight.buttonBlue,
-        foregroundColor: Colors.white,
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: AppColorsLight.buttonGreen,
-      ),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColorsLight.buttonGreen,
-      ),
-    ),
-    colorScheme: ColorScheme.light(
-      primary: AppColorsLight.buttonBlue,
+    colorScheme: const ColorScheme.light(
+      primary: AppColorsLight.buttonPurple,
       secondary: AppColorsLight.buttonGreen,
-      surface: AppColorsLight.backgroundSecondary,
+      background: AppColorsLight.backgroundPrimary,
+      surface: AppColorsLight.backgroundTertiary,
+      onPrimary: AppColorsLight.backgroundPrimary,
+      onSecondary: AppColorsLight.backgroundPrimary,
+      onBackground: AppColorsLight.textBlack,
+      onSurface: AppColorsLight.textBlack,
       error: AppColorsLight.error,
-      onPrimary: Colors.white,
-      onSecondary: Colors.black,
+      onError: AppColorsLight.backgroundPrimary,
     ),
-  );
 
+    textTheme: ThemeData.light().textTheme.apply(
+      fontFamily: 'Inter',
+      bodyColor: AppColorsLight.textBlack,
+      displayColor: AppColorsLight.textBlack,
+    ),
+
+    iconTheme: const IconThemeData(color: AppColorsLight.textBlack),
+  );
 }
