@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 namespace KAZABUILD.Domain.Entities.Components.Components
 {
     /// <summary>
-    /// Represents the Motherboard which connect all the other components together.
+    /// Represents the Motherboard which connects all the other components together.
     /// </summary>
     public class MotherboardComponent : BaseComponent
     {
@@ -46,11 +46,12 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public int RAMSlotsAmount { get; set; } = default!;
 
         /// <summary>
-        /// The maximum Amount of RAM the Motherboard can support in GB.
+        /// The Maximum Amount of RAM the Motherboard can support in GB.
         /// </summary>
         [Required]
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024!")]
-        public int MaxRAMAmount { get; set; } = default!;
+        [Precision(8,4)]
+        public decimal MaxRAMAmount { get; set; } = default!;
 
         /// <summary>
         /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
@@ -58,15 +59,15 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 6GBs Amount must be between 0 and 20!")]
-        public int SerialATAttachment6GBsAmount { get; set; } = default!;
+        public int SATA6GBsAmount { get; set; } = default!;
 
         /// <summary>
-        /// The Amount of Serial AT Attachment (SATA) with 6 GBs speed available in the Motherboard.
+        /// The Amount of Serial AT Attachment (SATA) with 3 GBs speed available in the Motherboard.
         /// SATA is a computer bus interface that connects host bus adapters to mass storage devices.
         /// </summary>
         [Required]
         [Range(0, 20, ErrorMessage = "Serial AT Attachment 3GBs Amount must be between 0 and 20!")]
-        public int SerialATAttachment3GBsAmount { get; set; } = default!;
+        public int SATA3GBsAmount { get; set; } = default!;
 
         /// <summary>
         /// The Amount of U2 Ports used to connect SSD's available in the Motherboard.
@@ -89,7 +90,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public int? CPUFanHeaderAmount { get; set; }
 
         /// <summary>
-        /// Number of Case/chassis fan Headers (typically 4-pin PWM) in the Motherboard.
+        /// Number of Case/Chassis Fan Headers (typically 4-pin PWM) in the Motherboard.
         /// </summary>
         [Range(0, 20, ErrorMessage = "Case Fan Header Amount must be between 0 and 20!")]
         public int? CaseFanHeaderAmount { get; set; }
@@ -181,7 +182,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public bool HasRAIDSupport { get; set; } = default!;
 
         /// <summary>
-        /// Whether the board has BIOS backup capability in flashback.
+        /// Whether the board has BIOS backup capability in Flashback.
         /// <summary>
         [Required]
         public bool HasFlashback { get; set; } = default!;

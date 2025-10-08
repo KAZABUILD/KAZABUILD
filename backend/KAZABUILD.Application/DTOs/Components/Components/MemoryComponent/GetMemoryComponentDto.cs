@@ -37,12 +37,12 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         public int? ModuleQuantityEnd { get; set; }
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
-        public int? ModuleCapacityStart { get; set; }
+        public decimal? ModuleCapacityStart { get; set; }
 
         [Range(64, 524288, ErrorMessage = "Module Capacity must be between 64 MB and 512 GB")]
         public int? ModuleCapacityEnd { get; set; }
 
-        public List<string>? ErrorCorrectingCode { get; set; }
+        public List<string>? ECC { get; set; }
 
         public List<string>? RegisteredType { get; set; }
 

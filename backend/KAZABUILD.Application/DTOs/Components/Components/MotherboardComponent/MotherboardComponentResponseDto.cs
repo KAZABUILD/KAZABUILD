@@ -1,5 +1,3 @@
-// Ignore Spelling: ARGB RGB
-
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
@@ -16,11 +14,11 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public int? RAMSlotsAmount { get; set; }
 
-        public int? MaxRAMAmount { get; set; }
+        public decimal? MaxRAMAmount { get; set; }
 
-        public int? SerialATAttachment6GBsAmount { get; set; }
+        public int? SATA6GBsAmount { get; set; }
 
-        public int? SerialATAttachment3GBsAmount { get; set; }
+        public int? SATA3GBsAmount { get; set; }
 
         public int? U2PortAmount { get; set; }
 

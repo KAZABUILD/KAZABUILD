@@ -160,7 +160,7 @@ namespace KAZABUILD.API.Controllers.Components
                         SupportsSimultaneousMultithreading = cpuDto.SupportsSimultaneousMultithreading,
                         MemoryType = cpuDto.MemoryType,
                         PackagingType = cpuDto.PackagingType,
-                        SupportsErrorCorrectingCode = cpuDto.SupportsErrorCorrectingCode,
+                        SupportsECC = cpuDto.SupportsECC,
                         ThermalDesignPower = cpuDto.ThermalDesignPower,
                         DatabaseEntryAt = DateTime.UtcNow,
                         LastEditedAt = DateTime.UtcNow
@@ -183,7 +183,7 @@ namespace KAZABUILD.API.Controllers.Components
                         Length = gpuDto.Length,
                         ThermalDesignPower = gpuDto.ThermalDesignPower,
                         CaseExpansionSlotWidth = gpuDto.CaseExpansionSlotWidth,
-                        TotalSlotWidth = gpuDto.TotalSlotWidth,
+                        TotalSlotAmount = gpuDto.TotalSlotAmount,
                         CoolingType = gpuDto.CoolingType,
                         DatabaseEntryAt = DateTime.UtcNow,
                         LastEditedAt = DateTime.UtcNow
@@ -202,7 +202,7 @@ namespace KAZABUILD.API.Controllers.Components
                         Timings = memoryDto.Timings,
                         ModuleQuantity = memoryDto.ModuleQuantity,
                         ModuleCapacity = memoryDto.ModuleCapacity,
-                        ErrorCorrectingCode = memoryDto.ErrorCorrectingCode,
+                        ECC = memoryDto.ECC,
                         RegisteredType = memoryDto.RegisteredType,
                         HaveHeatSpreader = memoryDto.HaveHeatSpreader,
                         HaveRGB = memoryDto.HaveRGB,
@@ -243,8 +243,8 @@ namespace KAZABUILD.API.Controllers.Components
                         RAMType = motherboardDto.RAMType,
                         RAMSlotsAmount = motherboardDto.RAMSlotsAmount,
                         MaxRAMAmount = motherboardDto.MaxRAMAmount,
-                        SerialATAttachment6GBsAmount = motherboardDto.SerialATAttachment6GBsAmount,
-                        SerialATAttachment3GBsAmount = motherboardDto.SerialATAttachment3GBsAmount,
+                        SATA6GBsAmount = motherboardDto.SATA6GBsAmount,
+                        SATA3GBsAmount = motherboardDto.SATA3GBsAmount,
                         U2PortAmount = motherboardDto.U2PortAmount,
                         WirelessNetworkingStandard = motherboardDto.WirelessNetworkingStandard,
                         CPUFanHeaderAmount = motherboardDto.CPUFanHeaderAmount,
@@ -839,11 +839,11 @@ namespace KAZABUILD.API.Controllers.Components
 
                         ((CPUComponent)component).PackagingType = cpuDto.PackagingType;
                     }
-                    if (cpuDto.SupportsErrorCorrectingCode != null)
+                    if (cpuDto.SupportsECC != null)
                     {
-                        changedFields.Add("SupportsErrorCorrectingCode: " + ((CPUComponent)component).SupportsErrorCorrectingCode);
+                        changedFields.Add("SupportsECC: " + ((CPUComponent)component).SupportsECC);
 
-                        ((CPUComponent)component).SupportsErrorCorrectingCode = (bool)cpuDto.SupportsErrorCorrectingCode;
+                        ((CPUComponent)component).SupportsECC = (bool)cpuDto.SupportsECC;
                     }
                     if (cpuDto.ThermalDesignPower != null)
                     {
@@ -927,11 +927,11 @@ namespace KAZABUILD.API.Controllers.Components
 
                         ((GPUComponent)component).CaseExpansionSlotWidth = (int)gpuDto.CaseExpansionSlotWidth;
                     }
-                    if (gpuDto.TotalSlotWidth != null)
+                    if (gpuDto.TotalSlotAmount != null)
                     {
-                        changedFields.Add("TotalSlotWidth: " + ((GPUComponent)component).TotalSlotWidth);
+                        changedFields.Add("TotalSlotAmount: " + ((GPUComponent)component).TotalSlotAmount);
 
-                        ((GPUComponent)component).TotalSlotWidth = (int)gpuDto.TotalSlotWidth;
+                        ((GPUComponent)component).TotalSlotAmount = (int)gpuDto.TotalSlotAmount;
                     }
                     if (!string.IsNullOrWhiteSpace(gpuDto.CoolingType))
                     {
@@ -992,13 +992,13 @@ namespace KAZABUILD.API.Controllers.Components
                     {
                         changedFields.Add("ModuleCapacity: " + ((MemoryComponent)component).ModuleCapacity);
 
-                        ((MemoryComponent)component).ModuleCapacity = (int)memoryDto.ModuleCapacity;
+                        ((MemoryComponent)component).ModuleCapacity = (decimal)memoryDto.ModuleCapacity;
                     }
-                    if (!string.IsNullOrWhiteSpace(memoryDto.ErrorCorrectingCode))
+                    if (!string.IsNullOrWhiteSpace(memoryDto.ECC))
                     {
-                        changedFields.Add("FormFactor: " + ((MemoryComponent)component).ErrorCorrectingCode);
+                        changedFields.Add("FormFactor: " + ((MemoryComponent)component).ECC);
 
-                        ((MemoryComponent)component).ErrorCorrectingCode = memoryDto.ErrorCorrectingCode;
+                        ((MemoryComponent)component).ECC = memoryDto.ECC;
                     }
                     if (!string.IsNullOrWhiteSpace(memoryDto.RegisteredType))
                     {
@@ -1144,7 +1144,7 @@ namespace KAZABUILD.API.Controllers.Components
                     {
                         changedFields.Add("MaxRAMAmount: " + ((MotherboardComponent)component).MaxRAMAmount);
 
-                        ((MotherboardComponent)component).MaxRAMAmount = (int)motherboardDto.MaxRAMAmount;
+                        ((MotherboardComponent)component).MaxRAMAmount = (decimal)motherboardDto.MaxRAMAmount;
                     }
                     if (motherboardDto.RAMSlotsAmount != null)
                     {
@@ -1152,17 +1152,17 @@ namespace KAZABUILD.API.Controllers.Components
 
                         ((MotherboardComponent)component).RAMSlotsAmount = (int)motherboardDto.RAMSlotsAmount;
                     }
-                    if (motherboardDto.SerialATAttachment6GBsAmount != null)
+                    if (motherboardDto.SATA6GBsAmount != null)
                     {
-                        changedFields.Add("SerialATAttachment6GBsAmount: " + ((MotherboardComponent)component).SerialATAttachment6GBsAmount);
+                        changedFields.Add("SATA6GBsAmount: " + ((MotherboardComponent)component).SATA6GBsAmount);
 
-                        ((MotherboardComponent)component).SerialATAttachment6GBsAmount = (int)motherboardDto.SerialATAttachment6GBsAmount;
+                        ((MotherboardComponent)component).SATA6GBsAmount = (int)motherboardDto.SATA6GBsAmount;
                     }
-                    if (motherboardDto.SerialATAttachment3GBsAmount != null)
+                    if (motherboardDto.SATA3GBsAmount != null)
                     {
-                        changedFields.Add("MaxRAMAmount: " + ((MotherboardComponent)component).SerialATAttachment3GBsAmount);
+                        changedFields.Add("MaxRAMAmount: " + ((MotherboardComponent)component).SATA3GBsAmount);
 
-                        ((MotherboardComponent)component).SerialATAttachment3GBsAmount = (int)motherboardDto.SerialATAttachment3GBsAmount;
+                        ((MotherboardComponent)component).SATA3GBsAmount = (int)motherboardDto.SATA3GBsAmount;
                     }
                     if (motherboardDto.U2PortAmount != null)
                     {
@@ -1608,7 +1608,7 @@ namespace KAZABUILD.API.Controllers.Components
                         SupportsSimultaneousMultithreading = cpuComponent.SupportsSimultaneousMultithreading,
                         MemoryType = cpuComponent.MemoryType,
                         PackagingType = cpuComponent.PackagingType,
-                        SupportsErrorCorrectingCode = cpuComponent.SupportsErrorCorrectingCode,
+                        SupportsECC = cpuComponent.SupportsECC,
                         ThermalDesignPower = cpuComponent.ThermalDesignPower
                     },
                     GPUComponent gpuComponent => new GPUComponentResponseDto
@@ -1629,7 +1629,7 @@ namespace KAZABUILD.API.Controllers.Components
                         Length = gpuComponent.Length,
                         ThermalDesignPower = gpuComponent.ThermalDesignPower,
                         CaseExpansionSlotWidth = gpuComponent.CaseExpansionSlotWidth,
-                        TotalSlotWidth = gpuComponent.TotalSlotWidth,
+                        TotalSlotAmount = gpuComponent.TotalSlotAmount,
                         CoolingType = gpuComponent.CoolingType
                     },
                     MemoryComponent memoryComponent => new MemoryComponentResponseDto
@@ -1646,7 +1646,7 @@ namespace KAZABUILD.API.Controllers.Components
                         Timings = memoryComponent.Timings,
                         ModuleQuantity = memoryComponent.ModuleQuantity,
                         ModuleCapacity = memoryComponent.ModuleCapacity,
-                        ErrorCorrectingCode = memoryComponent.ErrorCorrectingCode,
+                        ECC = memoryComponent.ECC,
                         RegisteredType = memoryComponent.RegisteredType,
                         HaveHeatSpreader = memoryComponent.HaveHeatSpreader,
                         HaveRGB = memoryComponent.HaveRGB,
@@ -1683,8 +1683,8 @@ namespace KAZABUILD.API.Controllers.Components
                         RAMType = motherboardComponent.RAMType,
                         RAMSlotsAmount = motherboardComponent.RAMSlotsAmount,
                         MaxRAMAmount = motherboardComponent.MaxRAMAmount,
-                        SerialATAttachment6GBsAmount = motherboardComponent.SerialATAttachment6GBsAmount,
-                        SerialATAttachment3GBsAmount = motherboardComponent.SerialATAttachment3GBsAmount,
+                        SATA6GBsAmount = motherboardComponent.SATA6GBsAmount,
+                        SATA3GBsAmount = motherboardComponent.SATA3GBsAmount,
                         U2PortAmount = motherboardComponent.U2PortAmount,
                         WirelessNetworkingStandard = motherboardComponent.WirelessNetworkingStandard,
                         CPUFanHeaderAmount = motherboardComponent.CPUFanHeaderAmount,
@@ -1983,7 +1983,7 @@ namespace KAZABUILD.API.Controllers.Components
                         (cpuDto.PackagingType == null || cpuDto.PackagingType.Contains(c.PackagingType)) &&
                         (cpuDto.IncludesCooler == null || cpuDto.IncludesCooler == c.IncludesCooler) &&
                         (cpuDto.SupportsSimultaneousMultithreading == null || cpuDto.SupportsSimultaneousMultithreading == c.SupportsSimultaneousMultithreading) &&
-                        (cpuDto.SupportsErrorCorrectingCode == null || cpuDto.SupportsErrorCorrectingCode == c.SupportsErrorCorrectingCode) &&
+                        (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
                         (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
                         (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
                         (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
@@ -2050,8 +2050,8 @@ namespace KAZABUILD.API.Controllers.Components
                         (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower) &&
                         (gpuDto.CaseExpansionSlotWidthStart == null || gpuDto.CaseExpansionSlotWidthStart <= c.CaseExpansionSlotWidth) &&
                         (gpuDto.CaseExpansionSlotWidthEnd == null || gpuDto.CaseExpansionSlotWidthEnd >= c.CaseExpansionSlotWidth) &&
-                        (gpuDto.TotalSlotWidthStart == null || gpuDto.TotalSlotWidthStart <= c.TotalSlotWidth) &&
-                        (gpuDto.TotalSlotWidthEnd == null || gpuDto.TotalSlotWidthEnd >= c.TotalSlotWidth) &&
+                        (gpuDto.TotalSlotAmountStart == null || gpuDto.TotalSlotAmountStart <= c.TotalSlotAmount) &&
+                        (gpuDto.TotalSlotAmountEnd == null || gpuDto.TotalSlotAmountEnd >= c.TotalSlotAmount) &&
                         (gpuDto.ThermalDesignPowerStart == null || gpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
                         (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                     );
@@ -2076,7 +2076,7 @@ namespace KAZABUILD.API.Controllers.Components
                         (memoryDto.RAMType == null || memoryDto.RAMType.Contains(c.RAMType)) &&
                         (memoryDto.FormFactor == null || memoryDto.FormFactor.Contains(c.FormFactor)) &&
                         (memoryDto.Timings == null || (c.Timings != null && memoryDto.Timings.Contains(c.Timings))) &&
-                        (memoryDto.ErrorCorrectingCode == null || memoryDto.ErrorCorrectingCode.Contains(c.ErrorCorrectingCode)) &&
+                        (memoryDto.ECC == null || memoryDto.ECC.Contains(c.ECC)) &&
                         (memoryDto.RegisteredType == null || memoryDto.RegisteredType.Contains(c.RegisteredType)) &&
                         (memoryDto.HaveHeatSpreader == null || memoryDto.HaveHeatSpreader == c.HaveHeatSpreader) &&
                         (memoryDto.HaveRGB == null || memoryDto.HaveRGB == c.HaveRGB) &&
@@ -2099,7 +2099,7 @@ namespace KAZABUILD.API.Controllers.Components
                     //Apply search for the memory Component
                     if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        memoryQuery = memoryQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ErrorCorrectingCode, c => c.RegisteredType);
+                        memoryQuery = memoryQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ECC, c => c.RegisteredType);
                     }
 
                     query = memoryQuery;
@@ -2172,10 +2172,10 @@ namespace KAZABUILD.API.Controllers.Components
                         (motherboardDto.RAMSlotsAmountEnd == null || motherboardDto.RAMSlotsAmountEnd >= c.RAMSlotsAmount) &&
                         (motherboardDto.MaxRAMAmountStart == null || motherboardDto.MaxRAMAmountStart <= c.MaxRAMAmount) &&
                         (motherboardDto.MaxRAMAmountEnd == null || motherboardDto.MaxRAMAmountEnd >= c.MaxRAMAmount) &&
-                        (motherboardDto.SerialATAttachment6GBsAmountStart == null || motherboardDto.SerialATAttachment6GBsAmountStart <= c.SerialATAttachment6GBsAmount) &&
-                        (motherboardDto.SerialATAttachment6GBsAmountEnd == null || motherboardDto.SerialATAttachment6GBsAmountEnd >= c.SerialATAttachment6GBsAmount) &&
-                        (motherboardDto.SerialATAttachment3GBsAmountStart == null || motherboardDto.SerialATAttachment3GBsAmountStart <= c.SerialATAttachment3GBsAmount) &&
-                        (motherboardDto.SerialATAttachment3GBsAmountEnd == null || motherboardDto.SerialATAttachment3GBsAmountEnd >= c.SerialATAttachment3GBsAmount) &&
+                        (motherboardDto.SATA6GBsAmountStart == null || motherboardDto.SATA6GBsAmountStart <= c.SATA6GBsAmount) &&
+                        (motherboardDto.SATA6GBsAmountEnd == null || motherboardDto.SATA6GBsAmountEnd >= c.SATA6GBsAmount) &&
+                        (motherboardDto.SATA3GBsAmountStart == null || motherboardDto.SATA3GBsAmountStart <= c.SATA3GBsAmount) &&
+                        (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
                         (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
                         (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
                         (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
@@ -2386,7 +2386,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 SupportsSimultaneousMultithreading = cpuComponent.SupportsSimultaneousMultithreading,
                                 MemoryType = cpuComponent.MemoryType,
                                 PackagingType = cpuComponent.PackagingType,
-                                SupportsErrorCorrectingCode = cpuComponent.SupportsErrorCorrectingCode,
+                                SupportsECC = cpuComponent.SupportsECC,
                                 ThermalDesignPower = cpuComponent.ThermalDesignPower
                             },
                             GPUComponent gpuComponent => new GPUComponentResponseDto
@@ -2407,7 +2407,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 Length = gpuComponent.Length,
                                 ThermalDesignPower = gpuComponent.ThermalDesignPower,
                                 CaseExpansionSlotWidth = gpuComponent.CaseExpansionSlotWidth,
-                                TotalSlotWidth = gpuComponent.TotalSlotWidth,
+                                TotalSlotAmount = gpuComponent.TotalSlotAmount,
                                 CoolingType = gpuComponent.CoolingType
                             },
                             MemoryComponent memoryComponent => new MemoryComponentResponseDto
@@ -2424,7 +2424,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 Timings = memoryComponent.Timings,
                                 ModuleQuantity = memoryComponent.ModuleQuantity,
                                 ModuleCapacity = memoryComponent.ModuleCapacity,
-                                ErrorCorrectingCode = memoryComponent.ErrorCorrectingCode,
+                                ECC = memoryComponent.ECC,
                                 RegisteredType = memoryComponent.RegisteredType,
                                 HaveHeatSpreader = memoryComponent.HaveHeatSpreader,
                                 HaveRGB = memoryComponent.HaveRGB,
@@ -2461,8 +2461,8 @@ namespace KAZABUILD.API.Controllers.Components
                                 RAMType = motherboardComponent.RAMType,
                                 RAMSlotsAmount = motherboardComponent.RAMSlotsAmount,
                                 MaxRAMAmount = motherboardComponent.MaxRAMAmount,
-                                SerialATAttachment6GBsAmount = motherboardComponent.SerialATAttachment6GBsAmount,
-                                SerialATAttachment3GBsAmount = motherboardComponent.SerialATAttachment3GBsAmount,
+                                SATA6GBsAmount = motherboardComponent.SATA6GBsAmount,
+                                SATA3GBsAmount = motherboardComponent.SATA3GBsAmount,
                                 U2PortAmount = motherboardComponent.U2PortAmount,
                                 WirelessNetworkingStandard = motherboardComponent.WirelessNetworkingStandard,
                                 CPUFanHeaderAmount = motherboardComponent.CPUFanHeaderAmount,
@@ -2640,7 +2640,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 SupportsSimultaneousMultithreading = cpuComponent.SupportsSimultaneousMultithreading,
                                 MemoryType = cpuComponent.MemoryType,
                                 PackagingType = cpuComponent.PackagingType,
-                                SupportsErrorCorrectingCode = cpuComponent.SupportsErrorCorrectingCode,
+                                SupportsECC = cpuComponent.SupportsECC,
                                 ThermalDesignPower = cpuComponent.ThermalDesignPower,
                                 DatabaseEntryAt = cpuComponent.DatabaseEntryAt,
                                 LastEditedAt = cpuComponent.LastEditedAt,
@@ -2664,7 +2664,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 Length = gpuComponent.Length,
                                 ThermalDesignPower = gpuComponent.ThermalDesignPower,
                                 CaseExpansionSlotWidth = gpuComponent.CaseExpansionSlotWidth,
-                                TotalSlotWidth = gpuComponent.TotalSlotWidth,
+                                TotalSlotAmount = gpuComponent.TotalSlotAmount,
                                 CoolingType = gpuComponent.CoolingType,
                                 DatabaseEntryAt = gpuComponent.DatabaseEntryAt,
                                 LastEditedAt = gpuComponent.LastEditedAt,
@@ -2684,7 +2684,7 @@ namespace KAZABUILD.API.Controllers.Components
                                 Timings = memoryComponent.Timings,
                                 ModuleQuantity = memoryComponent.ModuleQuantity,
                                 ModuleCapacity = memoryComponent.ModuleCapacity,
-                                ErrorCorrectingCode = memoryComponent.ErrorCorrectingCode,
+                                ECC = memoryComponent.ECC,
                                 RegisteredType = memoryComponent.RegisteredType,
                                 HaveHeatSpreader = memoryComponent.HaveHeatSpreader,
                                 HaveRGB = memoryComponent.HaveRGB,
@@ -2727,8 +2727,8 @@ namespace KAZABUILD.API.Controllers.Components
                                 RAMType = motherboardComponent.RAMType,
                                 RAMSlotsAmount = motherboardComponent.RAMSlotsAmount,
                                 MaxRAMAmount = motherboardComponent.MaxRAMAmount,
-                                SerialATAttachment6GBsAmount = motherboardComponent.SerialATAttachment6GBsAmount,
-                                SerialATAttachment3GBsAmount = motherboardComponent.SerialATAttachment3GBsAmount,
+                                SATA6GBsAmount = motherboardComponent.SATA6GBsAmount,
+                                SATA3GBsAmount = motherboardComponent.SATA3GBsAmount,
                                 U2PortAmount = motherboardComponent.U2PortAmount,
                                 WirelessNetworkingStandard = motherboardComponent.WirelessNetworkingStandard,
                                 CPUFanHeaderAmount = motherboardComponent.CPUFanHeaderAmount,

@@ -96,7 +96,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CPUComponent
 
         public List<string>? PackagingType { get; set; }
 
-        public bool? SupportsErrorCorrectingCode { get; set; }
+        public bool? SupportsECC { get; set; }
 
         [Range(1, 600, ErrorMessage = "Thermal Design Power must be between 1 and 1000 W")]
         public decimal? ThermalDesignPowerStart { get; set; }

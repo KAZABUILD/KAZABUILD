@@ -47,7 +47,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CPUComponent
 
         public string? PackagingType { get; set; }
 
-        public bool? SupportsErrorCorrectingCode { get; set; }
+        public bool? SupportsECC { get; set; }
 
         public decimal? ThermalDesignPower { get; set; }
     }

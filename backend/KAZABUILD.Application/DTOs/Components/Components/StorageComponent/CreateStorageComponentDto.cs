@@ -7,14 +7,14 @@ namespace KAZABUILD.Application.DTOs.Components.Components.StorageComponent
     public class CreateStorageComponentDto : CreateBaseComponentDto
     {
         /// <summary>
-        /// Storage series or model name (e.g., Samsung 980 Pro, WD Blue).
+        /// Storage Series or model name (e.g., Samsung 980 Pro, WD Blue).
         /// </summary>
         [Required]
         [StringLength(100, ErrorMessage = "Series cannot be longer than 100 characters!")]
         public string Series { get; set; } = default!;
 
         /// <summary>
-        /// Capacity of the storage device in GB.
+        /// Capacity of the Storage device in GB.
         /// </summary>
         [Required]
         [Range(0, 8388608, ErrorMessage = "Capacity must be between 0 and 8 PB (8388608 GB)")]
@@ -42,7 +42,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.StorageComponent
         public string Interface { get; set; } = default!;
 
         /// <summary>
-        /// Whether the Storage drive supports NVMe protocol.
+        /// Whether the Storage drive supports the NVMe protocol to capitalize on the low latency and internal parallelism of solid-state storage devices.
         /// </summary>
         [Required]
         public bool HasNVMe { get; set; } = default!;

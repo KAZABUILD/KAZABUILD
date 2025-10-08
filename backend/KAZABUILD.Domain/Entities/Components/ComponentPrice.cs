@@ -1,5 +1,5 @@
 using KAZABUILD.Domain.Entities.Components.Components;
-
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -36,23 +36,23 @@ namespace KAZABUILD.Domain.Entities.Components
         public string VendorName { get; set; } = default!;
 
         /// <summary>
-        /// The date when the price was fetched from the website.
+        /// Date when the price was fetched from the website.
         /// </summary>
         [Required]
         [DataType(DataType.DateTime)]
-        public DateTime? FetchedAt { get; set; } = default!;
+        public DateTime FetchedAt { get; set; } = default!;
 
         /// <summary>
-        /// The price of the product.
+        /// The price of the component.
         /// </summary>
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
         [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
         [DataType(DataType.Currency)]
+        [Precision(9,2)]
         public decimal Price { get; set; } = default!;
 
         /// <summary>
-        /// Currency the product is being sold in.
+        /// Currency the component is being sold in.
         /// </summary>
         [Required]
         [StringLength(4, ErrorMessage = "Currency cannot be longer than 4 characters!")]

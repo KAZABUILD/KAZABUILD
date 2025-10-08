@@ -7,7 +7,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent
     public class UpdatePowerSupplyComponentDto : UpdateBaseComponentDto
     {
         /// <summary>
-        /// Maximum power output in Watts.
+        /// Maximum Power Output in Watts.
         /// </summary>
         [Range(10, 5000, ErrorMessage = "Power Output must be between 10 and 5000 W")]
         public decimal? PowerOutput { get; set; }
@@ -19,7 +19,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent
         public string? FormFactor { get; set; }
 
         /// <summary>
-        /// The 80 PLUS efficiency certification level (e.g., 80+ Gold).
+        /// The 80 PLUS Efficiency certification level (e.g., 80+ Gold).
         /// </summary>
         [StringLength(50, ErrorMessage = "Efficiency Rating cannot be longer than 50 characters!")]
         public string? EfficiencyRating { get; set; }
@@ -31,7 +31,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent
         public string? ModularityType { get; set; }
 
         /// <summary>
-        /// Physical length of the Power Supply in mm.
+        /// Physical Length of the Power Supply in mm.
         /// </summary>
         [Range(0, 500, ErrorMessage = "Length must be between 0 and 500 mm")]
         public decimal? Length { get; set; }

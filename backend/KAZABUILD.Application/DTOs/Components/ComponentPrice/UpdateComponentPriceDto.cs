@@ -25,15 +25,14 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
         public DateTime? FetchedAt { get; set; }
 
         /// <summary>
-        /// The price of the product.
+        /// The price of the component.
         /// </summary>
-        [Column(TypeName = "decimal(18,2)")]
         [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
         [DataType(DataType.Currency)]
         public decimal? Price { get; set; }
 
         /// <summary>
-        /// Currency the product is being sold in.
+        /// Currency the component is being sold in.
         /// </summary>
         [StringLength(4, ErrorMessage = "Currency cannot be longer than 4 characters!")]
         public string? Currency { get; set; }

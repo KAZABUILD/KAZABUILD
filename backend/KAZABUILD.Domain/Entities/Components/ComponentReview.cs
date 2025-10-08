@@ -15,6 +15,12 @@ namespace KAZABUILD.Domain.Entities.Components
         public Guid Id { get; set; }
 
         /// <summary>
+        /// Id of the component the review is for.
+        /// </summary>
+        [Required]
+        public Guid ComponentId { get; set; } = default!;
+
+        /// <summary>
         /// Website url of the website the review is from.
         /// </summary>
         [Required]
@@ -28,12 +34,6 @@ namespace KAZABUILD.Domain.Entities.Components
         [Required]
         [StringLength(50, ErrorMessage = "Reviewer Name cannot be longer than 50 characters!")]
         public string ReviewerName { get; set; } = default!;
-
-        /// <summary>
-        /// Id of the component the review is for.
-        /// </summary>
-        [Required]
-        public Guid ComponentId { get; set; } = default!;
 
         /// <summary>
         /// Date when the review was fetched from the website.

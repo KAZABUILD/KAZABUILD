@@ -39,7 +39,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public decimal MaxRefreshRate { get; set; } = default!;
 
         /// <summary>
-        /// Type of technology used to generate images on the monitor (e.g., IPS, VA, TN, OLED).
+        /// Type of technology used to generate images on the Monitor (e.g., IPS, VA, TN, OLED).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Panel Type cannot be longer than 50 characters!")]
@@ -84,7 +84,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public string? HighDynamicRangeType { get; set; }
 
         /// <summary>
-        /// Type of technology that synchronizes the refresh rate of a monitor with the output of a graphics card (e.g., FreeSync, G-SYNC, None).
+        /// Type of technology that synchronizes the refresh rate of a Monitor with the output of a graphics card (e.g., FreeSync, G-SYNC, None).
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Adaptive Sync Type cannot be longer than 50 characters!")]
