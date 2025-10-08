@@ -29,6 +29,7 @@ dependency_overrides:
   test_api: 0.7.6  # Matches flutter_test requirement
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/
