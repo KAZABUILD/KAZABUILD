@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/widgets/theme_provider.dart';
+import 'package:frontend/screens/builder/build_now_page.dart';
+import 'package:frontend/screens/home/homepage.dart';
 
 class PcPart {
   final String name;
@@ -22,16 +24,24 @@ class CustomNavigationBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // left side logo
-          Row(
-            children: [
-              Icon(Icons.build, color: colorScheme.primary, size: 28),
-              const SizedBox(width: 8),
-              const Text(
-                'Kaza Build',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-              ),
-            ],
+          InkWell(
+            onTap: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const HomePage()),
+                (Route<dynamic> route) => false,
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Icon(Icons.build, color: colorScheme.primary, size: 28),
+                const SizedBox(width: 8),
+                const Text(
+                  'Kaza Build',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                ),
+              ],
+            ),
           ),
 
           // mid side menu
@@ -52,7 +62,6 @@ class CustomNavigationBar extends StatelessWidget {
               const SizedBox(width: 20),
               _LanguageSelector(),
               const SizedBox(width: 15),
-
               _ThemeToggleButton(),
             ],
           ),
@@ -68,13 +77,11 @@ class _ThemeToggleButton extends ConsumerWidget {
     final currentTheme = ref.watch(themeProvider);
     return IconButton(
       splashRadius: 20,
-
       icon: Icon(
         currentTheme == ThemeMode.dark
             ? Icons.light_mode_outlined
             : Icons.dark_mode_outlined,
       ),
-
       onPressed: () {
         ref.read(themeProvider.notifier).toggleTheme();
       },
@@ -91,9 +98,18 @@ class _NavButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextButton(
-        onPressed: () {},
+        onPressed: () {
+          if (title == 'Build Now') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BuildNowPage()),
+            );
+          } else {
+            print('$title clicked');
+          }
+        },
         style: TextButton.styleFrom(
-          foregroundColor: Colors.white70,
+          foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         ),
         child: Text(title),
@@ -110,23 +126,16 @@ class _ProfileArea extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 12,
-          backgroundImage: NetworkImage(
-            'https://placehold.co/40x40/blue/white?text=A',
-          ),
+          backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+          child: Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
         ),
         const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Welcome',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white54,
-                fontSize: 12,
-              ),
-            ),
+            Text('Welcome', style: theme.textTheme.bodySmall),
             InkWell(
               onTap: () {
                 print('Sign In / Register clicked!');
@@ -152,10 +161,10 @@ class _PartsDropdownMenu extends StatelessWidget {
     PcPart(name: 'CPU', icon: Icons.memory),
     PcPart(name: 'GPU', icon: Icons.developer_board),
     PcPart(name: 'Motherboard', icon: Icons.dns),
-    PcPart(name: 'Case', icon: Icons.computer),
+    PcPart(name: 'Case', icon: Icons.desktop_windows_outlined),
     PcPart(name: 'Power Supply', icon: Icons.power),
     PcPart(name: 'Memory', icon: Icons.sd_storage),
-    PcPart(name: 'Cooler', icon: Icons.ac_unit),
+    PcPart(name: 'Cooler', icon: Icons.air),
     PcPart(name: 'Fan', icon: Icons.wind_power),
     PcPart(name: 'Monitor', icon: Icons.monitor),
   ];
@@ -188,12 +197,15 @@ class _PartsDropdownMenu extends StatelessWidget {
             Text(
               'Parts +',
               style: TextStyle(
-                color: Colors.white70,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: Colors.white70),
+            Icon(
+              Icons.arrow_drop_down,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+            ),
           ],
         ),
       ),
@@ -236,6 +248,7 @@ class __LanguageSelectorState extends State<_LanguageSelector> {
                       _languages[langCode]!['flag']!,
                       width: 24,
                       height: 16,
+                      fit: BoxFit.cover,
                       errorBuilder: (c, o, s) =>
                           const Icon(Icons.flag, size: 16),
                     ),
@@ -247,13 +260,13 @@ class __LanguageSelectorState extends State<_LanguageSelector> {
             })
             .toList();
       },
-
       child: Image.asset(
         _languages[_selectedLanguageCode]!['flag']!,
         width: 24,
         height: 16,
+        fit: BoxFit.cover,
         errorBuilder: (c, o, s) =>
-            const Icon(Icons.language, color: Colors.white70),
+            Icon(Icons.language, color: Theme.of(context).iconTheme.color),
       ),
     );
   }
