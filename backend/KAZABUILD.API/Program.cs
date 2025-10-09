@@ -1,15 +1,15 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
-using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using Serilog;
-using System.Reflection.Emit;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.API
@@ -26,35 +26,8 @@ namespace KAZABUILD.API
             //Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
-            //Documentation with swagger
-            builder.Services.AddSwaggerGen(c =>
-            {
-                //Enable adding a jwt security token
-                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header
-                });
-
-                //Inform swagger that endpoints require authorization
-                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-                {
-                    {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                        {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                            {
-                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
-            });
+            //Register Swagger
+            builder.Services.AddSwaggerSettings();
 
             //Add CORS policy
             var corsSettings = builder.Configuration.GetSection("Frontend").Get<FrontendSettings>()!;

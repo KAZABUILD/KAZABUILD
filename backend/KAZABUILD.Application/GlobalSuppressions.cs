@@ -1,0 +1,31 @@
+// This file is used by Code Analysis to maintain SuppressMessage
+// attributes that are applied to this project.
+// Project-level suppressions either have no target or are given
+// a specific target and scoped to a namespace, type, member, etc.
+
+using System.Diagnostics.CodeAnalysis;
+
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MemoryComponent.UpdateMemoryComponentDto.ECC")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MemoryComponent.MemoryComponentResponseDto.ECC")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MemoryComponent.GetMemoryComponentDto.ECC")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MemoryComponent.CreateMemoryComponentDto.ECC")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.CreateMotherboardComponentDto.ARGB5vHeaderAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.CreateMotherboardComponentDto.RGB12vHeaderAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.UpdateMotherboardComponentDto.ARGB5vHeaderAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.UpdateMotherboardComponentDto.RGB12vHeaderAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.CreateMotherboardComponentDto.SATA6GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.CreateMotherboardComponentDto.SATA3GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.UpdateMotherboardComponentDto.SATA6GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.UpdateMotherboardComponentDto.SATA3GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.SATA6GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.SATA6GBsAmountStart")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.SATA6GBsAmountEnd")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.SATA3GBsAmountStart")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.SATA3GBsAmountEnd")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.ARGB5vHeaderAmountStart")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.ARGB5vHeaderAmountEnd")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.RGB12vHeaderAmountStart")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.GetMotherboardComponentDto.RGB12vHeaderAmountEnd")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.SATA3GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.ARGB5vHeaderAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.RGB12vHeaderAmount")]
