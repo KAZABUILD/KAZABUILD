@@ -2,7 +2,7 @@ using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components;
 using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Enums;
-using Microsoft.AspNetCore.Components;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Users
