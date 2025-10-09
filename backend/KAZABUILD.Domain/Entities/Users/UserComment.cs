@@ -1,5 +1,8 @@
+using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Enums;
-
+using Microsoft.AspNetCore.Components;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Users
@@ -41,10 +44,28 @@ namespace KAZABUILD.Domain.Entities.Users
 
         //Possible references, only one should ever be set at a time
         /// <summary>
-        /// Id of the forum post this comment is replying to.
+        /// Id of the Forum Post this comment is replying to.
         /// Can be null as a comment should be left under only one object.
         /// </summary>
         public Guid? ForumPostId { get; set; }
+
+        /// <summary>
+        /// Id of the Build this comment is replying to.
+        /// Can be null as a comment should be left under only one object.
+        /// </summary>
+        public Guid? BuildId { get; set; }
+
+        /// <summary>
+        /// Id of the forum post this comment is replying to.
+        /// Can be null as a comment should be left under only one object.
+        /// </summary>
+        public Guid? ComponentId { get; set; }
+
+        /// <summary>
+        /// Id of the Component Review this comment is replying to.
+        /// Can be null as a comment should be left under only one object.
+        /// </summary>
+        public Guid? ComponentReviewId { get; set; }
 
         //Additional database information
         [DataType(DataType.DateTime)]
@@ -61,5 +82,8 @@ namespace KAZABUILD.Domain.Entities.Users
         public UserComment? ParentComment { get; set; } = default!;
         public ICollection<UserComment> ChildComments { get; set; } = [];
         public ForumPost? ForumPost { get; set; } = default!;
+        public BaseComponent? Component { get; set; } = default!;
+        public ComponentReview? ComponentReview { get; set; } = default!;
+        public Build? Build { get; set; } = default!;
     }
 }
