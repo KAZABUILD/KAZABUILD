@@ -1,18 +1,9 @@
-using KAZABUILD.Domain.Entities.Users;
-
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Domain.Entities.Builds
+namespace KAZABUILD.Application.DTOs.Builds.BuildInteraction
 {
-    /// <summary>
-    /// Represents Interactions that a user can have with a Build.
-    /// </summary>
-    public class BuildInteraction
+    public class CreateBuildInteractionDto
     {
-        //User Profile fields
-        [Key]
-        public Guid Id { get; set; }
-
         /// <summary>
         /// Id of the User that Interacted with the Build.
         /// </summary>
@@ -49,19 +40,5 @@ namespace KAZABUILD.Domain.Entities.Builds
         /// </summary>
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? UserNote { get; set; }
-
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
-        //Database relationships
-        public Build? Build { get; set; } = default!;
-        public User? User { get; set; } = default!;
     }
 }

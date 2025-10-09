@@ -17,26 +17,33 @@ namespace KAZABUILD.Domain.Entities.Users
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Id of the user that posted the comment.
+        /// Id of the User that posted the Comment.
         /// </summary>
         [Required]
         public Guid UserId { get; set; } = default!;
 
         /// <summary>
-        /// The contents pf the comment.
+        /// The Contents of the Comment.
         /// </summary>
         [Required]
         [MaxLength(1000, ErrorMessage = "Content cannot be longer than 1000 characters!")]
         public string Content { get; set; } = default!;
 
         /// <summary>
-        /// Id of another comment that this comment is replying to.
+        /// When the Comment was Posted.
+        /// </summary>
+        [Required]
+        [DataType(DataType.DateTime)]
+        public DateTime PostedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Id of another Comment that this Comment is replying to.
         /// Null if standalone. 
         /// </summary>
         public Guid? ParentCommentId { get; set; }
 
         /// <summary>
-        /// Type of the model being target by the comment.
+        /// Type of the model being Targeted by the Comment.
         /// </summary>
         [Required]
         [EnumDataType(typeof(CommentTargetType))]
@@ -44,26 +51,26 @@ namespace KAZABUILD.Domain.Entities.Users
 
         //Possible references, only one should ever be set at a time
         /// <summary>
-        /// Id of the Forum Post this comment is replying to.
-        /// Can be null as a comment should be left under only one object.
+        /// Id of the Forum Post this Comment is replying to.
+        /// Can be null as a Comment should be left under only one object.
         /// </summary>
         public Guid? ForumPostId { get; set; }
 
         /// <summary>
-        /// Id of the Build this comment is replying to.
-        /// Can be null as a comment should be left under only one object.
+        /// Id of the Build this Comment is replying to.
+        /// Can be null as a Comment should be left under only one object.
         /// </summary>
         public Guid? BuildId { get; set; }
 
         /// <summary>
-        /// Id of the forum post this comment is replying to.
-        /// Can be null as a comment should be left under only one object.
+        /// Id of the forum post this Comment is replying to.
+        /// Can be null as a Comment should be left under only one object.
         /// </summary>
         public Guid? ComponentId { get; set; }
 
         /// <summary>
-        /// Id of the Component Review this comment is replying to.
-        /// Can be null as a comment should be left under only one object.
+        /// Id of the Component Review this Comment is replying to.
+        /// Can be null as a Comment should be left under only one object.
         /// </summary>
         public Guid? ComponentReviewId { get; set; }
 
