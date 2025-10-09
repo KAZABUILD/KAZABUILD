@@ -1,4 +1,5 @@
 using KAZABUILD.Domain.Entities.Components.Components;
+using KAZABUILD.Domain.Entities.Users;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -76,5 +77,6 @@ namespace KAZABUILD.Domain.Entities.Components
 
         //Database relationships
         public BaseComponent Component { get; set; } = default!;
+        public ICollection<UserComment> Comments { get; set; } = [];
     }
 }
