@@ -8,6 +8,12 @@ using Serilog.Core;
 
 namespace KAZABUILD.Infrastructure.Services
 {
+    /// <summary>
+    /// Service which logs information in the database, log files and the console.
+    /// It's used in other services, controllers and the application startup.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="serilogLogger"></param>
     public class LoggerService(KAZABUILDDBContext db, ILogger<Logger> serilogLogger) : ILoggerService
     {
         private readonly KAZABUILDDBContext _db = db;
@@ -33,8 +39,8 @@ namespace KAZABUILD.Infrastructure.Services
             _db.Logs.Add(log);
             await _db.SaveChangesAsync();
 
-            //Check if there is an ip address and format it correctly
-            var ip = string.IsNullOrEmpty(ipAddress) ? "" : $" ({ipAddress})";
+            //Check if there is an IP address and format it correctly
+            var ip = string.IsNullOrWhiteSpace(ipAddress) ? "" : $" ({ipAddress})";
 
             //Check if there is a target and format it correctly
             var _targetId = targetId == Guid.Empty ? "" : $" (Target: {targetId})";
@@ -42,8 +48,8 @@ namespace KAZABUILD.Infrastructure.Services
             //Check if there is a target and format it correctly
             var _userId = userId == Guid.Empty ? "" : $" by {userId}";
 
-            //Check if there is a decription and format it correctly
-            var _description = string.IsNullOrEmpty(description) ? "" : $" - {description}";
+            //Check if there is a description and format it correctly
+            var _description = string.IsNullOrWhiteSpace(description) ? "" : $" - {description}";
 
             //Crate a serilog message string
             string message = $"{DateOnly.FromDateTime(DateTime.UtcNow)}: {activityType} on {targetType}{_userId}{ip}{_targetId}{_description}";

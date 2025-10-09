@@ -4,6 +4,7 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -16,7 +17,20 @@ using IAuthorizationService = KAZABUILD.Application.Interfaces.IAuthorizationSer
 
 namespace KAZABUILD.API.Controllers
 {
-    //Controller for Auth related endpoints
+    /// <summary>
+    /// Controller for Auth related endpoints.
+    /// Allows the users to perform operations like login and registration.
+    /// The only operations allowed for users that aren't logged in.
+    /// Uses token services.
+    /// </summary>
+    /// <param name="db"></param>
+    /// <param name="hasher"></param>
+    /// <param name="logger"></param>
+    /// <param name="publisher"></param>
+    /// <param name="auth"></param>
+    /// <param name="smtp"></param>
+    /// <param name="frontend"></param>
+    /// <param name="backendHost"></param>
     [ApiController]
     [Route("[controller]")]
     public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendSettings> frontend, IOptions<BackendHost> backendHost) : Controller
@@ -30,8 +44,11 @@ namespace KAZABUILD.API.Controllers
         private readonly FrontendSettings _frontend = frontend.Value;
         private readonly string _backendHost = backendHost.Value.Host;
 
-        //API endpoint that allows the user to log into the website;
-        //returns the jwt token
+        /// <summary>
+        /// API endpoint that allows the user to log into the website.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>The login jwt token. Will also return an information about 2fa if it's enabled.</returns>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
@@ -39,7 +56,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -141,8 +158,8 @@ namespace KAZABUILD.API.Controllers
             //Check if the user has double factor authentication enabled
             if (user.EnableDoubleFactorAuthentication)
             {
-                //Check if the ip address exists
-                if (string.IsNullOrEmpty(ip))
+                //Check if the IP address exists
+                if (string.IsNullOrWhiteSpace(ip))
                 {
                     //Log failure
                     await _logger.LogAsync(
@@ -168,7 +185,6 @@ namespace KAZABUILD.API.Controllers
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(10),
                     IpAddress = ip,
-                    DatabaseEntryAt = DateTime.UtcNow,
                     LastEditedAt = DateTime.UtcNow,
                 };
 
@@ -245,6 +261,12 @@ namespace KAZABUILD.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// API endpoint that allows the user with 2fa enabled to login.
+        /// Only accessed through an email link.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>The login jwt token.</returns>
         [HttpPost("verify-2fa")]
         [AllowAnonymous]
         public async Task<IActionResult> Verify2Fa([FromBody] Verify2FactorAuthenticationDto dto)
@@ -252,7 +274,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -337,6 +359,11 @@ namespace KAZABUILD.API.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Google-specific login endpoint.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>The login jwt token.</returns>
         [HttpPost("google-login")]
         [AllowAnonymous]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
@@ -344,7 +371,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -365,7 +392,7 @@ namespace KAZABUILD.API.Controllers
                     "Operation Failed - Invalid Google Login Token"
                 );
 
-                //Return an anauthorized response
+                //Return an unauthorized response
                 return Unauthorized(new { message = "Invalid Google token." });
             }
 
@@ -448,8 +475,12 @@ namespace KAZABUILD.API.Controllers
             return Ok(response);
         }
 
-        //API register endpoint that allows the user to create a new account
-        //Sends a confirmation email to 
+        /// <summary>
+        /// API register endpoint that allows the user to create a new account.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>An information about sent confirmation email.</returns>
+        //
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
@@ -457,7 +488,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -507,8 +538,8 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Check if the ip address exists
-            if (string.IsNullOrEmpty(ip))
+            //Check if the IP address exists
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -538,7 +569,6 @@ namespace KAZABUILD.API.Controllers
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
                 IpAddress = ip,
                 RedirectUrl = dto.RedirectUrl,
-                DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow,
             };
 
@@ -586,7 +616,11 @@ namespace KAZABUILD.API.Controllers
             return Ok(new { message = "User registered! Please confirm via email." });
         }
 
-        //Api confirm register endpoint
+        /// <summary>
+        /// API confirm register endpoint. Only accessed through an email link.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>Redirect to provided frontend endpoint.</returns>
         [HttpPost("confirm-register")]
         [AllowAnonymous]
         public async Task<IActionResult> ConfirmRegister([FromBody] ConfirmRegisterDto dto)
@@ -594,7 +628,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -677,8 +711,11 @@ namespace KAZABUILD.API.Controllers
             return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
         }
 
-        //API endpoint for reseting the password,
-        //sends an email for resetting the password
+        /// <summary>
+        /// API endpoint for resetting user's password.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>An information about sent confirmation email.</returns>
         [HttpPost("reset-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
@@ -686,7 +723,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -708,11 +745,11 @@ namespace KAZABUILD.API.Controllers
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User not found!" });
+                return BadRequest(new { message = "User not found!" });
             }
 
-            //Check if the ip address exists
-            if (string.IsNullOrEmpty(ip))
+            //Check if the IP address exists
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -738,7 +775,6 @@ namespace KAZABUILD.API.Controllers
                 ExpiresAt = DateTime.UtcNow.AddHours(2),
                 RedirectUrl = dto.RedirectUrl,
                 IpAddress = ip,
-                DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
@@ -787,8 +823,11 @@ namespace KAZABUILD.API.Controllers
             return Ok(new { message = "Password reset instructions sent!" });
         }
 
-        //API endpoint for conforming the password reset,
-        //Redirects to a password reset frontend url
+        /// <summary>
+        /// API endpoint for confirming the password reset. Only accessed through an email link.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns>Redirect to provided frontend endpoint.</returns>
         [HttpPost("confirm-reset-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ConfirmResetPassword([FromBody] ConfirmPasswordResetDto dto)
@@ -796,7 +835,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the ip from request
+            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 

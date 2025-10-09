@@ -8,12 +8,16 @@ using Microsoft.Extensions.Hosting;
 
 namespace KAZABUILD.Infrastructure.Services
 {
-    //Service that runs once a day to cleanup old logs and token
+    /// <summary>
+    /// Service that runs once a day to cleanup old logs and token.
+    /// Logs are cleaned after 3 months, tokens after 7 days. 
+    /// </summary>
+    /// <param name="scopeFactory"></param>
     public class CleanupService(IServiceScopeFactory scopeFactory) : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
-        //Taske exucted once a day
+        //Task executed once a day
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -40,7 +44,7 @@ namespace KAZABUILD.Infrastructure.Services
                         //Remove old used token
                         db.UserTokens.RemoveRange(oldTokens);
 
-                        //Log Token clenup
+                        //Log Token cleanup
                         await logger.LogAsync(
                             Guid.Empty,
                             "Cleanup",
@@ -52,7 +56,7 @@ namespace KAZABUILD.Infrastructure.Services
                         );
                     }
 
-                    //Create a cutoff for 7 days ago
+                    //Create a cutoff for 3 months ago
                     var logCutoff = DateTime.UtcNow.AddMonths(-3);
 
                     //Cleanup logs older than 3 months, except ERROR and CRITICAL level ones
@@ -66,7 +70,7 @@ namespace KAZABUILD.Infrastructure.Services
                         //Remove old logs
                         db.Logs.RemoveRange(oldLogs);
 
-                        //Log Logs clenup
+                        //Log Logs cleanup
                         await logger.LogAsync(
                             Guid.Empty,
                             "Cleanup",

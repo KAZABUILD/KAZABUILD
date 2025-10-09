@@ -9,7 +9,9 @@ using System.Threading.RateLimiting;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding reate limiting to the app services
+    /// <summary>
+    /// Extension for adding rate limiting to app services
+    /// </summary>
     public static class RateLimitingServiceCollectionExtensions
     {
         public static IServiceCollection AddRateLimiting(this IServiceCollection services)
