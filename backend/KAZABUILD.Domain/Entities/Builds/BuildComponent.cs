@@ -1,5 +1,5 @@
 using KAZABUILD.Domain.Entities.Components.Components;
-using Microsoft.AspNetCore.Components;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Builds
