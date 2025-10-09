@@ -18,13 +18,15 @@
  - Whenever a new model is added to the database the user has to manually add the search index for it as well:
    - Create a new migration.
    - Add this to the up function:
-     - `migrationBuilder.Sql(@"`
-            `IF NOT EXISTS (SELECT * FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('dbo.[class_name]'))`
-                `CREATE FULLTEXT INDEX ON [class_name]([field_name1] LANGUAGE 0, [field_name2] LANGUAGE 0)`
-                `KEY INDEX PK_[class_name];`
-        `", suppressTransaction: true);`
+     - `migrationBuilder.Sql(@"
+            IF NOT EXISTS
+            (SELECT * FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('dbo.[table_name]'))
+                CREATE FULLTEXT INDEX ON [table_name]([field_name1] LANGUAGE 0, [field_name2] LANGUAGE 0, ...)
+                KEY INDEX PK_[table_name];
+        ", suppressTransaction: true);`
    - Add this to the down function:
-     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [class_name];", suppressTransaction: true);`
+     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`
+   - Replace the table_name and field name with proper database context table name and fields used in search in the controller
     
 
 ## NuGet Packages:

@@ -3,7 +3,6 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -383,7 +382,7 @@ namespace KAZABUILD.API.Controllers.Components
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(p => p.Component).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.VendorName, p => p.FetchedAt!);
+                query = query.Include(p => p.Component).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.VendorName, p => p.FetchedAt!, p => p.Price, p => p.Currency);
             }
 
             //Order by specified field if provided

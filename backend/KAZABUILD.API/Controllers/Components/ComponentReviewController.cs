@@ -372,37 +372,37 @@ namespace KAZABUILD.API.Controllers.Components
             //Filter by the variables if included
             if (dto.ComponentId != null)
             {
-                query = query.Where(p => dto.ComponentId.Contains(p.ComponentId));
+                query = query.Where(r => dto.ComponentId.Contains(r.ComponentId));
             }
             if (dto.FetchedAtStart != null)
             {
-                query = query.Where(p => p.FetchedAt >= dto.FetchedAtStart);
+                query = query.Where(r => r.FetchedAt >= dto.FetchedAtStart);
             }
             if (dto.FetchedAtEnd != null)
             {
-                query = query.Where(p => p.FetchedAt <= dto.FetchedAtEnd);
+                query = query.Where(r => r.FetchedAt <= dto.FetchedAtEnd);
             }
             if (dto.CreatedAtStart != null)
             {
-                query = query.Where(p => p.CreatedAt >= dto.CreatedAtStart);
+                query = query.Where(r => r.CreatedAt >= dto.CreatedAtStart);
             }
             if (dto.CreatedAtEnd != null)
             {
-                query = query.Where(p => p.CreatedAt <= dto.CreatedAtEnd);
+                query = query.Where(r => r.CreatedAt <= dto.CreatedAtEnd);
             }
             if (dto.RatingStart != null)
             {
-                query = query.Where(p => p.Rating >= dto.RatingStart);
+                query = query.Where(r => r.Rating >= dto.RatingStart);
             }
             if (dto.RatingEnd != null)
             {
-                query = query.Where(p => p.Rating <= dto.RatingEnd);
+                query = query.Where(r => r.Rating <= dto.RatingEnd);
             }
 
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(p => p.Component).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.ReviewerName, p => p.FetchedAt!, p => p.CreatedAt!);
+                query = query.Include(r => r.Component).Search(dto.Query, r => r.Component!.Name, r => r.Component!.Manufacturer, r => r.Component!.Release!, r => r.ReviewerName, r => r.FetchedAt!, r => r.CreatedAt!, r => r.ReviewText);
             }
 
             //Order by specified field if provided
