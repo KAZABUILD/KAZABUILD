@@ -316,9 +316,9 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<BaseSubComponent>().ToTable("SubComponents");
             modelBuilder.Entity<CoolerSocketSubComponent>().ToTable("CoolerSocketSubComponents");
             modelBuilder.Entity<IntegratedGraphicsSubComponent>().ToTable("IntegratedGraphicsSubComponents");
-            modelBuilder.Entity<M2SlotSubComponent>().ToTable("M2SlotSubcomponent");
-            modelBuilder.Entity<OnboardEthernetSubComponent>().ToTable("OnboardEthernetSubComponent");
-            modelBuilder.Entity<PCIeSlotSubComponent>().ToTable("PCIeSlotSubComponent");
+            modelBuilder.Entity<M2SlotSubComponent>().ToTable("M2SlotSubcomponents");
+            modelBuilder.Entity<OnboardEthernetSubComponent>().ToTable("OnboardEthernetSubComponents");
+            modelBuilder.Entity<PCIeSlotSubComponent>().ToTable("PCIeSlotSubComponents");
             modelBuilder.Entity<PortSubComponent>().ToTable("PortSubComponents");
 
             //Configure PortType as string
