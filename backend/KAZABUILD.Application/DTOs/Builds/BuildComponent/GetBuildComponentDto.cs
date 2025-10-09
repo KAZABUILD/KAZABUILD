@@ -1,32 +1,19 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Users.UserComment
+namespace KAZABUILD.Application.DTOs.Builds.BuildComponent
 {
-    public class GetUserCommentDto
+    public class GetBuildComponentDto
     {
         //Filter By fields
-        public List<Guid>? Id { get; set; }
-
-        public List<Guid>? UserId { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtStart { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtEnd { get; set; }
-
-        public List<Guid>? ParentCommentId { get; set; }
-
-        public List<CommentTargetType>? CommentTargetType { get; set; }
-
-        public List<Guid>? ForumPostId { get; set; }
-
         public List<Guid>? BuildId { get; set; }
 
         public List<Guid>? ComponentId { get; set; }
 
-        public List<Guid>? ComponentReviewId { get; set; }
+        [Range(1, 100, ErrorMessage = "Amount must be between 1 and 100!")]
+        public int? QuantityStart { get; set; }
+
+        [Range(1, 100, ErrorMessage = "Amount must be between 1 and 100!")]
+        public int? QuantityEnd { get; set; }
 
         //Paging related fields
         /// <summary>
