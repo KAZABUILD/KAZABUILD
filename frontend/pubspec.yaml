@@ -20,6 +20,7 @@ dependencies:
   json_annotation: ^4.9.0
   intl_utils: ^2.8.11  # Downgraded to resolve analyzer conflict
   intl: ^0.20.2
+  email_validator: '^2.1.17' # email format validation
 
 dev_dependencies:
   flutter_test:

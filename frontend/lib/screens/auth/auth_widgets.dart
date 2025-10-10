@@ -30,12 +30,20 @@ class CustomTextField extends StatefulWidget {
   final String label;
   final IconData icon;
   final bool isPassword;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final AutovalidateMode? autovalidateMode;
 
   const CustomTextField({
     super.key,
     required this.label,
     required this.icon,
     this.isPassword = false,
+    this.controller,
+    this.validator,
+    this.keyboardType,
+    this.autovalidateMode,
   });
 
   @override
@@ -54,8 +62,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return TextField(
+    return TextFormField(
+      controller: widget.controller,
       obscureText: _isObscured,
+      keyboardType: widget.keyboardType,
+      validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode ?? AutovalidateMode.disabled,
       decoration: InputDecoration(
         labelText: widget.label,
         prefixIcon: Icon(
@@ -86,6 +98,18 @@ class _CustomTextFieldState extends State<CustomTextField> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.colorScheme.primary),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.colorScheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.colorScheme.error),
         ),
       ),
     );

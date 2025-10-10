@@ -8,9 +8,13 @@ import 'package:frontend/widgets/navigation_bar.dart';
 class SignUpPage extends StatelessWidget {
   const SignUpPage({super.key});
 
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final emailController = TextEditingController();
+    // Enhanced email regex for better validation
+    final RegExp emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -50,7 +54,7 @@ class SignUpPage extends StatelessWidget {
                               const SizedBox(height: 32),
                               const SocialButton(
                                 text: 'Continue with Google',
-                                iconPath: 'google_icon.png',
+                                iconPath: 'google_icon.svg',
                               ),
                               const SizedBox(height: 12),
                               const SocialButton(
@@ -64,9 +68,28 @@ class SignUpPage extends StatelessWidget {
                                 icon: Icons.person_outline,
                               ),
                               const SizedBox(height: 16),
-                              const CustomTextField(
+                              CustomTextField(
                                 label: 'Email address',
                                 icon: Icons.email_outlined,
+                                controller: emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                autovalidateMode: AutovalidateMode.onUserInteraction,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email address';
+                                  } else if (value.length < 5) {
+                                    return 'Email address is too short';
+                                  } else if (!value.contains('@')) {
+                                    return 'Email must contain @ symbol';
+                                  } else if (value.startsWith('@') || value.endsWith('@')) {
+                                    return 'Invalid email format';
+                                  } else if (value.split('@').length != 2) {
+                                    return 'Email can only contain one @ symbol';
+                                  } else if (!emailRegex.hasMatch(value)) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
                               const CustomTextField(
