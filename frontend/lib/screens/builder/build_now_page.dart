@@ -95,7 +95,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final convertedPrice = _totalPriceInPln * currencyData.exchangeRate;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: Column(
         children: [
           const CustomNavigationBar(),
@@ -314,7 +314,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
           Text(
             'Total Price: ',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
           DropdownButton<Currency>(

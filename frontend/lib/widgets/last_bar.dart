@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/info/feedback_page.dart';
+import 'package:frontend/screens/home/homepage.dart';
 
 class LastBar extends StatelessWidget {
   const LastBar({super.key});
@@ -7,7 +9,7 @@ class LastBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 40),
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: Column(
         children: [
           const Row(
@@ -61,7 +63,31 @@ class _FooterColumn extends StatelessWidget {
 
             child: InkWell(
               onTap: () {
-                print('$item clicked!');
+                if (item == 'Feedback') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FeedbackPage(),
+                    ),
+                  );
+                } else if (item == 'Home') {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const HomePage(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            );
+                          },
+                    ),
+                  );
+                } else {
+                  ('$item clicked!');
+                }
               },
               child: Text(item, style: const TextStyle(color: Colors.white70)),
             ),

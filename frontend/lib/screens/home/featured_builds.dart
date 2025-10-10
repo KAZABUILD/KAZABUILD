@@ -87,7 +87,7 @@ class _FeaturedBuildsState extends State<FeaturedBuilds> {
                       (Theme.of(context).brightness == Brightness.dark
                               ? Colors.white
                               : Colors.black)
-                          .withOpacity(_current == entry.key ? 0.9 : 0.4),
+                          .withValues(alpha: _current == entry.key ? 0.9 : 0.4),
                 ),
               ),
             );
@@ -116,7 +116,7 @@ class _BuildCard extends StatelessWidget {
       width: MediaQuery.of(context).size.width,
       margin: const EdgeInsets.symmetric(horizontal: 5.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
