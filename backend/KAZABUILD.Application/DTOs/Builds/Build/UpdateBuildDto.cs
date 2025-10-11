@@ -7,32 +7,29 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
     {
         /// <summary>
         /// Id of the User that created the Build.
+        /// Updating value transfers ownership.
         /// </summary>
-        [Required]
-        public Guid UserId { get; set; } = default!;
+        public Guid? UserId { get; set; }
 
         /// <summary>
         /// Name given to the Build by the user.
         /// </summary>
-        [Required]
         [StringLength(50, ErrorMessage = "Name cannot be longer than 50 characters!")]
         [MinLength(3, ErrorMessage = "Name must be at least 3 characters long!")]
-        public string Name { get; set; } = default!;
+        public string? Name { get; set; }
 
         /// <summary>
         /// Description of the Build written by the user.
         /// </summary>
-        [Required]
         [StringLength(50, ErrorMessage = "Description cannot be longer than 500 characters!")]
-        public string Description { get; set; } = default!;
+        public string? Description { get; set; }
 
         /// <summary>
         /// Current status of the Build.
         /// Determines where on the website the Build is visible
         /// </summary>
-        [Required]
         [EnumDataType(typeof(BuildStatus))]
-        public BuildStatus Status { get; set; } = BuildStatus.DRAFT;
+        public BuildStatus? Status { get; set; } = BuildStatus.DRAFT;
 
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }

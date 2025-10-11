@@ -10,9 +10,9 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
 
         public List<string>? Name { get; set; }
 
-        public List<string>? Description { get; set; }
-
         public List<BuildStatus>? Status { get; set; }
+
+        public List<string>? Tag { get; set; }
 
         //Paging related fields
         /// <summary>

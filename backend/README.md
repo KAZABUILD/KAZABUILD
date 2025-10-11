@@ -3,9 +3,10 @@
 ## How to run
  - `cd backend/KAZABUILD.API` to get into the backend application folder in terminal.
  - `dotnet restore` to get the required packages.
- - Create and fill in the `launchSettings.json` file with correct information based on the example file.
+ - Create and fill in the `appsettings.json` file with correct information based on the example file.
  - Use visual studio to run or use `dotnet watch run` in the command line.
  - Access automatic swagger documentation using `<ip_address>/swagger`.
+ - The application creates a system user automatically which uses the credentials set in `appsettings.json`. The user can be accessed or testing purposes.
 
 ## Migrations
  - `cd backend` to get into the main backend folder in terminal.
@@ -49,6 +50,7 @@
 - `System.Linq.Dynamic.Core`
 - `Microsoft.AspNetCore.Authentication.Google`
 - `Google.Apis.Auth`
+- `Swashbuckle.AspNetCore.Annotations`
 
 ## Features
 - Swagger Documentation

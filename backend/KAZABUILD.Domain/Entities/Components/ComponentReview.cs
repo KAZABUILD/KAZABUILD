@@ -51,7 +51,7 @@ namespace KAZABUILD.Domain.Entities.Components
         public DateTime CreatedAt { get; set; } = default!;
 
         /// <summary>
-        /// Rating given in the review on a scale 0-100 (e.g. 1/5 <=> 20/100).
+        /// Rating given in the review on a scale 0-100 (e.g. 1/5 == 20/100).
         /// </summary>
         [Required]
         [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]

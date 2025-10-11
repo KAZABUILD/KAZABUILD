@@ -58,7 +58,8 @@ namespace KAZABUILD.Domain.Entities.Builds
         public User? User { get; set; } = default!;
         public ICollection<BuildComponent> Components { get; set; } = [];
         public ICollection<BuildInteraction> Interactions { get; set; } = [];
-        public ICollection<BuildTag> Tags { get; set; } = [];
+        public ICollection<Tag> Tags { get; set; } = [];
+        public ICollection<BuildTag> BuildTags { get; set; } = [];
         public ICollection<UserComment> Comments { get; set; } = [];
     }
 }

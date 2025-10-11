@@ -6,8 +6,6 @@ namespace KAZABUILD.Application.DTOs.Users.UserComment
     public class GetUserCommentDto
     {
         //Filter By fields
-        public List<Guid>? Id { get; set; }
-
         public List<Guid>? UserId { get; set; }
 
         [DataType(DataType.DateTime)]

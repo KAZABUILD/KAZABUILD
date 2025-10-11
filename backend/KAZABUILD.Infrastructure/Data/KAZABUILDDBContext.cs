@@ -156,12 +156,12 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.CommentTargetType)
                 .HasConversion<string>();
 
-            //Register relationships
+            //Register relationships, restrict cascade delete as comments should remain on the website until removed manually
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.User)
                 .WithMany(u => u.UserComments)
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ForumPost)
@@ -387,7 +387,7 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== BUILD COMPONENT ======================================//
 
-            //Register relationships, disable cascade delete for components, must be handled in API calls
+            //Register relationships, disable cascade delete for components, should remain in database until the user deletes it
             modelBuilder.Entity<BuildComponent>()
                 .HasOne(m => m.Build)
                 .WithMany(u => u.Components)
@@ -400,9 +400,9 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasForeignKey(m => m.ComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            //====================================== BUILD COMPONENT ======================================//
+            //====================================== BUILD INTERACTION ======================================//
 
-            //Register relationships, disable cascade delete for builds, must be handled in API calls
+            //Register relationships, disable cascade delete for builds, should remain in database until the user deletes it
             modelBuilder.Entity<BuildInteraction>()
                 .HasOne(m => m.User)
                 .WithMany(u => u.BuildInteractions)
@@ -420,15 +420,25 @@ namespace KAZABUILD.Infrastructure.Data
             //Register relationships, disable cascade delete for builds, must be handled in API calls
             modelBuilder.Entity<BuildTag>()
                 .HasOne(m => m.Tag)
-                .WithMany(u => u.Builds)
+                .WithMany(u => u.BuildTags)
                 .HasForeignKey(m => m.TagId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<BuildTag>()
                 .HasOne(m => m.Build)
-                .WithMany(u => u.Tags)
+                .WithMany(u => u.BuildTags)
                 .HasForeignKey(m => m.BuildId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            //Register the lists which ignore the buildTag in the middle
+            modelBuilder.Entity<Build>()
+                .HasMany(b => b.Tags)
+                .WithMany(t => t.Builds)
+                .UsingEntity<Dictionary<string, object>>(
+                    "BuildTag",
+                    j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
+                    j => j.HasOne<Build>().WithMany().HasForeignKey("BuildId")
+                );
         }
     }
 }
