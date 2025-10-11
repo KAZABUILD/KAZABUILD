@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KAZABUILD.Infrastructure.Migrations
 {
     [DbContext(typeof(KAZABUILDDBContext))]
-    partial class KAZABUILDDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251010063535_BuildDomainsFix")]
+    partial class BuildDomainsFix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,21 +24,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("BuildTag", b =>
-                {
-                    b.Property<Guid>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TagId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("BuildId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("BuildTag");
-                });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
                 {
@@ -1718,21 +1706,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("PortSubComponents", (string)null);
                 });
 
-            modelBuilder.Entity("BuildTag", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", null)
-                        .WithMany()
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Tag", null)
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
@@ -1785,13 +1758,13 @@ namespace KAZABUILD.Infrastructure.Migrations
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildTag", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
-                        .WithMany("BuildTags")
+                        .WithMany("Tags")
                         .HasForeignKey("BuildId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KAZABUILD.Domain.Entities.Builds.Tag", "Tag")
-                        .WithMany("BuildTags")
+                        .WithMany("Builds")
                         .HasForeignKey("TagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2028,7 +2001,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserComments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Build");
@@ -2259,18 +2232,18 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
                 {
-                    b.Navigation("BuildTags");
-
                     b.Navigation("Comments");
 
                     b.Navigation("Components");
 
                     b.Navigation("Interactions");
+
+                    b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Tag", b =>
                 {
-                    b.Navigation("BuildTags");
+                    b.Navigation("Builds");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>

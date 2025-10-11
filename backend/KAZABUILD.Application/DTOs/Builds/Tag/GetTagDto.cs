@@ -5,7 +5,6 @@ namespace KAZABUILD.Application.DTOs.Builds.Tag
     public class GetTagDto
     {
         //Filter By fields
-        public List<string>? ComponentId { get; set; }
 
         //Paging related fields
         /// <summary>

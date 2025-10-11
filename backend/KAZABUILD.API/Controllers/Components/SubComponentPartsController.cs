@@ -1,7 +1,8 @@
-using KAZABUILD.Application.DTOs.Users.UserPreference;
+using KAZABUILD.Application.DTOs.Components.SubComponentPart;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Users;
+using KAZABUILD.Domain.Entities.Components;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -11,18 +12,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
-namespace KAZABUILD.API.Controllers.Users
+namespace KAZABUILD.API.Controllers.Components
 {
     /// <summary>
-    /// Controller for User Preference related endpoints.
-    /// Used to save user answered questionnaires.
+    /// Controller for SubComponentPart related endpoints.
+    /// Used to connect SubComponents with other SubComponent which they are a part of.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserPreferencesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class SubComponentPartsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -30,13 +31,13 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new UserPreference.
+        /// API Endpoint for creating a new SubComponentPart for administration.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
-        [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> AddSubComponentPart([FromBody] CreateSubComponentPartDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -46,56 +47,56 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the user exists
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
-            if (user == null)
+            //Check if the Main SubComponent exists
+            var mainSubComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == dto.MainSubComponentId);
+            if (mainSubComponent == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "SubComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned User Doesn't Exist"
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "User not found!" });
+                return BadRequest(new { message = "SubComponent not found!" });
             }
 
-            //Check if current user has staff permissions or if they are creating a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == dto.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
+            //Check if the SubComponent exists
+            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == dto.SubComponentId);
+            if (subComponent == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "SubComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
                 );
 
-                //Return proper unauthorized response
-                return Forbid();
+                //Return proper error response
+                return BadRequest(new { message = "SubComponent not found!" });
             }
 
-            //Create a userPreference to add
-            UserPreference userPreference = new()
+            //Create a subComponentPart to add
+            SubComponentPart subComponentPart = new()
             {
+                MainSubComponentId = dto.MainSubComponentId,
+                SubComponentId = dto.SubComponentId,
+                Amount = dto.Amount,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the userPreference to the database
-            _db.UserPreferences.Add(userPreference);
+            //Add the subComponentPart to the database
+            _db.SubComponentParts.Add(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -104,34 +105,33 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "UserPreference",
+                "SubComponentPart",
                 ip,
-                userPreference.Id,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New UserPreference Created"
+                "Successful Operation - New SubComponentPart Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.created", new
+            await _publisher.PublishAsync("subComponentPart.created", new
             {
-                userPreferenceId = userPreference.Id,
+                subComponentPartId = subComponentPart.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference created successfully!", id = userPreference.Id });
+            return Ok(new { subComponentPart = "SubComponentPart created successfully!", id = subComponentPart.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected UserPreference.
-        /// User can modify only their own Preferences, while admins can modify all.
+        /// API endpoint for updating the selected SubComponentPart's fields for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateUserPreference(Guid id, [FromBody] UpdateUserPreferenceDto dto)
+        public async Task<IActionResult> UpdateSubComponentPart(Guid id, [FromBody] UpdateSubComponentPartDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -141,82 +141,90 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to edit
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the subComponentPart to edit
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+
+            //Check if the subComponentPart exists
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "UserPreference",
+                    "SubComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
             //Update allowed fields
+            if (dto.Amount != null)
+            {
+                changedFields.Add("Amount: " + subComponentPart.Amount);
+
+                subComponentPart.Amount = (int)dto.Amount;
+            }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + userPreference.Note);
+                changedFields.Add("Note: " + subComponentPart.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    userPreference.Note = null;
+                    subComponentPart.Note = null;
                 else
-                    userPreference.Note = dto.Note;
+                    subComponentPart.Note = dto.Note;
             }
 
             //Update edit timestamp
-            userPreference.LastEditedAt = DateTime.UtcNow;
+            subComponentPart.LastEditedAt = DateTime.UtcNow;
 
-            //Update the userPreference
-            _db.UserPreferences.Update(userPreference);
+            //Update the subComponentPart
+            _db.SubComponentParts.Update(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description with all the changed fields
-            var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
+            //Logging description if the note was edited or not
+            var description = changedFields.Count > 0 ? $"Updated {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "UserPreference",
+                "SubComponentPart",
                 ip,
-                userPreference.Id,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.updated", new
+            await _publisher.PublishAsync("subComponentPart.updated", new
             {
-                userPreferenceId = id,
+                subComponentPartId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference updated successfully!" });
+            return Ok(new { subComponentPart = "SubComponentPart updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the UserPreference specified by id,
+        /// API endpoint for getting the SubComponentPart specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserPreferenceResponseDto>> GetUserPreference(Guid id)
+        public async Task<ActionResult<SubComponentPartResponseDto>> GetSubComponentPart(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -226,64 +234,47 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to return
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the subComponentPart to return
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserPreference",
+                    "SubComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            UserPreferenceResponseDto response;
+            SubComponentPartResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == userPreference.UserId;
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
-            //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isSelf && !isPrivileged)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "UserPreference",
-                    ip,
-                    id,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return not found response
-                return Forbid();
-            }
-
-            //Check if has staff privilege
+            //Check if has admin privilege
             if (!isPrivileged)
             {
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create subComponentPart response
+                response = new SubComponentPartResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount
                 };
             }
             else
@@ -291,14 +282,16 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create subComponentPart response
+                response = new SubComponentPartResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note,
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount,
+                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
+                    LastEditedAt = subComponentPart.LastEditedAt,
+                    Note = subComponentPart.Note,
                 };
             }
 
@@ -306,7 +299,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "SubComponentPart",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -314,27 +307,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.got", new
+            await _publisher.PublishAsync("subComponentPart.got", new
             {
-                userPreferenceId = id,
+                subComponentPartId = id,
                 gotBy = currentUserId
             });
 
-            //Return the userPreference
+            //Return the subComponentPart
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting UserPreferences with pagination and search,
+        /// API endpoint for getting SubComponentParts with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserPreferenceResponseDto>>> GetUserPreferences([FromBody] GetUserPreferenceDto dto)
+        public async Task<ActionResult<IEnumerable<SubComponentPartResponseDto>>> GetSubComponentParts([FromBody] GetSubComponentPartDto dto)
         {
-            //Get userPreference id and claims from the request
+            //Get subComponentPart id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -346,18 +339,30 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserPreferences.AsNoTracking();
+            var query = _db.SubComponentParts.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.MainSubComponentId != null)
             {
-                query = query.Where(p => dto.UserId.Contains(p.UserId));
+                query = query.Where(p => dto.MainSubComponentId.Contains(p.MainSubComponentId));
+            }
+            if (dto.SubComponentId != null)
+            {
+                query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
+            }
+            if (dto.AmountStart != null)
+            {
+                query = query.Where(p => dto.AmountStart <= p.Amount);
+            }
+            if (dto.AmountEnd != null)
+            {
+                query = query.Where(p => dto.AmountEnd >= p.Amount);
             }
 
-            //Apply search based on credentials
+            //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                //query = query.Search(dto.Query, );
+                query = query.Include(p => p.SubComponent).Include(p => p.MainSubComponent).Search(dto.Query, p => p.MainSubComponent!.Name, p => p.SubComponent!.Name);
             }
 
             //Order by specified field if provided
@@ -366,7 +371,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get userPreferences with paging
+            //Get subComponentParts with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -377,41 +382,45 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.Where(p => p.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<SubComponentPart> subComponentParts = await query.ToListAsync();
 
             //Declare response variable
-            List<UserPreferenceResponseDto> responses;
+            List<SubComponentPartResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - User Access, Multiple SubComponentParts";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference =>
+                //Create a subComponentPart response list
+                responses = [.. subComponentParts.Select(subComponentPart =>
                 {
                     //Return a follow response
-                    return new UserPreferenceResponseDto
+                    return new SubComponentPartResponseDto
                     {
-                        Id = userPreference.Id,
-                        UserId = userPreference.UserId
+                        Id = subComponentPart.Id,
+                        MainSubComponentId = subComponentPart.MainSubComponentId,
+                        SubComponentId = subComponentPart.SubComponentId,
+                        Amount = subComponentPart.Amount
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - Admin Access, Multiple SubComponentParts";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference => new UserPreferenceResponseDto
+                //Create a subComponentPart response list
+                responses = [.. subComponentParts.Select(subComponentPart => new SubComponentPartResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note
+                    Id = subComponentPart.Id,
+                    MainSubComponentId = subComponentPart.MainSubComponentId,
+                    SubComponentId = subComponentPart.SubComponentId,
+                    Amount = subComponentPart.Amount,
+                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
+                    LastEditedAt = subComponentPart.LastEditedAt,
+                    Note = subComponentPart.Note
                 })];
 
             }
@@ -420,7 +429,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "SubComponentPart",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -428,27 +437,26 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.gotUserPreferences", new
+            await _publisher.PublishAsync("subComponentPart.gotSubComponentParts", new
             {
-                userPreferenceIds = userPreferences.Select(p => p.Id),
+                subComponentPartIds = subComponentParts.Select(p => p.Id),
                 gotBy = currentUserId
             });
 
-            //Return the userPreferences
+            //Return the subComponentParts
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected UserPreference.
-        /// Staff can delete all preferences, while users only their own.
+        /// API endpoint for deleting the selected SubComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteUserPreference(Guid id)
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> DeleteSubComponentPart(Guid id)
         {
-            //Get userPreference id and role from the request claims
+            //Get subComponentPart id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -456,49 +464,27 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the subComponentPart to delete
+            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+            if (subComponentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "UserPreference",
+                    "SubComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such SubComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserPreference not found!" });
+                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
             }
 
-            //Check if current user has staff permissions or if they are deleting their own preference
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userPreference.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserPreference",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
-            }
-
-            //Delete the userPreference
-            _db.UserPreferences.Remove(userPreference);
+            //Delete the subComponentPart
+            _db.SubComponentParts.Remove(subComponentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -507,22 +493,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "UserPreference",
+                "SubComponentPart",
                 ip,
-                userPreference.Id,
+                subComponentPart.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.deleted", new
+            await _publisher.PublishAsync("subComponentPart.deleted", new
             {
-                userPreferenceId = id,
+                subComponentPartId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "UserPreference deleted successfully!" });
+            return Ok(new { subComponentPart = "SubComponentPart deleted successfully!" });
         }
     }
 }

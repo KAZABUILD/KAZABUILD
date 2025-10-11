@@ -1,29 +1,31 @@
-using KAZABUILD.Application.DTOs.Users.Message;
+using KAZABUILD.Application.DTOs.Builds.Build;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Users;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
-namespace KAZABUILD.API.Controllers.Users
+namespace KAZABUILD.API.Controllers.Builds
 {
     /// <summary>
-    /// Controller for Message related endpoints.
-    /// Messages can be sent between all users, staff, system and bots.
+    /// Controller for Build related endpoints.
+    /// The users, administration and the system can all send them.
+    /// Includes protections for different statuses.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class MessagesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class BuildsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -31,13 +33,15 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for sending a new Message.
+        /// API Endpoint for creating a new Build.
+        /// Used to create a draft of the build for users.
+        /// Admins can create any status.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddMessage([FromBody] CreateMessageDto dto)
+        public async Task<IActionResult> AddBuild([FromBody] CreateBuildDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -47,29 +51,28 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Receiver and Sender exists
-            var sender = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.SenderId);
-            var receiver = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.SenderId);
-            if (receiver == null || sender == null)
+            //Check if the user exists
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            if (user == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "Message",
+                    "Build",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned Receiver or Sender Doesn't Exist"
+                    "Operation Failed - User Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Assigned receiver or sender not found!" });
+                return BadRequest(new { message = "User not found!" });
             }
 
-            //Check if current user has admin permissions or if they are creating a message for themselves
+            //Check if current user has admin permissions or if they are creating a build for themselves
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == dto.SenderId;
+            var isSelf = currentUserId == dto.UserId;
 
             //Check if the user has correct permission
             if (!isPrivileged && !isSelf)
@@ -78,7 +81,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "Message",
+                    "Build",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -89,23 +92,19 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Create a message to add
-            Message message = new()
+            //Create a build to add
+            Build build = new()
             {
-                SenderId = dto.SenderId,
-                ReceiverId = dto.ReceiverId,
-                Content = dto.Content, 
-                Title = dto.Title,
-                SentAt = dto.SentAt,
-                IsRead = dto.IsRead,
-                ParentMessageId = dto.ParentMessageId,
-                MessageType = dto.MessageType,
+                UserId = dto.UserId,
+                Name = dto.Name,
+                Description = dto.Description,
+                Status = isPrivileged ? dto.Status : BuildStatus.DRAFT,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the message to the database
-            _db.Messages.Add(message);
+            //Add the build to the database
+            _db.Builds.Add(build);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -114,34 +113,34 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "Message",
+                "Build",
                 ip,
-                message.Id,
+                build.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New Message Created"
+                "Successful Operation - New Build Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("message.created", new
+            await _publisher.PublishAsync("build.created", new
             {
-                messageId = message.Id,
+                buildId = build.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "Message sent successfully!", id = message.Id });
+            return Ok(new { build = "Build sent successfully!", id = build.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected Message
-        /// User can modify only if the Messages they received were read, while staff can modify all.
+        /// API endpoint for updating the selected Build.
+        /// User can modify all fields as well as transfer ownership.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> UpdateMessage(Guid id, [FromBody] UpdateMessageDto dto)
+        public async Task<IActionResult> UpdateBuild(Guid id, [FromBody] UpdateBuildDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -151,30 +150,29 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the message to edit
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
-
-            //Check if the message exists
-            if (message == null)
+            //Get the build to edit
+            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
+            //Check if the build exists
+            if (build == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "Message",
+                    "Build",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Message"
+                    "Operation Failed - No Such Build"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "Message not found!" });
+                return NotFound(new { build = "Build not found!" });
             }
 
-            //Check if current user has admin permissions or if they are modifying their own message
+            //Check if current user has admin permissions or if they are modifying their own build
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == message.ReceiverId;
+            var isSelf = currentUserId == build.UserId;
 
             //Return unauthorized access exception if the user does not have the correct permissions
             if (!isSelf && !isPrivileged)
@@ -194,67 +192,70 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
+            //Check if the user isn't modifying an auto-generated build
+            if (!isPrivileged && build.Status == BuildStatus.GENERATED)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Invalid Build Status"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Users cannot modify auto-generated builds!" });
+            }
+
             //Track changes for logging
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (dto.IsRead != null)
+            if (dto.UserId != null)
             {
-                changedFields.Add("IsRead: " + message.IsRead);
+                changedFields.Add("UserId: " + build.UserId);
 
-                message.IsRead = (bool)dto.IsRead;
+                build.UserId = (Guid)dto.UserId;
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+            {
+                changedFields.Add("Description: " + build.Description);
+
+                build.Description = dto.Description;
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                changedFields.Add("Name: " + build.Name);
+
+                build.Name = dto.Name;
+            }
+            if (dto.Status != null)
+            {
+                changedFields.Add("Status: " + build.Status);
+
+                build.Status = (BuildStatus)dto.Status;
             }
             if (isPrivileged)
             {
-                if (!string.IsNullOrWhiteSpace(dto.Content))
-                {
-                    changedFields.Add("Content: " + message.Content);
-
-                    message.Content = dto.Content;
-                }
-                if (!string.IsNullOrWhiteSpace(dto.Title))
-                {
-                    changedFields.Add("Title: " + message.Title);
-
-                    message.Title = dto.Title;
-                }
-                if (dto.SentAt != null)
-                {
-                    changedFields.Add("SentAt: " + message.SentAt);
-
-                    message.SentAt = (DateTime)dto.SentAt;
-                }
-                if (dto.ParentMessageId != null)
-                {
-                    changedFields.Add("ParentMessageId: " + message.ParentMessageId);
-
-                    if (dto.ParentMessageId == Guid.Empty)
-                        message.ParentMessageId = null;
-                    else
-                        message.ParentMessageId = dto.ParentMessageId;
-                }
-                if (dto.MessageType != null)
-                {
-                    changedFields.Add("MessageType: " + message.MessageType);
-
-                    message.MessageType = (MessageType)dto.MessageType;
-                }
                 if (dto.Note != null)
                 {
-                    changedFields.Add("Note: " + message.Note);
+                    changedFields.Add("Note: " + build.Note);
 
                     if (string.IsNullOrWhiteSpace(dto.Note))
-                        message.Note = null;
+                        build.Note = null;
                     else
-                        message.Note = dto.Note;
+                        build.Note = dto.Note;
                 }
             }
 
             //Update edit timestamp
-            message.LastEditedAt = DateTime.UtcNow;
+            build.LastEditedAt = DateTime.UtcNow;
 
-            //Update the message
-            _db.Messages.Update(message);
+            //Update the build
+            _db.Builds.Update(build);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -266,33 +267,33 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "Message",
+                "Build",
                 ip,
-                message.Id,
+                build.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("message.updated", new
+            await _publisher.PublishAsync("build.updated", new
             {
-                messageId = id,
+                buildId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "Message updated successfully!" });
+            return Ok(new { build = "Build updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the Message specified by id,
+        /// API endpoint for getting the Build specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<MessageResponseDto>> GetMessage(Guid id)
+        public async Task<ActionResult<BuildResponseDto>> GetBuild(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -302,43 +303,43 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the message to return
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
-            if (message == null)
+            //Get the build to return
+            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
+            if (build == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "Message",
+                    "Build",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Message"
+                    "Operation Failed - No Such Build"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "Message not found!" });
+                return NotFound(new { build = "Build not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            MessageResponseDto response;
+            BuildResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == message.SenderId;
+            var isSelf = currentUserId == build.UserId;
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isSelf && !isPrivileged)
+            if (!isSelf && !isPrivileged && (build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED))
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "Message",
+                    "Build",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
@@ -355,16 +356,14 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create message response
-                response = new MessageResponseDto
+                //Create build response
+                response = new BuildResponseDto
                 {
-                    Id = message.Id,
-                    SenderId = message.SenderId,
-                    ReceiverId = message.ReceiverId,
-                    Content = message.Content,
-                    Title = message.Title,
-                    SentAt = message.SentAt,
-                    IsRead = message.IsRead
+                    Id = build.Id,
+                    UserId = build.UserId,
+                    Name = build.Name,
+                    Description = build.Description,
+                    Status = build.Status
                 };
             }
             else
@@ -372,19 +371,17 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create message response
-                response = new MessageResponseDto
+                //Create build response
+                response = new BuildResponseDto
                 {
-                    Id = message.Id,
-                    SenderId = message.SenderId,
-                    ReceiverId = message.ReceiverId,
-                    Content = message.Content,
-                    Title = message.Title,
-                    SentAt = message.SentAt,
-                    IsRead = message.IsRead,
-                    DatabaseEntryAt = message.DatabaseEntryAt,
-                    LastEditedAt = message.LastEditedAt,
-                    Note = message.Note,
+                    Id = build.Id,
+                    UserId = build.UserId,
+                    Name = build.Name,
+                    Description = build.Description,
+                    Status = build.Status,
+                    DatabaseEntryAt = build.DatabaseEntryAt,
+                    LastEditedAt = build.LastEditedAt,
+                    Note = build.Note,
                 };
             }
 
@@ -392,7 +389,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Message",
+                "Build",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -400,27 +397,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("message.got", new
+            await _publisher.PublishAsync("build.got", new
             {
-                messageId = id,
+                buildId = id,
                 gotBy = currentUserId
             });
 
-            //Return the message
+            //Return the build
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting Messages with pagination and search,
+        /// API endpoint for getting Builds with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<MessageResponseDto>>> GetMessages([FromBody] GetMessageDto dto)
+        public async Task<ActionResult<IEnumerable<BuildResponseDto>>> GetBuilds([FromBody] GetBuildDto dto)
         {
-            //Get message id and claims from the request
+            //Get build id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -432,38 +429,30 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.Messages.AsNoTracking();
+            var query = _db.Builds.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.SenderId != null)
+            if (dto.UserId != null)
             {
-                query = query.Where(m => dto.SenderId.Contains(m.SenderId));
+                query = query.Where(b => dto.UserId.Contains(b.UserId));
             }
-            if (dto.ReceiverId != null)
+            if (dto.Name != null)
             {
-                query = query.Where(m => dto.ReceiverId.Contains(m.ReceiverId));
+                query = query.Where(b => dto.Name.Contains(b.Name));
             }
-            if (dto.IsRead != null)
+            if (dto.Status != null)
             {
-                query = query.Where(m => m.IsRead == dto.IsRead);
+                query = query.Where(b => dto.Status.Contains(b.Status));
             }
-            if (dto.ParentMessageId != null)
+            if(dto.Tag != null)
             {
-                query = query.Where(m => m.ParentMessageId != null && dto.ParentMessageId.Contains((Guid)m.ParentMessageId));
-            }
-            if (dto.SentAtStart != null)
-            {
-                query = query.Where(m => m.SentAt >= dto.SentAtEnd);
-            }
-            if (dto.SentAtEnd != null)
-            {
-                query = query.Where(m => m.SentAt <= dto.SentAtEnd);
+                query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
             }
 
-            //Apply search based on credentials
+            //Apply search based om credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(m => m.Sender).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Content, m => m.Sender!.DisplayName);
+                query = query.Include(b => b.User).Search(dto.Query, b => b.Name, b => b.Status, b => b.Description, b => b.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -472,7 +461,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get messages with paging
+            //Get builds with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -483,51 +472,47 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<Message> messages = await query.Where(m => m.SenderId == currentUserId || isPrivileged).ToListAsync();
+            List<Build> builds = await query.Where(b => b.UserId == currentUserId || isPrivileged || (b.Status != BuildStatus.DRAFT && b.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare response variable
-            List<MessageResponseDto> responses;
+            List<BuildResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple Messages";
+                logDescription = "Successful Operation - User Access, Multiple Builds";
 
-                //Create a message response list
-                responses = [.. messages.Select(message =>
+                //Create a build response list
+                responses = [.. builds.Select(build =>
                 {
                     //Return a follow response
-                    return new MessageResponseDto
+                    return new BuildResponseDto
                     {
-                        Id = message.Id,
-                        SenderId = message.SenderId,
-                        ReceiverId = message.ReceiverId,
-                        Content = message.Content,
-                        Title = message.Title,
-                        SentAt = message.SentAt,
-                        IsRead = message.IsRead
+                        Id = build.Id,
+                        UserId = build.UserId,
+                        Name = build.Name,
+                        Description = build.Description,
+                        Status = build.Status
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple Messages";
+                logDescription = "Successful Operation - Admin Access, Multiple Builds";
 
-                //Create a message response list
-                responses = [.. messages.Select(message => new MessageResponseDto
+                //Create a build response list
+                responses = [.. builds.Select(build => new BuildResponseDto
                 {
-                    Id = message.Id,
-                    SenderId = message.SenderId,
-                    ReceiverId = message.ReceiverId,
-                    Content = message.Content,
-                    Title = message.Title,
-                    SentAt = message.SentAt,
-                    IsRead = message.IsRead,
-                    DatabaseEntryAt = message.DatabaseEntryAt,
-                    LastEditedAt = message.LastEditedAt,
-                    Note = message.Note
+                    Id = build.Id,
+                    UserId = build.UserId,
+                    Name = build.Name,
+                    Description = build.Description,
+                    Status = build.Status,
+                    DatabaseEntryAt = build.DatabaseEntryAt,
+                    LastEditedAt = build.LastEditedAt,
+                    Note = build.Note
                 })];
 
             }
@@ -536,7 +521,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Message",
+                "Build",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -544,27 +529,26 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("message.gotMessages", new
+            await _publisher.PublishAsync("build.gotBuilds", new
             {
-                messageIds = messages.Select(m => m.Id),
+                buildIds = builds.Select(b => b.Id),
                 gotBy = currentUserId
             });
 
-            //Return the messages
+            //Return the builds
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected Message.
-        /// Users can delete messages they sent and staff can delete all.
+        /// API endpoint for deleting the selected Build.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteMessage(Guid id)
+        public async Task<IActionResult> DeleteBuild(Guid id)
         {
-            //Get message id and role from the request claims
+            //Get build id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -572,49 +556,59 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the message to delete
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
-            if (message == null)
+            //Get the build to delete
+            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
+            if (build == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "Message",
+                    "Build",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Message"
+                    "Operation Failed - No Such Build"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "Message not found!" });
+                return NotFound(new { build = "Build not found!" });
             }
 
-            //Check if current user has admin permissions or if they are deleting their own post
+            //Check if current user has admin permissions or if they are deleting their own build
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == message.SenderId;
+            var isSelf = currentUserId == build.UserId;
 
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
+            //Return an unauthorized response if the user doesn't have correct privileges
+            if (!isSelf && !isPrivileged)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
-                    "UserFollow",
+                    "GET",
+                    "Build",
                     ip,
-                    Guid.Empty,
+                    id,
                     PrivacyLevel.WARNING,
                     "Operation Failed - Unauthorized Access"
                 );
 
-                //Return proper unauthorized response
+                //Return not found response
                 return Forbid();
             }
 
-            //Delete the message
-            _db.Messages.Remove(message);
+            //Handle deleting build tags to avoid conflicts with cascade deletes
+            //Get all tags
+            var tags = await _db.BuildTags.Where(f => f.BuildId == build.Id).ToListAsync();
+
+            //Remove all compatibilities containing the component id of the component to be deleted
+            if (tags.Count != 0)
+            {
+                _db.BuildTags.RemoveRange(tags);
+            }
+
+            //Delete the build
+            _db.Builds.Remove(build);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -623,22 +617,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "Message",
+                "Build",
                 ip,
-                message.Id,
+                build.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("message.deleted", new
+            await _publisher.PublishAsync("build.deleted", new
             {
-                messageId = id,
+                buildId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "Message deleted successfully!" });
+            return Ok(new { build = "Build deleted successfully!" });
         }
     }
 }

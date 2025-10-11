@@ -37,6 +37,7 @@ namespace KAZABUILD.Domain.Entities.Builds
         public string? Note { get; set; }
 
         //Database relationships
-        public ICollection<BuildTag> Builds { get; set; } = [];
+        public ICollection<Build> Builds { get; set; } = [];
+        public ICollection<BuildTag> BuildTags { get; set; } = [];
     }
 }

@@ -151,7 +151,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the notification to edit
-            var notification = await _db.Notifications.FirstOrDefaultAsync(u => u.Id == id);
+            var notification = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id);
             //Check if the notification exists
             if (notification == null)
             {
@@ -170,7 +170,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { notification = "Notification not found!" });
             }
 
-            //Check if current user has admin permissions or if they are creating a follow for themselves
+            //Check if current user has admin permissions or if they are modifying their own notification
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == notification.UserId;
 
@@ -295,7 +295,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the notification to return
-            var notification = await _db.Notifications.FirstOrDefaultAsync(u => u.Id == id);
+            var notification = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id);
             if (notification == null)
             {
                 //Log failure
@@ -431,29 +431,29 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(m => dto.UserId.Contains(m.UserId));
+                query = query.Where(n => dto.UserId.Contains(n.UserId));
             }
             if (dto.NotificationType != null)
             {
-                query = query.Where(m => dto.NotificationType.Contains(m.NotificationType));
+                query = query.Where(n => dto.NotificationType.Contains(n.NotificationType));
             }
             if (dto.IsRead != null)
             {
-                query = query.Where(m => m.IsRead == dto.IsRead);
+                query = query.Where(n => n.IsRead == dto.IsRead);
             }
             if (dto.SentAtStart != null)
             {
-                query = query.Where(m => m.SentAt >= dto.SentAtEnd);
+                query = query.Where(n => n.SentAt >= dto.SentAtEnd);
             }
             if (dto.SentAtEnd != null)
             {
-                query = query.Where(m => m.SentAt <= dto.SentAtEnd);
+                query = query.Where(n => n.SentAt <= dto.SentAtEnd);
             }
 
             //Apply search based om credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Body);
+                query = query.Search(dto.Query, n => n.SentAt, n => n.Title, n => n.Body);
             }
 
             //Order by specified field if provided
@@ -473,7 +473,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<Notification> notifications = await query.Where(m => m.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<Notification> notifications = await query.Where(n => n.UserId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
             List<NotificationResponseDto> responses;
@@ -538,7 +538,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("notification.gotNotifications", new
             {
-                notificationIds = notifications.Select(u => u.Id),
+                notificationIds = notifications.Select(n => n.Id),
                 gotBy = currentUserId
             });
 
@@ -547,12 +547,13 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected Notification for staff.
+        /// API endpoint for deleting the selected Notifications.
+        /// The users can delete their own Notifications, administration can delete all.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "Staff")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DeleteNotification(Guid id)
         {
             //Get notification id and role from the request claims
@@ -564,7 +565,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the notification to delete
-            var notification = await _db.Notifications.FirstOrDefaultAsync(u => u.Id == id);
+            var notification = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id);
             if (notification == null)
             {
                 //Log failure
@@ -580,6 +581,28 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { notification = "Notification not found!" });
+            }
+
+            //Check if current user has admin permissions or if they are creating a notification for themselves
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isSelf = currentUserId == notification.UserId;
+
+            //Check if the user has correct permission
+            if (!isPrivileged && !isSelf)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Notification",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
             }
 
             //Delete the notification
