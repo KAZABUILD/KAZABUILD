@@ -27,11 +27,5 @@ namespace KAZABUILD.Tests.Utils
             return $"https://picsum.photos/id/{_random.Next(1, 1000)}/200/200";
         }
 
-            context = new KAZABUILDDBContext(options);
-
-            return context;
-        }
-
-
     }
 }
