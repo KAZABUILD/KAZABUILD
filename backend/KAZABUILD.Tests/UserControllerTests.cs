@@ -1,49 +1,41 @@
 namespace KAZABUILD.Tests;
 
 using System.Net;
-using KAZABUILD.Application.Settings;
-using KAZABUILD.Domain.Entities;
-using KAZABUILD.Domain.Enums;
-using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Infrastructure.Services;
-using KAZABUILD.Tests.Utils;
-using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Mvc.Testing;
-public class UserControllerTests : IClassFixture<WebApplicationFactory<API.Program>>, IAsyncLifetime
+using Domain.Entities;
+using Domain.Enums;
+using Utils;
+
+public class UserControllerTests : BaseIntegrationTest
 {
-    private readonly WebApplicationFactory<API.Program> _factory;
-    private readonly KAZABUILDDBContext _context;
-    private HttpClient _client_user;
-    private readonly DbTestUtils _utils = new();
+    private HttpClient _client_user = null!;
+    private readonly User admin;
+    private readonly User user;
 
-    private User admin = UserFactory.GenerateUser(login: "temp_admin", role: UserRole.ADMINISTRATOR);
-    private User user = UserFactory.GenerateUser(role: UserRole.USER);
-
-    public UserControllerTests(WebApplicationFactory<API.Program> factory)
+    public UserControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
-        _context = _utils.SetContextInMemory(_context);
+        admin = UserFactory.GenerateUser(login: "temp_admin", role: UserRole.ADMINISTRATOR);
+        user = UserFactory.GenerateUser(login: "temp_user", role: UserRole.USER);
     }
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _context.Users.Add(admin);
-        _context.Users.Add(user);
-        _context.SaveChanges();
+        //Setup from base class
+        await base.InitializeAsync();
+        //User seeding
+        _context.Users.AddRange(admin, user);
+        await _context.SaveChangesAsync();
 
+        //Creating user client
         _client_user = await HttpClientFactory.Create(_factory, user);
-    }
-
-    public Task DisposeAsync()
-    {
-        _context.Dispose();
-        return Task.CompletedTask;
     }
 
     [Fact]
     public async Task UserWithLowerRankShouldntDeleteUserWithHigherRank()
     {
+        // Act
         var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
+
+        // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }
