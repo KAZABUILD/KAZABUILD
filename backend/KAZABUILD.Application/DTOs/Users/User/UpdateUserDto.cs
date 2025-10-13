@@ -1,4 +1,3 @@
-using FluentValidation;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using System.ComponentModel.DataAnnotations;
@@ -43,7 +42,6 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// <summary>
         /// Url address of user's profile picture stored on the internal application server.
         /// </summary>
-        [Url(ErrorMessage = "Invalid image URL!")]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
         public string? ImageUrl { get; set; }
 
@@ -112,7 +110,7 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// Settings for whether the user has double factor authentication enabled.
         /// </summary>
         public bool? EnableDoubleFactorAuthentication { get; set; }
-        
+
 
         [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
         public string? Note { get; set; }

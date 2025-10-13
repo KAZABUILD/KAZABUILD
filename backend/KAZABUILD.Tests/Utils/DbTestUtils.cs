@@ -1,7 +1,3 @@
-using System;
-using KAZABUILD.Domain.Entities;
-using KAZABUILD.Domain.Enums;
-using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,6 +40,6 @@ namespace KAZABUILD.Tests.Utils
             return context;
         }
 
-        
+
     }
 }

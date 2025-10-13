@@ -8,7 +8,6 @@ using KAZABUILD.Infrastructure.Middleware;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text.Json.Serialization;
 

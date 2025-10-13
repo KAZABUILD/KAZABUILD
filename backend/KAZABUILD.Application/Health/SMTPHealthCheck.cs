@@ -1,4 +1,3 @@
-﻿using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;

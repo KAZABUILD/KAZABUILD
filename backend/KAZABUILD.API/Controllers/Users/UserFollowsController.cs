@@ -1,15 +1,14 @@
+using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Domain.Entities.Users;
-using KAZABUILD.Application.DTOs.Users.UserFollow;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using System.Linq.Dynamic.Core;
+using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
@@ -279,7 +278,7 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
-            if(!isSelf && !isPrivileged)
+            if (!isSelf && !isPrivileged)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -297,7 +296,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if has staff privilege
-            if(!isPrivileged)
+            if (!isPrivileged)
             {
                 //Change log description
                 logDescription = "Successful Operation - User Access";

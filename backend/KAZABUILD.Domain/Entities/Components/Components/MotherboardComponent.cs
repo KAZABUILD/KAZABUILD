@@ -50,7 +50,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 1024, ErrorMessage = "Max RAM Amount must be between 0 and 1024!")]
-        [Precision(8,4)]
+        [Precision(8, 4)]
         public decimal MaxRAMAmount { get; set; } = default!;
 
         /// <summary>

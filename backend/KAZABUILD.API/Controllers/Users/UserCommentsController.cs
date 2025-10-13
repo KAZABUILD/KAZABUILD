@@ -102,7 +102,7 @@ namespace KAZABUILD.API.Controllers.Users
             };
 
             //Add the target id depending on the CommentTargetType
-            switch(userComment.CommentTargetType)
+            switch (userComment.CommentTargetType)
             {
                 case CommentTargetType.BUILD:
                     //Set the target as build

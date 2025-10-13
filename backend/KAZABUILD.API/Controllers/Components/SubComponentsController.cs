@@ -212,114 +212,115 @@ namespace KAZABUILD.API.Controllers.Components
             var changedFields = new List<string>();
 
             //Update fields based on the SubComponent type
-            switch(dto)
+            switch (dto)
             {
                 case UpdateCoolerSocketSubComponentDto coolerSocket:
-                {
-                    if (coolerSocket.SocketType != null)
                     {
-                        changedFields.Add("SocketType: " + ((CoolerSocketSubComponent)subComponent).SocketType);
+                        if (coolerSocket.SocketType != null)
+                        {
+                            changedFields.Add("SocketType: " + ((CoolerSocketSubComponent)subComponent).SocketType);
 
-                        ((CoolerSocketSubComponent)subComponent).SocketType = coolerSocket.SocketType;
+                            ((CoolerSocketSubComponent)subComponent).SocketType = coolerSocket.SocketType;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case UpdateIntegratedGraphicsSubComponentDto integratedGraphicsDto:
-                {
-                    if (integratedGraphicsDto.Model != null)
                     {
-                        changedFields.Add("Model: " + ((IntegratedGraphicsSubComponent)subComponent).Model);
+                        if (integratedGraphicsDto.Model != null)
+                        {
+                            changedFields.Add("Model: " + ((IntegratedGraphicsSubComponent)subComponent).Model);
 
-                        if (string.IsNullOrWhiteSpace(integratedGraphicsDto.Model))
-                            ((IntegratedGraphicsSubComponent)subComponent).Model = null;
-                        else
-                            ((IntegratedGraphicsSubComponent)subComponent).Model = integratedGraphicsDto.Model;
-                    }
-                    if (integratedGraphicsDto.BaseClockSpeed != null)
-                    {
-                        changedFields.Add("BaseClockSpeed: " + ((IntegratedGraphicsSubComponent)subComponent).BaseClockSpeed);
+                            if (string.IsNullOrWhiteSpace(integratedGraphicsDto.Model))
+                                ((IntegratedGraphicsSubComponent)subComponent).Model = null;
+                            else
+                                ((IntegratedGraphicsSubComponent)subComponent).Model = integratedGraphicsDto.Model;
+                        }
+                        if (integratedGraphicsDto.BaseClockSpeed != null)
+                        {
+                            changedFields.Add("BaseClockSpeed: " + ((IntegratedGraphicsSubComponent)subComponent).BaseClockSpeed);
 
-                        ((IntegratedGraphicsSubComponent)subComponent).BaseClockSpeed = (int)integratedGraphicsDto.BaseClockSpeed;
-                    }
-                    if (integratedGraphicsDto.BoostClockSpeed != null)
-                    {
-                        changedFields.Add("BoostClockSpeed: " + ((IntegratedGraphicsSubComponent)subComponent).BoostClockSpeed);
+                            ((IntegratedGraphicsSubComponent)subComponent).BaseClockSpeed = (int)integratedGraphicsDto.BaseClockSpeed;
+                        }
+                        if (integratedGraphicsDto.BoostClockSpeed != null)
+                        {
+                            changedFields.Add("BoostClockSpeed: " + ((IntegratedGraphicsSubComponent)subComponent).BoostClockSpeed);
 
-                        ((IntegratedGraphicsSubComponent)subComponent).BoostClockSpeed = (int)integratedGraphicsDto.BoostClockSpeed;
-                    }
-                    if (integratedGraphicsDto.CoreCount != null)
-                    {
-                        changedFields.Add("CoreCount: " + ((IntegratedGraphicsSubComponent)subComponent).CoreCount);
+                            ((IntegratedGraphicsSubComponent)subComponent).BoostClockSpeed = (int)integratedGraphicsDto.BoostClockSpeed;
+                        }
+                        if (integratedGraphicsDto.CoreCount != null)
+                        {
+                            changedFields.Add("CoreCount: " + ((IntegratedGraphicsSubComponent)subComponent).CoreCount);
 
-                        ((IntegratedGraphicsSubComponent)subComponent).CoreCount = (int)integratedGraphicsDto.CoreCount;
+                            ((IntegratedGraphicsSubComponent)subComponent).CoreCount = (int)integratedGraphicsDto.CoreCount;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case UpdateM2SlotSubComponentDto m2SlotDto:
-                {
-                    if (!string.IsNullOrWhiteSpace(m2SlotDto.Size))
                     {
-                        changedFields.Add("Size: " + ((M2SlotSubComponent)subComponent).Size);
+                        if (!string.IsNullOrWhiteSpace(m2SlotDto.Size))
+                        {
+                            changedFields.Add("Size: " + ((M2SlotSubComponent)subComponent).Size);
 
-                        ((M2SlotSubComponent)subComponent).Size = m2SlotDto.Size;
-                    }
-                    if (!string.IsNullOrWhiteSpace(m2SlotDto.KeyType))
-                    {
-                        changedFields.Add("KeyType: " + ((M2SlotSubComponent)subComponent).KeyType);
+                            ((M2SlotSubComponent)subComponent).Size = m2SlotDto.Size;
+                        }
+                        if (!string.IsNullOrWhiteSpace(m2SlotDto.KeyType))
+                        {
+                            changedFields.Add("KeyType: " + ((M2SlotSubComponent)subComponent).KeyType);
 
-                        ((M2SlotSubComponent)subComponent).KeyType = m2SlotDto.KeyType;
-                    }
-                    if (!string.IsNullOrWhiteSpace(m2SlotDto.Interface))
-                    {
-                        changedFields.Add("Interface: " + ((M2SlotSubComponent)subComponent).Interface);
+                            ((M2SlotSubComponent)subComponent).KeyType = m2SlotDto.KeyType;
+                        }
+                        if (!string.IsNullOrWhiteSpace(m2SlotDto.Interface))
+                        {
+                            changedFields.Add("Interface: " + ((M2SlotSubComponent)subComponent).Interface);
 
-                        ((M2SlotSubComponent)subComponent).Interface = m2SlotDto.Interface;
+                            ((M2SlotSubComponent)subComponent).Interface = m2SlotDto.Interface;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case UpdateOnboardEthernetSubComponentDto onBoardEthernetDto:
-                {
-                    if (!string.IsNullOrWhiteSpace(onBoardEthernetDto.Speed))
                     {
-                        changedFields.Add("Speed: " + ((OnboardEthernetSubComponent)subComponent).Speed);
+                        if (!string.IsNullOrWhiteSpace(onBoardEthernetDto.Speed))
+                        {
+                            changedFields.Add("Speed: " + ((OnboardEthernetSubComponent)subComponent).Speed);
 
-                        ((OnboardEthernetSubComponent)subComponent).Speed = onBoardEthernetDto.Speed;
-                    }
-                    if (!string.IsNullOrWhiteSpace(onBoardEthernetDto.Controller))
-                    {
-                        changedFields.Add("Controller: " + ((OnboardEthernetSubComponent)subComponent).Controller);
+                            ((OnboardEthernetSubComponent)subComponent).Speed = onBoardEthernetDto.Speed;
+                        }
+                        if (!string.IsNullOrWhiteSpace(onBoardEthernetDto.Controller))
+                        {
+                            changedFields.Add("Controller: " + ((OnboardEthernetSubComponent)subComponent).Controller);
 
-                        ((OnboardEthernetSubComponent)subComponent).Controller = onBoardEthernetDto.Controller;
+                            ((OnboardEthernetSubComponent)subComponent).Controller = onBoardEthernetDto.Controller;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case UpdatePCIeSlotSubComponentDto pcieSlotDto:
-                {
-                    if (!string.IsNullOrWhiteSpace(pcieSlotDto.Gen))
                     {
-                        changedFields.Add("Gen: " + ((PCIeSlotSubComponent)subComponent).Gen);
+                        if (!string.IsNullOrWhiteSpace(pcieSlotDto.Gen))
+                        {
+                            changedFields.Add("Gen: " + ((PCIeSlotSubComponent)subComponent).Gen);
 
-                        ((PCIeSlotSubComponent)subComponent).Gen = pcieSlotDto.Gen;
-                    }
-                    if (!string.IsNullOrWhiteSpace(pcieSlotDto.Lanes))
-                    {
-                        changedFields.Add("Lanes: " + ((PCIeSlotSubComponent)subComponent).Lanes);
+                            ((PCIeSlotSubComponent)subComponent).Gen = pcieSlotDto.Gen;
+                        }
+                        if (!string.IsNullOrWhiteSpace(pcieSlotDto.Lanes))
+                        {
+                            changedFields.Add("Lanes: " + ((PCIeSlotSubComponent)subComponent).Lanes);
 
-                        ((PCIeSlotSubComponent)subComponent).Lanes = pcieSlotDto.Lanes;
+                            ((PCIeSlotSubComponent)subComponent).Lanes = pcieSlotDto.Lanes;
+                        }
+                        break;
                     }
-                    break;
-                }
                 case UpdatePortSubComponentDto portDto:
-                {
-                    if (portDto.PortType != null)
                     {
-                        changedFields.Add("PortType: " + ((PortSubComponent)subComponent).PortType);
+                        if (portDto.PortType != null)
+                        {
+                            changedFields.Add("PortType: " + ((PortSubComponent)subComponent).PortType);
 
-                        ((PortSubComponent)subComponent).PortType = (PortType)portDto.PortType;
+                            ((PortSubComponent)subComponent).PortType = (PortType)portDto.PortType;
+                        }
+                        break;
                     }
-                    break;
-                }
-            };
+            }
+            ;
 
             //Update base subComponent fields
             if (!string.IsNullOrWhiteSpace(dto.Name))
@@ -578,136 +579,137 @@ namespace KAZABUILD.API.Controllers.Components
             switch (dto)
             {
                 case GetCoolerSocketSubComponentDto coolerSocketDto:
-                {
-                    //Create a subquery based on the CoolerSocket type
-                    var coolerSocketQuery = query.OfType<CoolerSocketSubComponent>();
-
-                    //Filter by Cooler Socket SubComponent class variables
-                    coolerSocketQuery = coolerSocketQuery.Where(s =>
-                        (coolerSocketDto.SocketType == null || coolerSocketDto.SocketType.Contains(s.SocketType))
-                    );
-
-                    //Apply search for the Cooler Socket SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        coolerSocketQuery = coolerSocketQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.SocketType);
+                        //Create a subquery based on the CoolerSocket type
+                        var coolerSocketQuery = query.OfType<CoolerSocketSubComponent>();
+
+                        //Filter by Cooler Socket SubComponent class variables
+                        coolerSocketQuery = coolerSocketQuery.Where(s =>
+                            (coolerSocketDto.SocketType == null || coolerSocketDto.SocketType.Contains(s.SocketType))
+                        );
+
+                        //Apply search for the Cooler Socket SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            coolerSocketQuery = coolerSocketQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.SocketType);
+                        }
+
+                        query = coolerSocketQuery;
+
+                        break;
                     }
-
-                    query = coolerSocketQuery;
-
-                    break;
-                }
                 case GetIntegratedGraphicsSubComponentDto integratedGraphicsDto:
-                {
-                    //Create a subquery based on the IntegratedGraphics type
-                    var integratedGraphicsQuery = query.OfType<IntegratedGraphicsSubComponent>();
-                        
-                    //Filter by Integrated Graphics SubComponent class variables
-                    integratedGraphicsQuery = integratedGraphicsQuery.Where(s =>
-                        (integratedGraphicsDto.Model == null || (s.Model != null && integratedGraphicsDto.Model.Contains(s.Model))) &&
-                        (integratedGraphicsDto.BaseClockSpeedStart == null || integratedGraphicsDto.BaseClockSpeedStart <= s.BaseClockSpeed) &&
-                        (integratedGraphicsDto.BaseClockSpeedEnd == null || integratedGraphicsDto.BaseClockSpeedEnd >= s.BaseClockSpeed) &&
-                        (integratedGraphicsDto.BoostClockSpeedStart == null || integratedGraphicsDto.BoostClockSpeedStart <= s.BoostClockSpeed) &&
-                        (integratedGraphicsDto.BoostClockSpeedEnd == null || integratedGraphicsDto.BoostClockSpeedEnd >= s.BoostClockSpeed) &&
-                        (integratedGraphicsDto.CoreCountStart == null || integratedGraphicsDto.CoreCountStart <= s.CoreCount) &&
-                        (integratedGraphicsDto.CoreCountEnd == null || integratedGraphicsDto.CoreCountEnd >= s.CoreCount)
-                    );
-
-                    //Apply search for the Integrated Graphics SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        integratedGraphicsQuery = integratedGraphicsQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Model!);
+                        //Create a subquery based on the IntegratedGraphics type
+                        var integratedGraphicsQuery = query.OfType<IntegratedGraphicsSubComponent>();
+
+                        //Filter by Integrated Graphics SubComponent class variables
+                        integratedGraphicsQuery = integratedGraphicsQuery.Where(s =>
+                            (integratedGraphicsDto.Model == null || (s.Model != null && integratedGraphicsDto.Model.Contains(s.Model))) &&
+                            (integratedGraphicsDto.BaseClockSpeedStart == null || integratedGraphicsDto.BaseClockSpeedStart <= s.BaseClockSpeed) &&
+                            (integratedGraphicsDto.BaseClockSpeedEnd == null || integratedGraphicsDto.BaseClockSpeedEnd >= s.BaseClockSpeed) &&
+                            (integratedGraphicsDto.BoostClockSpeedStart == null || integratedGraphicsDto.BoostClockSpeedStart <= s.BoostClockSpeed) &&
+                            (integratedGraphicsDto.BoostClockSpeedEnd == null || integratedGraphicsDto.BoostClockSpeedEnd >= s.BoostClockSpeed) &&
+                            (integratedGraphicsDto.CoreCountStart == null || integratedGraphicsDto.CoreCountStart <= s.CoreCount) &&
+                            (integratedGraphicsDto.CoreCountEnd == null || integratedGraphicsDto.CoreCountEnd >= s.CoreCount)
+                        );
+
+                        //Apply search for the Integrated Graphics SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            integratedGraphicsQuery = integratedGraphicsQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Model!);
+                        }
+
+                        query = integratedGraphicsQuery;
+
+                        break;
                     }
-
-                    query = integratedGraphicsQuery;
-
-                    break;
-                }
                 case GetM2SlotSubComponentDto m2SlotDto:
-                {
+                    {
                         //Create a subquery based on the M2Slot type
                         var m2SlotQuery = query.OfType<M2SlotSubComponent>();
-                        
-                    //Filter by M2Slot class variables
-                    m2SlotQuery = m2SlotQuery.Where(s =>
-                        (m2SlotDto.Size == null || m2SlotDto.Size.Contains(s.Size)) &&
-                        (m2SlotDto.KeyType == null || m2SlotDto.KeyType.Contains(s.KeyType)) &&
-                        (m2SlotDto.Interface == null || m2SlotDto.Interface.Contains(s.Interface))
-                    );
 
-                    //Apply search for the M2Slot Fan SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
-                    {
-                        m2SlotQuery = m2SlotQuery.Search(dto.Query, s => s.Name, s => s.Type);
+                        //Filter by M2Slot class variables
+                        m2SlotQuery = m2SlotQuery.Where(s =>
+                            (m2SlotDto.Size == null || m2SlotDto.Size.Contains(s.Size)) &&
+                            (m2SlotDto.KeyType == null || m2SlotDto.KeyType.Contains(s.KeyType)) &&
+                            (m2SlotDto.Interface == null || m2SlotDto.Interface.Contains(s.Interface))
+                        );
+
+                        //Apply search for the M2Slot Fan SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            m2SlotQuery = m2SlotQuery.Search(dto.Query, s => s.Name, s => s.Type);
+                        }
+
+                        query = m2SlotQuery;
+
+                        break;
                     }
-
-                    query = m2SlotQuery;
-
-                    break;
-                }
                 case GetOnboardEthernetSubComponentDto onBoardEthernetDto:
-                {
-                    //Create a subquery based on the OnboardEthernet type
-                    var onBoardEthernetQuery = query.OfType<OnboardEthernetSubComponent>();
-                        
-                    //Filter by OnboardEthernet class variables
-                    onBoardEthernetQuery = onBoardEthernetQuery.Where(s =>
-                        (onBoardEthernetDto.Speed == null || onBoardEthernetDto.Speed.Contains(s.Speed)) &&
-                        (onBoardEthernetDto.Controller == null || onBoardEthernetDto.Controller.Contains(s.Controller))
-                    );
-
-                    //Apply search for the Onboard Ethernet SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        onBoardEthernetQuery = onBoardEthernetQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Speed, s => s.Controller);
+                        //Create a subquery based on the OnboardEthernet type
+                        var onBoardEthernetQuery = query.OfType<OnboardEthernetSubComponent>();
+
+                        //Filter by OnboardEthernet class variables
+                        onBoardEthernetQuery = onBoardEthernetQuery.Where(s =>
+                            (onBoardEthernetDto.Speed == null || onBoardEthernetDto.Speed.Contains(s.Speed)) &&
+                            (onBoardEthernetDto.Controller == null || onBoardEthernetDto.Controller.Contains(s.Controller))
+                        );
+
+                        //Apply search for the Onboard Ethernet SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            onBoardEthernetQuery = onBoardEthernetQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Speed, s => s.Controller);
+                        }
+
+                        query = onBoardEthernetQuery;
+
+                        break;
                     }
-
-                    query = onBoardEthernetQuery;
-
-                    break;
-                }
                 case GetPCIeSlotSubComponentDto pcieSlotDto:
-                {
-                    //Create a subquery based on the PCIeSlot type
-                    var pcieSlotQuery = query.OfType<PCIeSlotSubComponent>();
-                        
-                    //Filter by PCIeSlot SubComponent class variables
-                    pcieSlotQuery = pcieSlotQuery.Where(s =>
-                        (pcieSlotDto.Gen == null || pcieSlotDto.Gen.Contains(s.Gen)) &&
-                        (pcieSlotDto.Lanes == null || pcieSlotDto.Lanes.Contains(s.Lanes))
-                    );
-
-                    //Apply search for the Case Fan SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        pcieSlotQuery = pcieSlotQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Gen, s => s.Lanes);
+                        //Create a subquery based on the PCIeSlot type
+                        var pcieSlotQuery = query.OfType<PCIeSlotSubComponent>();
+
+                        //Filter by PCIeSlot SubComponent class variables
+                        pcieSlotQuery = pcieSlotQuery.Where(s =>
+                            (pcieSlotDto.Gen == null || pcieSlotDto.Gen.Contains(s.Gen)) &&
+                            (pcieSlotDto.Lanes == null || pcieSlotDto.Lanes.Contains(s.Lanes))
+                        );
+
+                        //Apply search for the Case Fan SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            pcieSlotQuery = pcieSlotQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.Gen, s => s.Lanes);
+                        }
+
+                        query = pcieSlotQuery;
+
+                        break;
                     }
-
-                    query = pcieSlotQuery;
-
-                    break;
-                }
                 case GetPortSubComponentDto portDto:
-                {
-                    //Create a subquery based on the Port type
-                    var portQuery = query.OfType<PortSubComponent>();
-                        
-                    //Filter by Port SubComponent class variables
-                    portQuery = portQuery.Where(s =>
-                        (portDto.PortType == null || portDto.PortType.Contains(s.PortType))
-                    );
-
-                    //Apply search for the Case Fan SubComponent
-                    if (!string.IsNullOrWhiteSpace(dto.Query))
                     {
-                        portQuery = portQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.PortType);
+                        //Create a subquery based on the Port type
+                        var portQuery = query.OfType<PortSubComponent>();
+
+                        //Filter by Port SubComponent class variables
+                        portQuery = portQuery.Where(s =>
+                            (portDto.PortType == null || portDto.PortType.Contains(s.PortType))
+                        );
+
+                        //Apply search for the Case Fan SubComponent
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            portQuery = portQuery.Search(dto.Query, s => s.Name, s => s.Type, s => s.PortType);
+                        }
+
+                        query = portQuery;
+
+                        break;
                     }
-
-                    query = portQuery;
-
-                    break;
-                }
-            };
+            }
+            ;
 
             //Order by specified field if provided
             if (!string.IsNullOrWhiteSpace(dto.OrderBy))

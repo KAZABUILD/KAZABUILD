@@ -2,7 +2,6 @@ using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Entities.Users;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KAZABUILD.Domain.Entities.Components
 {
@@ -55,7 +54,7 @@ namespace KAZABUILD.Domain.Entities.Components
         /// </summary>
         [Required]
         [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]
-        [Precision(8,5)]
+        [Precision(8, 5)]
         public decimal Rating { get; set; } = default!;
 
         /// <summary>

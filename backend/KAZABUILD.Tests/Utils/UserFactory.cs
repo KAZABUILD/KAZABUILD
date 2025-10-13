@@ -1,4 +1,4 @@
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 

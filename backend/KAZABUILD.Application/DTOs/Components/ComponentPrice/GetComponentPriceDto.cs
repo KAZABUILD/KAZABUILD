@@ -8,7 +8,7 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
         public List<Guid>? ComponentId { get; set; }
 
         [StringLength(50, ErrorMessage = "Vendor Name cannot be longer than 50 characters!")]
-        public List<string>? VendorName { get; set; } 
+        public List<string>? VendorName { get; set; }
 
         [DataType(DataType.DateTime)]
         public DateTime? FetchedAtStart { get; set; } = default!;

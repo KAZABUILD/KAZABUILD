@@ -31,7 +31,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseComponent
 
         public Dimension? Dimensions { get; set; }
 
-        public decimal? Volume {  get; set; }
+        public decimal? Volume { get; set; }
 
         public decimal? Weight { get; set; }
 

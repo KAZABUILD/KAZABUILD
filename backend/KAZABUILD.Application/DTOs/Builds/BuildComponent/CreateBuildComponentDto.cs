@@ -1,5 +1,3 @@
-using KAZABUILD.Domain.Enums;
-
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Builds.BuildComponent

@@ -1,5 +1,3 @@
-using KAZABUILD.Domain.Entities;
-
 namespace KAZABUILD.Application.Helpers
 {
     public static class EmailBodyHelper
