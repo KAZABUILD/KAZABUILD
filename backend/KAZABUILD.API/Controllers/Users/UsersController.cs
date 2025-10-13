@@ -67,7 +67,7 @@ namespace KAZABUILD.API.Controllers.Users
                 );
 
                 //Return proper conflict response
-                if(dto.Email == isUserAvailable.Email)
+                if (dto.Email == isUserAvailable.Email)
                     return Conflict(new { message = "Email Already In Use" });
                 else
                     return Conflict(new { message = "Login Already In Use" });
@@ -227,7 +227,7 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 changedFields.Add("Description: " + user.Description);
 
-                if(string.IsNullOrWhiteSpace(dto.Description))
+                if (string.IsNullOrWhiteSpace(dto.Description))
                     user.Description = null;
                 else
                     user.Description = dto.Description;
@@ -252,7 +252,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.Address != null)
             {
-                if(user.Address == null)
+                if (user.Address == null)
                 {
                     changedFields.Add("Added Address");
 
@@ -571,7 +571,7 @@ namespace KAZABUILD.API.Controllers.Users
             var isFollowed = await _db.UserFollows.AnyAsync(f => f.FollowerId == id && f.FollowedId == currentUserId);
 
             //Check what permissions user has and return respective information
-            if(!isSelf && !isPrivileged
+            if (!isSelf && !isPrivileged
                 && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE
                 || user.ProfileAccessibility == ProfileAccessibility.FOLLOWS && !isFollowed)) //Return restricted knowledge if the user set their profile to private or restricted access
             {
@@ -755,7 +755,7 @@ namespace KAZABUILD.API.Controllers.Users
             List<UserResponseDto> responses;
 
             //Check what permissions user has and return respective information
-            if(!isPrivileged) //Return limited knowledge if no privileges
+            if (!isPrivileged) //Return limited knowledge if no privileges
             {
                 //Change log description
                 logDescription = "Successful Operation - Limited Access, Multiple Users";
@@ -942,7 +942,7 @@ namespace KAZABUILD.API.Controllers.Users
             var follows = await _db.UserFollows.Where(f => f.FollowedId == user.Id || f.FollowerId == user.Id).ToListAsync();
 
             //Remove all user follows containing the user id of the user to be deleted
-            if(follows.Count != 0)
+            if (follows.Count != 0)
             {
                 _db.UserFollows.RemoveRange(follows);
             }

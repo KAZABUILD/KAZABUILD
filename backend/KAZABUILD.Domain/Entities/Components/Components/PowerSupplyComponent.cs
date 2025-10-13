@@ -41,7 +41,7 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// </summary>
         [Required]
         [Range(0, 500, ErrorMessage = "Length must be between 0 and 500 mm")]
-        [Precision(5,2)]
+        [Precision(5, 2)]
         public decimal Length { get; set; } = default!;
 
         /// <summary>

@@ -94,7 +94,7 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 SenderId = dto.SenderId,
                 ReceiverId = dto.ReceiverId,
-                Content = dto.Content, 
+                Content = dto.Content,
                 Title = dto.Title,
                 SentAt = dto.SentAt,
                 IsRead = dto.IsRead,

@@ -1,5 +1,4 @@
 using KAZABUILD.Domain.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Users.UserComment
 {

@@ -61,19 +61,10 @@ namespace KAZABUILD.Application.DTOs.Auth
         public string Gender { get; set; } = "Unknown";
 
         /// <summary>
-        /// Authentication role given to the user.
-        /// Determines how much access to the backend calls and webpages the user has.
-        /// </summary>
-        [Required]
-        [EnumDataType(typeof(UserRole))]
-        public UserRole UserRole { get; set; } = UserRole.GUEST;
-
-        /// <summary>
         /// Url address of user's profile picture stored on the internal application server.
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        [Url(ErrorMessage = "Invalid image URL!")]
         public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
 
         /// <summary>

@@ -1,7 +1,6 @@
 using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Domain.Entities.Users
@@ -77,7 +76,6 @@ namespace KAZABUILD.Domain.Entities.Users
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        [Url(ErrorMessage = "Invalid image URL!")]
         public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
 
         /// <summary>

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace KAZABUILD.Application.DTOs.Components.ComponentCompatibility
 {
     public class ComponentCompatibilityResponseDto

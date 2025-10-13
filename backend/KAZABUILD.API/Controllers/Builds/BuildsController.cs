@@ -9,7 +9,6 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -444,7 +443,7 @@ namespace KAZABUILD.API.Controllers.Builds
             {
                 query = query.Where(b => dto.Status.Contains(b.Status));
             }
-            if(dto.Tag != null)
+            if (dto.Tag != null)
             {
                 query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
             }

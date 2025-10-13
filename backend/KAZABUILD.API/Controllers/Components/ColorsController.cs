@@ -450,8 +450,8 @@ namespace KAZABUILD.API.Controllers.Components
             }
 
             //Delete all associated ComponentVariants
-            if(color.Components.Count != 0)
-{
+            if (color.Components.Count != 0)
+            {
                 _db.ComponentVariants.RemoveRange(color.Components);
             }
 

@@ -52,7 +52,6 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// <summary>
         /// User's gender.
         /// </summary>
-        [Required]
         [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]
         public string Gender { get; set; } = "Unknown";
 
@@ -69,7 +68,6 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        [Url(ErrorMessage = "Invalid image URL!")]
         public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
 
         /// <summary>

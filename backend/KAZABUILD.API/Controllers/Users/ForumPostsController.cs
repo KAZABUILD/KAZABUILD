@@ -205,7 +205,7 @@ namespace KAZABUILD.API.Controllers.Users
 
                 forumPost.Title = dto.Title;
             }
-            if(isPrivileged)
+            if (isPrivileged)
             {
                 if (!string.IsNullOrWhiteSpace(dto.Topic))
                 {

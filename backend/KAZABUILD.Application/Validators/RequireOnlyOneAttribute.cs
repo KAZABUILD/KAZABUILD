@@ -32,7 +32,7 @@ namespace KAZABUILD.Application.Validators
                 //Return an error message if too many properties were provided
                 if (propertyValue is not string && propertyValue != null || propertyValue is string str && !string.IsNullOrWhiteSpace(str))
                 {
-                    if(++counter > 1)
+                    if (++counter > 1)
                     {
                         return new ValidationResult($"Only one of the following must be provided: {string.Join(", ", _propertyNames)}");
                     }

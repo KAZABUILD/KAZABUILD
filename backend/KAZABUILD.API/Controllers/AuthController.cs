@@ -3,7 +3,6 @@ using KAZABUILD.Application.DTOs.Auth;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
-using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;

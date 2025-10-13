@@ -8,9 +8,6 @@ using KAZABUILD.Application.DTOs.Components.Components.MonitorComponent;
 using KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent;
 using KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent;
 using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
-using KAZABUILD.Domain.Enums;
-
-using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
