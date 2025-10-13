@@ -23,7 +23,7 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentPriceController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -48,7 +48,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if the Component exists
-            var component = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.ComponentId);
+            var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.ComponentId);
             if (component == null)
             {
                 //Log failure
@@ -126,7 +126,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentPrice to edit
-            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(p => p.Id == id);
+            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(u => u.Id == id);
             //Check if the componentPrice exists
             if (componentPrice == null)
             {
@@ -245,7 +245,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentPrice to return
-            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(p => p.Id == id);
+            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(u => u.Id == id);
             if (componentPrice == null)
             {
                 //Log failure
@@ -465,7 +465,7 @@ namespace KAZABUILD.API.Controllers.Components
             //Publish RabbitMQ event
             await _publisher.PublishAsync("componentPrice.gotComponentPrices", new
             {
-                componentPriceIds = componentPrices.Select(p => p.Id),
+                componentPriceIds = componentPrices.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
@@ -491,7 +491,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentPrice to delete
-            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(p => p.Id == id);
+            var componentPrice = await _db.ComponentPrices.FirstOrDefaultAsync(u => u.Id == id);
             if (componentPrice == null)
             {
                 //Log failure

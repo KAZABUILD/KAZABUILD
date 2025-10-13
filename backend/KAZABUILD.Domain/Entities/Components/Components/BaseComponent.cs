@@ -1,5 +1,3 @@
-using KAZABUILD.Domain.Entities.Builds;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 
 using System.ComponentModel.DataAnnotations;
@@ -62,7 +60,5 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public ICollection<ComponentCompatibility> CompatibleToComponents { get; set; } = [];
         public ICollection<ComponentPrice> Prices { get; set; } = [];
         public ICollection<ComponentReview> Reviews { get; set; } = [];
-        public ICollection<BuildComponent> Builds { get; set; } = [];
-        public ICollection<UserComment> Comments { get; set; } = [];
     }
 }

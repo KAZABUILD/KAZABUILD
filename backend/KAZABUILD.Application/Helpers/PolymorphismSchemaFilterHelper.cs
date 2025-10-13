@@ -1,4 +1,3 @@
-using KAZABUILD.Domain.Enums;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
@@ -16,19 +15,13 @@ namespace KAZABUILD.Application.Helpers
         //Function that applies the functionality of the class
         public void Apply(OpenApiSchema schema, SchemaFilterContext context)
         {
-            //Only apply when generating the schema for the base type
-            if (context.Type == typeof(TBase))
+            //Check if the class has assignable derived classes and if it is an abstract class
+            if (typeof(TBase).IsAssignableFrom(context.Type) && context.Type.IsAbstract)
             {
-                //Read all [JsonDerivedType] attributes from the base DTO
-                var derivedTypes = typeof(TBase)
+                //Get all class types which derive from the provided abstract class
+                var derivedTypes = typeof(TBase).Assembly
                     .GetCustomAttributes<JsonDerivedTypeAttribute>()
-                    .Select(attr => attr.DerivedType)
-                    .Distinct()
-                    .ToList();
-
-                //If there are no derived classes return
-                if (derivedTypes.Count == 0)
-                    return;
+                    .Select(attr => attr.DerivedType);
 
                 //Create a OneOf XML schema to create a dropdown in swagger
                 schema.OneOf = [];
@@ -42,18 +35,6 @@ namespace KAZABUILD.Application.Helpers
                     //Add to the schema
                     schema.OneOf.Add(derivedSchema);
                 }
-
-                var derivedTypeAttributes = typeof(TBase)
-                    .GetCustomAttributes<JsonDerivedTypeAttribute>()
-                    .ToList();
-
-                schema.Discriminator = new OpenApiDiscriminator
-                {
-                    PropertyName = "type",
-                    Mapping = derivedTypeAttributes.ToDictionary(
-                        attr => attr.TypeDiscriminator?.ToString() ?? attr.DerivedType.Name,
-                        attr => $"#/components/schemas/{attr.DerivedType.Name}")
-                };
             }
         }
     }

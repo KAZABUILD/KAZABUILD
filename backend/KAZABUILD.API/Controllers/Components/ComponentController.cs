@@ -12,9 +12,7 @@ using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -38,7 +36,7 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -2836,7 +2834,6 @@ namespace KAZABUILD.API.Controllers.Components
 
         /// <summary>
         /// API endpoint for deleting the selected Component for administration.
-        /// Deletes compatibility as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -2869,16 +2866,6 @@ namespace KAZABUILD.API.Controllers.Components
 
                 //Return not found response
                 return NotFound(new { component = "Component not found!" });
-            }
-
-            //Handle deleting compatible components to avoid conflicts with cascade deletes
-            //Get all compatible components
-            var compatibilities = await _db.ComponentCompatibilities.Where(f => f.ComponentId == component.Id || f.CompatibleComponentId == component.Id).ToListAsync();
-
-            //Remove all compatibilities containing the component id of the component to be deleted
-            if (compatibilities.Count != 0)
-            {
-                _db.ComponentCompatibilities.RemoveRange(compatibilities);
             }
 
             //Delete the component

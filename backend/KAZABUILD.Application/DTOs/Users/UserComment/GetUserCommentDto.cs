@@ -1,4 +1,3 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Users.UserComment
@@ -6,25 +5,6 @@ namespace KAZABUILD.Application.DTOs.Users.UserComment
     public class GetUserCommentDto
     {
         //Filter By fields
-        public List<Guid>? UserId { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtStart { get; set; }
-
-        [DataType(DataType.DateTime)]
-        public DateTime? PostedAtEnd { get; set; }
-
-        public List<Guid>? ParentCommentId { get; set; }
-
-        public List<CommentTargetType>? CommentTargetType { get; set; }
-
-        public List<Guid>? ForumPostId { get; set; }
-
-        public List<Guid>? BuildId { get; set; }
-
-        public List<Guid>? ComponentId { get; set; }
-
-        public List<Guid>? ComponentReviewId { get; set; }
 
         //Paging related fields
         /// <summary>
