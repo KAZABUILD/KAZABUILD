@@ -4,7 +4,7 @@ Thumbs.db
 .env
 .env.*
 appsettings.Development.json
-appsettings.
+appsettings.json
 
 ### VisualStudio ###
 ## Ignore Visual Studio temporary files, build results, and
