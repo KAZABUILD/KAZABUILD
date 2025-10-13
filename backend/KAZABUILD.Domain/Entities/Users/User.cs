@@ -1,3 +1,4 @@
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -162,5 +163,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<Message> ReceivedMessages { get; set; } = [];
         public ICollection<Message> SentMessages { get; set; } = [];
         public ICollection<Notification> Notifications { get; set; } = [];
+        public ICollection<Build> Builds { get; set; } = [];
+        public ICollection<BuildInteraction> BuildInteractions { get; set; } = [];
     }
 }

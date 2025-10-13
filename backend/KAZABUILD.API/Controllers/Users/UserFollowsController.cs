@@ -165,7 +165,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userFollow to edit
-            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(u => u.Id == id);
+            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(f => f.Id == id);
             if (userFollow == null)
             {
                 //Log failure
@@ -250,7 +250,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userFollow to return
-            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(u => u.Id == id);
+            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(f => f.Id == id);
             if (userFollow == null)
             {
                 //Log failure
@@ -467,7 +467,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userFollow.gotUserFollows", new
             {
-                userFollowIds = userFollows.Select(u => u.Id),
+                userFollowIds = userFollows.Select(f => f.Id),
                 gotBy = currentUserId
             });
 
@@ -493,7 +493,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userFollow to delete
-            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(u => u.Id == id);
+            var userFollow = await _db.UserFollows.FirstOrDefaultAsync(f => f.Id == id);
             if (userFollow == null)
             {
                 //Log failure
