@@ -1,8 +1,8 @@
-using KAZABUILD.Application.DTOs.Components.SubComponentPart;
+using KAZABUILD.Application.DTOs.Builds.BuildTag;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -12,18 +12,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
-namespace KAZABUILD.API.Controllers.Components
+namespace KAZABUILD.API.Controllers.Builds
 {
     /// <summary>
-    /// Controller for SubComponentPart related endpoints.
-    /// Used to connect SubComponents with other SubComponent which they are a part of.
+    /// Controller for BuildTag related endpoints.
+    /// Used to connect SubComponents with a Component which they are a part of.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class SubComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class BuildTagsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -31,13 +31,14 @@ namespace KAZABUILD.API.Controllers.Components
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new SubComponentPart for administration.
+        /// API Endpoint for adding a new Tag to a Build.
+        /// Users can tag their own builds, while admins can tag them all.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
-        [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddSubComponentPart([FromBody] CreateSubComponentPartDto dto)
+        [Authorize(Policy = "AllUsers")]
+        public async Task<IActionResult> AddBuildTag([FromBody] CreateBuildTagDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -47,56 +48,77 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Main SubComponent exists
-            var mainSubComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == dto.MainSubComponentId);
-            if (mainSubComponent == null)
+            //Check if the Build exists
+            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == dto.BuildId);
+            if (build == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "SubComponentPart",
+                    "BuildTag",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned SubComponent Doesn't Exist"
+                    "Operation Failed - Build Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "SubComponent not found!" });
+                return BadRequest(new { message = "Build not found!" });
             }
 
-            //Check if the SubComponent exists
-            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == dto.SubComponentId);
-            if (subComponent == null)
+            //Check if the Tag exists
+            var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Id == dto.TagId);
+            if (tag == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "SubComponentPart",
+                    "BuildTag",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned SubComponent Doesn't Exist"
+                    "Operation Failed - Assigned Tag Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "SubComponent not found!" });
+                return BadRequest(new { message = "Tag not found!" });
             }
 
-            //Create a subComponentPart to add
-            SubComponentPart subComponentPart = new()
+            //Check if current user has admin permissions or if they are tagging their own build
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var ownBuild = currentUserId == build.UserId;
+
+            //Check if the user has correct permission
+            if (!isPrivileged && !(ownBuild && build.Status != BuildStatus.DRAFT && build.Status != BuildStatus.GENERATED))
             {
-                MainSubComponentId = dto.MainSubComponentId,
-                SubComponentId = dto.SubComponentId,
-                Amount = dto.Amount,
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
+            }
+
+            //Create a buildTag to add
+            BuildTag buildTag = new()
+            {
+                BuildId = dto.BuildId,
+                TagId = dto.TagId,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the subComponentPart to the database
-            _db.SubComponentParts.Add(subComponentPart);
+            //Add the buildTag to the database
+            _db.BuildTags.Add(buildTag);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -105,33 +127,33 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "SubComponentPart",
+                "BuildTag",
                 ip,
-                subComponentPart.Id,
+                buildTag.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New SubComponentPart Created"
+                "Successful Operation - New BuildTag Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("subComponentPart.created", new
+            await _publisher.PublishAsync("buildTag.created", new
             {
-                subComponentPartId = subComponentPart.Id,
+                buildTagId = buildTag.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { subComponentPart = "SubComponentPart created successfully!", id = subComponentPart.Id });
+            return Ok(new { buildTag = "BuildTag created successfully!", id = buildTag.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected SubComponentPart's fields for administration.
+        /// API endpoint for updating the selected BuildTag's administration note.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateSubComponentPart(Guid id, [FromBody] UpdateSubComponentPartDto dto)
+        public async Task<IActionResult> UpdateBuildTag(Guid id, [FromBody] UpdateBuildTagDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -141,89 +163,84 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the subComponentPart to edit
-            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
-            //Check if the subComponentPart exists
-            if (subComponentPart == null)
+            //Get the buildTag to edit
+            var buildTag = await _db.BuildTags.Include(t => t.Build).FirstOrDefaultAsync(t => t.Id == id);
+
+            //Check if the buildTag exists
+            if (buildTag == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "SubComponentPart",
+                    "BuildTag",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such SubComponentPart"
+                    "Operation Failed - No Such BuildTag"
                 );
 
                 //Return not found response
-                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
+                return NotFound(new { buildTag = "BuildTag not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (dto.Amount != null)
-            {
-                changedFields.Add("Amount: " + subComponentPart.Amount);
-
-                subComponentPart.Amount = (int)dto.Amount;
-            }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + subComponentPart.Note);
+                changedFields.Add("Note: " + buildTag.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    subComponentPart.Note = null;
+                    buildTag.Note = null;
                 else
-                    subComponentPart.Note = dto.Note;
+                    buildTag.Note = dto.Note;
             }
 
             //Update edit timestamp
-            subComponentPart.LastEditedAt = DateTime.UtcNow;
+            buildTag.LastEditedAt = DateTime.UtcNow;
 
-            //Update the subComponentPart
-            _db.SubComponentParts.Update(subComponentPart);
+            //Update the buildTag
+            _db.BuildTags.Update(buildTag);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description if the note was edited or not
+            //Logging description for whether the note was updated
             var description = changedFields.Count > 0 ? $"Updated {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "SubComponentPart",
+                "BuildTag",
                 ip,
-                subComponentPart.Id,
+                buildTag.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("subComponentPart.updated", new
+            await _publisher.PublishAsync("buildTag.updated", new
             {
-                subComponentPartId = id,
+                buildTagId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { subComponentPart = "SubComponentPart updated successfully!" });
+            return Ok(new { buildTag = "BuildTag updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the SubComponentPart specified by id,
+        /// API endpoint for getting the BuildTag specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<SubComponentPartResponseDto>> GetSubComponentPart(Guid id)
+        public async Task<ActionResult<BuildTagResponseDto>> GetBuildTag(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -233,33 +250,52 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the subComponentPart to return
-            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
-            if (subComponentPart == null)
+            //Get the buildTag to return
+            var buildTag = await _db.BuildTags.FirstOrDefaultAsync(t => t.Id == id);
+            if (buildTag == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "SubComponentPart",
+                    "BuildTag",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such SubComponentPart"
+                    "Operation Failed - No Such BuildTag"
                 );
 
                 //Return not found response
-                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
+                return NotFound(new { buildTag = "BuildTag not found!" });
+            }
+
+            //Check if current user has admin permissions or if they are tagging to their own build
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var ownBuild = currentUserId == buildTag.Build!.UserId;
+
+            //Check if the user has correct permission
+            if (!isPrivileged && !ownBuild && (buildTag.Build!.Status == BuildStatus.DRAFT || buildTag.Build!.Status == BuildStatus.GENERATED))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            SubComponentPartResponseDto response;
-
-            //Check if current user is getting themselves or if they have admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            BuildTagResponseDto response;
 
             //Check if has admin privilege
             if (!isPrivileged)
@@ -267,13 +303,12 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create subComponentPart response
-                response = new SubComponentPartResponseDto
+                //Create buildTag response
+                response = new BuildTagResponseDto
                 {
-                    Id = subComponentPart.Id,
-                    MainSubComponentId = subComponentPart.MainSubComponentId,
-                    SubComponentId = subComponentPart.SubComponentId,
-                    Amount = subComponentPart.Amount
+                    Id = buildTag.Id,
+                    TagId = buildTag.TagId,
+                    BuildId = buildTag.BuildId
                 };
             }
             else
@@ -281,16 +316,15 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create subComponentPart response
-                response = new SubComponentPartResponseDto
+                //Create buildTag response
+                response = new BuildTagResponseDto
                 {
-                    Id = subComponentPart.Id,
-                    MainSubComponentId = subComponentPart.MainSubComponentId,
-                    SubComponentId = subComponentPart.SubComponentId,
-                    Amount = subComponentPart.Amount,
-                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
-                    LastEditedAt = subComponentPart.LastEditedAt,
-                    Note = subComponentPart.Note,
+                    Id = buildTag.Id,
+                    TagId = buildTag.TagId,
+                    BuildId = buildTag.BuildId,
+                    DatabaseEntryAt = buildTag.DatabaseEntryAt,
+                    LastEditedAt = buildTag.LastEditedAt,
+                    Note = buildTag.Note,
                 };
             }
 
@@ -298,7 +332,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "SubComponentPart",
+                "BuildTag",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -306,27 +340,27 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("subComponentPart.got", new
+            await _publisher.PublishAsync("buildTag.got", new
             {
-                subComponentPartId = id,
+                buildTagId = id,
                 gotBy = currentUserId
             });
 
-            //Return the subComponentPart
+            //Return the buildTag
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting SubComponentParts with pagination and search,
+        /// API endpoint for getting BuildTags with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<SubComponentPartResponseDto>>> GetSubComponentParts([FromBody] GetSubComponentPartDto dto)
+        public async Task<ActionResult<IEnumerable<BuildTagResponseDto>>> GetBuildTags([FromBody] GetBuildTagDto dto)
         {
-            //Get subComponentPart id and claims from the request
+            //Get buildTag id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -338,30 +372,22 @@ namespace KAZABUILD.API.Controllers.Components
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.SubComponentParts.AsNoTracking();
+            var query = _db.BuildTags.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.MainSubComponentId != null)
+            if (dto.TagId != null)
             {
-                query = query.Where(p => dto.MainSubComponentId.Contains(p.MainSubComponentId));
+                query = query.Where(t => dto.TagId.Contains(t.TagId));
             }
-            if (dto.SubComponentId != null)
+            if (dto.BuildId != null)
             {
-                query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
-            }
-            if (dto.AmountStart != null)
-            {
-                query = query.Where(p => dto.AmountStart <= p.Amount);
-            }
-            if (dto.AmountEnd != null)
-            {
-                query = query.Where(p => dto.AmountEnd >= p.Amount);
+                query = query.Where(t => dto.BuildId.Contains(t.BuildId));
             }
 
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(p => p.SubComponent).Include(p => p.MainSubComponent).Search(dto.Query, p => p.MainSubComponent!.Name, p => p.SubComponent!.Name);
+                query = query.Include(p => p.Build).Include(p => p.Tag).Search(dto.Query, t => t.Tag!.Name, t => t.Build!.Name);
             }
 
             //Order by specified field if provided
@@ -370,7 +396,7 @@ namespace KAZABUILD.API.Controllers.Components
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get subComponentParts with paging
+            //Get buildTags with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -381,45 +407,43 @@ namespace KAZABUILD.API.Controllers.Components
             //Log Description string declaration
             string logDescription;
 
-            List<SubComponentPart> subComponentParts = await query.ToListAsync();
+            List<BuildTag> buildTags = await query.Where(t => currentUserId == t.Build!.UserId || isPrivileged || (t.Build!.Status != BuildStatus.DRAFT && t.Build!.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare response variable
-            List<SubComponentPartResponseDto> responses;
+            List<BuildTagResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple SubComponentParts";
+                logDescription = "Successful Operation - User Access, Multiple BuildTags";
 
-                //Create a subComponentPart response list
-                responses = [.. subComponentParts.Select(subComponentPart =>
+                //Create a buildTag response list
+                responses = [.. buildTags.Select(buildTag =>
                 {
                     //Return a follow response
-                    return new SubComponentPartResponseDto
+                    return new BuildTagResponseDto
                     {
-                        Id = subComponentPart.Id,
-                        MainSubComponentId = subComponentPart.MainSubComponentId,
-                        SubComponentId = subComponentPart.SubComponentId,
-                        Amount = subComponentPart.Amount
+                        Id = buildTag.Id,
+                        TagId = buildTag.TagId,
+                        BuildId = buildTag.BuildId
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple SubComponentParts";
+                logDescription = "Successful Operation - Admin Access, Multiple BuildTags";
 
-                //Create a subComponentPart response list
-                responses = [.. subComponentParts.Select(subComponentPart => new SubComponentPartResponseDto
+                //Create a buildTag response list
+                responses = [.. buildTags.Select(buildTag => new BuildTagResponseDto
                 {
-                    Id = subComponentPart.Id,
-                    MainSubComponentId = subComponentPart.MainSubComponentId,
-                    SubComponentId = subComponentPart.SubComponentId,
-                    Amount = subComponentPart.Amount,
-                    DatabaseEntryAt = subComponentPart.DatabaseEntryAt,
-                    LastEditedAt = subComponentPart.LastEditedAt,
-                    Note = subComponentPart.Note
+                    Id = buildTag.Id,
+                    TagId = buildTag.TagId,
+                    BuildId = buildTag.BuildId,
+                    DatabaseEntryAt = buildTag.DatabaseEntryAt,
+                    LastEditedAt = buildTag.LastEditedAt,
+                    Note = buildTag.Note
                 })];
 
             }
@@ -428,7 +452,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "SubComponentPart",
+                "BuildTag",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -436,26 +460,27 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("subComponentPart.gotSubComponentParts", new
+            await _publisher.PublishAsync("buildTag.gotBuildTags", new
             {
-                subComponentPartIds = subComponentParts.Select(u => u.Id),
+                buildTagIds = buildTags.Select(t => t.Id),
                 gotBy = currentUserId
             });
 
-            //Return the subComponentParts
+            //Return the buildTags
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected SubComponentPart for administration.
+        /// API endpoint for untagging the build through a selected BuildTag.
+        /// Users can untag their own builds, while admins can untag them all.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteSubComponentPart(Guid id)
+        [Authorize(Policy = "AllUsers")]
+        public async Task<IActionResult> DeleteBuildTag(Guid id)
         {
-            //Get subComponentPart id and role from the request claims
+            //Get buildTag id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -463,27 +488,49 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the subComponentPart to delete
-            var subComponentPart = await _db.SubComponentParts.FirstOrDefaultAsync(u => u.Id == id);
-            if (subComponentPart == null)
+            //Get the buildTag to delete
+            var buildTag = await _db.BuildTags.FirstOrDefaultAsync(t => t.Id == id);
+            if (buildTag == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "SubComponentPart",
+                    "BuildTag",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such SubComponentPart"
+                    "Operation Failed - No Such BuildTag"
                 );
 
                 //Return not found response
-                return NotFound(new { subComponentPart = "SubComponentPart not found!" });
+                return NotFound(new { buildTag = "BuildTag not found!" });
             }
 
-            //Delete the subComponentPart
-            _db.SubComponentParts.Remove(subComponentPart);
+            //Check if current user has admin permissions or if they are untagging their own build
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var ownBuild = currentUserId == buildTag.Build!.UserId;
+
+            //Check if the user has correct permission
+            if (!isPrivileged && !(ownBuild && buildTag.Build!.Status != BuildStatus.DRAFT && buildTag.Build!.Status != BuildStatus.GENERATED))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
+            }
+
+            //Delete the buildTag
+            _db.BuildTags.Remove(buildTag);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -492,22 +539,22 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "SubComponentPart",
+                "BuildTag",
                 ip,
-                subComponentPart.Id,
+                buildTag.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("subComponentPart.deleted", new
+            await _publisher.PublishAsync("buildTag.deleted", new
             {
-                subComponentPartId = id,
+                buildTagId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { subComponentPart = "SubComponentPart deleted successfully!" });
+            return Ok(new { buildTag = "BuildTag deleted successfully!" });
         }
     }
 }

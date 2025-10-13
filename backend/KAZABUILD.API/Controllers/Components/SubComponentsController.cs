@@ -32,7 +32,7 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class SubComponentController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class SubComponentsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -137,7 +137,7 @@ namespace KAZABUILD.API.Controllers.Components
                 );
 
                 //Return not found response
-                return BadRequest(new { subComponent = "SubComponent not found!" });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Invalid SubComponent Type!", detail = ex.Message });
             }
 
             //Add the subComponent to the database
@@ -188,7 +188,8 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the subComponent to edit
-            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == id);
+            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == id);
+
             //Check if the subComponent exists
             if (subComponent == null)
             {
@@ -391,7 +392,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the subComponent to return
-            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == id);
+            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == id);
             if (subComponent == null)
             {
                 //Log failure
@@ -919,7 +920,7 @@ namespace KAZABUILD.API.Controllers.Components
             //Publish RabbitMQ event
             await _publisher.PublishAsync("subComponent.gotSubComponents", new
             {
-                subComponentIds = subComponents.Select(u => u.Id),
+                subComponentIds = subComponents.Select(s => s.Id),
                 gotBy = currentUserId
             });
 
@@ -945,7 +946,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the subComponent to delete
-            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == id);
+            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == id);
             if (subComponent == null)
             {
                 //Log failure

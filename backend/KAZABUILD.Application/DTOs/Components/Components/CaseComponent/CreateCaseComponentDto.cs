@@ -22,7 +22,8 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseComponent
 
         /// <summary>
         /// Amount of power in the built-in power supply in Watts.
-        /// leave empty if 
+        /// leave empty if no power supply.
+        /// </summary>
         [Range(0, 2500, ErrorMessage = "Power Supply must be between 0 and 2,500 Watts")]
         public decimal? PowerSupplyAmount { get; set; }
 

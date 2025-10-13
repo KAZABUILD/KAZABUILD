@@ -22,7 +22,7 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ColorController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ColorsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -46,9 +46,9 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Color already exists
-            var user = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == dto.ColorCode);
-            if (user == null)
+            //Check if the color already exists
+            var colorExists = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == dto.ColorCode);
+            if (colorExists == null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -125,7 +125,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the color to edit
-            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
+            var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == id);
 
             //Convert the hex code string into a guid
             Guid guidId = GuidConversionHelper.FromString(id);
@@ -224,7 +224,7 @@ namespace KAZABUILD.API.Controllers.Components
             Guid guidId = GuidConversionHelper.FromString(id);
 
             //Get the color to return
-            var color = await _db.Colors.FirstOrDefaultAsync(u => u.ColorCode == id);
+            var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == id);
             if (color == null)
             {
                 //Log failure
@@ -402,7 +402,7 @@ namespace KAZABUILD.API.Controllers.Components
             //Publish RabbitMQ event
             await _publisher.PublishAsync("color.gotColors", new
             {
-                colorIds = colors.Select(u => u.ColorCode),
+                colorIds = colors.Select(c => c.ColorCode),
                 gotdBy = currentUserId
             });
 
@@ -431,7 +431,7 @@ namespace KAZABUILD.API.Controllers.Components
             Guid guidId = GuidConversionHelper.FromString(id);
 
             //Get the color to delete
-            var color = await _db.Colors.Include(c => c.Components).FirstOrDefaultAsync(u => u.ColorCode == id);
+            var color = await _db.Colors.Include(c => c.Components).FirstOrDefaultAsync(c => c.ColorCode == id);
             if (color == null)
             {
                 //Log failure
