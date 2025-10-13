@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/widgets/app_bar_actions.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    const username = 'artun';
-    const postCount = 15;
-    const buildCount = 3;
+    final user = ref.watch(authProvider);
+
+    if (user == null) {
+      return const Scaffold(body: Center(child: Text("User not logged in.")));
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text('${user.username}\'s Profile'),
         backgroundColor: theme.colorScheme.surface,
+        actions: const [
+          LanguageSelector(),
+          SizedBox(width: 8),
+          ThemeToggleButton(),
+          SizedBox(width: 16),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -26,26 +37,40 @@ class ProfilePage extends StatelessWidget {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: theme.colorScheme.primaryContainer,
-
-                  child: Text(
-                    username.substring(0, 2).toUpperCase(),
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
+                  backgroundImage: user.photoURL != null
+                      ? NetworkImage(user.photoURL!)
+                      : null,
+                  child: user.photoURL == null
+                      ? Text(
+                          user.username.substring(0, 1).toUpperCase(),
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(username, style: theme.textTheme.headlineSmall),
+                      Text(user.username, style: theme.textTheme.headlineSmall),
+
+                      if (user.country != null) ...[
+                        const SizedBox(height: 4),
+                        Text(user.country!, style: theme.textTheme.bodyMedium),
+                      ],
                       const SizedBox(height: 8),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatColumn('Posts', postCount.toString()),
-                          _buildStatColumn('Builds', buildCount.toString()),
+                          _buildStatColumn('Posts', '15'),
+                          _buildStatColumn('Builds', '3'),
+
+                          _buildStatColumn(
+                            'Followers',
+                            user.followers.toString(),
+                          ),
                         ],
                       ),
                     ],
@@ -53,15 +78,16 @@ class ProfilePage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Text("About Me", style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text("testing hillow hillow", style: theme.textTheme.bodyMedium),
-            const Divider(height: 48),
 
+            if (user.bio != null && user.bio!.isNotEmpty) ...[
+              const Divider(height: 48),
+              Text("About Me", style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(user.bio!, style: theme.textTheme.bodyMedium),
+            ],
+            const Divider(height: 48),
             Text("Completed Builds", style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
-
             _buildGridPlaceholder(context),
           ],
         ),

@@ -6,15 +6,22 @@ import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
-class LoginPage extends ConsumerWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.onSurface,
+      backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
           const CustomNavigationBar(showProfileArea: false),
@@ -31,127 +38,125 @@ class LoginPage extends ConsumerWidget {
                         padding: const EdgeInsets.all(32.0),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 400),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Header(),
-                              const SizedBox(height: 32),
-                              _AuthToggleButtons(
-                                isSignIn: true,
-                                onSignUpTap: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (_, __, ___) =>
-                                          const SignUpPage(),
-                                      transitionsBuilder: (_, a, __, c) =>
-                                          FadeTransition(opacity: a, child: c),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'Welcome Back',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.headlineSmall,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Continue building your dream PC',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: 24),
 
-                              const CustomTextField(
-                                label: 'Username or Email',
-                                icon: Icons.person_outline,
-                              ),
-                              const SizedBox(height: 16),
-                              const CustomTextField(
-                                label: 'Password',
-                                icon: Icons.lock_outline,
-                                isPassword: true,
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Checkbox(value: true, onChanged: (v) {}),
-                                      const Text('Remember me'),
-                                    ],
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const ForgotPasswordPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text('Forgot password?'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              ElevatedButton(
-                                onPressed: () {
-                                  //fake entry
-                                  ref
-                                      .read(authProvider.notifier)
-                                      .signInForTest();
-
-                                  Navigator.of(
-                                    context,
-                                  ).popUntil((route) => route.isFirst);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Header(),
+                                const SizedBox(height: 32),
+                                _AuthToggleButtons(
+                                  isSignIn: true,
+                                  onSignUpTap: () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (_, __, ___) =>
+                                            const SignUpPage(),
+                                        transitionsBuilder: (_, a, __, c) =>
+                                            FadeTransition(
+                                              opacity: a,
+                                              child: c,
+                                            ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                const SizedBox(height: 24),
+                                Text(
+                                  'Welcome Back',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.headlineSmall,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Continue building your dream PC',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 24),
+                                CustomTextField(
+                                  label: 'Username or Email',
+                                  icon: Icons.person_outline,
+                                  validator: (value) =>
+                                      (value == null || value.isEmpty)
+                                      ? 'This field cannot be empty'
+                                      : null,
+                                ),
+                                const SizedBox(height: 16),
+                                CustomTextField(
+                                  label: 'Password',
+                                  icon: Icons.lock_outline,
+                                  isPassword: true,
+                                  validator: (value) =>
+                                      (value == null || value.isEmpty)
+                                      ? 'This field cannot be empty'
+                                      : null,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.arrow_forward, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Sign In'),
+                                    Row(
+                                      children: [
+                                        Checkbox(
+                                          value: true,
+                                          onChanged: (v) {},
+                                        ),
+                                        const Text('Remember me'),
+                                      ],
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const ForgotPasswordPage(),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Forgot password?'),
+                                    ),
                                   ],
                                 ),
-                              ),
-                              const OrDivider(),
-                              const SocialButton(
-                                text: 'Continue with Google',
-                                iconPath: 'google_icon.png',
-                              ),
-                              const SizedBox(height: 12),
-                              const SocialButton(
-                                text: 'Continue with GitHub',
-                                iconPath: 'github_icon.png',
-                              ),
-                              const SizedBox(height: 12),
-                              const SocialButton(
-                                text: 'Continue with Discord',
-                                iconPath: 'discord_icon.png',
-                              ),
-                            ],
+                                const SizedBox(height: 16),
+
+                                PrimaryButton(
+                                  text: 'Sign In',
+                                  icon: Icons.arrow_forward,
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      ref
+                                          .read(authProvider.notifier)
+                                          .signInForTest();
+
+                                      Navigator.of(
+                                        context,
+                                      ).popUntil((route) => route.isFirst);
+                                    }
+                                  },
+                                ),
+                                const OrDivider(),
+                                const SocialButton(
+                                  text: 'Continue with Google',
+                                  iconPath: 'google_icon.svg',
+                                ),
+                                const SizedBox(height: 12),
+                                const SocialButton(
+                                  text: 'Continue with GitHub',
+                                  iconPath: 'github_icon.png',
+                                ),
+                                const SizedBox(height: 12),
+                                const SocialButton(
+                                  text: 'Continue with Discord',
+                                  iconPath: 'discord_icon.png',
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

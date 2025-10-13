@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/widgets/theme_provider.dart';
 
 class Header extends StatelessWidget {
   const Header({super.key});
@@ -26,106 +24,22 @@ class Header extends StatelessWidget {
   }
 }
 
-class CustomTextField extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final bool isPassword;
-  final TextEditingController? controller;
-  final String? Function(String?)? validator;
-  final TextInputType? keyboardType;
-  final AutovalidateMode? autovalidateMode;
-
-  const CustomTextField({
-    super.key,
-    required this.label,
-    required this.icon,
-    this.isPassword = false,
-    this.controller,
-    this.validator,
-    this.keyboardType,
-    this.autovalidateMode,
-  });
-
-  @override
-  State<CustomTextField> createState() => _CustomTextFieldState();
-}
-
-class _CustomTextFieldState extends State<CustomTextField> {
-  late bool _isObscured;
-
-  @override
-  void initState() {
-    super.initState();
-    _isObscured = widget.isPassword;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return TextFormField(
-      controller: widget.controller,
-      obscureText: _isObscured,
-      keyboardType: widget.keyboardType,
-      validator: widget.validator,
-      autovalidateMode: widget.autovalidateMode ?? AutovalidateMode.disabled,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        prefixIcon: Icon(
-          widget.icon,
-          color: theme.iconTheme.color?.withValues(alpha: 0.5),
-        ),
-        suffixIcon: widget.isPassword
-            ? IconButton(
-                icon: Icon(
-                  _isObscured
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: theme.iconTheme.color?.withValues(alpha: 0.5),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isObscured = !_isObscured;
-                  });
-                },
-              )
-            : null,
-        filled: true,
-        fillColor: theme.colorScheme.surface.withValues(alpha: 0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.primary),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.error),
-        ),
-      ),
-    );
-  }
-}
-
 class PrimaryButton extends StatelessWidget {
   final String text;
   final IconData? icon;
+  final VoidCallback? onPressed;
 
-  const PrimaryButton({super.key, required this.text, this.icon});
+  const PrimaryButton({
+    super.key,
+    required this.text,
+    this.icon,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -155,12 +69,10 @@ class SocialButton extends StatelessWidget {
       onPressed: () {},
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.surface.withValues(alpha: 0.8),
+        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.8),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -223,80 +135,75 @@ class BackgroundCircle extends StatelessWidget {
   }
 }
 
-class AuthThemeToggleButton extends ConsumerWidget {
-  const AuthThemeToggleButton({super.key});
+class CustomTextField extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final bool isPassword;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final AutovalidateMode? autovalidateMode;
+  final bool readOnly;
+  final VoidCallback? onTap;
+
+  const CustomTextField({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.isPassword = false,
+    this.controller,
+    this.validator,
+    this.keyboardType,
+    this.autovalidateMode,
+    this.readOnly = false,
+    this.onTap,
+  });
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentTheme = ref.watch(themeProvider);
-    return IconButton(
-      splashRadius: 20,
-      icon: Icon(
-        currentTheme == ThemeMode.dark
-            ? Icons.light_mode_outlined
-            : Icons.dark_mode_outlined,
-      ),
-      onPressed: () {
-        ref.read(themeProvider.notifier).toggleTheme();
-      },
-    );
+  State<CustomTextField> createState() => _CustomTextFieldState();
+}
+
+class _CustomTextFieldState extends State<CustomTextField> {
+  late bool _isObscured;
+
+  @override
+  void initState() {
+    super.initState();
+    _isObscured = widget.isPassword;
   }
-}
-
-class AuthLanguageSelector extends StatefulWidget {
-  const AuthLanguageSelector({super.key});
-  @override
-  State<AuthLanguageSelector> createState() => _AuthLanguageSelectorState();
-}
-
-class _AuthLanguageSelectorState extends State<AuthLanguageSelector> {
-  String _selectedLanguageCode = 'uk';
-
-  final Map<String, Map<String, String>> _languages = {
-    'uk': {'flag': 'assets/uk_flag.png', 'name': 'English'},
-    'tr': {'flag': 'assets/tr_flag.png', 'name': 'Türkçe'},
-    'pl': {'flag': 'assets/pl_flag.png', 'name': 'Polski'},
-  };
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: (String newLangCode) {
-        setState(() {
-          _selectedLanguageCode = newLangCode;
-        });
-        print('${_languages[newLangCode]!['name']} choose.');
-      },
-      itemBuilder: (BuildContext context) {
-        return _languages.keys
-            .where((langCode) => langCode != _selectedLanguageCode)
-            .map((langCode) {
-              return PopupMenuItem<String>(
-                value: langCode,
-                child: Row(
-                  children: [
-                    Image.asset(
-                      _languages[langCode]!['flag']!,
-                      width: 24,
-                      height: 16,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, o, s) =>
-                          const Icon(Icons.flag, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(_languages[langCode]!['name']!),
-                  ],
+    final theme = Theme.of(context);
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: _isObscured,
+      keyboardType: widget.keyboardType,
+      autovalidateMode: widget.autovalidateMode,
+      validator: widget.validator,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        prefixIcon: Icon(
+          widget.icon,
+          color: theme.iconTheme.color?.withOpacity(0.5),
+        ),
+        suffixIcon: widget.isPassword
+            ? IconButton(
+                icon: Icon(
+                  _isObscured
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: theme.iconTheme.color?.withOpacity(0.5),
                 ),
-              );
-            })
-            .toList();
-      },
-      child: Image.asset(
-        _languages[_selectedLanguageCode]!['flag']!,
-        width: 24,
-        height: 16,
-        fit: BoxFit.cover,
-        errorBuilder: (c, o, s) =>
-            Icon(Icons.language, color: Theme.of(context).iconTheme.color),
+                onPressed: () {
+                  setState(() {
+                    _isObscured = !_isObscured;
+                  });
+                },
+              )
+            : null,
       ),
     );
   }

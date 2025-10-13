@@ -22,7 +22,7 @@ class LastBar extends StatelessWidget {
               SizedBox(width: 80),
               _FooterColumn(
                 title: 'Info',
-                items: ['About Us', 'Contact', 'Feedback'],
+                items: ['About Us', 'Contact & Feedback'],
               ),
             ],
           ),
@@ -63,7 +63,7 @@ class _FooterColumn extends StatelessWidget {
 
             child: InkWell(
               onTap: () {
-                if (item == 'Feedback') {
+                if (item == 'Contact & Feedback') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
