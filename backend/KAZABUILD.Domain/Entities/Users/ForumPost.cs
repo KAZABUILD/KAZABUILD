@@ -59,6 +59,6 @@ namespace KAZABUILD.Domain.Entities.Users
         //Database relationships
         public User? Creator { get; set; } = default!;
 
-        public ICollection<UserComment> Comments { get; set; } = [];
+        public ICollection<UserComment> UserComments { get; set; } = [];
     }
 }

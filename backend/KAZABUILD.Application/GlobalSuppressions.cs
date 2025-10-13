@@ -29,4 +29,3 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.SATA3GBsAmount")]
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.ARGB5vHeaderAmount")]
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent.MotherboardComponentResponseDto.RGB12vHeaderAmount")]
-[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "namespace", Target = "~N:KAZABUILD.Application.Validators")]

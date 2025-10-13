@@ -1,8 +1,9 @@
-using KAZABUILD.Application.DTOs.Builds.Tag;
+using KAZABUILD.Application.DTOs.Components.ComponentPart;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -12,18 +13,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
-namespace KAZABUILD.API.Controllers.Builds
+namespace KAZABUILD.API.Controllers.Components
 {
     /// <summary>
-    /// Controller for Tag related endpoints.
-    /// Managed by administration.
+    /// Controller for ComponentPart related endpoints.
+    /// Used to connect SubComponents with a Component which they are a part of.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class TagsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentPartController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -31,13 +32,13 @@ namespace KAZABUILD.API.Controllers.Builds
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new Tag for administration.
+        /// API Endpoint for creating a new ComponentPart for administration.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddTag([FromBody] CreateTagDto dto)
+        public async Task<IActionResult> AddComponentPart([FromBody] CreateComponentPartDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -47,36 +48,56 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Tag already exists
-            var tagExists = await _db.Tags.FirstOrDefaultAsync(t => t.Name == dto.Name);
-            if (tagExists == null)
+            //Check if the Component exists
+            var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.ComponentId);
+            if (component == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "Tag",
+                    "ComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Tag Already Created"
+                    "Operation Failed - Assigned Component Doesn't Exist"
                 );
 
                 //Return proper error response
-                return Conflict(new { message = "Tag already exists!" });
+                return BadRequest(new { message = "Component not found!" });
             }
 
-            //Create a tag to add
-            Tag tag = new()
+            //Check if the SubComponent exists
+            var subComponent = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.ComponentId);
+            if (component == null)
             {
-                Name = dto.Name,
-                Description = dto.Description,
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "ComponentPart",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "SubComponent not found!" });
+            }
+
+            //Create a componentPart to add
+            ComponentPart componentPart = new()
+            {
+                ComponentId = dto.ComponentId,
+                SubComponentId = dto.SubComponentId,
+                Amount = dto.Amount,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the tag to the database
-            _db.Tags.Add(tag);
+            //Add the componentPart to the database
+            _db.ComponentParts.Add(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -85,34 +106,33 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "Tag",
+                "ComponentPart",
                 ip,
-                tag.Id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New Tag Created"
+                "Successful Operation - New ComponentPart Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("tag.created", new
+            await _publisher.PublishAsync("componentPart.created", new
             {
-                tagId = tag.Id,
-                updatedBy = currentUserId
+                componentPartId = componentPart.Id,
+                createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { tag = "Tag added successfully!", id = tag.Id });
+            return Ok(new { componentPart = "ComponentPart created successfully!", id = componentPart.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected Tag for Administration,
-        /// the id is a string representing the hex code of the Tag.
+        /// API endpoint for updating the selected ComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateTag(Guid id, [FromBody] UpdateTagDto dto)
+        public async Task<IActionResult> UpdateComponentPart(Guid id, [FromBody] UpdateComponentPartDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -122,96 +142,89 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the tag to edit
-            var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Id == id);
-
-            //Check if the tag exists
-            if (tag == null)
+            //Get the componentPart to edit
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            //Check if the componentPart exists
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "Tag",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Tag"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { tag = "Tag not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
-            //Update fields
-            if (!string.IsNullOrWhiteSpace(dto.Name))
-            {
-                changedFields.Add("Name: " + tag.Name);
-
-                tag.Name = dto.Name;
-            }
-            if (!string.IsNullOrWhiteSpace(dto.Description))
-            {
-                changedFields.Add("Description: " + tag.Description);
-
-                tag.Description = dto.Description;
-            }
+            //Update allowed fields
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + tag.Note);
+                changedFields.Add("Note: " + componentPart.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    tag.Note = null;
+                    componentPart.Note = null;
                 else
-                    tag.Note = dto.Note;
+                    componentPart.Note = dto.Note;
+            }
+            if (dto.Amount != null)
+            {
+                changedFields.Add("Amount: " + componentPart.Amount);
+
+                componentPart.Amount = (int)dto.Amount;
             }
 
             //Update edit timestamp
-            tag.LastEditedAt = DateTime.UtcNow;
+            componentPart.LastEditedAt = DateTime.UtcNow;
 
-            //Update the tag
-            _db.Tags.Update(tag);
+            //Update the componentPart
+            _db.ComponentParts.Update(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description with all the changed fields
+            //Logging description for the updated fields
             var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "Tag",
+                "ComponentPart",
                 ip,
-                id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("tag.updated", new
+            await _publisher.PublishAsync("componentPart.updated", new
             {
-                tagId = id,
+                componentPartId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { tag = "Tag updated successfully!" });
+            return Ok(new { componentPart = "ComponentPart updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the Tag specified by id,
+        /// API endpoint for getting the ComponentPart specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<TagResponseDto>> GetTag(Guid id)
+        public async Task<ActionResult<ComponentPartResponseDto>> GetComponentPart(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -221,32 +234,32 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the tag to return
-            var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Id == id);
-            if (tag == null)
+            //Get the componentPart to return
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "Tag",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Tag"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { tag = "Tag not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            TagResponseDto response;
+            ComponentPartResponseDto response;
 
-            //Check if current user has admin permissions
+            //Check if current user is getting themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Check if has admin privilege
@@ -255,11 +268,13 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create tag response
-                response = new TagResponseDto
+                //Create componentPart response
+                response = new ComponentPartResponseDto
                 {
-                    Name = tag.Name,
-                    Description = tag.Description
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount
                 };
             }
             else
@@ -267,14 +282,16 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create tag response
-                response = new TagResponseDto
+                //Create componentPart response
+                response = new ComponentPartResponseDto
                 {
-                    Name = tag.Name,
-                    Description = tag.Description,
-                    DatabaseEntryAt = tag.DatabaseEntryAt,
-                    LastEditedAt = tag.LastEditedAt,
-                    Note = tag.Note,
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount,
+                    DatabaseEntryAt = componentPart.DatabaseEntryAt,
+                    LastEditedAt = componentPart.LastEditedAt,
+                    Note = componentPart.Note,
                 };
             }
 
@@ -282,7 +299,7 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Tag",
+                "ComponentPart",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -290,27 +307,27 @@ namespace KAZABUILD.API.Controllers.Builds
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("tag.got", new
+            await _publisher.PublishAsync("componentPart.got", new
             {
-                tagId = id,
+                componentPartId = id,
                 gotBy = currentUserId
             });
 
-            //Return the tag
+            //Return the componentPart
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting Tags with pagination and search,
+        /// API endpoint for getting ComponentParts with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<TagResponseDto>>> GetTags([FromBody] GetTagDto dto)
+        public async Task<ActionResult<IEnumerable<ComponentPartResponseDto>>> GetComponentParts([FromBody] GetComponentPartDto dto)
         {
-            //Get tag id and claims from the request
+            //Get componentPart id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -322,12 +339,30 @@ namespace KAZABUILD.API.Controllers.Builds
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.Tags.AsNoTracking();
+            var query = _db.ComponentParts.AsNoTracking();
 
-            //Apply search based om credentials
+            //Filter by the variables if included
+            if (dto.ComponentId != null)
+            {
+                query = query.Where(p => dto.ComponentId.Contains(p.ComponentId));
+            }
+            if (dto.SubComponentId != null)
+            {
+                query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
+            }
+            if (dto.AmountStart != null)
+            {
+                query = query.Where(p => p.Amount >= dto.AmountStart);
+            }
+            if (dto.AmountEnd != null)
+            {
+                query = query.Where(p => p.Amount <= dto.AmountEnd);
+            }
+
+            //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Search(dto.Query, t => t.Name, t => t.Description);
+                query = query.Include(p => p.Component).Include(p => p.SubComponent).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.SubComponent!.Name);
             }
 
             //Order by specified field if provided
@@ -336,7 +371,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get tags with paging
+            //Get componentParts with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -347,41 +382,45 @@ namespace KAZABUILD.API.Controllers.Builds
             //Log Description string declaration
             string logDescription;
 
-            List<Tag> tags = await query.ToListAsync();
+            List<ComponentPart> componentParts = await query.ToListAsync();
 
             //Declare response variable
-            List<TagResponseDto> responses;
+            List<ComponentPartResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple Tags";
+                logDescription = "Successful Operation - User Access, Multiple ComponentParts";
 
-                //Create a tag response list
-                responses = [.. tags.Select(tag =>
+                //Create a componentPart response list
+                responses = [.. componentParts.Select(componentPart =>
                 {
                     //Return a follow response
-                    return new TagResponseDto
+                    return new ComponentPartResponseDto
                     {
-                        Name = tag.Name,
-                        Description = tag.Description
+                        Id = componentPart.Id,
+                        ComponentId = componentPart.ComponentId,
+                        SubComponentId = componentPart.SubComponentId,
+                        Amount = componentPart.Amount
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple Tags";
+                logDescription = "Successful Operation - Admin Access, Multiple ComponentParts";
 
-                //Create a tag response list
-                responses = [.. tags.Select(tag => new TagResponseDto
+                //Create a componentPart response list
+                responses = [.. componentParts.Select(componentPart => new ComponentPartResponseDto
                 {
-                    Name = tag.Name,
-                    Description = tag.Description,
-                    DatabaseEntryAt = tag.DatabaseEntryAt,
-                    LastEditedAt = tag.LastEditedAt,
-                    Note = tag.Note,
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount,
+                    DatabaseEntryAt = componentPart.DatabaseEntryAt,
+                    LastEditedAt = componentPart.LastEditedAt,
+                    Note = componentPart.Note
                 })];
 
             }
@@ -390,7 +429,7 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "Tag",
+                "ComponentPart",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -398,27 +437,26 @@ namespace KAZABUILD.API.Controllers.Builds
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("tag.gotTags", new
+            await _publisher.PublishAsync("componentPart.gotComponentParts", new
             {
-                tagIds = tags.Select(t => t.Id),
-                gotdBy = currentUserId
+                componentPartIds = componentParts.Select(u => u.Id),
+                gotBy = currentUserId
             });
 
-            //Return the tags
+            //Return the componentParts
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected Tag for administration.
-        /// Removes all related BuiltTags as well.
+        /// API endpoint for deleting the selected ComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteTag(Guid id)
+        public async Task<IActionResult> DeleteComponentPart(Guid id)
         {
-            //Get tag id and role from the request claims
+            //Get componentPart id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -426,33 +464,27 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the tag to delete
-            var tag = await _db.Tags.Include(t => t.BuildTags).FirstOrDefaultAsync(t => t.Id == id);
-            if (tag == null)
+            //Get the componentPart to delete
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(u => u.Id == id);
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "Tag",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such Tag"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { tag = "Tag not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
-            //Delete all associated BuildTags
-            if (tag.Builds.Count != 0)
-            {
-                _db.BuildTags.RemoveRange(tag.BuildTags);
-            }
-
-            //Delete the tag
-            _db.Tags.Remove(tag);
+            //Delete the componentPart
+            _db.ComponentParts.Remove(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -461,22 +493,22 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "Tag",
+                "ComponentPart",
                 ip,
-                id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("tag.deleted", new
+            await _publisher.PublishAsync("componentPart.deleted", new
             {
-                tagId = id,
+                componentPartId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { tag = "Tag deleted successfully!" });
+            return Ok(new { componentPart = "ComponentPart deleted successfully!" });
         }
     }
 }
