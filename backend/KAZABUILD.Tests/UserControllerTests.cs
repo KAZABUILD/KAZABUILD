@@ -1,3 +1,7 @@
+using System.Net.Http.Json;
+using KAZABUILD.Application.DTOs.Auth;
+using KAZABUILD.Application.DTOs.User;
+
 namespace KAZABUILD.Tests;
 
 using System.Net;
@@ -31,6 +35,39 @@ public class UserControllerTests : BaseIntegrationTest
 
     [Fact]
     public async Task UserWithLowerRankShouldntDeleteUserWithHigherRank()
+    {
+        // Act
+        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserWithLowerRankShouldntUpdateUserWithHigherRank()
+    {
+        // Given
+        UpdateUserDto updateDto = new() { Login = "newLoginWithCorrectLength" };
+
+        // When
+        var response = await _client_user.PutAsJsonAsync($"/Users/{admin.Id}", updateDto);
+
+        // Then
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserShouldBeAbleToRegister()
+    {
+        // Act
+        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserShould()
     {
         // Act
         var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
