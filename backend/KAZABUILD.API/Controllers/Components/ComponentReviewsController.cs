@@ -23,7 +23,7 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentReviewController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentReviewsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -48,7 +48,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if the Component exists
-            var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.ComponentId);
+            var component = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.ComponentId);
             if (component == null)
             {
                 //Log failure
@@ -127,7 +127,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentReview to edit
-            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == id);
             //Check if the componentReview exists
             if (componentReview == null)
             {
@@ -255,7 +255,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentReview to return
-            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == id);
             if (componentReview == null)
             {
                 //Log failure
@@ -487,7 +487,7 @@ namespace KAZABUILD.API.Controllers.Components
             //Publish RabbitMQ event
             await _publisher.PublishAsync("componentReview.gotComponentReviews", new
             {
-                componentReviewIds = componentReviews.Select(u => u.Id),
+                componentReviewIds = componentReviews.Select(r => r.Id),
                 gotBy = currentUserId
             });
 
@@ -513,7 +513,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentReview to delete
-            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == id);
+            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == id);
             if (componentReview == null)
             {
                 //Log failure

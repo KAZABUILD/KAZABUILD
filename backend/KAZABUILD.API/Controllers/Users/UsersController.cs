@@ -9,7 +9,6 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -885,6 +884,7 @@ namespace KAZABUILD.API.Controllers.Users
 
         /// <summary>
         /// API endpoint for deleting the selected user for staff.
+        /// Removes all related UserFollows as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -939,10 +939,13 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Handle deleting followed user and followers to avoid conflicts with cascade deletes
             //Get all followers' and followed users' follows
-            var follows = _db.UserFollows.Where(f => f.FollowedId == user.Id || f.FollowerId == user.Id);
+            var follows = await _db.UserFollows.Where(f => f.FollowedId == user.Id || f.FollowerId == user.Id).ToListAsync();
 
             //Remove all user follows containing the user id of the user to be deleted
-            _db.UserFollows.RemoveRange(follows);
+            if(follows.Count != 0)
+            {
+                _db.UserFollows.RemoveRange(follows);
+            }
 
             //Delete the user
             _db.Users.Remove(user);

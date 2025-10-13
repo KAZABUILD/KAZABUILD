@@ -170,26 +170,26 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Whether the motherboard supports Error Connection Code (ECC) memory.
         /// ECC detects and corrects errors in data transmission or storage, it does so by adding extra bits to the original data.
-        /// <summary>
+        /// </summary>
         [Required]
         public bool HasECCSupport { get; set; } = default!;
 
         /// <summary>
         /// Whether the motherboard supports Redundant Array of Independent Disks (RAID) configurations.
         /// RAID stores the same data in different places on multiple drives.
-        /// <summary>
+        /// </summary>
         [Required]
         public bool HasRAIDSupport { get; set; } = default!;
 
         /// <summary>
         /// Whether the board has BIOS backup capability in Flashback.
-        /// <summary>
+        /// </summary>
         [Required]
         public bool HasFlashback { get; set; } = default!;
 
         /// <summary>
         /// Whether the Motherboard has a Clear Complementary Metal-Oxide-Semiconductor (CMOS) button which resets the BIOS to default settings.
-        /// <summary>
+        /// </summary>
         [Required]
         public bool HasCMOS { get; set; } = default!;
 

@@ -30,7 +30,7 @@ namespace KAZABUILD.Application.Helpers
         /// <summary>
         /// Parsing function for Viewing Angles in the MonitorComponent.
         /// </summary>
-        /// <param name="ratio"></param>
+        /// <param name="angle"></param>
         /// <returns>Returns either the parsed viewing angles or a null values.</returns>
         public static double? ParseViewingAngle(string? angle)
         {

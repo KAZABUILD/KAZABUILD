@@ -8,3 +8,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Domain.Entities.Components.Components.MemoryComponent.ECC")]
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Domain.Entities.Components.Components.MotherboardComponent.SATA6GBsAmount")]
 [assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Domain.Entities.Components.Components.MotherboardComponent.SATA3GBsAmount")]
+[assembly: SuppressMessage("Naming", "VSSpell001:Spell Check", Justification = "Spelling is correct", Scope = "member", Target = "~P:KAZABUILD.Domain.Entities.Builds.BuildInteraction.IsWhishlisted")]

@@ -9,9 +9,6 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent
 {
-    /// <summary>
-    /// Only used for polymorphism and inheritance by other subComponent classes.
-    /// </summary>
     [JsonDerivedType(typeof(UpdateCoolerSocketSubComponentDto), "CoolerSocket")]
     [JsonDerivedType(typeof(UpdateIntegratedGraphicsSubComponentDto), "IntegratedGraphics")]
     [JsonDerivedType(typeof(UpdateM2SlotSubComponentDto), "M2Slot")]
