@@ -2,22 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.Validators
 {
-    /// <summary>
-    /// Validator for checking if at least one of multiple attributes is present in an object.
-    /// </summary>
-    /// <param name="propertyNames"></param>
+    //Validator for checking if at least one of multiple attributes is present in an object
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class RequireAtLeastOneAttribute(params string[] propertyNames) : ValidationAttribute
     {
-        //Store names of properties to validate
+        //Store the name of properties to validate
         private readonly string[] _propertyNames = propertyNames;
 
-        /// <summary>
-        /// Checks if at least one of the objects was provided.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="validationContext"></param>
-        /// <returns></returns>
+        //Method for checking the validity
         protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
         {
             //Check for every property
