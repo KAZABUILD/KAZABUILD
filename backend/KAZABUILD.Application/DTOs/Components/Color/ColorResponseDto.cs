@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace KAZABUILD.Application.DTOs.Components.Color
 {
     public class ColorResponseDto

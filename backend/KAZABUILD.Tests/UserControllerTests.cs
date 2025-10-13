@@ -1,9 +1,9 @@
 namespace KAZABUILD.Tests;
 
+using KAZABUILD.Domain.Entities.Users;
+using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Tests.Utils;
-using KAZABUILD.Domain.Entities;
-using KAZABUILD.Domain.Enums;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 public class UserControllerTests

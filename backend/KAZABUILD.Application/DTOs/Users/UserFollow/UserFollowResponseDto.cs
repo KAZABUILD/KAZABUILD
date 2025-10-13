@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace KAZABUILD.Application.DTOs.Users.UserFollow
 {
     public class UserFollowResponseDto

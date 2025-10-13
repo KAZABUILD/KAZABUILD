@@ -51,6 +51,7 @@
 - `Microsoft.AspNetCore.Authentication.Google`
 - `Google.Apis.Auth`
 - `Swashbuckle.AspNetCore.Annotations`
+- `MailKit`
 
 ## Features
 - Swagger Documentation

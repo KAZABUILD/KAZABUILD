@@ -1,10 +1,11 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Enums;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.Net;
-using System.Net.Mail;
+using MimeKit;
+using MailKit.Net.Smtp;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -29,19 +30,27 @@ namespace KAZABUILD.Infrastructure.Services
         {
             try
             {
-                //Create a client that will send the mail using credentials from settings
-                using var client = new SmtpClient(_settings.Host, _settings.Port)
-                {
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(_settings.Username, _settings.Password),
-                    EnableSsl = true
-                };
+                //Create the message to be sent
+                var message = new MimeMessage();
+                message.From.Add(MailboxAddress.Parse(_settings.Username));
+                message.To.Add(MailboxAddress.Parse(to));
+                message.Subject = subject;
+                message.Body = new TextPart("html") { Text = body };
 
-                //Create the message to be sent, set it so html can be sent. 
-                var mailMessage = new MailMessage(_settings.Username, to, subject, body);
+                //Create the client which will send the message
+                using var client = new SmtpClient();
+
+                //Connect to the SMTP service
+                await client.ConnectAsync("smtp.gmail.com", _settings.Port, MailKit.Security.SecureSocketOptions.SslOnConnect);
+
+                //Authenticate the account sending the email
+                await client.AuthenticateAsync(_settings.Username, _settings.Password);
 
                 //Send the email
-                await client.SendMailAsync(mailMessage);
+                await client.SendAsync(message);
+
+                //Disconnect the client
+                await client.DisconnectAsync(true);
             }
             catch (Exception ex)
             {

@@ -3,10 +3,7 @@ using KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent;
 using KAZABUILD.Application.Helpers;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {

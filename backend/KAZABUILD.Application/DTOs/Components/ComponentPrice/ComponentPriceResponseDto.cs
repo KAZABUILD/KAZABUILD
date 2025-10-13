@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
 {
     public class ComponentPriceResponseDto

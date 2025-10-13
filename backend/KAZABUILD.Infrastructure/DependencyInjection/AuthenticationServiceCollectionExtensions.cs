@@ -1,11 +1,10 @@
-using JwtSettings = KAZABUILD.Application.Settings.JwtSettings;
-
+using KAZABUILD.Application.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using KAZABUILD.Application.Settings;
+using JwtSettings = KAZABUILD.Application.Settings.JwtSettings;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {

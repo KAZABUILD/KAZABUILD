@@ -47,6 +47,6 @@ namespace KAZABUILD.Application.DTOs.Users.User
 
         public DateTime? LastEditedAt { get; set; }
 
-        public string? Note {  get; set; }
+        public string? Note { get; set; }
     }
 }
