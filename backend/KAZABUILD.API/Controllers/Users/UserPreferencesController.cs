@@ -46,7 +46,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the user exists
+            //Check if the User exists
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
             if (user == null)
             {
@@ -142,7 +142,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userPreference to edit
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
+            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
             if (userPreference == null)
             {
                 //Log failure
@@ -227,7 +227,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userPreference to return
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
+            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
             if (userPreference == null)
             {
                 //Log failure
@@ -377,7 +377,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.Where(p => p.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<UserPreference> userPreferences = await query.Where(f => f.UserId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
             List<UserPreferenceResponseDto> responses;
@@ -430,7 +430,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userPreference.gotUserPreferences", new
             {
-                userPreferenceIds = userPreferences.Select(p => p.Id),
+                userPreferenceIds = userPreferences.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
@@ -457,7 +457,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
+            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == id);
             if (userPreference == null)
             {
                 //Log failure

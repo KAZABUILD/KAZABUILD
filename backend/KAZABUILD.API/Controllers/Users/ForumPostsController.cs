@@ -147,7 +147,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the forumPost to edit
-            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == id);
             //Check if the forumPost exists
             if (forumPost == null)
             {
@@ -166,7 +166,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { message = "Forum Post not found!" });
             }
 
-            //Check if current user has staff permissions or if they are modifying their own post
+            //Check if current user has staff permissions or if they are creating a follow for themselves
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == forumPost.CreatorId;
 
@@ -277,7 +277,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the forumPost to return
-            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == id);
             if (forumPost == null)
             {
                 //Log failure
@@ -490,7 +490,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("forumPost.gotForumPosts", new
             {
-                forumPostIds = forumPosts.Select(p => p.Id),
+                forumPostIds = forumPosts.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
@@ -517,7 +517,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the forumPost to delete
-            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == id);
             if (forumPost == null)
             {
                 //Log failure

@@ -37,7 +37,7 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentReview
         public DateTime? CreatedAt { get; set; }
 
         /// <summary>
-        /// Rating given in the review on a scale 0-100 (e.g. 1/5 == 20/100).
+        /// Rating given in the review on a scale 0-100 (e.g. 1/5 <=> 20/100).
         /// </summary>
         [Range(0, 100, ErrorMessage = "Rating must be between 0 and 100")]
         public decimal? Rating { get; set; }

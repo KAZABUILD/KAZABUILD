@@ -1,6 +1,5 @@
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Domain.Entities;
-using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components;
 using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Entities.Components.SubComponents;
@@ -28,8 +27,6 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<Message> Messages { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
-
-        //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
         public DbSet<BaseSubComponent> SubComponents { get; set; } = default!;
         public DbSet<Color> Colors { get; set; } = default!;
@@ -39,13 +36,6 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<ComponentPrice> ComponentPrices { get; set; } = default!;
         public DbSet<ComponentReview> ComponentReviews { get; set; } = default!;
         public DbSet<SubComponentPart> SubComponentParts { get; set; } = default!;
-
-        //Build related tables
-        public DbSet<Build> Builds { get; set; } = default!;
-        public DbSet<BuildComponent> BuildComponents { get; set; } = default!;
-        public DbSet<BuildInteraction> BuildInteractions { get; set; } = default!;
-        public DbSet<Tag> Tags { get; set; } = default!;
-        public DbSet<BuildTag> BuildTags { get; set; } = default!;
 
         //Declare enums and cascade delete behaviour
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -156,35 +146,17 @@ namespace KAZABUILD.Infrastructure.Data
                 .Property(u => u.CommentTargetType)
                 .HasConversion<string>();
 
-            //Register relationships, restrict cascade delete as comments should remain on the website until removed manually
+            //Register relationships
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.User)
                 .WithMany(u => u.UserComments)
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ForumPost)
-                .WithMany(u => u.Comments)
+                .WithMany(u => u.UserComments)
                 .HasForeignKey(c => c.ForumPostId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserComment>()
-                .HasOne(c => c.Component)
-                .WithMany(u => u.Comments)
-                .HasForeignKey(c => c.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserComment>()
-                .HasOne(c => c.ComponentReview)
-                .WithMany(u => u.Comments)
-                .HasForeignKey(c => c.ComponentReviewId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<UserComment>()
-                .HasOne(c => c.Build)
-                .WithMany(u => u.Comments)
-                .HasForeignKey(c => c.BuildId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<UserComment>()
@@ -369,76 +341,6 @@ namespace KAZABUILD.Infrastructure.Data
                 .WithMany(u => u.MainSubComponents)
                 .HasForeignKey(m => m.SubComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            //====================================== BUILD ======================================//
-
-            //Configure BuildStatus enum as string
-            modelBuilder
-                .Entity<Build>()
-                .Property(u => u.Status)
-                .HasConversion<string>();
-
-            //Register relationship with user, restrict cascade delete and handle deletion separately
-            modelBuilder.Entity<Build>()
-                .HasOne(t => t.User)
-                .WithMany(u => u.Builds)
-                .HasForeignKey(t => t.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            //====================================== BUILD COMPONENT ======================================//
-
-            //Register relationships, disable cascade delete for components, should remain in database until the user deletes it
-            modelBuilder.Entity<BuildComponent>()
-                .HasOne(m => m.Build)
-                .WithMany(u => u.Components)
-                .HasForeignKey(m => m.BuildId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<BuildComponent>()
-                .HasOne(m => m.Component)
-                .WithMany(u => u.Builds)
-                .HasForeignKey(m => m.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            //====================================== BUILD INTERACTION ======================================//
-
-            //Register relationships, disable cascade delete for builds, should remain in database until the user deletes it
-            modelBuilder.Entity<BuildInteraction>()
-                .HasOne(m => m.User)
-                .WithMany(u => u.BuildInteractions)
-                .HasForeignKey(m => m.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<BuildInteraction>()
-                .HasOne(m => m.Build)
-                .WithMany(u => u.Interactions)
-                .HasForeignKey(m => m.BuildId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            //====================================== BUILD TAG ======================================//
-
-            //Register relationships, disable cascade delete for builds, must be handled in API calls
-            modelBuilder.Entity<BuildTag>()
-                .HasOne(m => m.Tag)
-                .WithMany(u => u.BuildTags)
-                .HasForeignKey(m => m.TagId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<BuildTag>()
-                .HasOne(m => m.Build)
-                .WithMany(u => u.BuildTags)
-                .HasForeignKey(m => m.BuildId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            //Register the lists which ignore the buildTag in the middle
-            modelBuilder.Entity<Build>()
-                .HasMany(b => b.Tags)
-                .WithMany(t => t.Builds)
-                .UsingEntity<Dictionary<string, object>>(
-                    "BuildTag",
-                    j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
-                    j => j.HasOne<Build>().WithMany().HasForeignKey("BuildId")
-                );
         }
     }
 }

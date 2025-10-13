@@ -22,201 +22,6 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("BuildTag", b =>
-                {
-                    b.Property<Guid>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TagId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("BuildId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("BuildTag");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DatabaseEntryAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("LastEditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Builds");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildComponent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ComponentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DatabaseEntryAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("LastEditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BuildId");
-
-                    b.HasIndex("ComponentId");
-
-                    b.ToTable("BuildComponents");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildInteraction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DatabaseEntryAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsLiked")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsWishlisted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("LastEditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("UserNote")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BuildId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("BuildInteractions");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildTag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DatabaseEntryAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("LastEditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<Guid>("TagId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BuildId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("BuildTags");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Tag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("DatabaseEntryAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("LastEditedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Tags");
-                });
-
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>
                 {
                     b.Property<string>("ColorCode")
@@ -845,18 +650,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("BuildId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("CommentTargetType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("ComponentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ComponentReviewId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -879,19 +675,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<Guid?>("ParentCommentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("PostedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BuildId");
-
-                    b.HasIndex("ComponentId");
-
-                    b.HasIndex("ComponentReviewId");
 
                     b.HasIndex("ForumPostId");
 
@@ -1718,89 +1505,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("PortSubComponents", (string)null);
                 });
 
-            modelBuilder.Entity("BuildTag", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", null)
-                        .WithMany()
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Tag", null)
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
-                        .WithMany("Builds")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildComponent", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
-                        .WithMany("Components")
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
-                        .WithMany("Builds")
-                        .HasForeignKey("ComponentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Build");
-
-                    b.Navigation("Component");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildInteraction", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
-                        .WithMany("Interactions")
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
-                        .WithMany("BuildInteractions")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Build");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.BuildTag", b =>
-                {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
-                        .WithMany("BuildTags")
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Tag", "Tag")
-                        .WithMany("BuildTags")
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Build");
-
-                    b.Navigation("Tag");
-                });
-
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "CompatibleComponent")
@@ -2000,23 +1704,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
-                        .WithMany("Comments")
-                        .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
-                        .WithMany("Comments")
-                        .HasForeignKey("ComponentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("KAZABUILD.Domain.Entities.Components.ComponentReview", "ComponentReview")
-                        .WithMany("Comments")
-                        .HasForeignKey("ComponentReviewId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
-                        .WithMany("Comments")
+                        .WithMany("UserComments")
                         .HasForeignKey("ForumPostId")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -2028,14 +1717,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserComments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Build");
-
-                    b.Navigation("Component");
-
-                    b.Navigation("ComponentReview");
 
                     b.Navigation("ForumPost");
 
@@ -2257,39 +1940,14 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
-                {
-                    b.Navigation("BuildTags");
-
-                    b.Navigation("Comments");
-
-                    b.Navigation("Components");
-
-                    b.Navigation("Interactions");
-                });
-
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Tag", b =>
-                {
-                    b.Navigation("BuildTags");
-                });
-
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>
                 {
                     b.Navigation("Components");
                 });
 
-            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentReview", b =>
-                {
-                    b.Navigation("Comments");
-                });
-
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", b =>
                 {
-                    b.Navigation("Builds");
-
                     b.Navigation("Colors");
-
-                    b.Navigation("Comments");
 
                     b.Navigation("CompatibleComponents");
 
@@ -2313,7 +1971,7 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
                 {
-                    b.Navigation("Comments");
+                    b.Navigation("UserComments");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
@@ -2323,10 +1981,6 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
-                    b.Navigation("BuildInteractions");
-
-                    b.Navigation("Builds");
-
                     b.Navigation("Followed");
 
                     b.Navigation("Followers");

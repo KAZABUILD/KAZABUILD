@@ -9,13 +9,14 @@ using KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent;
 using KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent;
 using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
 using KAZABUILD.Domain.Enums;
-
-using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
+    /// <summary>
+    /// Only used for polymorphism and inheritance by other component classes.
+    /// </summary>
     [JsonDerivedType(typeof(UpdateCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(UpdateCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(UpdateCoolerComponentDto), "Cooler")]

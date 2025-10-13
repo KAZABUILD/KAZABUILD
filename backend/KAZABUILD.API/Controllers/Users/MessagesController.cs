@@ -152,8 +152,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the message to edit
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
-
+            var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == id);
             //Check if the message exists
             if (message == null)
             {
@@ -172,7 +171,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { message = "Message not found!" });
             }
 
-            //Check if current user has admin permissions or if they are modifying their own message
+            //Check if current user has admin permissions or if they are creating a follow for themselves
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == message.ReceiverId;
 
@@ -303,7 +302,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the message to return
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
+            var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == id);
             if (message == null)
             {
                 //Log failure
@@ -546,7 +545,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("message.gotMessages", new
             {
-                messageIds = messages.Select(m => m.Id),
+                messageIds = messages.Select(u => u.Id),
                 gotBy = currentUserId
             });
 
@@ -573,7 +572,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the message to delete
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
+            var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == id);
             if (message == null)
             {
                 //Log failure
