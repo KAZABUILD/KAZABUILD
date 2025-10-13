@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using KAZABUILD.Domain.Entities;
+using KAZABUILD.Domain.Entities.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 namespace KAZABUILD.Tests.Utils
 {

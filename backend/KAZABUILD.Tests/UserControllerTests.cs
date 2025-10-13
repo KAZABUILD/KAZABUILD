@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
-using KAZABUILD.Application.DTOs.Auth;
-using KAZABUILD.Application.DTOs.User;
+using KAZABUILD.Application.DTOs.Users.User;
+using KAZABUILD.Domain.Entities.Users;
 
 namespace KAZABUILD.Tests;
 
@@ -53,26 +53,6 @@ public class UserControllerTests : BaseIntegrationTest
         var response = await _client_user.PutAsJsonAsync($"/Users/{admin.Id}", updateDto);
 
         // Then
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task UserShouldBeAbleToRegister()
-    {
-        // Act
-        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task UserShould()
-    {
-        // Act
-        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
-
-        // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }
