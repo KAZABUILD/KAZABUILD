@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 
 class HomeBody extends StatelessWidget {
   const HomeBody({super.key});
@@ -13,16 +14,12 @@ class HomeBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 3d model part its empty
-            Container(
-              width: 500,
-              height: 250,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
+            // 3D Model Viewer with auto-rotation and interaction
+            SizedBox(
+              height: 800,
+              child: Flutter3DViewer(src: 'assets/pc.glb'),
             ),
-            const SizedBox(height: 24),
+            //const SizedBox(height: 24),
 
             // text box empty
             Container(
@@ -35,7 +32,7 @@ class HomeBody extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Butonlar
+            // Buttonbar
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
