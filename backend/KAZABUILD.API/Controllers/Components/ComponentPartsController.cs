@@ -1,4 +1,4 @@
-using KAZABUILD.Application.DTOs.Components.ComponentCompatibility;
+using KAZABUILD.Application.DTOs.Components.ComponentPart;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
@@ -16,15 +16,15 @@ using System.Security.Claims;
 namespace KAZABUILD.API.Controllers.Components
 {
     /// <summary>
-    /// Controller for ComponentCompatibility related endpoints.
-    /// Used to connect Components with other Component which they are compatible with.
+    /// Controller for ComponentPart related endpoints.
+    /// Used to connect SubComponents with a Component which they are a part of.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentCompatibilityController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentPartsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -32,13 +32,13 @@ namespace KAZABUILD.API.Controllers.Components
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new ComponentCompatibility for administration.
+        /// API Endpoint for creating a new ComponentPart for administration.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddComponentCompatibility([FromBody] CreateComponentCompatibilityDto dto)
+        public async Task<IActionResult> AddComponentPart([FromBody] CreateComponentPartDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -49,14 +49,14 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if the Component exists
-            var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.ComponentId);
+            var component = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.ComponentId);
             if (component == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "ComponentCompatibility",
+                    "ComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -67,36 +67,37 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "Component not found!" });
             }
 
-            //Check if the Compatible Component exists
-            var compatibleComponent = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.CompatibleComponentId);
-            if (compatibleComponent == null)
+            //Check if the SubComponent exists
+            var subComponent = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.ComponentId);
+            if (component == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "ComponentCompatibility",
+                    "ComponentPart",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned  Compatible Component Doesn't Exist"
+                    "Operation Failed - Assigned SubComponent Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Compatible Component not found!" });
+                return BadRequest(new { message = "SubComponent not found!" });
             }
 
-            //Create a componentCompatibility to add
-            ComponentCompatibility componentCompatibility = new()
+            //Create a componentPart to add
+            ComponentPart componentPart = new()
             {
                 ComponentId = dto.ComponentId,
-                CompatibleComponentId = dto.CompatibleComponentId,
+                SubComponentId = dto.SubComponentId,
+                Amount = dto.Amount,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the componentCompatibility to the database
-            _db.ComponentCompatibilities.Add(componentCompatibility);
+            //Add the componentPart to the database
+            _db.ComponentParts.Add(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -105,33 +106,33 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "ComponentCompatibility",
+                "ComponentPart",
                 ip,
-                componentCompatibility.Id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New ComponentCompatibility Created"
+                "Successful Operation - New ComponentPart Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentCompatibility.created", new
+            await _publisher.PublishAsync("componentPart.created", new
             {
-                componentCompatibilityId = componentCompatibility.Id,
+                componentPartId = componentPart.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentCompatibility = "Components set as compatible successfully!", id = componentCompatibility.Id });
+            return Ok(new { componentPart = "ComponentPart created successfully!", id = componentPart.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected ComponentCompatibility's Note for administration.
+        /// API endpoint for updating the selected ComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateComponentCompatibility(Guid id, [FromBody] UpdateComponentCompatibilityDto dto)
+        public async Task<IActionResult> UpdateComponentPart(Guid id, [FromBody] UpdateComponentPartDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -141,24 +142,24 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentCompatibility to edit
-            var componentCompatibility = await _db.ComponentCompatibilities.FirstOrDefaultAsync(u => u.Id == id);
-            //Check if the componentCompatibility exists
-            if (componentCompatibility == null)
+            //Get the componentPart to edit
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+            //Check if the componentPart exists
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "ComponentCompatibility",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentCompatibility"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { componentCompatibility = "ComponentCompatibility not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
             //Track changes for logging
@@ -167,57 +168,63 @@ namespace KAZABUILD.API.Controllers.Components
             //Update allowed fields
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + componentCompatibility.Note);
+                changedFields.Add("Note: " + componentPart.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    componentCompatibility.Note = null;
+                    componentPart.Note = null;
                 else
-                    componentCompatibility.Note = dto.Note;
+                    componentPart.Note = dto.Note;
+            }
+            if (dto.Amount != null)
+            {
+                changedFields.Add("Amount: " + componentPart.Amount);
+
+                componentPart.Amount = (int)dto.Amount;
             }
 
             //Update edit timestamp
-            componentCompatibility.LastEditedAt = DateTime.UtcNow;
+            componentPart.LastEditedAt = DateTime.UtcNow;
 
-            //Update the componentCompatibility
-            _db.ComponentCompatibilities.Update(componentCompatibility);
+            //Update the componentPart
+            _db.ComponentParts.Update(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Logging description if the Note was edited or not
-            var description = changedFields.Count > 0 ? $"Updated {string.Join(", ", changedFields)}" : "No Fields Changed";
+            //Logging description for the updated fields
+            var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "ComponentCompatibility",
+                "ComponentPart",
                 ip,
-                componentCompatibility.Id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentCompatibility.updated", new
+            await _publisher.PublishAsync("componentPart.updated", new
             {
-                componentCompatibilityId = id,
+                componentPartId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentCompatibility = "ComponentCompatibility updated successfully!" });
+            return Ok(new { componentPart = "ComponentPart updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the ComponentCompatibility specified by id,
+        /// API endpoint for getting the ComponentPart specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<ComponentCompatibilityResponseDto>> GetComponentCompatibility(Guid id)
+        public async Task<ActionResult<ComponentPartResponseDto>> GetComponentPart(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -227,30 +234,30 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentCompatibility to return
-            var componentCompatibility = await _db.ComponentCompatibilities.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentCompatibility == null)
+            //Get the componentPart to return
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "ComponentCompatibility",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentCompatibility"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { componentCompatibility = "ComponentCompatibility not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            ComponentCompatibilityResponseDto response;
+            ComponentPartResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
@@ -261,12 +268,13 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create componentCompatibility response
-                response = new ComponentCompatibilityResponseDto
+                //Create componentPart response
+                response = new ComponentPartResponseDto
                 {
-                    Id = componentCompatibility.Id,
-                    ComponentId = componentCompatibility.ComponentId,
-                    CompatibleComponentId = componentCompatibility.CompatibleComponentId
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount
                 };
             }
             else
@@ -274,15 +282,16 @@ namespace KAZABUILD.API.Controllers.Components
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create componentCompatibility response
-                response = new ComponentCompatibilityResponseDto
+                //Create componentPart response
+                response = new ComponentPartResponseDto
                 {
-                    Id = componentCompatibility.Id,
-                    ComponentId = componentCompatibility.ComponentId,
-                    CompatibleComponentId = componentCompatibility.CompatibleComponentId,
-                    DatabaseEntryAt = componentCompatibility.DatabaseEntryAt,
-                    LastEditedAt = componentCompatibility.LastEditedAt,
-                    Note = componentCompatibility.Note,
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount,
+                    DatabaseEntryAt = componentPart.DatabaseEntryAt,
+                    LastEditedAt = componentPart.LastEditedAt,
+                    Note = componentPart.Note,
                 };
             }
 
@@ -290,7 +299,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentCompatibility",
+                "ComponentPart",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -298,27 +307,27 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentCompatibility.got", new
+            await _publisher.PublishAsync("componentPart.got", new
             {
-                componentCompatibilityId = id,
+                componentPartId = id,
                 gotBy = currentUserId
             });
 
-            //Return the ComponentCompatibility
+            //Return the componentPart
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting ComponentCompatibilities with pagination and search,
+        /// API endpoint for getting ComponentParts with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<ComponentCompatibilityResponseDto>>> GetComponentCompatibilities([FromBody] GetComponentCompatibilityDto dto)
+        public async Task<ActionResult<IEnumerable<ComponentPartResponseDto>>> GetComponentParts([FromBody] GetComponentPartDto dto)
         {
-            //Get componentCompatibility id and claims from the request
+            //Get componentPart id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -330,22 +339,30 @@ namespace KAZABUILD.API.Controllers.Components
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.ComponentCompatibilities.AsNoTracking();
+            var query = _db.ComponentParts.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.ComponentId != null)
             {
-                query = query.Where(c => dto.ComponentId.Contains(c.ComponentId));
+                query = query.Where(p => dto.ComponentId.Contains(p.ComponentId));
             }
-            if (dto.CompatibleComponentId != null)
+            if (dto.SubComponentId != null)
             {
-                query = query.Where(c => dto.CompatibleComponentId.Contains(c.CompatibleComponentId));
+                query = query.Where(p => dto.SubComponentId.Contains(p.SubComponentId));
+            }
+            if (dto.AmountStart != null)
+            {
+                query = query.Where(p => p.Amount >= dto.AmountStart);
+            }
+            if (dto.AmountEnd != null)
+            {
+                query = query.Where(p => p.Amount <= dto.AmountEnd);
             }
 
             //Apply search
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.CompatibleComponent).Include(c => c.Component).Search(dto.Query, c => c.Component!.Name, c => c.Component!.Manufacturer, c => c.Component!.Release!, c => c.CompatibleComponent!.Name, c => c.CompatibleComponent!.Manufacturer, c => c.CompatibleComponent!.Release!);
+                query = query.Include(p => p.Component).Include(p => p.SubComponent).Search(dto.Query, p => p.Component!.Name, p => p.Component!.Manufacturer, p => p.Component!.Release!, p => p.SubComponent!.Name);
             }
 
             //Order by specified field if provided
@@ -354,7 +371,7 @@ namespace KAZABUILD.API.Controllers.Components
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get componentCompatibilities with paging
+            //Get componentParts with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -365,43 +382,45 @@ namespace KAZABUILD.API.Controllers.Components
             //Log Description string declaration
             string logDescription;
 
-            List<ComponentCompatibility> componentCompatibilities = await query.ToListAsync();
+            List<ComponentPart> componentParts = await query.ToListAsync();
 
             //Declare response variable
-            List<ComponentCompatibilityResponseDto> responses;
+            List<ComponentPartResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple ComponentCompatibilities";
+                logDescription = "Successful Operation - User Access, Multiple ComponentParts";
 
-                //Create a componentCompatibility response list
-                responses = [.. componentCompatibilities.Select(componentCompatibility =>
+                //Create a componentPart response list
+                responses = [.. componentParts.Select(componentPart =>
                 {
                     //Return a follow response
-                    return new ComponentCompatibilityResponseDto
+                    return new ComponentPartResponseDto
                     {
-                        Id = componentCompatibility.Id,
-                        ComponentId = componentCompatibility.ComponentId,
-                        CompatibleComponentId = componentCompatibility.CompatibleComponentId
+                        Id = componentPart.Id,
+                        ComponentId = componentPart.ComponentId,
+                        SubComponentId = componentPart.SubComponentId,
+                        Amount = componentPart.Amount
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple ComponentCompatibilities";
+                logDescription = "Successful Operation - Admin Access, Multiple ComponentParts";
 
-                //Create a componentCompatibility response list
-                responses = [.. componentCompatibilities.Select(componentCompatibility => new ComponentCompatibilityResponseDto
+                //Create a componentPart response list
+                responses = [.. componentParts.Select(componentPart => new ComponentPartResponseDto
                 {
-                    Id = componentCompatibility.Id,
-                    ComponentId = componentCompatibility.ComponentId,
-                    CompatibleComponentId = componentCompatibility.CompatibleComponentId,
-                    DatabaseEntryAt = componentCompatibility.DatabaseEntryAt,
-                    LastEditedAt = componentCompatibility.LastEditedAt,
-                    Note = componentCompatibility.Note
+                    Id = componentPart.Id,
+                    ComponentId = componentPart.ComponentId,
+                    SubComponentId = componentPart.SubComponentId,
+                    Amount = componentPart.Amount,
+                    DatabaseEntryAt = componentPart.DatabaseEntryAt,
+                    LastEditedAt = componentPart.LastEditedAt,
+                    Note = componentPart.Note
                 })];
 
             }
@@ -410,7 +429,7 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "ComponentCompatibility",
+                "ComponentPart",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -418,26 +437,26 @@ namespace KAZABUILD.API.Controllers.Components
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentCompatibility.gotComponentCompatibilities", new
+            await _publisher.PublishAsync("componentPart.gotComponentParts", new
             {
-                componentCompatibilityIds = componentCompatibilities.Select(u => u.Id),
+                componentPartIds = componentParts.Select(p => p.Id),
                 gotBy = currentUserId
             });
 
-            //Return the componentCompatibilities
+            //Return the componentParts
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected ComponentCompatibility for administration.
+        /// API endpoint for deleting the selected ComponentPart for administration.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteComponentCompatibility(Guid id)
+        public async Task<IActionResult> DeleteComponentPart(Guid id)
         {
-            //Get componentCompatibility id and role from the request claims
+            //Get componentPart id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -445,27 +464,27 @@ namespace KAZABUILD.API.Controllers.Components
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the componentCompatibility to delete
-            var componentCompatibility = await _db.ComponentCompatibilities.FirstOrDefaultAsync(u => u.Id == id);
-            if (componentCompatibility == null)
+            //Get the componentPart to delete
+            var componentPart = await _db.ComponentParts.FirstOrDefaultAsync(p => p.Id == id);
+            if (componentPart == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "ComponentCompatibility",
+                    "ComponentPart",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such ComponentCompatibility"
+                    "Operation Failed - No Such ComponentPart"
                 );
 
                 //Return not found response
-                return NotFound(new { componentCompatibility = "ComponentCompatibility not found!" });
+                return NotFound(new { componentPart = "ComponentPart not found!" });
             }
 
-            //Delete the componentCompatibility
-            _db.ComponentCompatibilities.Remove(componentCompatibility);
+            //Delete the componentPart
+            _db.ComponentParts.Remove(componentPart);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -474,22 +493,22 @@ namespace KAZABUILD.API.Controllers.Components
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "ComponentCompatibility",
+                "ComponentPart",
                 ip,
-                componentCompatibility.Id,
+                componentPart.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("componentCompatibility.deleted", new
+            await _publisher.PublishAsync("componentPart.deleted", new
             {
-                componentCompatibilityId = id,
+                componentPartId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { componentCompatibility = "Components no longer compatible!" });
+            return Ok(new { componentPart = "ComponentPart deleted successfully!" });
         }
     }
 }

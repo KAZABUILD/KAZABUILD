@@ -15,9 +15,6 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
-    /// <summary>
-    /// Only used for polymorphism and inheritance by other component classes.
-    /// </summary>
     [JsonDerivedType(typeof(GetCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(GetCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(GetCoolerComponentDto), "Cooler")]
@@ -28,7 +25,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     [JsonDerivedType(typeof(GetMotherboardComponentDto), "Motherboard")]
     [JsonDerivedType(typeof(GetPowerSupplyComponentDto), "PowerSupply")]
     [JsonDerivedType(typeof(GetStorageComponentDto), "Storage")]
-    public class GetBaseComponentDto
+    public abstract class GetBaseComponentDto
     {
         //Filter By fields
         public List<string>? Name { get; set; }

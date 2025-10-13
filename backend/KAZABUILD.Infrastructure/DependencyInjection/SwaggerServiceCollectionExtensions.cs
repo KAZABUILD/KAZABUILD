@@ -3,7 +3,10 @@ using KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent;
 using KAZABUILD.Application.Helpers;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
@@ -41,13 +44,23 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                     }
                 });
 
-                //Enable comments in the swagger endpoint
+                //Enable handling null references
+                c.SupportNonNullableReferenceTypes();
+
+                //Enable comments in the swagger endpoints
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
 
-                //Add comments from an XML file
-                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
+                //Add comments from an XML files in all assemblies
+                var xmlFiles = Directory.GetFiles(AppContext.BaseDirectory, "*.xml", SearchOption.TopDirectoryOnly);
+                foreach (var xmlFile in xmlFiles)
+                {
+                    c.IncludeXmlComments(xmlFile, includeControllerXmlComments: true);
+                }
+
+                //Enable displaying polymorphic schemas in swagger endpoints
+                c.EnableAnnotations();
+                c.UseOneOfForPolymorphism();
+                c.UseAllOfForInheritance();
 
                 //Register detection of polymorphic classes
                 c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseComponentDto>>();
