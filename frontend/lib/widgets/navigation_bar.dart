@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
@@ -7,17 +8,19 @@ import 'package:frontend/screens/profile/profile_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
+import 'package:frontend/screens/builder/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 
 class PcPart {
   final String name;
   final IconData icon;
-  PcPart({required this.name, required this.icon});
+  final ComponentType type;
+
+  PcPart({required this.name, required this.icon, required this.type});
 }
 
 class CustomNavigationBar extends ConsumerWidget {
   final bool showProfileArea;
-
   const CustomNavigationBar({super.key, this.showProfileArea = true});
 
   @override
@@ -25,7 +28,7 @@ class CustomNavigationBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final user = ref.watch(authProvider);
-    //left part of bar
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       color: colorScheme.surface,
@@ -51,7 +54,6 @@ class CustomNavigationBar extends ConsumerWidget {
               ],
             ),
           ),
-          //mid part of nav
           Row(
             children: const [
               _NavButton(title: 'Build Now'),
@@ -61,14 +63,13 @@ class CustomNavigationBar extends ConsumerWidget {
               _PartsDropdownMenu(),
             ],
           ),
-
           Row(
             children: [
               if (showProfileArea)
                 user == null
                     ? const _SignInArea()
                     : _LoggedInProfileArea(user: user),
-              const SizedBox(width: 20),
+              if (showProfileArea) const SizedBox(width: 20),
               const LanguageSelector(),
               const SizedBox(width: 15),
               const ThemeToggleButton(),
@@ -109,7 +110,6 @@ class _NavButton extends StatelessWidget {
   }
 }
 
-//right side of the bar
 class _SignInArea extends StatelessWidget {
   const _SignInArea();
 
@@ -129,9 +129,9 @@ class _SignInArea extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: 12,
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-          child: Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
+          radius: 14,
+          backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+          child: Icon(Icons.person, size: 18, color: theme.colorScheme.primary),
         ),
         const SizedBox(width: 8),
         Column(
@@ -235,57 +235,89 @@ class _PartsDropdownMenu extends StatelessWidget {
   const _PartsDropdownMenu();
 
   static final List<PcPart> parts = [
-    PcPart(name: 'CPU', icon: Icons.memory),
-    PcPart(name: 'GPU', icon: Icons.developer_board),
-    PcPart(name: 'Motherboard', icon: Icons.dns),
-    PcPart(name: 'Case', icon: Icons.desktop_windows_outlined),
-    PcPart(name: 'Power Supply', icon: Icons.power),
-    PcPart(name: 'Memory', icon: Icons.sd_storage),
-    PcPart(name: 'Cooler', icon: Icons.air),
-    PcPart(name: 'Fan', icon: Icons.wind_power),
-    PcPart(name: 'Monitor', icon: Icons.monitor),
+    PcPart(name: 'CPU', icon: Icons.memory, type: ComponentType.cpu),
+    PcPart(name: 'GPU', icon: Icons.developer_board, type: ComponentType.gpu),
+    PcPart(
+      name: 'Motherboard',
+      icon: Icons.dns,
+      type: ComponentType.motherboard,
+    ),
+    PcPart(
+      name: 'Case',
+      icon: Icons.desktop_windows_outlined,
+      type: ComponentType.pcCase,
+    ),
+    PcPart(name: 'Power Supply', icon: Icons.power, type: ComponentType.psu),
+    PcPart(name: 'Memory', icon: Icons.sd_storage, type: ComponentType.ram),
+    PcPart(name: 'Cooler', icon: Icons.air, type: ComponentType.cooler),
+    PcPart(name: 'Fan', icon: Icons.wind_power, type: ComponentType.caseFan),
+    PcPart(name: 'Monitor', icon: Icons.monitor, type: ComponentType.monitor),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<PcPart>(
-      offset: const Offset(0, 45),
-      onSelected: (PcPart part) {
-        print('${part.name} choose');
-      },
-      itemBuilder: (BuildContext context) {
-        return parts.map((PcPart part) {
-          return PopupMenuItem<PcPart>(
-            value: part,
-            child: Row(
-              children: [
-                Icon(part.icon, size: 20),
-                const SizedBox(width: 12),
-                Text(part.name),
-              ],
-            ),
-          );
-        }).toList();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            Text(
-              'Parts',
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
+    final textStyle = TextStyle(
+      color: Theme.of(context).textTheme.bodyLarge?.color,
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PartPickerPage(
+                  componentType: ComponentType.cpu,
+                  currentBuild: [],
+                ),
               ),
-            ),
-            Icon(
+            );
+          },
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: Text('Parts', style: textStyle),
+        ),
+        PopupMenuButton<PcPart>(
+          offset: const Offset(0, 45),
+          onSelected: (PcPart part) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PartPickerPage(
+                  componentType: part.type,
+                  currentBuild: const [],
+                ),
+              ),
+            );
+          },
+          itemBuilder: (BuildContext context) {
+            return parts.map((PcPart part) {
+              return PopupMenuItem<PcPart>(
+                value: part,
+                child: Row(
+                  children: [
+                    Icon(part.icon, size: 20),
+                    const SizedBox(width: 12),
+                    Text(part.name),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4.0, right: 8.0),
+            child: Icon(
               Icons.arrow_drop_down,
               color: Theme.of(context).textTheme.bodyLarge?.color,
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

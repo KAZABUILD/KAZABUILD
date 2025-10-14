@@ -1,31 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/builder/currency_provider.dart';
+import 'package:frontend/screens/builder/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
-// data models
-class Product {
-  final String title;
-  final double priceInPln;
-  final String link;
-  final int wattage;
+class BuildNotifier extends StateNotifier<List<PcComponent>> {
+  BuildNotifier() : super(_initialState);
 
-  Product({
-    required this.title,
-    required this.priceInPln,
-    required this.link,
-    this.wattage = 0,
-  });
+  static final List<PcComponent> _initialState = [
+    PcComponent(name: 'CPU', type: ComponentType.cpu),
+    PcComponent(name: 'Motherboard', type: ComponentType.motherboard),
+    PcComponent(name: 'CPU Cooler', type: ComponentType.cooler),
+    PcComponent(name: 'Memory (RAM)', type: ComponentType.ram),
+    PcComponent(name: 'Storage', type: ComponentType.storage),
+    PcComponent(name: 'Video Card', type: ComponentType.gpu),
+    PcComponent(name: 'Power Supply', type: ComponentType.psu),
+    PcComponent(name: 'Case', type: ComponentType.pcCase),
+    PcComponent(name: 'Monitor', type: ComponentType.monitor),
+  ];
+
+  void addComponent(BaseComponent newProduct) {
+    final currentState = List<PcComponent>.from(state);
+    final componentIndex = currentState.indexWhere(
+      (c) => c.type == newProduct.type,
+    );
+
+    if (componentIndex != -1) {
+      currentState[componentIndex].selectedProduct = newProduct;
+      state = currentState;
+    }
+  }
+
+  void removeComponent(ComponentType type) {
+    final currentState = List<PcComponent>.from(state);
+    final componentIndex = currentState.indexWhere((c) => c.type == type);
+
+    if (componentIndex != -1) {
+      currentState[componentIndex].selectedProduct = null;
+      state = currentState;
+    }
+  }
 }
+
+final buildProvider = StateNotifierProvider<BuildNotifier, List<PcComponent>>((
+  ref,
+) {
+  return BuildNotifier();
+});
 
 class PcComponent {
   final String name;
-  Product? selectedProduct;
+  final ComponentType type;
+  BaseComponent? selectedProduct;
   bool isCompatible;
 
   PcComponent({
     required this.name,
+    required this.type,
     this.selectedProduct,
     this.isCompatible = true,
   });
@@ -39,48 +72,52 @@ class BuildNowPage extends ConsumerStatefulWidget {
 }
 
 class _BuildNowPageState extends ConsumerState<BuildNowPage> {
-  // copying link
   final String buildLink = 'https://kazabuild.com/b/somerandom123';
 
   final List<PcComponent> _components = [
-    PcComponent(name: 'CPU'),
-    PcComponent(name: 'Motherboard'),
-    PcComponent(name: 'CPU Cooler'),
-    PcComponent(name: 'Ram'),
-    PcComponent(name: 'Storage'),
-    PcComponent(name: 'Graphics Card'),
-    PcComponent(name: 'Power Supply'),
-    PcComponent(name: 'Case'),
-    PcComponent(name: 'Monitor'),
+    PcComponent(name: 'CPU', type: ComponentType.cpu),
+    PcComponent(name: 'Motherboard', type: ComponentType.motherboard),
+    PcComponent(name: 'CPU Cooler', type: ComponentType.cooler),
+    PcComponent(name: 'Memory (RAM)', type: ComponentType.ram),
+    PcComponent(name: 'Storage', type: ComponentType.storage),
+    PcComponent(name: 'Video Card', type: ComponentType.gpu),
+    PcComponent(name: 'Power Supply', type: ComponentType.psu),
+    PcComponent(name: 'Case', type: ComponentType.pcCase),
+    PcComponent(name: 'Monitor', type: ComponentType.monitor),
   ];
 
-  // checking if its empty or not
   bool get _isBuildEmpty {
     return _components.every((component) => component.selectedProduct == null);
   }
 
-  // total price total wat and compatibility
-  double get _totalPriceInPln {
-    return _components.fold(0.0, (sum, item) {
-      return sum + (item.selectedProduct?.priceInPln ?? 0.0);
-    });
+  double get _totalPrice {
+    return _components.fold(
+      0.0,
+      (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
+    );
   }
 
   int get _estimatedWattage {
     return _components.fold(0, (sum, item) {
-      return sum + (item.selectedProduct?.wattage ?? 0);
+      final product = item.selectedProduct;
+      if (product is CPUComponent) {
+        return sum + product.thermalDesignPower.toInt();
+      }
+      if (product is GPUComponent) {
+        return sum + product.thermalDesignPower.toInt();
+      }
+      return sum;
     });
   }
 
+  //we will add the logic later
   String get _compatibilityStatus {
     final selectedComponents = _components
         .where((c) => c.selectedProduct != null)
         .toList();
-
     if (selectedComponents.isEmpty) {
       return 'No issues or incompatibilities found';
     }
-
     bool allCompatible = selectedComponents.every((c) => c.isCompatible);
     return allCompatible
         ? 'No issues or incompatibilities found'
@@ -90,12 +127,13 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     final selectedCurrency = ref.watch(currencyProvider);
     final currencyData = currencyDetails[selectedCurrency]!;
-    final convertedPrice = _totalPriceInPln * currencyData.exchangeRate;
+    final convertedPrice = _totalPrice * currencyData.exchangeRate;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
           const CustomNavigationBar(),
@@ -112,7 +150,6 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     currencyData: currencyData,
                     estimatedWattage: _estimatedWattage,
                   ),
-
                   if (!_isBuildEmpty) ...[
                     const SizedBox(height: 16),
                     _CompatibilityAndPriceBar(
@@ -129,29 +166,26 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     onRemove: (index) {
                       setState(() {
                         _components[index].selectedProduct = null;
-
-                        _components[index].isCompatible = true;
                       });
                     },
-                    onAdd: (index) {
-                      // later this part going to open parts section but for i added test parts
+                    onAdd: (index) async {
+                      final selectedComponent =
+                          await Navigator.push<BaseComponent>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PartPickerPage(
+                                componentType: _components[index].type,
+                                currentBuild: _components,
+                              ),
+                            ),
+                          );
 
-                      setState(() {
-                        final bool makeIncompatible = _components
-                            .where((c) => c.selectedProduct != null)
-                            .length
-                            .isOdd;
-
-                        _components[index].selectedProduct = Product(
-                          title: 'Sample Product ${index + 1}',
-                          priceInPln: 500.0 + (index * 100),
-                          link: 'store.com/product',
-                          wattage: 50,
-                        );
-
-                        _components[index].isCompatible = !makeIncompatible;
-                      });
-                      print('Add product for ${_components[index].name}');
+                      if (selectedComponent != null && mounted) {
+                        setState(() {
+                          _components[index].selectedProduct =
+                              selectedComponent;
+                        });
+                      }
                     },
                   ),
                 ],
@@ -164,8 +198,14 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   }
 }
 
-// topbar widget
 class _TopBar extends StatelessWidget {
+  final ThemeData theme;
+  final String buildLink;
+  final List<PcComponent> components;
+  final double totalPrice;
+  final CurrencyData currencyData;
+  final int estimatedWattage;
+
   const _TopBar({
     required this.theme,
     required this.buildLink,
@@ -175,13 +215,6 @@ class _TopBar extends StatelessWidget {
     required this.estimatedWattage,
   });
 
-  final ThemeData theme;
-  final String buildLink;
-  final List<PcComponent> components;
-  final double totalPrice;
-  final CurrencyData currencyData;
-  final int estimatedWattage;
-
   String _generateRedditMarkup() {
     final buffer = StringBuffer();
     buffer.writeln('**Component** | **Product** | **Price**');
@@ -190,7 +223,7 @@ class _TopBar extends StatelessWidget {
       if (component.selectedProduct != null) {
         final product = component.selectedProduct!;
         buffer.writeln(
-          '**${component.name}** | [${product.title}](${product.link}) | ${product.priceInPln.toStringAsFixed(2)} zł',
+          '**${component.name}** | ${product.name} | \$${product.lowestPrice?.toStringAsFixed(2) ?? '-'}',
         );
       }
     }
@@ -267,8 +300,12 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// widgets of comp and price bar
 class _CompatibilityAndPriceBar extends ConsumerWidget {
+  final ThemeData theme;
+  final double totalPrice;
+  final CurrencyData currencyData;
+  final String statusMessage;
+
   const _CompatibilityAndPriceBar({
     required this.theme,
     required this.totalPrice,
@@ -276,34 +313,25 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
     required this.statusMessage,
   });
 
-  final ThemeData theme;
-  final double totalPrice;
-  final CurrencyData currencyData;
-  final String statusMessage;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool noIssues =
-        statusMessage == 'No issues or incompatibilities found';
-    final Color backgroundColor = noIssues
-        ? const Color(0xFF0C4F2A)
-        : theme.colorScheme.errorContainer;
-    final Color iconColor = noIssues
-        ? Colors.greenAccent
-        : theme.colorScheme.error;
-    final IconData iconData = noIssues
-        ? Icons.check_circle
-        : Icons.warning_amber;
+    final bool hasIssues = statusMessage.toLowerCase().contains('issues found');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: hasIssues
+            ? theme.colorScheme.errorContainer
+            : const Color(0xFF0C4F2A),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(iconData, color: iconColor, size: 20),
+          Icon(
+            hasIssues ? Icons.warning_amber : Icons.check_circle,
+            color: hasIssues ? theme.colorScheme.error : Colors.greenAccent,
+            size: 20,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -314,7 +342,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
           Text(
             'Total Price: ',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withOpacity(0.8),
             ),
           ),
           DropdownButton<Currency>(
@@ -351,19 +379,18 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
   }
 }
 
-// widgets of componentable
 class _ComponentTable extends StatelessWidget {
+  final ThemeData theme;
+  final List<PcComponent> components;
+  final Function(int) onRemove;
+  final Function(int) onAdd;
+
   const _ComponentTable({
     required this.theme,
     required this.components,
     required this.onRemove,
     required this.onAdd,
   });
-
-  final ThemeData theme;
-  final List<PcComponent> components;
-  final Function(int) onRemove;
-  final Function(int) onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -374,35 +401,54 @@ class _ComponentTable extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        color: theme.colorScheme.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          const Row(
-            children: [
-              Expanded(flex: 2, child: Text('Component', style: headerStyle)),
-              Expanded(flex: 3, child: Text('Product', style: headerStyle)),
-              Expanded(flex: 2, child: Text('Price', style: headerStyle)),
-              Expanded(
-                flex: 2,
-                child: Text('Product link', style: headerStyle),
-              ),
-              SizedBox(
-                width: 60,
-                child: Text(
-                  'Remove',
-                  style: headerStyle,
-                  textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              children: [
+                const Expanded(
+                  flex: 2,
+                  child: Text('Component', style: headerStyle),
                 ),
-              ),
-            ],
+                const Expanded(
+                  flex: 4,
+                  child: Text('Selection', style: headerStyle),
+                ),
+                const Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: Text(
+                      'Price',
+                      style: headerStyle,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  width: 120,
+                  child: Text(
+                    'Actions',
+                    style: headerStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 24),
           ...List.generate(components.length, (index) {
             final component = components[index];
+            final product = component.selectedProduct;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 10.0,
+                horizontal: 8.0,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -414,46 +460,74 @@ class _ComponentTable extends StatelessWidget {
                     ),
                   ),
                   Expanded(
-                    flex: 3,
-                    child: component.selectedProduct == null
-                        ? _AddButton(onPressed: () => onAdd(index))
-                        : Text(component.selectedProduct!.title),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      component.selectedProduct == null
-                          ? '-'
-                          : '${component.selectedProduct!.priceInPln.toStringAsFixed(2)} zł',
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: component.selectedProduct == null
-                        ? const Text('-')
-                        : InkWell(
-                            onTap: () {},
-                            child: const Text(
-                              'allegro',
-                              style: TextStyle(
-                                color: Colors.orange,
-                                decoration: TextDecoration.underline,
-                              ),
+                    flex: 4,
+                    child: product == null
+                        ? Text(
+                            'No part selected.',
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontStyle: FontStyle.italic,
                             ),
+                          )
+                        : Text(
+                            product.name,
+                            style: const TextStyle(fontSize: 14),
                           ),
                   ),
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 24.0),
+                      child: Text(
+                        product == null
+                            ? '-'
+                            : '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
                   SizedBox(
-                    width: 60,
-                    child: component.selectedProduct == null
-                        ? const SizedBox.shrink()
-                        : IconButton(
-                            icon: Icon(
-                              Icons.delete_outline,
-                              color: theme.colorScheme.error,
+                    width: 120,
+                    child: product == null
+                        ? Center(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add Part'),
+                              onPressed: () => onAdd(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: theme.colorScheme.onPrimary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
-                            onPressed: () => onRemove(index),
-                            splashRadius: 20,
-                            tooltip: 'Remove ${component.name}',
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.edit_outlined,
+                                  color: theme.colorScheme.secondary,
+                                  size: 20,
+                                ),
+                                onPressed: () => onAdd(index),
+                                tooltip: 'Change ${component.name}',
+                                splashRadius: 20,
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.delete_outline,
+                                  color: theme.colorScheme.error,
+                                  size: 20,
+                                ),
+                                onPressed: () => onRemove(index),
+                                tooltip: 'Remove ${component.name}',
+                                splashRadius: 20,
+                              ),
+                            ],
                           ),
                   ),
                 ],
@@ -462,21 +536,6 @@ class _ComponentTable extends StatelessWidget {
           }),
         ],
       ),
-    );
-  }
-}
-
-// widgets of addbutton
-class _AddButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _AddButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      icon: const Icon(Icons.add_circle),
-      color: Theme.of(context).colorScheme.primary,
     );
   }
 }

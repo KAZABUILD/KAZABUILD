@@ -3,7 +3,7 @@ import '../constants/app_color.dart';
 
 class AppTheme {
   // -------------------
-  // DARK THEME
+  // light theme
   // -------------------
   static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
@@ -11,8 +11,7 @@ class AppTheme {
       primary: AppColorsLight.buttonBlue,
       secondary: AppColorsLight.buttonGreen,
       background: AppColorsLight.backgroundPrimary,
-      surface: AppColorsLight
-          .backgroundTertiary, // Kartlar, appbarlar vb. için biraz farklı bir ton
+      surface: AppColorsLight.backgroundTertiary,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onBackground: AppColorsLight.textBlack,
@@ -56,14 +55,14 @@ class AppTheme {
     ),
   );
 
-  // --- KARANLIK TEMA ---
+  // dark theme
   static final ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
       primary: AppColorsDark.buttonBlue,
       secondary: AppColorsDark.buttonGreen,
       background: AppColorsDark.backgroundPrimary,
-      surface: AppColorsDark.backgroundSecondary, // Kartlar, appbarlar vb.
+      surface: AppColorsDark.backgroundSecondary,
       onPrimary: AppColorsDark.textWhite,
       onSecondary: AppColorsDark.textWhite,
       onBackground: AppColorsDark.textWhite,
