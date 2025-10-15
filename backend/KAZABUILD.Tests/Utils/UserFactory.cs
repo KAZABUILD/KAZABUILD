@@ -1,6 +1,8 @@
+using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
+using KAZABUILD.Infrastructure.Services;
 
 namespace KAZABUILD.Tests.Utils
 {
@@ -8,7 +10,7 @@ namespace KAZABUILD.Tests.Utils
     public static class UserFactory
     {
         private static Random _random = new Random();
-
+        private static HashingService _hashingService = new();
         public static User GenerateUser(
             string? login = null,
             string? email = null,
@@ -30,7 +32,7 @@ namespace KAZABUILD.Tests.Utils
                 Id = Guid.NewGuid(),
                 Login = login ?? DbTestUtils.RandomString(10),
                 Email = email ?? DbTestUtils.RandomEmail(),
-                PasswordHash = DbTestUtils.RandomString(32),
+                PasswordHash = _hashingService.Hash("Password123"),
                 DisplayName = displayName ?? DbTestUtils.RandomString(12),
                 PhoneNumber = phone ?? DbTestUtils.RandomPhone(),
                 Description = "This is a test user description.",
@@ -45,7 +47,7 @@ namespace KAZABUILD.Tests.Utils
                 Language = language ?? Language.ENGLISH,
                 Location = location ?? "Test Location",
                 ReceiveEmailNotifications = _random.Next(0, 2) == 1,
-                EnableDoubleFactorAuthentication = _random.Next(0, 2) == 1,
+                EnableDoubleFactorAuthentication = false,
                 GoogleId = null,
                 GoogleProfilePicture = null,
                 DatabaseEntryAt = DateTime.UtcNow,

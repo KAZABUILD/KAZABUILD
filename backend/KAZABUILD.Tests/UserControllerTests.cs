@@ -1,29 +1,58 @@
+using System.Net.Http.Json;
+using KAZABUILD.Application.DTOs.Users.User;
+using KAZABUILD.Domain.Entities.Users;
+
 namespace KAZABUILD.Tests;
 
-using KAZABUILD.Domain.Entities.Users;
-using KAZABUILD.Domain.Enums;
-using KAZABUILD.Infrastructure.Data;
-using KAZABUILD.Tests.Utils;
-using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using Domain.Entities;
+using Domain.Enums;
+using Utils;
 
-public class UserControllerTests
+public class UserControllerTests : BaseIntegrationTest
 {
-    private readonly KAZABUILDDBContext _context;
-    private HttpClient _client;
-    private readonly DbTestUtils _utils = new();
+    private HttpClient _client_user = null!;
+    private readonly User admin;
+    private readonly User user;
 
-    private User admin = UserFactory.GenerateUser(role: UserRole.ADMINISTRATOR);
-    private User user = UserFactory.GenerateUser(role: UserRole.USER);
-    public UserControllerTests(WebApplicationFactory<API.Program> factory)
+    public UserControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
-        _context = _utils.SetContextInMemory(_context);
-        _client = factory.CreateClient();
+        admin = UserFactory.GenerateUser(login: "temp_admin", role: UserRole.ADMINISTRATOR);
+        user = UserFactory.GenerateUser(login: "temp_user", role: UserRole.USER);
+    }
+
+    public override async Task InitializeAsync()
+    {
+        //Setup from base class
+        await base.InitializeAsync();
+        //User seeding
+        _context.Users.AddRange(admin, user);
+        await _context.SaveChangesAsync();
+
+        //Creating user client
+        _client_user = await HttpClientFactory.Create(_factory, user);
     }
 
     [Fact]
-    public void UserWithLowerRankShouldntDeleteUserWithHigherRank()
+    public async Task UserWithLowerRankShouldntDeleteUserWithHigherRank()
     {
-        //when
-        //then
+        // Act
+        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UserWithLowerRankShouldntUpdateUserWithHigherRank()
+    {
+        // Given
+        UpdateUserDto updateDto = new() { Login = "newLoginWithCorrectLength" };
+
+        // When
+        var response = await _client_user.PutAsJsonAsync($"/Users/{admin.Id}", updateDto);
+
+        // Then
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

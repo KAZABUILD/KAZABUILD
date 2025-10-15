@@ -37,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KAZABUILD.Application\KAZABUILD.Application.csproj" />
     <ProjectReference Include="..\KAZABUILD.Infrastructure\KAZABUILD.Infrastructure.csproj" />
+    <InternalsVisibleTo Include="..\KAZABUILD.Tests\KAZABUILD.Tests.csproj" />
   </ItemGroup>
 
 </Project>

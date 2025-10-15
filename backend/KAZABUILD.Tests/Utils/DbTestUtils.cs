@@ -1,6 +1,3 @@
-using KAZABUILD.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-
 namespace KAZABUILD.Tests.Utils
 {
     public class DbTestUtils
@@ -29,17 +26,6 @@ namespace KAZABUILD.Tests.Utils
         {
             return $"https://picsum.photos/id/{_random.Next(1, 1000)}/200/200";
         }
-        public KAZABUILDDBContext SetContextInMemory(KAZABUILDDBContext context)
-        {
-            var options = new DbContextOptionsBuilder<KAZABUILDDBContext>()
-            .UseInMemoryDatabase(DatabaseName)
-            .Options;
-
-            context = new KAZABUILDDBContext(options);
-
-            return context;
-        }
-
 
     }
 }
