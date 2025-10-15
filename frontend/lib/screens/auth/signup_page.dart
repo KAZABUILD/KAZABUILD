@@ -6,6 +6,7 @@ import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/privacy_policy_dialog.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -95,12 +96,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                 const SizedBox(height: 32),
                                 const SocialButton(
                                   text: 'Continue with Google',
-                                  iconPath: 'google_icon.svg',
+                                  iconPath: 'google_icon.svg.webp',
                                 ),
                                 const SizedBox(height: 12),
                                 const SocialButton(
                                   text: 'Continue with Apple',
-                                  iconPath: 'apple_icon.png',
+                                  iconPath: 'apple_icon.svg',
                                 ),
                                 const OrDivider(text: 'OR CONTINUE WITH EMAIL'),
                                 CustomTextField(

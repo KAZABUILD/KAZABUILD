@@ -21,6 +21,7 @@ dependencies:
   intl_utils: ^2.8.11  # Downgraded to resolve analyzer conflict
   intl: ^0.20.2
   flutter_3d_controller: ^2.3.0
+  flutter_svg: ^2.2.1
 
 dev_dependencies:
   flutter_test:
@@ -41,3 +42,6 @@ flutter:
     - assets/tr_flag.png
     - assets/pl_flag.png
     - assets/pc.glb
+    - assets/google_icon.svg
+    - assets/apple_icon.svg
+

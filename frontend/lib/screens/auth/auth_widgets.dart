@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class Header extends StatelessWidget {
   const Header({super.key});
@@ -77,14 +78,21 @@ class SocialButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            iconPath,
-            height: 20,
-            width: 20,
-            errorBuilder: (c, e, s) {
-              return const Icon(Icons.error, size: 20);
-            },
-          ),
+          if (iconPath.endsWith('.svg'))
+            SvgPicture.asset(
+              iconPath,
+              height: 20,
+              width: 20,
+            )
+          else
+            Image.asset(
+              iconPath,
+              height: 20,
+              width: 20,
+              errorBuilder: (c, e, s) {
+                return const Icon(Icons.error, size: 20);
+              },
+            ),
           const SizedBox(width: 12),
           Text(text),
         ],

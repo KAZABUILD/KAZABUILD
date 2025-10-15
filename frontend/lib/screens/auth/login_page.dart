@@ -143,12 +143,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 const OrDivider(),
                                 const SocialButton(
                                   text: 'Continue with Google',
-                                  iconPath: 'google_icon.svg',
+                                  iconPath: 'google_icon.svg.webp',
                                 ),
                                 const SizedBox(height: 12),
                                 const SocialButton(
                                   text: 'Continue with GitHub',
-                                  iconPath: 'github_icon.png',
+                                  iconPath: 'github_icon.svg',
                                 ),
                                 const SizedBox(height: 12),
                                 const SocialButton(
