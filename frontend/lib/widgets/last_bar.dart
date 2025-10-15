@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/builder/build_now_page.dart';
+import 'package:frontend/screens/guides/guides_page.dart';
+import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
@@ -83,6 +86,25 @@ class _FooterColumn extends StatelessWidget {
                               child: child,
                             );
                           },
+                    ),
+                  );
+                } else if (item == 'About Us') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AboutUsPage(),
+                    ),
+                  );
+                } else if (item == 'Guides') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const GuidesPage()),
+                  );
+                } else if (item == 'Builds') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BuildNowPage(),
                     ),
                   );
                 } else {

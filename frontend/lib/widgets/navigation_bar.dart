@@ -10,6 +10,7 @@ import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 import 'package:frontend/screens/builder/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
+import 'package:frontend/screens/guides/guides_page.dart';
 
 class PcPart {
   final String name;
@@ -95,6 +96,11 @@ class _NavButton extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const BuildNowPage()),
+            );
+          } else if (title == 'Guides') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const GuidesPage()),
             );
           } else {
             print('$title clicked');

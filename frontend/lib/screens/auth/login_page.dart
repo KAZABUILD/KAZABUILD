@@ -153,7 +153,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 const SizedBox(height: 12),
                                 const SocialButton(
                                   text: 'Continue with Discord',
-                                  iconPath: 'discord_icon.png',
+                                  iconPath: 'discord_icon.svg',
                                 ),
                               ],
                             ),

@@ -95,7 +95,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 const SizedBox(height: 32),
                                 const SocialButton(
                                   text: 'Continue with Google',
-                                  iconPath: 'google_icon.png',
+                                  iconPath: 'google_icon.svg',
                                 ),
                                 const SizedBox(height: 12),
                                 const SocialButton(
