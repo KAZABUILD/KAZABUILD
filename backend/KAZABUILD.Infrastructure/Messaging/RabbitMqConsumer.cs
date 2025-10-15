@@ -12,14 +12,23 @@ using ILoggerService = KAZABUILD.Application.Interfaces.ILoggerService;
 
 namespace KAZABUILD.Infrastructure.Messaging
 {
-    //Rabbit MQ consumer that gets request from a queue and performes whatever operations are needed on them
+    /// <summary>
+    /// Rabbit MQ consumer that gets request from a queue and performs whatever operations are needed on them.
+    /// </summary>
+    /// <param name="connection"></param>
+    /// <param name="settings"></param>
+    /// <param name="serviceProvider"></param>
     public class RabbitMQConsumer(IRabbitMqConnection connection, IOptions<RabbitMQSettings> settings, IServiceProvider serviceProvider) : BackgroundService
     {
         private readonly IRabbitMqConnection _connection = connection;
         private readonly RabbitMQSettings _settings = settings.Value;
         private readonly IServiceProvider _serviceProvider = serviceProvider;
 
-        //Background service that consumes the requests from the queue
+        /// <summary>
+        /// Background service that consumes the requests from the queue.
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             //Declare variable necessary to store the rabbitMQ channel and close it later
@@ -53,12 +62,12 @@ namespace KAZABUILD.Infrastructure.Messaging
 
                         //TODO: add processing logic
 
-                        //Acknoledge and removed message from queue
+                        //Acknowledge and removed message from queue
                         await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
                     }
                     catch
                     {
-                        //Negatively acknowledge and requeue
+                        //Negatively acknowledge and re-queue
                         await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
                     }
                 };

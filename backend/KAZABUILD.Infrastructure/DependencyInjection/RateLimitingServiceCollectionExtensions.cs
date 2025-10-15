@@ -10,10 +10,15 @@ using System.Threading.RateLimiting;
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
     /// <summary>
-    /// Extension for adding rate limiting to app services
+    /// Extension for adding rate limiting to app services.
     /// </summary>
     public static class RateLimitingServiceCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding rate limiting to app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <returns></returns>
         public static IServiceCollection AddRateLimiting(this IServiceCollection services)
         {
             //Add a specific rate limiting middleware for controllers

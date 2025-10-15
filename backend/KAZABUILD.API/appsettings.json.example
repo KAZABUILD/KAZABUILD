@@ -1,69 +1,70 @@
+//Remove all comments and add all configuration before running the application. Once done remove .example from the end of the file name.
 {
-  "Logging": {
-    "LogLevel": {
+  "Logging": { //Determines the logging functionality of the application
+    "LogLevel": { //Used to set the basic logging level
       "Default": "DEFAULT_WARNING_LEVEL", //ex. Information
       "Microsoft.AspNetCore": "WARNING_LEVEL" //ex. Warning
     }
   },
-  "AllowedHosts": "*",
-  "ConnectionStrings": {
+  "AllowedHosts": "*", //List of allowed host for CORS
+  "ConnectionStrings": { //Used to connect to the database
     "DefaultConnection": "Server=YOUR_SERVER_HOST_NAME,YOUR_SERVER_HOST_PORT;Database=YOUR_DATABASE_NAME;User Id=YOUR_USER_ID;Password=YOUR_USER_PASSWORD;TrustServerCertificate=True"
   },
-  "JwtSettings": {
-    "Secret": "YOUR_SECRET_HASHING_KEY", //must be at least 32 characters long
-    "Issuer": "YOUR_ISSUER_NAME",
-    "Audience": "YOUR_AUDIENCE_NAME",
-    "ExpiryMinutes": 3600
+  "JwtSettings": { //Settings for token issued to the frontend users
+    "Secret": "YOUR_SECRET_HASHING_KEY", //Must be at least 32 characters long
+    "Issuer": "YOUR_ISSUER_NAME", //Name of the organization issuing the token
+    "Audience": "YOUR_AUDIENCE_NAME", //Who will be using the token
+    "ExpiryMinutes": 3600 //How long until the token expires
   },
-  "SmtpSettings": {
-    "Host": "YOUR_HOST_ADDRESS", //ex. smtp.example.com
-    "Port": 587,
-    "Username": "YOUR_EMAIL_ADDRESS", //ec. no-reply@example.com
-    "Password": "YOUR_PASSWORD"
+  "SmtpSettings": { //Settings for the email service, necessary for auth to function
+    "Host": "YOUR_HOST_ADDRESS", //Address of the SMTP hosting service, ex. smtp.example.com
+    "Port": 587, //Port that the smtp service will be accessed from
+    "Username": "YOUR_EMAIL_ADDRESS", //SMTP service's email account name, ex. no-reply@example.com
+    "Password": "YOUR_PASSWORD" //SMTP service's email password, ex. no-reply@example.com
   },
-  "RabbitMQ": {
+  "RabbitMQ": { //Service used send data to services associated with the backend
     "messaging": {
-      "HostName": "YOUR_HOST_NAME",
-      "Port": 5672,
-      "UserName": "YOUR_USERNAME",
-      "Password": "YOUR_PASSWORD",
-      "QueueName": "YOUR_QUEUE_NAME",
-      "PrefetchCount": 10
+      "HostName": "YOUR_HOST_NAME", //Name of the RabbitMQ host
+      "Port": 5672, //Port that RabbitMQ will be accessed from
+      "UserName": "YOUR_USERNAME", //RabbitMQ account's name
+      "Password": "YOUR_PASSWORD", //RabbitMQ account's password
+      "QueueName": "YOUR_QUEUE_NAME", //Name of the default queue in RabbitMQ
+      "PrefetchCount": 10 //Specifies how many messages are being sent to the consumer at the same time
     }
   },
   "Serilog": { //Dev console and file logging
-    "Using": [],
-    "MinimumLevel": "Information",
-    "WriteTo": [
-      { "Name": "Console" },
+    "Using": [], //Specifies any additional Serilog assemblies to load
+    "MinimumLevel": "Information", //The global minimum log level
+    "WriteTo": [ //Configures where to writes log events to
+      { "Name": "Console" }, //Write to console
       {
-        "Name": "File",
+        "Name": "File", //Write to file
         "Args": {
-          "path": "Logs/log-.txt",
-          "rollingInterval": "Day"
+          "path": "Logs/log-.txt", //Specifies how to create the log files
+          "rollingInterval": "Day" //Time period for creating a new log file
         }
       }
     ],
     "Enrich": [ "FromLogContext" ]
   },
-  "Frontend": {
-    "Host": "FRONTEND_ORIGIN", //ex. https://localhost:4200,
-    "ErrorPage": "YOUR_ERROR_PAGE", //ex. /error
-    "AllowedFrontendOrigins": [
+  "Frontend": { //Frontend related settings
+    "Host": "FRONTEND_ORIGIN", //Main frontend pages used to redirect users from the backend, ex. https://localhost:4200,
+    "ErrorPage": "YOUR_ERROR_PAGE", //Which page will the user be redirected to upon encountering an issue, ex. /error
+    "AllowedFrontendOrigins": [ //List of allowed frontend addresses for CORS
       "LIST_ORIGINS" //ex. https://localhost:4200, https://yourfrontend.com
     ]
   },
-  "SYSTEM_ADMIN": {
+  "SYSTEM_ADMIN": { //Data used by the main admins account
     "Name": "SYSTEM_ADMIN_NAME",
     "Password": "SYSTEM_ADMIN_PASSWORD"
   },
-  "Authentication": {
-    "Google": {
+  "Authentication": { //Authentication settings for various external services
+    "Google": { //Settings for google auth
       "ClientId": "YOUR_GOOGLE_CLIENT_ID",
       "ClientSecret": "YOUR_GOOGLE_CLIENT_SECRET"
     }
   },
-  "backend": {
-    "Host": "FRONTEND_ORIGIN" //ex. https://localhost:5100
+  "backend": { //Which backend address should be used for email redirect links
+    "Host": "BACKEND_ORIGIN" //ex. https://localhost:5100
   }
 }

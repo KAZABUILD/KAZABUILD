@@ -5,6 +5,7 @@ namespace KAZABUILD.Domain.Enums
     /// </summary>
     public enum PortType
     {
+        OTHER,
         /// <summary>
         /// Outlets connected to the monitor in order to display graphics.
         /// </summary>
@@ -20,7 +21,6 @@ namespace KAZABUILD.Domain.Enums
         /// <summary>
         /// Motherboard and Case pins for connecting devices.
         /// </summary>
-        PIN,
-        OTHER
+        PIN
     }
 }

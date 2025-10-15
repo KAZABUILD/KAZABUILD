@@ -4,9 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding authorization to the app services
+    /// <summary>
+    /// Extension for adding authorization to the app services.
+    /// </summary>
     public static class AuthorizationServiceCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding authorization to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <returns></returns>
         public static IServiceCollection AddRolePolicies(this IServiceCollection services)
         {
             //Add authorization

@@ -27,8 +27,7 @@
         ", suppressTransaction: true);`
    - Add this to the down function:
      - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`
-   - Replace the table_name and field name with proper database context table name and fields used in search in the controller
-    
+   - Replace the table_name and field_name with proper database context table name and fields used in search in the controller
 
 ## NuGet Packages:
 - `MediatR`
@@ -55,16 +54,37 @@
 
 ## Features
 - Swagger Documentation
+  - accessed through `https://localhost:<port_number>/swagger/index.html`
+  - allows the user to test all endpoints and read through description of DTOs and controllers
 - Authentication Middleware
+  - allows the backend to check who the user is
+  - adds authentication from external services
 - Authorization Middleware
+  - divides the backend space access among different groups of people
+  - uses the UserRole enum
+  - the role field in the user model determines user's access level
 - Automatic Validation
+  - the backend automatically checks if user request are correctly formatted and if provided values are in line with the database
 - Rate Limiting
+  - user access to endpoints get restricted if the user sends too many requests
+  - normal users and admins have different restrictions
 - CORS Middleware
+  - backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file
 - RabbitMQ Queues
+  - allows communication with any additional or external services
 - Health Checks Endpoints
+  - can be accessed to check if SMTP, Database and RabbitMQ are working
 - SMTP Email Service
+  - allows the application to verify users emails as well as send users any emails.
 - Hashing Service
+  - passwords, tokens and messages are stored as hashed in the database
 - Guest User Handling Middleware
+  - all users can access the website without an account with limited functionality 
+- Logging service
+  - the application produces logs that can be used for debugging
+  - they can be accessed through log files, console and the database
+- Cleanup Service
+  - tokens and logs get deleted after a while as not to clog the memory
 
 ## Models
 All models have protections against adding invalid values but any call made should be double checked anyway
@@ -95,13 +115,13 @@ All models have protections against adding invalid values but any call made shou
   - `Birth` -> date object storing user's birth date
   - `RegisteredAt` -> date object storing the date the user registered their account
   - `Address` -> an object storing user's address with 7 strings:
-    - `Country`
-    - nullable `Province`
-    - `City`
-    - `Street`
-    - `StreetNumber`
-    - `PostalCode`
-    - nullable `apartmentNumber`
+    - `Country` -> string storing the country the user is from
+    - `Province` -> nullable string storing the country the user is from
+    - `City` -> string storing the city the user is from
+    - `Street` -> string storing the street' name the user is from
+    - `StreetNumber` -> integer storing the number of the street the user is from
+    - `PostalCode` -> string storing the user's postal code
+    - `apartmentNumber` -> nullable integer storing the number of the apartment the user is from
   - `ProfileAccessibility` -> Enum storing who can see user's profile
   - `Theme` -> Enum storing which theme the user uses globally
   - `Language` -> Enum storing which language the user uses globally 
@@ -286,9 +306,9 @@ All models have protections against adding invalid values but any call made shou
   - `External525BayAmount` -> integer storing the number of external spaces for holding Seta or HDD Drives, 5.25 - 133.35 mm width
   - `ExpansionSlotAmount` -> integer storing the number of slots where expansion cards can be inserted
   - `Dimensions` -> an object storing the size of the case in mm:
-    - `Width`
-    - `Height`
-    - `Depth`
+    - `Width` -> decimal storing the width of the case
+    - `Height` -> decimal storing the height of the case
+    - `Depth` -> decimal storing the depth of the case
   - `Volume` -> calculated decimal storing the volume of the case in liters
   - `Weight` -> decimal storing the weight of the case in kg
   - `SupportsRearConnectingMotherboard` -> boolean storing whether the case supports connecting the motherboard in an alternative position
@@ -470,6 +490,53 @@ All models have protections against adding invalid values but any call made shou
 - PortSubComponent (generic port (e.g., USB, HDMI, DisplayPort))
   - `PortType` -> Enum storing the type of the port
 
+- Build (hub for combining components to represent a build on the website)
+  - `Id` -> automatically assigned GUID
+  - `UserId` -> GUID storing the user's id that created the build
+  - `Name` -> string storing the user given name of the build
+  - `Description` -> string storing the user given description of the build
+  - `Status` -> Enum the current status of the build
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- BuildComponent (represents a component being included in a build)
+  - `Id` -> automatically assigned GUID
+  - `BuildId` -> GUID storing the build's id that the component is used in
+  - `ComponentId` -> GUID storing the components's id that is used in the build
+  - `Quantity` -> integer storing the quantity of the component in the build
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- BuildInteraction (represents interactions that a user can have with a build)
+  - `Id` -> automatically assigned GUID
+  - `UserId` -> GUID storing the user's id that interacted with the build
+  - `BuildId` -> GUID storing the build's id that the user interacted with
+  - `IsWishlisted` -> boolean storing whether the user wishlisted the build
+  - `IsLiked` -> boolean storing whether the user liked the build
+  - `Rating` -> integer storing how the user rated the build
+  - `UserNote` -> nullable string storing any user specific information
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- Tag (applied to a pc build to describe and categorize it)
+  - `Id` -> automatically assigned GUID
+  - `Name` -> string storing the name of the tag
+  - `Description` -> string storing the explanation of what the tag is describing
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
+- BuildTag (represents a connection between a build and a tag)
+  - `Id` -> automatically assigned GUID
+  - `BuildId` -> GUID storing the build's id that has the tag assigned
+  - `TagId` -> GUID storing the tag's id that is assigned to the build
+  - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+  - `LastEditedAt` -> date object storing when the entry was last edited
+  - `Note` -> nullable string storing any staff-only information
+
 ## Controller methods
 To see what fields should be provided in an API request check the swagger documentation.
 
@@ -516,3 +583,97 @@ To see what fields should be provided in an API request check the swagger docume
 - `PUT/id` works the same as the normal version except:
   - requires the user to specify what type of subclass to use in order to work properly
   - the user has to provide specific fields correctly for each subclass
+
+### Build related API calls
+These calls work just like the basic ones but they have additional protections since users can interact with builds created by others.
+
+## Enums
+All strings accepted as the enums in the controllers endpoints.
+
+- UserRole
+  - BANNED
+  - GUEST
+  - UNVERIFIED
+  - USER
+  - VIP
+  - MODERATOR
+  - ADMINISTRATOR
+  - OWNER
+  - SYSTEM
+
+- TokenType
+  - LOGIN_2FA
+  - CONFIRM_REGISTER
+  - RESET_PASSWORD
+
+- Theme
+  - DARK
+  - LIGHT
+
+- SubComponentType
+  - PSU_CONNECTOR
+  - COOLER_SOCKET
+  - CPU_CLOCK
+  - CPU_CORE
+  - VIDEO_OUTPUT
+  - CPU_CACHE
+
+- ProfileAccessibility
+  - PUBLIC
+  - PRIVATE
+  - FOLLOWS
+
+- PortType
+  - OTHER
+  - VIDEO
+  - POWER
+  - USB
+  - PIN
+
+- PrivacyLevel
+  - INFORMATION
+  - WARNING
+  - ERROR
+  - CRITICAL
+
+- NotificationType
+  - NONE
+  - REMINDER
+  - OFFER
+  - ADMIN
+
+- MessageType
+  - USER
+  - REQUEST
+  - ADMIN
+  - SYSTEM
+  - AI
+
+- Language
+  - ENGLISH
+  - POLISH
+  - TURKISH
+
+- ComponentType
+  - CASE_FAN
+  - GPU
+  - CPU
+  - MEMORY
+  - MOTHERBOARD
+  - STORAGE
+  - MONITOR
+  - COOLER
+  - POWER_SUPPLY
+  - CASE
+
+- CommentTargetType
+  - BUILD
+  - COMPONENT
+  - REVIEW
+  - FORUM
+
+- CommentTargetType
+  - DRAFT
+  - PUBLISHED
+  - OFFICIAL
+  - GENERATED
