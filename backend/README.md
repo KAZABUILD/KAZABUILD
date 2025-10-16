@@ -31,60 +31,83 @@
 
 ## NuGet Packages:
 - `MediatR`
+  - Simple mediator implementation in for handling requests and notifications
 - `FluentValidation.DependencyInjectionExtensions`
+  - Adds support for dependency injection of FluentValidation validators
 - `Microsoft.AspNetCore.OpenApi`
+  - Provides OpenAPI specification support for ASP.NET Core applications
 - `Microsoft.EntityFrameworkCore`
+  -Core components of Entity Framework Core, an ORM for .NET
 - `Microsoft.EntityFrameworkCore.SqlServer`
+  - SQL Server database provider for Entity Framework Core
 - `Microsoft.EntityFrameworkCore.Tools`
+  - Tools for EF Core commands like migrations and scaffolding
 - `Swashbuckle.AspNetCore`
+  - Generates Swagger API documentation for ASP.NET Core applications
 - `RabbitMQ.Client`
+  - Client library for connecting and interacting with RabbitMQ message broker
 - `Microsoft.AspNetCore.Authentication.JwtBearer`
+  - Enables JWT (JSON Web Token) authentication in ASP.NET Core
 - `Microsoft.Extensions.Options.ConfigurationExtensions`
+  - Supports binding configuration settings to strongly typed options classes
 - `BCrypt.Net-Next`
+  - Library for hashing and verifying passwords using the BCrypt algorithm
 - `Serilog.AspNetCore`
+  - Logging framework integration for ASP.NET Core using Serilog
 - `FluentAssertions`
+  - Library for more readable and expressive unit test assertions
 - `Microsoft.AspNetCore.Mvc.Testing`
+  - Simplifies integration and end-to-end testing of ASP.NET Core applications
 - `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`
+  - Adds health check integration for Entity Framework Core contexts
 - `AspNetCoreRateLimit`
+  - Middleware for rate limiting API requests in ASP.NET Core
 - `System.Linq.Dynamic.Core`
+  - Enables dynamic LINQ queries built from strings at runtime
 - `Microsoft.AspNetCore.Authentication.Google`
+  - Enables Google OAuth 2.0 authentication in ASP.NET Core
 - `Google.Apis.Auth`
+  - Provides tools for authenticating and verifying Google accounts and tokens
 - `Swashbuckle.AspNetCore.Annotations`
+  - Adds annotation support to enhance Swagger documentation
 - `MailKit`
+  - Cross-platform email client library for sending and receiving mail
+- `Bogus`
+  - Library for generating fake data for testing and seeding databases
 
 ## Features
 - Swagger Documentation
-  - accessed through `https://localhost:<port_number>/swagger/index.html`
-  - allows the user to test all endpoints and read through description of DTOs and controllers
+  - Accessed through `https://localhost:<port_number>/swagger/index.html`
+  - Allows the user to test all endpoints and read through description of DTOs and controllers
 - Authentication Middleware
-  - allows the backend to check who the user is
-  - adds authentication from external services
+  - Allows the backend to check who the user is
+  - Adds authentication from external services
 - Authorization Middleware
-  - divides the backend space access among different groups of people
-  - uses the UserRole enum
-  - the role field in the user model determines user's access level
+  - Divides the backend space access among different groups of people
+  - Uses the UserRole enum
+  - The role field in the user model determines user's access level
 - Automatic Validation
-  - the backend automatically checks if user request are correctly formatted and if provided values are in line with the database
+  - The backend automatically checks if user request are correctly formatted and if provided values are in line with the database
 - Rate Limiting
-  - user access to endpoints get restricted if the user sends too many requests
-  - normal users and admins have different restrictions
+  - User access to endpoints get restricted if the user sends too many requests
+  - Normal users and admins have different restrictions
 - CORS Middleware
-  - backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file
+  - Backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file
 - RabbitMQ Queues
-  - allows communication with any additional or external services
+  - Allows communication with any additional or external services
 - Health Checks Endpoints
-  - can be accessed to check if SMTP, Database and RabbitMQ are working
+  - Can be accessed to check if SMTP, Database and RabbitMQ are working
 - SMTP Email Service
-  - allows the application to verify users emails as well as send users any emails.
+  - Allows the application to verify users emails as well as send users any emails.
 - Hashing Service
-  - passwords, tokens and messages are stored as hashed in the database
+  - Passwords, tokens and messages are stored as hashed in the database
 - Guest User Handling Middleware
-  - all users can access the website without an account with limited functionality 
+  - All users can access the website without an account with limited functionality 
 - Logging service
-  - the application produces logs that can be used for debugging
-  - they can be accessed through log files, console and the database
+  - The application produces logs that can be used for debugging
+  - They can be accessed through log files, console and the database
 - Cleanup Service
-  - tokens and logs get deleted after a while as not to clog the memory
+  - Tokens and logs get deleted after a while as not to clog the memory
 
 ## Models
 All models have protections against adding invalid values but any call made should be double checked anyway
@@ -171,6 +194,9 @@ All models have protections against adding invalid values but any call made shou
   - `ParentCommentId` -> nullable GUID storing which comment is being replied to
   - `CommentTargetType` -> Enum storing what type of entity is this commented under
   - `ForumPostId` -> nullable GUID storing which forum post is being replied to
+  - `BuildId` -> nullable GUID storing which build is being replied to
+  - `ComponentId` -> nullable GUID storing which component is being replied to
+  - `ComponentReviewId` -> nullable GUID storing which component review is being replied to
   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
   - `LastEditedAt` -> date object storing when the entry was last edited
   - `Note` -> nullable string storing any staff-only information

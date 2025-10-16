@@ -32,7 +32,7 @@ namespace KAZABUILD.API.Controllers
     /// <param name="backendHost"></param>
     [ApiController]
     [Route("[controller]")]
-    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendSettings> frontend, IOptions<BackendHost> backendHost) : Controller
+    public class AuthController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IAuthorizationService auth, IEmailService smtp, IOptions<FrontendSettings> frontend, IOptions<BackendHost> backendHost) : ControllerBase
     {
         private readonly KAZABUILDDBContext _db = db;
         private readonly IHashingService _hasher = hasher;

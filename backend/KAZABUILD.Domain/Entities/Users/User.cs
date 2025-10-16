@@ -58,6 +58,7 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// User's gender.
+        /// Should be stored as full versions, so Male instead of M.
         /// </summary>
         [Required]
         [StringLength(20, ErrorMessage = "Gender cannot be longer than 20 characters!")]

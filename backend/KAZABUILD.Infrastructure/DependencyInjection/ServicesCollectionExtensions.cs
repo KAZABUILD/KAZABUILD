@@ -42,6 +42,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             services.AddSingleton<IRabbitMQPublisher, RabbitMQPublisher>();
             services.AddHostedService<RabbitMQConsumer>();
 
+            //Add the cleanup service
+            services.AddScoped<IDataSeeder, DataSeeder>();
+
             //Return the services with all the custom services added
             return services;
         }

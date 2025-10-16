@@ -159,7 +159,7 @@ namespace KAZABUILD.API
             //Get the hasher and admin user settings
             var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();
             var SystemAdminSettigns = scope.ServiceProvider.GetRequiredService<IOptions<SystemAdminSetings>>().Value;
-            var SmtpSErviceSettings = scope.ServiceProvider.GetRequiredService<IOptions<SmtpSettings>>().Value;
+            var SmtpServiceSettings = scope.ServiceProvider.GetRequiredService<IOptions<SmtpSettings>>().Value;
 
             //Create the system user if one doesn't already exist
             if (!await dbContext.Users.AnyAsync(u => u.Login == SystemAdminSettigns.Login))
@@ -168,7 +168,7 @@ namespace KAZABUILD.API
                 {
                     Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                     Login = SystemAdminSettigns.Login,
-                    Email = SmtpSErviceSettings.Username,
+                    Email = SmtpServiceSettings.Username,
                     PasswordHash = hasher.Hash(SystemAdminSettigns.Password),
                     DisplayName = SystemAdminSettigns.Login,
                     Description = "System Admin account. Beware!",
