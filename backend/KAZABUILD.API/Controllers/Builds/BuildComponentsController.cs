@@ -87,6 +87,25 @@ namespace KAZABUILD.API.Controllers.Builds
                 return BadRequest(new { message = "Component not found!" });
             }
 
+            //Check if the user hadn't already added this component to the build
+            var buildComponentExists = await _db.BuildComponents.FirstOrDefaultAsync(i => i.ComponentId == dto.ComponentId && i.BuildId == dto.BuildId);
+            if (buildComponentExists != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Component Already In The Build"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Build Component already exists!" });
+            }
+
             //Check if current user has admin permissions or if they are adding a component to their own build
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == build.UserId;

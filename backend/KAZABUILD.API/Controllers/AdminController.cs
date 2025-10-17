@@ -1,5 +1,9 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
+using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Components.Components;
+using KAZABUILD.Domain.Entities.Components.SubComponents;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
@@ -130,8 +134,57 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Seed the database in correct order
-            List<Guid> userIds = await _seeder.SeedAsync<User, Guid>(50, null, null, null, password);
-            await _seeder.SeedAsync<Notification, Guid>(50, userIds, null, null, password);
+            List<Guid> userIds = await _seeder.SeedAsync<User, Guid>(count: 70, password: password);
+            await _seeder.SeedAsync<Notification, Guid>(500, userIds);
+            List<Guid> forumIds = await _seeder.SeedAsync<ForumPost, Guid>(200, userIds);
+
+            //Seed multiple times to test parent messages
+            await _seeder.SeedAsync<Message, Guid>(200, userIds);
+            await _seeder.SeedAsync<Message, Guid>(400, userIds);
+            await _seeder.SeedAsync<Message, Guid>(400, userIds);
+
+            await _seeder.SeedAsync<UserFollow, Guid>(100, userIds);
+            await _seeder.SeedAsync<UserPreference, Guid>(100, userIds);
+
+            //Seed all component variants
+            List<Guid> componentIds = await _seeder.SeedAsync<CaseComponent, Guid>(30);
+            componentIds.AddRange(await _seeder.SeedAsync<CaseFanComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<CoolerComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<CPUComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<GPUComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<MemoryComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<MonitorComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<MotherboardComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<PowerSupplyComponent, Guid>(30));
+            componentIds.AddRange(await _seeder.SeedAsync<StorageComponent, Guid>(30));
+
+            //Seed all subComponent variants
+            List<Guid> subComponentIds = await _seeder.SeedAsync<CoolerSocketSubComponent, Guid>(20);
+            subComponentIds.AddRange(await _seeder.SeedAsync<M2SlotSubComponent, Guid>(20));
+            subComponentIds.AddRange(await _seeder.SeedAsync<IntegratedGraphicsSubComponent, Guid>(20));
+            subComponentIds.AddRange(await _seeder.SeedAsync<OnboardEthernetSubComponent, Guid>(20));
+            subComponentIds.AddRange(await _seeder.SeedAsync<PCIeSlotSubComponent, Guid>(20));
+            subComponentIds.AddRange(await _seeder.SeedAsync<PortSubComponent, Guid>(20));
+
+            //Seed the rest of the component domain tables
+            List<string> colorCodes = await _seeder.SeedAsync<Color, string>(50);
+            await _seeder.SeedAsync<ComponentPart, Guid>(400, componentIds, subComponentIds);
+            await _seeder.SeedAsync<ComponentCompatibility, Guid>(500, componentIds);
+            await _seeder.SeedAsync<ComponentPrice, Guid>(300, componentIds);
+            List<Guid> componentReviewIds = await _seeder.SeedAsync<ComponentReview, Guid>(300, componentIds);
+            await _seeder.SeedAsync<ComponentVariant, Guid>(500, componentIds, idsOptional: colorCodes);
+
+            //Seed all build domain tables
+            List<Guid> buildIds = await _seeder.SeedAsync<Build, Guid>(200, userIds);
+            List<Guid> tagIds = await _seeder.SeedAsync<Tag, Guid>(500);
+            await _seeder.SeedAsync<BuildTag, Guid>(3000, buildIds, tagIds);
+            await _seeder.SeedAsync<BuildComponent, Guid>(1200, buildIds, componentIds);
+            await _seeder.SeedAsync<BuildInteraction, Guid>(2000, userIds, buildIds);
+
+            //Seed multiple times to test parent comments
+            await _seeder.SeedAsync<UserComment, Guid>(500, userIds, forumIds, buildIds, componentIds, componentReviewIds);
+            await _seeder.SeedAsync<UserComment, Guid>(1000, userIds, forumIds, buildIds, componentIds, componentReviewIds);
+            await _seeder.SeedAsync<UserComment, Guid>(1000, userIds, forumIds, buildIds, componentIds, componentReviewIds);
 
             //Log the creation
             await _logger.LogAsync(

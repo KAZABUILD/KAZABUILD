@@ -24,7 +24,7 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
         /// Description of the Build written by the user.
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Description cannot be longer than 500 characters!")]
+        [StringLength(5000, ErrorMessage = "Description cannot be longer than 5000 characters!")]
         public string Description { get; set; } = default!;
 
         /// <summary>

@@ -86,6 +86,25 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "Compatible Component not found!" });
             }
 
+            //Check if the components aren't already set as compatible
+            var compatible = await _db.ComponentCompatibilities.FirstOrDefaultAsync(p => p.ComponentId == dto.ComponentId && p.CompatibleComponentId == dto.CompatibleComponentId);
+            if (compatible != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildInteraction",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Components Already Compatible"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Components already compatible!" });
+            }
+
             //Create a componentCompatibility to add
             ComponentCompatibility componentCompatibility = new()
             {
