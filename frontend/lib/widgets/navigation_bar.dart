@@ -4,6 +4,7 @@ import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
+import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/screens/forum/forums_page.dart';
 import 'package:frontend/screens/profile/profile_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
@@ -374,6 +375,13 @@ class _NavButton extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ForumsPage()),
+            );
+          } else if (title == 'Explore Builds') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ExploreBuildsPage(),
+              ),
             );
           } else {
             print('$title clicked');

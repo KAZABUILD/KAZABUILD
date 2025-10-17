@@ -16,15 +16,15 @@ class PostReply {
 }
 
 class PCComponent {
-  final String type; // e.g., 'CPU', 'GPU'
-  final String name; // e.g., 'AMD Ryzen 7 7800X3D'
+  final String type;
+  final String name;
 
   PCComponent({required this.type, required this.name});
 }
 
 class UserBuild {
   final String id;
-  final String name; // e.g., "My Gaming Rig", "Workstation v2"
+  final String name;
   final List<PCComponent> components;
   final double totalPrice;
 
