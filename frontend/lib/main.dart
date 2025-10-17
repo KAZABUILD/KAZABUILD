@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
 import 'screens/home/homepage.dart';
+import 'screens/extra/spalsh_page.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -22,8 +23,9 @@ class MyApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
 
       themeMode: themeMode,
-      home: const HomePage(),
+
       debugShowCheckedModeBanner: false,
+      home: const SplashScreen(),
     );
   }
 }
