@@ -108,6 +108,8 @@
   - They can be accessed through log files, console and the database
 - Cleanup Service
   - Tokens and logs get deleted after a while as not to clog the memory
+- Seeding Service
+  - Allows developers to generate fake data for testing purposes
 
 ## Models
 All models have protections against adding invalid values but any call made should be double checked anyway
@@ -567,19 +569,19 @@ All models have protections against adding invalid values but any call made shou
 To see what fields should be provided in an API request check the swagger documentation.
 
 ### Basic CRUD API calls
-- `GET/id` gets the specified object from the database using the id:
+- `GET/{id}` gets the specified object from the database using the id:
   - all users have access but returns differing amount of information.
 - `POST/add` creates a new object with elements provided in the Body:
   - usually the user can create objects belonging to them;
   - staff can create objects related to user activity;
   - admins can create any object.
-- `DELETE/id` removes the specified object from the database
+- `DELETE/{id}` removes the specified object from the database
   - usually the user can delete objects belonging to them;
   - staff can delete objects related to user activity;
   - admins can delete any object.
 - `POST/get` gets a list of objects depending on the provided: allowed field values, sort order, page length and number:
   - all users have access but returns differing amount of information.
-- `PUT/id` updates the specified object with the fields provided, only fields specified in the body get updated
+- `PUT/{id}` updates the specified object with the fields provided, only fields specified in the body get updated
   - all users can edit information related to themselves;
   - staff can edit sensitive user related information;
   - admins can modify any object.
@@ -597,7 +599,7 @@ To see what fields should be provided in an API request check the swagger docume
 - `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend
 
 ### Polymorphic class variation API calls
-- `GET/id` works the same as the normal version except:
+- `GET/{id}` works the same as the normal version except:
   - requires the user to specify what type of subclass to use in order to work properly
   - delivers a different response based on the type of subclass requested
 - `POST/add` works the same as the normal version except:
@@ -606,12 +608,18 @@ To see what fields should be provided in an API request check the swagger docume
 - `POST/get` works the same as the normal version except:
   - requires the user to specify what type of subclass to use in order to work properly
   - delivers a set of different responses based on the type of subclass requested
-- `PUT/id` works the same as the normal version except:
+- `PUT/{id}` works the same as the normal version except:
   - requires the user to specify what type of subclass to use in order to work properly
   - the user has to provide specific fields correctly for each subclass
 
 ### Build related API calls
 These calls work just like the basic ones but they have additional protections since users can interact with builds created by others.
+
+### Admin specific API calls
+- `Admin/reset` resets the system_admin user account using data provided in the appsettings.json file
+  - only accessible by super admins
+- `Admin/seed/{password}` generates random fake entries for all tables using in the project
+  - only accessible by super admins during development
 
 ## Enums
 All strings accepted as the enums in the controllers endpoints.
