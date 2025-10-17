@@ -1122,7 +1122,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 {
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
 
-                    b.Property<decimal>("CASLatency")
+                    b.Property<decimal>("ColumnAddressStrobeLatency")
                         .HasPrecision(9, 6)
                         .HasColumnType("decimal(9,6)");
 

@@ -23,7 +23,7 @@ namespace KAZABUILD.Domain.Entities.Builds
         /// Explanation of what the Tag is Describing.
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Description cannot be longer than 500 characters!")]
+        [StringLength(500, ErrorMessage = "Description cannot be longer than 500 characters!")]
         public string Description { get; set; } = default!;
 
         //Additional database information

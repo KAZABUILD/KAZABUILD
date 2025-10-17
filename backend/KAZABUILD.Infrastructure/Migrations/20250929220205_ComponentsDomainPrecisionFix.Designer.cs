@@ -1058,7 +1058,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<decimal>("ThermalDesignPower")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("TotalSlotWidth")
+                    b.Property<int>("TotalSlotAmount")
                         .HasColumnType("int");
 
                     b.Property<decimal>("VideoMemoryAmount")
@@ -1079,7 +1079,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<decimal>("Capacity")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("CASLatency")
+                    b.Property<decimal>("ColumnAddressStrobeLatency")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FormFactor")

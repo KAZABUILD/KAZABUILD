@@ -48,8 +48,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("LastEditedAt")
                         .HasColumnType("datetime2");
@@ -197,8 +197,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("LastEditedAt")
                         .HasColumnType("datetime2");
@@ -1353,8 +1353,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("Height")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasPrecision(7, 4)
+                        .HasColumnType("decimal(7,4)");
 
                     b.Property<decimal>("ModuleCapacity")
                         .HasPrecision(8, 2)

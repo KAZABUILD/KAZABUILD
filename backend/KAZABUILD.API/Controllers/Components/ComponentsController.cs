@@ -841,7 +841,7 @@ namespace KAZABUILD.API.Controllers.Components
                         }
                         if (cpuDto.SupportsECC != null)
                         {
-                            changedFields.Add("SupportsECC: " + ((CPUComponent)component).SupportsECC);
+                            changedFields.Add("SupportsErrorCorrectingCode: " + ((CPUComponent)component).SupportsECC);
 
                             ((CPUComponent)component).SupportsECC = (bool)cpuDto.SupportsECC;
                         }
@@ -969,7 +969,7 @@ namespace KAZABUILD.API.Controllers.Components
                         }
                         if (memoryDto.CASLatency != null)
                         {
-                            changedFields.Add("CASLatency: " + ((MemoryComponent)component).CASLatency);
+                            changedFields.Add("ColumnAddressStrobeLatency: " + ((MemoryComponent)component).CASLatency);
 
                             ((MemoryComponent)component).CASLatency = (decimal)memoryDto.CASLatency;
                         }
@@ -1154,7 +1154,7 @@ namespace KAZABUILD.API.Controllers.Components
                         }
                         if (motherboardDto.SATA6GBsAmount != null)
                         {
-                            changedFields.Add("SATA6GBsAmount: " + ((MotherboardComponent)component).SATA6GBsAmount);
+                            changedFields.Add("SerialATAttachment6GBsAmount: " + ((MotherboardComponent)component).SATA6GBsAmount);
 
                             ((MotherboardComponent)component).SATA6GBsAmount = (int)motherboardDto.SATA6GBsAmount;
                         }

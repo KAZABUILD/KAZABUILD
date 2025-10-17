@@ -114,7 +114,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<bool>("IsLiked")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsWishlisted")
+                    b.Property<bool>("IsWhishlisted")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("LastEditedAt")
@@ -1076,7 +1076,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<bool>("SupportsECC")
+                    b.Property<bool>("SupportsErrorCorrectingCode")
                         .HasColumnType("bit");
 
                     b.Property<bool>("SupportsSimultaneousMultithreading")
@@ -1294,7 +1294,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasPrecision(6, 2)
                         .HasColumnType("decimal(6,2)");
 
-                    b.Property<int>("TotalSlotAmount")
+                    b.Property<int>("TotalSlotWidth")
                         .HasColumnType("int");
 
                     b.Property<decimal>("VideoMemoryAmount")
@@ -1313,7 +1313,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                 {
                     b.HasBaseType("KAZABUILD.Domain.Entities.Components.Components.BaseComponent");
 
-                    b.Property<decimal>("CASLatency")
+                    b.Property<decimal>("ColumnAddressStrobeLatency")
                         .HasPrecision(9, 6)
                         .HasColumnType("decimal(9,6)");
 
@@ -1510,10 +1510,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<int?>("RGB12vHeaderAmount")
                         .HasColumnType("int");
 
-                    b.Property<int>("SATA3GBsAmount")
+                    b.Property<int>("SerialATAttachment3GBsAmount")
                         .HasColumnType("int");
 
-                    b.Property<int>("SATA6GBsAmount")
+                    b.Property<int>("SerialATAttachment6GBsAmount")
                         .HasColumnType("int");
 
                     b.Property<string>("SocketType")

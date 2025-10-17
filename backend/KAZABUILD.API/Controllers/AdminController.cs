@@ -18,7 +18,7 @@ namespace KAZABUILD.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings) : ControllerBase
+    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings, IWebHostEnvironment env) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -28,6 +28,7 @@ namespace KAZABUILD.API.Controllers
         private readonly IDataSeeder _seeder = seeder;
         private readonly SystemAdminSetings _systemAdminSettigns = systemAdminSettigns.Value;
         private readonly SmtpSettings _smtpServiceSettings = SmtpServiceSettings.Value;
+        private readonly IWebHostEnvironment _env = env;
 
         /// <summary>
         /// Allows the super admins to reset the system admin account in case of data breach.
@@ -126,6 +127,10 @@ namespace KAZABUILD.API.Controllers
         [Authorize(Policy = "SuperAdmins")]
         public async Task<IActionResult> Seed(string password)
         {
+            //Only allowed in development
+            if (!_env.IsDevelopment())
+                return Forbid("Seeding is only allowed in Development environment!");
+
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 

@@ -48,6 +48,9 @@ namespace KAZABUILD.Infrastructure.Services
             //List storing the return ids
             var savedIds = new List<T2>();
 
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+
             //Add and save the entities to the database
             foreach (var entity in entities)
             {
@@ -60,7 +63,7 @@ namespace KAZABUILD.Infrastructure.Services
                     await _context.SaveChangesAsync();
 
                     //Add the ids to the return list
-                    var id = (T2)entity.GetType().GetProperty("Id")!.GetValue(entity)! ?? (T2)entity.GetType().GetProperty("ColorCode")!.GetValue(entity)!;
+                    var id = entity.GetType().GetProperty("Id") != null ? (T2)entity.GetType().GetProperty("Id")!.GetValue(entity)! : (T2)entity.GetType().GetProperty("ColorCode")!.GetValue(entity)!;
 
                     //Throw an exception if no id found
                     if (id == null) throw new InvalidOperationException($"No ID property found for {typeof(T).Name}");
@@ -74,6 +77,8 @@ namespace KAZABUILD.Infrastructure.Services
                     _context.ChangeTracker.Clear();
                 }
             }
+
+            _context.ChangeTracker.AutoDetectChangesEnabled = true;
 
             //Return the ids for the seeded table rows
             return savedIds;
@@ -369,7 +374,11 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(m => m.SenderId, f => f.PickRandom(userIds))
             .RuleFor(m => m.ReceiverId, f => f.PickRandom(userIds))
             .RuleFor(m => m.Content, f => f.Lorem.Paragraphs(1))
-            .RuleFor(m => m.Title, f => f.Lorem.Sentence(3)[..Math.Min(f.Lorem.Sentence(3).Length, 50)])
+            .RuleFor(m => m.Title, f =>
+            {
+                var title = f.Lorem.Sentence(3);
+                return title[..Math.Min(title.Length, 50)];
+            })
             .RuleFor(m => m.SentAt, f => f.Date.Recent(30))
             .RuleFor(m => m.IsRead, f => f.Random.Bool(0.5f))
             .RuleFor(m => m.ParentMessageId, f =>

@@ -403,7 +403,7 @@ All models have protections against adding invalid values but any call made shou
   - `Length` ->  decimal storing the length of the GPU in mm
   - `ThermalDesignPower` ->  decimal storing the maximum heat the CPU can generate in Watts
   - `CaseExpansionSlotWidth` -> integer storing the number of case expansion slots the GPU occupies
-  - `TotalSlotAmount` -> integer storing the total number of expansion slots the GPU occupies, accounting for the cooler size
+  - `TotalSlotWidth` -> integer storing the total number of expansion slots the GPU occupies, accounting for the cooler size
   - `CoolingType` -> string storing the type of cooling solution
 
 - MemoryComponent (stores data used by application currently running on the computer)
