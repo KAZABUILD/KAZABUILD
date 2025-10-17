@@ -22,13 +22,16 @@ dependencies:
   intl: ^0.20.2
   flutter_3d_controller: ^2.3.0
   flutter_svg: ^2.2.1
-
+  flutter_staggered_animations: ^1.1.1 
+  flutter_quill: ^11.4.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.13  # Stable version compatible with Dart 3.9.2
-  json_serializable: ^6.8.0  # Compatible with build_runner 2.4.13
+  json_serializable: ^6.8.0
+   # Compatible with build_runner 2.4.13
 
 dependency_overrides:
   analyzer: ^6.0.0  # Aligns with build_runner, json_serializable, and intl_utils
