@@ -1,8 +1,7 @@
-﻿namespace KAZABUILD.Tests.ControllerServices;
+﻿using System.Net.Http.Json;
+using KAZABUILD.Application.DTOs.Users.ForumPost;
 
-using System.Net.Http.Json;
-using Application.DTOs.Users.ForumPost;
-
+namespace KAZABUILD.Tests.ControllerServices;
 public class ForumPostsControllerClient
 {
     private readonly HttpClient _client;
