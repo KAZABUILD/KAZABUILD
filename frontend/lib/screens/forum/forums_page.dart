@@ -14,6 +14,7 @@ class ForumsPage extends StatefulWidget {
 }
 
 class _ForumsPageState extends State<ForumsPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String _selectedCategory = 'All';
   String _searchQuery = '';
   String _selectedSortOption = 'Newest';
@@ -87,10 +88,12 @@ class _ForumsPageState extends State<ForumsPage> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          const CustomNavigationBar(),
+          CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,

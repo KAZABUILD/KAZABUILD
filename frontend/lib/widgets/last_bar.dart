@@ -10,25 +10,42 @@ class LastBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 40),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 100, vertical: 40),
       color: Colors.black.withValues(alpha: 0.3),
       child: Column(
         children: [
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _FooterColumn(
-                title: 'Links',
-                items: ['Home', 'Builds', 'Guides', 'Forums'],
-              ),
-              SizedBox(width: 80),
-              _FooterColumn(
-                title: 'Info',
-                items: ['About Us', 'Contact & Feedback'],
-              ),
-            ],
-          ),
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FooterColumn(
+                      title: 'Links',
+                      items: ['Home', 'Builds', 'Guides', 'Forums'],
+                    ),
+                    SizedBox(height: 40),
+                    const _FooterColumn(
+                      title: 'Info',
+                      items: ['About Us', 'Contact & Feedback'],
+                    ),
+                  ],
+                )
+              : const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FooterColumn(
+                      title: 'Links',
+                      items: ['Home', 'Builds', 'Guides', 'Forums'],
+                    ),
+                    SizedBox(width: 80),
+                    _FooterColumn(
+                      title: 'Info',
+                      items: ['About Us', 'Contact & Feedback'],
+                    ),
+                  ],
+                ),
           const Divider(color: Colors.white24, height: 60),
           const Text(
             '© KAZA BUILD',

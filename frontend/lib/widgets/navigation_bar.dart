@@ -23,12 +23,29 @@ class PcPart {
 
 class CustomNavigationBar extends ConsumerWidget {
   final bool showProfileArea;
-  const CustomNavigationBar({super.key, this.showProfileArea = true});
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+
+  const CustomNavigationBar({
+    super.key,
+    this.showProfileArea = true,
+    this.scaffoldKey,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Use drawer for screens smaller than 1000px
+    if (screenWidth < 1000) {
+      return _MobileAppBar(
+        showProfileArea: showProfileArea,
+        scaffoldKey: scaffoldKey,
+      );
+    }
+
+    // Desktop navigation bar
     final user = ref.watch(authProvider);
 
     return Container(
@@ -41,7 +58,7 @@ class CustomNavigationBar extends ConsumerWidget {
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const HomePage()),
-                (Route<dynamic> route) => false,
+                    (Route<dynamic> route) => false,
               );
             },
             borderRadius: BorderRadius.circular(8),
@@ -50,7 +67,7 @@ class CustomNavigationBar extends ConsumerWidget {
                 Icon(Icons.build, color: colorScheme.primary, size: 28),
                 const SizedBox(width: 8),
                 const Text(
-                  'Kaza Build',
+                  'KazaBuild',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                 ),
               ],
@@ -76,6 +93,256 @@ class CustomNavigationBar extends ConsumerWidget {
               const SizedBox(width: 15),
               const ThemeToggleButton(),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileAppBar extends ConsumerWidget {
+  final bool showProfileArea;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+
+  const _MobileAppBar({
+    required this.showProfileArea,
+    this.scaffoldKey,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: colorScheme.surface,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              if (scaffoldKey?.currentState != null) {
+                scaffoldKey!.currentState!.openDrawer();
+              } else {
+                Scaffold.of(context).openDrawer();
+              }
+            },
+          ),
+          InkWell(
+            onTap: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const HomePage()),
+                    (Route<dynamic> route) => false,
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Icon(Icons.build, color: colorScheme.primary, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  'KazaBuild',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              ThemeToggleButton(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CustomDrawer extends ConsumerWidget {
+  final bool showProfileArea;
+  const CustomDrawer({super.key, this.showProfileArea = true});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final user = ref.watch(authProvider);
+
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(
+                  Icons.build,
+                  color: theme.colorScheme.onPrimary,
+                  size: 40,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Kaza Build',
+                  style: TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showProfileArea && user != null) ...[
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                backgroundImage: user.photoURL != null
+                    ? NetworkImage(user.photoURL!)
+                    : null,
+                child: user.photoURL == null
+                    ? Text(user.username.substring(0, 1).toUpperCase())
+                    : null,
+              ),
+              title: Text(user.username),
+              subtitle: const Text('View Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage()),
+                );
+              },
+            ),
+            const Divider(),
+          ],
+          if (showProfileArea && user == null) ...[
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Sign In'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_add),
+              title: const Text('Sign Up'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignUpPage()),
+                );
+              },
+            ),
+            const Divider(),
+          ],
+          ListTile(
+            leading: const Icon(Icons.construction),
+            title: const Text('Build Now'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BuildNowPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.explore),
+            title: const Text('Explore Builds'),
+            onTap: () {
+              Navigator.pop(context);
+              // Add your navigation here
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.book),
+            title: const Text('Guides'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GuidesPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.forum),
+            title: const Text('Forums'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ForumsPage()),
+              );
+            },
+          ),
+          const Divider(),
+          ExpansionTile(
+            leading: const Icon(Icons.category),
+            title: const Text('Parts'),
+            children: _PartsDropdownMenu.parts.map((part) {
+              return ListTile(
+                leading: Icon(part.icon, size: 20),
+                title: Text(part.name),
+                contentPadding: const EdgeInsets.only(left: 72, right: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PartPickerPage(
+                        componentType: part.type,
+                        currentBuild: const [],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          ),
+          if (showProfileArea && user != null) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Log Out'),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(authProvider.notifier).signOut();
+              },
+            ),
+          ],
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: const [
+                LanguageSelector(),
+              ],
+            ),
           ),
         ],
       ),

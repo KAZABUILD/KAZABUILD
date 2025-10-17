@@ -11,16 +11,20 @@ class GuidesPage extends StatefulWidget {
 }
 
 class _GuidesPageState extends State<GuidesPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          const CustomNavigationBar(),
+          CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
             child: SingleChildScrollView(
               child: Column(

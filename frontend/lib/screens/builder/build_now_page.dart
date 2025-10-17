@@ -24,7 +24,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   void addComponent(BaseComponent newProduct) {
     final currentState = List<PcComponent>.from(state);
     final componentIndex = currentState.indexWhere(
-      (c) => c.type == newProduct.type,
+          (c) => c.type == newProduct.type,
     );
 
     if (componentIndex != -1) {
@@ -45,8 +45,8 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 }
 
 final buildProvider = StateNotifierProvider<BuildNotifier, List<PcComponent>>((
-  ref,
-) {
+    ref,
+    ) {
   return BuildNotifier();
 });
 
@@ -72,6 +72,7 @@ class BuildNowPage extends ConsumerStatefulWidget {
 }
 
 class _BuildNowPageState extends ConsumerState<BuildNowPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final String buildLink = 'https://kazabuild.com/b/somerandom123';
 
   final List<PcComponent> _components = [
@@ -93,7 +94,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   double get _totalPrice {
     return _components.fold(
       0.0,
-      (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
+          (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
     );
   }
 
@@ -127,16 +128,19 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isMobile = MediaQuery.of(context).size.width < 700;
 
     final selectedCurrency = ref.watch(currencyProvider);
     final currencyData = currencyDetails[selectedCurrency]!;
     final convertedPrice = _totalPrice * currencyData.exchangeRate;
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          const CustomNavigationBar(),
+          CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -149,6 +153,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     totalPrice: convertedPrice,
                     currencyData: currencyData,
                     estimatedWattage: _estimatedWattage,
+                    isMobile: isMobile,
                   ),
                   if (!_isBuildEmpty) ...[
                     const SizedBox(height: 16),
@@ -157,6 +162,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       totalPrice: convertedPrice,
                       currencyData: currencyData,
                       statusMessage: _compatibilityStatus,
+                      isMobile: isMobile,
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -170,15 +176,15 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     },
                     onAdd: (index) async {
                       final selectedComponent =
-                          await Navigator.push<BaseComponent>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PartPickerPage(
-                                componentType: _components[index].type,
-                                currentBuild: _components,
-                              ),
-                            ),
-                          );
+                      await Navigator.push<BaseComponent>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartPickerPage(
+                            componentType: _components[index].type,
+                            currentBuild: _components,
+                          ),
+                        ),
+                      );
 
                       if (selectedComponent != null && mounted) {
                         setState(() {
@@ -187,6 +193,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                         });
                       }
                     },
+                    isMobile: isMobile,
                   ),
                 ],
               ),
@@ -205,6 +212,7 @@ class _TopBar extends StatelessWidget {
   final double totalPrice;
   final CurrencyData currencyData;
   final int estimatedWattage;
+  final bool isMobile; // Added isMobile
 
   const _TopBar({
     required this.theme,
@@ -213,6 +221,7 @@ class _TopBar extends StatelessWidget {
     required this.totalPrice,
     required this.currencyData,
     required this.estimatedWattage,
+    required this.isMobile, // Added isMobile
   });
 
   String _generateRedditMarkup() {
@@ -242,7 +251,75 @@ class _TopBar extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: isMobile
+          ? Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.link, size: 20),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: buildLink));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Build link copied to clipboard!'),
+                    ),
+                  );
+                },
+                tooltip: 'Copy build link',
+              ),
+              Expanded(
+                  child: Text(buildLink, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text('Markup:'),
+              IconButton(
+                onPressed: () {
+                  final markup = _generateRedditMarkup();
+                  Clipboard.setData(ClipboardData(text: markup));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reddit Markup copied to clipboard!'),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.code),
+                tooltip: 'Copy Reddit Markup',
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.send, size: 18),
+                label: const Text('Post Build'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.secondary,
+                  foregroundColor: theme.colorScheme.onSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('New Build'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Estimated wattage: ${estimatedWattage}W'),
+        ],
+      )
+          : Row(
         children: [
           IconButton(
             icon: const Icon(Icons.link, size: 20),
@@ -305,12 +382,14 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
   final double totalPrice;
   final CurrencyData currencyData;
   final String statusMessage;
+  final bool isMobile; // Added isMobile
 
   const _CompatibilityAndPriceBar({
     required this.theme,
     required this.totalPrice,
     required this.currencyData,
     required this.statusMessage,
+    required this.isMobile, // Added isMobile
   });
 
   @override
@@ -325,7 +404,70 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
             : const Color(0xFF0C4F2A),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: isMobile
+          ? Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasIssues ? Icons.warning_amber : Icons.check_circle,
+                color:
+                hasIssues ? theme.colorScheme.error : Colors.greenAccent,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  statusMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'Total Price: ',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+              DropdownButton<Currency>(
+                value: ref.watch(currencyProvider),
+                onChanged: (Currency? newCurrency) {
+                  if (newCurrency != null) {
+                    ref.read(currencyProvider.notifier).setCurrency(newCurrency);
+                  }
+                },
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                underline: const SizedBox(),
+                items: Currency.values.map((Currency currency) {
+                  return DropdownMenuItem<Currency>(
+                    value: currency,
+                    child: Text(
+                      currencyDetails[currency]!.symbol,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              Text(
+                totalPrice.toStringAsFixed(2),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      )
+          : Row(
         children: [
           Icon(
             hasIssues ? Icons.warning_amber : Icons.check_circle,
@@ -384,12 +526,14 @@ class _ComponentTable extends StatelessWidget {
   final List<PcComponent> components;
   final Function(int) onRemove;
   final Function(int) onAdd;
+  final bool isMobile; // Added isMobile
 
   const _ComponentTable({
     required this.theme,
     required this.components,
     required this.onRemove,
     required this.onAdd,
+    required this.isMobile, // Added isMobile
   });
 
   @override
@@ -404,7 +548,96 @@ class _ComponentTable extends StatelessWidget {
         color: theme.colorScheme.surface.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
+      child: isMobile
+          ? Column(
+        children: List.generate(components.length, (index) {
+          final component = components[index];
+          final product = component.selectedProduct;
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            elevation: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    component.name,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product == null
+                        ? 'No part selected.'
+                        : product.name,
+                    style: product == null
+                        ? TextStyle(
+                      color: Colors.grey.shade400,
+                      fontStyle: FontStyle.italic,
+                    )
+                        : theme.textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      product == null
+                          ? '-'
+                          : '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  product == null
+                      ? Center(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Part'),
+                      onPressed: () => onAdd(index),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  )
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          color: theme.colorScheme.secondary,
+                          size: 20,
+                        ),
+                        onPressed: () => onAdd(index),
+                        tooltip: 'Change ${component.name}',
+                        splashRadius: 20,
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                          size: 20,
+                        ),
+                        onPressed: () => onRemove(index),
+                        tooltip: 'Remove ${component.name}',
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      )
+          : Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -463,16 +696,16 @@ class _ComponentTable extends StatelessWidget {
                     flex: 4,
                     child: product == null
                         ? Text(
-                            'No part selected.',
-                            style: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          )
+                      'No part selected.',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
                         : Text(
-                            product.name,
-                            style: const TextStyle(fontSize: 14),
-                          ),
+                      product.name,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                   Expanded(
                     flex: 2,
@@ -491,44 +724,44 @@ class _ComponentTable extends StatelessWidget {
                     width: 120,
                     child: product == null
                         ? Center(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('Add Part'),
-                              onPressed: () => onAdd(index),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: theme.colorScheme.onPrimary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  Icons.edit_outlined,
-                                  color: theme.colorScheme.secondary,
-                                  size: 20,
-                                ),
-                                onPressed: () => onAdd(index),
-                                tooltip: 'Change ${component.name}',
-                                splashRadius: 20,
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.delete_outline,
-                                  color: theme.colorScheme.error,
-                                  size: 20,
-                                ),
-                                onPressed: () => onRemove(index),
-                                tooltip: 'Remove ${component.name}',
-                                splashRadius: 20,
-                              ),
-                            ],
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Part'),
+                        onPressed: () => onAdd(index),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                        ),
+                      ),
+                    )
+                        : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: theme.colorScheme.secondary,
+                            size: 20,
+                          ),
+                          onPressed: () => onAdd(index),
+                          tooltip: 'Change ${component.name}',
+                          splashRadius: 20,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                            size: 20,
+                          ),
+                          onPressed: () => onRemove(index),
+                          tooltip: 'Remove ${component.name}',
+                          splashRadius: 20,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -16,6 +16,7 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
 
   final _birthDateController = TextEditingController();
@@ -58,10 +59,12 @@ class _SignUpPageState extends State<SignUpPage> {
     );
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: false),
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          const CustomNavigationBar(showProfileArea: false),
+          CustomNavigationBar(showProfileArea: false, scaffoldKey: _scaffoldKey),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {

@@ -14,6 +14,7 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -21,10 +22,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: false),
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          const CustomNavigationBar(showProfileArea: false),
+          CustomNavigationBar(showProfileArea: false, scaffoldKey: _scaffoldKey),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
