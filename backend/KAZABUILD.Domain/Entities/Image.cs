@@ -61,13 +61,22 @@ namespace KAZABUILD.Domain.Entities
         public Guid? UserCommentId { get; set; }
 
         /// <summary>
-        /// Name that the image is saved under in the storage.
-        /// Includes the name of the folder it's saved in, (e.g., wwwroot/filename.png).
+        /// Name which is used for the image in the html.
+        /// Can be used to match the returned images to their proper name.
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Name cannot be longer than 255 characters!")]
-        [MinLength(3, ErrorMessage = "Name must be at least 5 characters long!")]
+        [MinLength(3, ErrorMessage = "Name must be at least 3 characters long!")]
         public string Name { get; set; } = default!;
+
+        /// <summary>
+        /// Location where the image is saved in the storage.
+        /// Includes the name of the folder it's saved in, (e.g., wwwroot/filename.png).
+        /// </summary>
+        [Required]
+        [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
+        [MinLength(5, ErrorMessage = "Location must be at least 5 characters long!")]
+        public string Location { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]

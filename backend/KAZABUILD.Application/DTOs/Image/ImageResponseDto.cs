@@ -9,19 +9,11 @@ namespace KAZABUILD.Application.DTOs.Image
 
         public ImageLocationType? LocationType { get; set; }
 
-        public Guid? UserId { get; set; }
-
-        public Guid? BuildId { get; set; }
-
-        public Guid? ForumPostId { get; set; }
-
-        public Guid? ComponentId { get; set; }
-
-        public Guid? SubComponentId { get; set; }
-
-        public Guid? UserCommentId { get; set; }
+        public Guid? TargetId { get; set; }
 
         public string? Name { get; set; }
+
+        public string? Location { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

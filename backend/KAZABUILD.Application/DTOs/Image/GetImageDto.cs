@@ -6,19 +6,19 @@ namespace KAZABUILD.Application.DTOs.Image
     public class GetImageDto
     {
         //Filter By fields
-        public ImageLocationType LocationType { get; set; }
+        public List<ImageLocationType>? LocationType { get; set; }
 
-        public Guid? UserId { get; set; }
+        public List<Guid>? UserId { get; set; }
 
-        public Guid? BuildId { get; set; }
+        public List<Guid>? BuildId { get; set; }
 
-        public Guid? ForumPostId { get; set; }
+        public List<Guid>? ForumPostId { get; set; }
 
-        public Guid? ComponentId { get; set; }
+        public List<Guid>? ComponentId { get; set; }
 
-        public Guid? SubComponentId { get; set; }
+        public List<Guid>? SubComponentId { get; set; }
 
-        public Guid? UserCommentId { get; set; }
+        public List<Guid>? UserCommentId { get; set; }
 
         //Paging related fields
         /// <summary>
