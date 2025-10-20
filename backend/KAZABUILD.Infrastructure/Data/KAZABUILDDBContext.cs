@@ -17,6 +17,7 @@ namespace KAZABUILD.Infrastructure.Data
         }
 
         //General tables
+        public DbSet<Image> Images { get; set; } = default!;
         public DbSet<Log> Logs { get; set; } = default!;
 
         //User related tables
@@ -439,6 +440,51 @@ namespace KAZABUILD.Infrastructure.Data
                     j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
                     j => j.HasOne<Build>().WithMany().HasForeignKey("BuildId")
                 );
+
+            //====================================== IMAGE ======================================//
+
+            //Configure ImageTargetType enum as string
+            modelBuilder
+                .Entity<Image>()
+                .Property(u => u.LocationType)
+                .HasConversion<string>();
+
+            //Register relationships, restrict cascade deletes, image deletes should be handled in the controllers
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.ForumPost)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.ForumPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.Component)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.ComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.SubComponent)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.SubComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.Build)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.BuildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.UserComment)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(c => c.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
