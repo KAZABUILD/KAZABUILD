@@ -48,7 +48,7 @@ namespace KAZABUILD.Domain.Entities.Users
         /// </summary>
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
         [Url(ErrorMessage = "Invalid Link URL!")]
-        public string? LinkUrl { get; set; } = default!;
+        public string? LinkUrl { get; set; }
 
         /// <summary>
         /// Date that the notification will be or was sent/received.

@@ -121,6 +121,7 @@ namespace KAZABUILD.API.Controllers
 
         /// <summary>
         /// Seeds the database with random fake data.
+        /// Only accessible in development.
         /// </summary>
         /// <returns></returns>
         [HttpPost("seed/{password}")]
@@ -210,6 +211,59 @@ namespace KAZABUILD.API.Controllers
 
             //Return success response
             return Ok(new { message = "Database seeded successfully!" });
+        }
+
+        /// <summary>
+        /// Allows the super admins to reset the whole database.
+        /// Only accessible in development.
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("reset-database")]
+        [Authorize(Policy = "SuperAdmins")]
+        public async Task<IActionResult> ResetDatabase()
+        {
+            //Only allowed in development
+            if (!_env.IsDevelopment())
+                return Forbid("Seeding is only allowed in Development environment!");
+
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Get all table names
+            var tableNames = _db.Model.GetEntityTypes()
+                .Select(t => t.GetTableName())
+                .Distinct()
+                .ToList();
+
+            //Go through every table and reset them
+            foreach (var tableName in tableNames)
+            {
+                _db.Database.ExecuteSql($"DELETE FROM [{tableName}]");
+            }
+
+            //Log the creation
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Admin",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.WARNING,
+                "Successful Operation - Database Reset"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("admin.database.reset", new
+            {
+                resetBy = currentUserId
+            });
+
+            //Return success response
+            return Ok(new { message = "Database reset successfully!" });
         }
     }
 }
