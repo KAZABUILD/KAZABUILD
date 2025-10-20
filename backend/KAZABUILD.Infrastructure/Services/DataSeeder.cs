@@ -461,7 +461,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(c => c.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null)
             .RuleFor(c => c.FormFactor, f => f.PickRandom(caseFormFactors))
             .RuleFor(c => c.PowerSupplyShrouded, f => f.Random.Bool())
-            .RuleFor(c => c.PowerSupplyAmount, (f, c) => c.PowerSupplyShrouded && f.Random.Bool(0.5f) ? f.Random.Decimal(300, 1000) : null)
+            .RuleFor(c => c.PowerSupplyAmount, f => f.Random.Bool(0.5f) ? f.Random.Decimal(300, 1000) : null)
             .RuleFor(c => c.HasTransparentSidePanel, f => f.Random.Bool(0.6f))
             .RuleFor(c => c.SidePanelType, (f, c) => c.HasTransparentSidePanel ? f.PickRandom(transparentSidePanels) : f.PickRandom(sidePanels))
             .RuleFor(c => c.MaxVideoCardLength, f => f.Random.Decimal(200, 450))
@@ -474,7 +474,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(c => c.Dimensions, f => new Dimension
             {
                 Height = f.Random.Decimal(350, 600),
-                Width = f.Random.Decimal(180, 250),
+                Width = f.Random.Decimal(180, 400),
                 Depth = f.Random.Decimal(350, 550)
             })
             .RuleFor(c => c.Weight, f => f.Random.Decimal(4, 18))
@@ -570,7 +570,7 @@ namespace KAZABUILD.Infrastructure.Services
         private static readonly string[] cpuIntelMicroarchitectures = ["Alder Lake", "Raptor Lake", "Meteor Lake", "Arrow Lake", "Sapphire Rapids"];
         private static readonly string[] cpuIntelCoreFamilies = ["Raptor Cove", "Golden Cove", "Gracemont"];
         private static readonly string[] cpuIntelSocketTypes = ["LGA 1700", "LGA 1851", "LGA 4677"];
-        private static readonly string[] cpuIntelLithographies = ["Intel 10nm", "Intel 7", "Intel 4"];
+        private static readonly string[] cpuIntelLithographies = ["High-NA EUV", "Intel 3", "Intel 4"];
         private static readonly string[] cpuAMDSeries = ["Ryzen 3", "Ryzen 5", "Ryzen 7", "Ryzen 9", "Threadripper"];
         private static readonly string[] cpuAMDMicroarchitectures = ["Zen 2", "Zen 3", "Zen 4", "Zen 5"];
         private static readonly string[] cpuAMDCoreFamilies = ["Granite Ridge", "Raphael", "Matisse"];
@@ -592,7 +592,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(c => c.Microarchitecture, (f, c) => c.Manufacturer == "Intel" ? f.PickRandom(cpuIntelMicroarchitectures) : f.PickRandom(cpuAMDMicroarchitectures))
             .RuleFor(c => c.CoreFamily, (f, c) => c.Manufacturer == "Intel" ? f.PickRandom(cpuIntelCoreFamilies) : f.PickRandom(cpuAMDCoreFamilies))
             .RuleFor(c => c.SocketType, (f, c) => c.Manufacturer == "Intel" ? f.PickRandom(cpuIntelSocketTypes) : f.PickRandom(cpuAMDSocketTypes))
-            .RuleFor(c => c.CoreTotal, f => f.Random.Int(2, 64))
+            .RuleFor(c => c.CoreTotal, f => f.Random.Int(2, 256))
             .RuleFor(c => c.PerformanceAmount, (f, c) => c.CoreTotal > 8 && f.Random.Bool(0.5f) ? f.Random.Int(4, c.CoreTotal - 2) : null)
             .RuleFor(c => c.EfficiencyAmount, (f, c) => c.PerformanceAmount.HasValue ? c.CoreTotal - c.PerformanceAmount.Value : null)
             .RuleFor(c => c.ThreadsAmount, (f, c) => c.SupportsSimultaneousMultithreading ? c.CoreTotal * 2 : c.CoreTotal)

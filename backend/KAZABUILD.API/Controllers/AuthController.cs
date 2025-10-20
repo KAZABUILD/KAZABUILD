@@ -572,7 +572,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Create the confirmation backend call link
-            var confirmUrl = $"{_backendHost}/auth/confirm-register?token={token.Token}&userId={user.Id}";
+            var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={token.Token}&userId={user.Id}";
             //Create the email message body with html
             var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
@@ -778,7 +778,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Create the confirmation backend call link
-            var confirmUrl = $"{_backendHost}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
+            var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
 
             //Create the email message body with html
             var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
