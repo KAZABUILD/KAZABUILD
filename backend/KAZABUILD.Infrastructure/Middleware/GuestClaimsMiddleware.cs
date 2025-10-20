@@ -5,12 +5,21 @@ using System.Security.Claims;
 
 namespace KAZABUILD.Infrastructure.Middleware
 {
-    //Custom middleware that makes is so anonymous users are treated as guests
+    /// <summary>
+    /// Custom middleware that makes is so anonymous users are treated as guests.
+    /// </summary>
+    /// <param name="next"></param>
     public class GuestClaimsMiddleware(RequestDelegate next)
     {
         //Variable storing the part of the pipeline
         private readonly RequestDelegate _next = next;
 
+        /// <summary>
+        /// Function inserted in the API request process.
+        /// Adds a claim for any anonymous user.
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public async Task Invoke(HttpContext context)
         {
             //Check if the user doesn't have a claim already

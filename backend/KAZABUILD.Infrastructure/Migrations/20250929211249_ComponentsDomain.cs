@@ -337,7 +337,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     RAMType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     FormFactor = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Capacity = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    CASLatency = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ColumnAddressStrobeLatency = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Timings = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     ModuleQuantity = table.Column<int>(type: "int", nullable: false),
                     ModuleCapacity = table.Column<decimal>(type: "decimal(18,2)", nullable: false)

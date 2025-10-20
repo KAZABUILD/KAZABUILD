@@ -8,9 +8,17 @@ using JwtSettings = KAZABUILD.Application.Settings.JwtSettings;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding authentication to the app services
+    /// <summary>
+    /// Extension for adding authentication to the app services.
+    /// </summary>
     public static class AuthenticationServiceCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding authentication to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="config"></param>
+        /// <returns></returns>
         public static IServiceCollection AddAppAuthentication(this IServiceCollection services, IConfiguration config)
         {
             //Get jwt information from saved settings

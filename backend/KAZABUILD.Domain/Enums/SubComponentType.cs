@@ -5,11 +5,11 @@ namespace KAZABUILD.Domain.Enums
     /// </summary>
     public enum SubComponentType
     {
-        PSU_CONNECTOR,
-        COOLER_SOCKET,
-        CPU_CLOCK,
-        CPU_CORE,
-        VIDEO_OUTPUT,
-        CPU_CACHE
+        COOLER_SCOKET,
+        INTEGRATED_GRAPHICS,
+        M2_SLOT,
+        ONBOARD_ETHERNET,
+        PCIE_SLOT,
+        PORT
     }
 }

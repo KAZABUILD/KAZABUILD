@@ -4,9 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding health checks to the app services
+    /// <summary>
+    /// Extension for adding health checks to the app services.
+    /// </summary>
     public static class HealthCheckServiceCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding health checks to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <returns></returns>
         public static IServiceCollection AddAppHealthChecks(this IServiceCollection services)
         {
             //Add health checks
@@ -15,7 +22,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .AddCheck<RabbitMQHealthCheck>("RabbitMQ")
                 .AddCheck<SmtpHealthCheck>("SMTP");
 
-            //Return the services with added health chcks
+            //Return the services with added health checks
             return services;
         }
     }

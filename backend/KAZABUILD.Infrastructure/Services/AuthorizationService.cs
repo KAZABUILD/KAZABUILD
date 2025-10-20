@@ -19,7 +19,7 @@ namespace KAZABUILD.Infrastructure.Services
         private readonly JwtSettings _jwt = jwtOptions.Value;
 
         /// <summary>
-        /// Generates tokens based on provided user data.
+        /// Generates JWT tokens based on provided user data.
         /// </summary>
         /// <param name="userId"></param>
         /// <param name="email"></param>

@@ -19,7 +19,18 @@ namespace KAZABUILD.Infrastructure.Services
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILogger<Logger> _serilogLogger = serilogLogger;
 
-        //Logs an event to the database
+        /// <summary>
+        /// Logs an event to the database.
+        /// Additionally logs to a file and console as well.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="activityType"></param>
+        /// <param name="targetType"></param>
+        /// <param name="ipAddress"></param>
+        /// <param name="targetId"></param>
+        /// <param name="severityLevel"></param>
+        /// <param name="description"></param>
+        /// <returns></returns>
         public async Task LogAsync(Guid userId, string activityType, string targetType, string? ipAddress, Guid targetId, PrivacyLevel severityLevel = PrivacyLevel.INFORMATION, string? description = null)
         {
             //Create a new log entry

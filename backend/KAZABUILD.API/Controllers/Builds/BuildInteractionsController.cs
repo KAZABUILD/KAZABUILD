@@ -87,6 +87,25 @@ namespace KAZABUILD.API.Controllers.Builds
                 return BadRequest(new { message = "User not found!" });
             }
 
+            //Check if the user hadn't already interacted with this component
+            var interaction = await _db.BuildInteractions.FirstOrDefaultAsync(i => i.UserId == dto.UserId && i.BuildId == dto.BuildId);
+            if (interaction != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildInteraction",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Build Already Interacted With"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Interaction already exists!" });
+            }
+
             //Check if current user has admin permissions, is interacting as themselves or if they are adding an interaction to their own build
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;

@@ -7,9 +7,16 @@ using Microsoft.OpenApi.Models;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding authorization to the app services
+    /// <summary>
+    /// Extension for adding authorization to the app services.
+    /// </summary>
     public static class SwaggerServiceCollectionExtension
     {
+        /// <summary>
+        /// Function for adding authorization to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <returns></returns>
         public static IServiceCollection AddSwaggerSettings(this IServiceCollection services)
         {
             //Documentation with swagger
