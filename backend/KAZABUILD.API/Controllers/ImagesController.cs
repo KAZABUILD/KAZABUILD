@@ -18,7 +18,7 @@ namespace KAZABUILD.API.Controllers
 {
     /// <summary>
     /// Controller for Image related endpoints.
-    /// Images can be sent between all users, staff, system and bots.
+    /// Images can be added to: Comments, Forum Posts, Components, User Profiles, Builds
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
@@ -36,9 +36,10 @@ namespace KAZABUILD.API.Controllers
 
         /// <summary>
         /// API Endpoint for posting a new Image.
-        /// User can post their own comments, while staff can post for all.
+        /// User can add images to their own text fields, while administration can also add them for components.
         /// </summary>
         /// <param name="dto"></param>
+        /// <param name="file"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
@@ -68,25 +69,8 @@ namespace KAZABUILD.API.Controllers
                 return BadRequest($"File size exceeds the {_mediaSettings.MaxFileSizeMB}MB limit.");
 
             //Check if current user has admin permissions if the file is of component type
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-
-            //Check if the user is an admin when adding an image for a component
-            if (!isPrivileged && (dto.LocationType == ImageLocationType.COMPONENT || dto.LocationType == ImageLocationType.SUBCOMPONENT))
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "Image",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
-            }
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Create an image to add
             Image image = new()
@@ -161,6 +145,22 @@ namespace KAZABUILD.API.Controllers
                         //Return proper error response
                         return BadRequest(new { message = "Component not found!" });
                     }
+                    else if (!isAdmin)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Unauthorized Access"
+                        );
+
+                        //Return proper unauthorized response
+                        return Forbid();
+                    }
 
                     break;
                 case ImageLocationType.SUBCOMPONENT:
@@ -184,6 +184,22 @@ namespace KAZABUILD.API.Controllers
 
                         //Return proper error response
                         return BadRequest(new { message = "SubComponent not found!" });
+                    }
+                    else if (!isAdmin)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Unauthorized Access"
+                        );
+
+                        //Return proper unauthorized response
+                        return Forbid();
                     }
 
                     break;
@@ -373,7 +389,7 @@ namespace KAZABUILD.API.Controllers
 
         /// <summary>
         /// API endpoint for updating the selected Image.
-        /// Only staff can modify images.
+        /// Only administration can modify images.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
@@ -522,14 +538,34 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "Image not found!" });
             }
 
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+
+            //Check the user has correct privileges or if the image isn't private
+            if (!isPrivileged && !(image.User == null && image.Build == null) &&
+                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT)) &&
+                !(image.User != null && (image.UserId == currentUserId || image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId))))))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
+            }
+
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
             ImageResponseDto response;
-
-            //Check if current user is getting themselves or if they have admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Check if has admin privilege
             if (!isPrivileged)
@@ -705,7 +741,7 @@ namespace KAZABUILD.API.Controllers
                 .Include(i => i.User)
                     .ThenInclude(u => u!.Followers)
                 .Include(i => i.Build)
-                .Where(i => isPrivileged || i.User == null || i.UserId == currentUserId || i.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (i.User.ProfileAccessibility == ProfileAccessibility.PRIVATE && i.User.Followers.Any(f => f.FollowerId == currentUserId)))
+                .Where(i => isPrivileged || i.User == null || i.UserId == currentUserId || i.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (i.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && i.User.Followers.Any(f => f.FollowerId == currentUserId)))
                 .Where(i => isPrivileged || i.Build == null || i.Build.UserId == currentUserId || (i.Build.Status != BuildStatus.GENERATED && i.Build.Status != BuildStatus.DRAFT))
                 .ToListAsync();
 
@@ -854,7 +890,8 @@ namespace KAZABUILD.API.Controllers
 
         /// <summary>
         /// API endpoint for deleting the selected Image.
-        /// Users can delete images they sent and staff can delete all.
+        /// Users can delete images they sent and staff can delete all user related images.
+        /// Only administration can delete component related images.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -889,15 +926,16 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "Image not found!" });
             }
 
-            //Check if current user has admin permissions or if they are deleting their own entity
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = (image.User != null && currentUserId == image.UserId) ||
+            //Check if current user has admin permissions or if they are deleting an image in their own entity
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isSelf = (image.UserId != null && currentUserId == image.UserId) ||
                 (image.Build != null && currentUserId == image.Build.UserId) ||
                 (image.ForumPost != null && currentUserId == image.ForumPost.CreatorId) ||
                 (image.UserComment != null && currentUserId == image.UserComment.UserId);
 
             //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
+            if (!isAdmin && !isSelf && !(isPrivileged && image.LocationType != ImageLocationType.COMPONENT && image.LocationType != ImageLocationType.SUBCOMPONENT))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -923,7 +961,7 @@ namespace KAZABUILD.API.Controllers
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Log the update
+            //Log the deletion
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
@@ -944,9 +982,97 @@ namespace KAZABUILD.API.Controllers
             //Return success response
             return Ok(new { message = "Image deleted successfully!" });
         }
+
+        /// <summary>
+        /// Download the file through a controlled route.
+        /// Users can download all images that aren't on private profiles.
+        /// Staff can download all.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id}/file")]
+        public async Task<IActionResult> GetImageFile(Guid id)
+        {
+            //Get image id and role from the request claims
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Get the image to download
+            var image = await _db.Images.Include(i => i.Build).Include(i => i.User).ThenInclude(u => u!.Followers).FirstOrDefaultAsync(i => i.Id == id);
+            if (image == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "DELETE",
+                    "Image",
+                    ip,
+                    id,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - No Such Image"
+                );
+
+                //Return not found response
+                return NotFound(new { message = "Image not found!" });
+            }
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+
+            //Check the user has correct privileges or if the image isn't private
+            if (!isPrivileged && !(image.User == null && image.Build == null) &&
+                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))) &&
+                !(image.User != null && (image.UserId == currentUserId || image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
+            }
+
+            var filePath = Path.Combine("wwwroot", image.Name);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var contentType = "image/" + Path.GetExtension(filePath).TrimStart('.');
+
+            //Log the download
+            await _logger.LogAsync(
+                currentUserId,
+                "DELETE",
+                "Image",
+                ip,
+                image.Id,
+                PrivacyLevel.INFORMATION,
+                "Successful Operation - Image download started"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("image.deleted", new
+            {
+                imageId = id,
+                deletedBy = currentUserId
+            });
+
+            return File(fileBytes, contentType);
+        }
     }
 }
 
 
-//TODO - documentation, error checking for file operations, download endpoint
+//TODO - documentation, error checking for file operations, download endpoint, expand to messages and notifications
 //<img src={`https://your-api.com/api/images/${image.id}/file`} />

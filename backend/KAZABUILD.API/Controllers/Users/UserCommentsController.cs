@@ -790,7 +790,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Log the update
+            //Log the deletion
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
