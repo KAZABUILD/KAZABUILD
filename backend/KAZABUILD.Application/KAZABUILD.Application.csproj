@@ -42,4 +42,8 @@
     <ProjectReference Include="..\KAZABUILD.Domain\KAZABUILD.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\Images\" />
+  </ItemGroup>
+
 </Project>

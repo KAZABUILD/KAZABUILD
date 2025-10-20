@@ -164,5 +164,6 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<Notification> Notifications { get; set; } = [];
         public ICollection<Build> Builds { get; set; } = [];
         public ICollection<BuildInteraction> BuildInteractions { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }
