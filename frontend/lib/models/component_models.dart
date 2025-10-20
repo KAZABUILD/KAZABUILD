@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'dart:math';
 
 // enums
-
+/// Represents the main categories of PC components that can be selected or viewed.
+/// This is used to differentiate between component types throughout the app.
 enum ComponentType {
   cpu,
   gpu,
@@ -16,6 +17,7 @@ enum ComponentType {
   monitor,
 }
 
+/// Represents the types of sub-components that can be part of a main component.
 enum SubComponentType {
   coolerSocket,
   integratedGraphics,
@@ -25,10 +27,13 @@ enum SubComponentType {
   port,
 }
 
+/// Defines the types of physical ports on a component.
 enum PortType { usb, hdmi, displayPort }
 
 // domain models
 
+/// Represents a globally defined color option that can be referenced by components.
+/// This allows for consistent color management across the database.
 @immutable
 class KazaColor {
   final String colorCode;
@@ -46,12 +51,17 @@ class KazaColor {
   });
 }
 
+/// Represents a specific variant of a main component.
+/// This is typically used for variations in color or other minor physical attributes
+/// that might affect price or availability.
 @immutable
 class ComponentVariant {
   final String id;
   final String colorCode;
   final bool? isAvailable;
   final double? additionalPrice;
+
+  /// The timestamp when this entry was created in the database.
   final DateTime databaseEntryAt;
   final DateTime lastEditedAt;
   final String? note;
@@ -67,6 +77,8 @@ class ComponentVariant {
   });
 }
 
+/// Defines a compatibility relationship between two components in the database.
+/// This is used by the compatibility checker to validate a user's build.
 @immutable
 class ComponentCompatibility {
   final String id;
@@ -86,6 +98,7 @@ class ComponentCompatibility {
   });
 }
 
+/// Represents a price point for a component from a specific vendor at a specific time.
 @immutable
 class ComponentPrice {
   final String id;
@@ -113,6 +126,7 @@ class ComponentPrice {
   });
 }
 
+/// Represents a user-submitted or professional review for a component.
 @immutable
 class ComponentReview {
   final String id;
@@ -142,6 +156,7 @@ class ComponentReview {
   });
 }
 
+/// Links a main component to one of its sub-component parts.
 @immutable
 class ComponentPart {
   final String id;
@@ -163,6 +178,8 @@ class ComponentPart {
   });
 }
 
+/// Represents a link between a sub-component and another sub-component.
+/// This allows for creating nested or composite parts.
 @immutable
 class SubComponentPart {
   final String id;
@@ -184,6 +201,7 @@ class SubComponentPart {
   });
 }
 
+/// The abstract base class for all sub-components.
 @immutable
 abstract class BaseSubComponent {
   final String id;
@@ -203,6 +221,7 @@ abstract class BaseSubComponent {
   });
 }
 
+/// A sub-component representing a cooler socket type (e.g., AM4, LGA1700).
 @immutable
 class CoolerSocketSubComponent extends BaseSubComponent {
   final String socketType;
@@ -217,6 +236,7 @@ class CoolerSocketSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.coolerSocket);
 }
 
+/// A sub-component representing the integrated graphics processor (iGPU) within a CPU.
 @immutable
 class IntegratedGraphicsSubComponent extends BaseSubComponent {
   final String? model;
@@ -237,6 +257,7 @@ class IntegratedGraphicsSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.integratedGraphics);
 }
 
+/// A sub-component representing an M.2 slot on a motherboard.
 @immutable
 class M2SlotSubComponent extends BaseSubComponent {
   final String size;
@@ -255,6 +276,7 @@ class M2SlotSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.m2Slot);
 }
 
+/// A sub-component representing an onboard Ethernet port.
 @immutable
 class OnboardEthernetSubComponent extends BaseSubComponent {
   final String speed;
@@ -271,6 +293,7 @@ class OnboardEthernetSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.onboardEthernet);
 }
 
+/// A sub-component representing a PCIe slot on a motherboard.
 @immutable
 class PCIeSlotSubComponent extends BaseSubComponent {
   final String gen;
@@ -287,6 +310,7 @@ class PCIeSlotSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.pcieSlot);
 }
 
+/// A sub-component representing a generic port (e.g., USB, HDMI).
 @immutable
 class PortSubComponent extends BaseSubComponent {
   final PortType portType;
@@ -301,20 +325,33 @@ class PortSubComponent extends BaseSubComponent {
   }) : super(type: SubComponentType.port);
 }
 
+/// The abstract base class for all main PC components (CPU, GPU, etc.).
 @immutable
 abstract class BaseComponent {
   final String id;
+
   final String name;
+
   final String manufacturer;
+
   final DateTime? release;
+
   final ComponentType type;
+
   final DateTime databaseEntryAt;
+
   final DateTime lastEditedAt;
+
   final String? note;
+
   final String imageUrl;
+
   final List<ComponentPrice> prices;
+
   final List<ComponentVariant> variants;
+
   final List<ComponentReview> reviews;
+
   final List<ComponentPart> parts;
 
   const BaseComponent({
@@ -333,11 +370,14 @@ abstract class BaseComponent {
     this.parts = const [],
   });
 
+  /// Calculates the lowest price from the list of available prices.
   double? get lowestPrice {
     if (prices.isEmpty) return null;
     return prices.map((p) => p.price).reduce(min);
   }
 
+  /// Calculates the average rating from all reviews.
+  /// Assumes original ratings are on a 1-100 scale and converts it to a 0-5 scale.
   double? get averageRating {
     if (reviews.isEmpty) return null;
     final totalRating = reviews.map((r) => r.rating).reduce((a, b) => a + b);
@@ -346,6 +386,7 @@ abstract class BaseComponent {
   }
 }
 
+/// Represents a PC Case component with its physical specifications.
 @immutable
 class CaseComponent extends BaseComponent {
   final String formFactor;
@@ -401,6 +442,7 @@ class CaseComponent extends BaseComponent {
   }) : super(type: ComponentType.pcCase);
 }
 
+/// Represents a Case Fan component with its performance and physical characteristics.
 @immutable
 class CaseFanComponent extends BaseComponent {
   final double size;
@@ -444,6 +486,7 @@ class CaseFanComponent extends BaseComponent {
   }) : super(type: ComponentType.caseFan);
 }
 
+/// Represents a CPU Cooler, which can be air or water-cooled.
 @immutable
 class CoolerComponent extends BaseComponent {
   final double? minFanRotationSpeed;
@@ -483,6 +526,7 @@ class CoolerComponent extends BaseComponent {
   }) : super(type: ComponentType.cooler);
 }
 
+/// Represents a Central Processing Unit (CPU) component.
 @immutable
 class CPUComponent extends BaseComponent {
   final String series;
@@ -507,7 +551,7 @@ class CPUComponent extends BaseComponent {
   final double thermalDesignPower;
   final String graphics;
 
-  CPUComponent({
+  const CPUComponent({
     required super.id,
     required super.name,
     required super.manufacturer,
@@ -547,6 +591,7 @@ class CPUComponent extends BaseComponent {
   }) : super(type: ComponentType.cpu);
 }
 
+/// Represents a Graphics Processing Unit (GPU) or Video Card.
 @immutable
 class GPUComponent extends BaseComponent {
   final String chipset;
@@ -594,6 +639,7 @@ class GPUComponent extends BaseComponent {
   }) : super(type: ComponentType.gpu);
 }
 
+/// Represents a Memory (RAM) module.
 @immutable
 class MemoryComponent extends BaseComponent {
   final double speed;
@@ -641,6 +687,7 @@ class MemoryComponent extends BaseComponent {
   }) : super(type: ComponentType.ram);
 }
 
+/// Represents a computer Monitor.
 @immutable
 class MonitorComponent extends BaseComponent {
   final double screenSize;
@@ -682,6 +729,7 @@ class MonitorComponent extends BaseComponent {
   }) : super(type: ComponentType.monitor);
 }
 
+/// Represents a Motherboard component.
 @immutable
 class MotherboardComponent extends BaseComponent {
   final String socketType;
@@ -761,6 +809,7 @@ class MotherboardComponent extends BaseComponent {
   }) : super(type: ComponentType.motherboard);
 }
 
+/// Represents a Power Supply Unit (PSU).
 @immutable
 class PowerSupplyComponent extends BaseComponent {
   final double powerOutput;
@@ -792,6 +841,7 @@ class PowerSupplyComponent extends BaseComponent {
   }) : super(type: ComponentType.psu);
 }
 
+/// Represents a storage device, such as an SSD or HDD.
 @immutable
 class StorageComponent extends BaseComponent {
   final String series;
@@ -822,470 +872,3 @@ class StorageComponent extends BaseComponent {
     super.parts,
   }) : super(type: ComponentType.storage);
 }
-
-final List<CPUComponent> mockCPUs = [
-  CPUComponent(
-    id: 'cpu-001',
-    name: 'Intel Core i7-13700K',
-    manufacturer: 'Intel',
-    imageUrl: 'https://placehold.co/100x100/FFFFFF/000000?text=i7',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    series: 'Core i7',
-    microarchitecture: 'Raptor Lake',
-    coreFamily: 'Raptor Lake',
-    socketType: 'LGA1700',
-    coreTotal: 16,
-    threadsAmount: 24,
-    basePerformanceSpeed: 3.4,
-    boostPerformanceSpeed: 5.4,
-    includesCooler: false,
-    lithography: 'Intel 7',
-    supportsSimultaneousMultithreading: true,
-    memoryType: 'DDR5',
-    packagingType: 'Box',
-    supportsECC: false,
-    thermalDesignPower: 125,
-    graphics: 'UHD 770',
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'cpu-001',
-        vendorName: 'Vendor A',
-        fetchedAt: DateTime.now(),
-        price: 409.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-    reviews: [
-      ComponentReview(
-        id: 'r1',
-        sourceUrl: '',
-        componentId: 'cpu-001',
-        reviewerName: 'Guru',
-        fetchedAt: DateTime.now(),
-        createdAt: DateTime.now(),
-        rating: 88,
-        reviewText: '',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  CPUComponent(
-    id: 'cpu-002',
-    name: 'AMD Ryzen 7 7700X',
-    manufacturer: 'AMD',
-    imageUrl: 'https://placehold.co/100x100/FF0000/FFFFFF?text=R7',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    series: 'Ryzen 7',
-    microarchitecture: 'Zen 4',
-    coreFamily: 'Raphael',
-    socketType: 'AM5',
-    coreTotal: 8,
-    threadsAmount: 16,
-    basePerformanceSpeed: 4.5,
-    boostPerformanceSpeed: 5.4,
-    includesCooler: false,
-    lithography: '5nm',
-    supportsSimultaneousMultithreading: true,
-    memoryType: 'DDR5',
-    packagingType: 'Box',
-    supportsECC: true,
-    thermalDesignPower: 105,
-    graphics: 'Radeon',
-    prices: [
-      ComponentPrice(
-        id: 'p2',
-        sourceUrl: '',
-        componentId: 'cpu-002',
-        vendorName: 'Vendor B',
-        fetchedAt: DateTime.now(),
-        price: 349.00,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-    reviews: [
-      ComponentReview(
-        id: 'r2',
-        sourceUrl: '',
-        componentId: 'cpu-002',
-        reviewerName: 'Pro',
-        fetchedAt: DateTime.now(),
-        createdAt: DateTime.now(),
-        rating: 92,
-        reviewText: '',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  CPUComponent(
-    id: 'cpu-003',
-    name: 'Intel Core i5-13600K',
-    manufacturer: 'Intel',
-    imageUrl: 'https://placehold.co/100x100/FFFFFF/000000?text=i5',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    series: 'Core i5',
-    microarchitecture: 'Raptor Lake',
-    coreFamily: 'Raptor Lake',
-    socketType: 'LGA1700',
-    coreTotal: 14,
-    threadsAmount: 20,
-    basePerformanceSpeed: 3.5,
-    boostPerformanceSpeed: 5.1,
-    includesCooler: false,
-    lithography: 'Intel 7',
-    supportsSimultaneousMultithreading: true,
-    memoryType: 'DDR5',
-    packagingType: 'Box',
-    supportsECC: false,
-    thermalDesignPower: 125,
-    graphics: 'UHD 770',
-    prices: [
-      ComponentPrice(
-        id: 'p3',
-        sourceUrl: '',
-        componentId: 'cpu-003',
-        vendorName: 'Vendor C',
-        fetchedAt: DateTime.now(),
-        price: 289.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-    reviews: [
-      ComponentReview(
-        id: 'r3',
-        sourceUrl: '',
-        componentId: 'cpu-003',
-        reviewerName: 'Expert',
-        fetchedAt: DateTime.now(),
-        createdAt: DateTime.now(),
-        rating: 95,
-        reviewText: '',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];
-
-final List<CaseComponent> mockCases = [
-  CaseComponent(
-    id: 'case-001',
-    name: 'Corsair 4000D Airflow',
-    manufacturer: 'Corsair',
-    imageUrl: 'https://placehold.co/100x100/000000/FFFFFF?text=Case',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    formFactor: 'ATX Mid Tower',
-    powerSupplyShrouded: true,
-    hasTransparentSidePanel: true,
-    sidePanelType: 'Tempered Glass',
-    maxVideoCardLength: 360,
-    maxCPUCoolerHeight: 170,
-    internal35BayAmount: 2,
-    internal25BayAmount: 2,
-    external35BayAmount: 0,
-    external525BayAmount: 0,
-    expansionSlotAmount: 7,
-    width: 230,
-    height: 453,
-    depth: 466,
-    volume: 48.5,
-    weight: 7.8,
-    supportsRearConnectingMotherboard: false,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'case-001',
-        vendorName: 'Vendor A',
-        fetchedAt: DateTime.now(),
-        price: 94.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];
-
-final List<MotherboardComponent> mockMotherboards = [
-  MotherboardComponent(
-    id: 'mb-001',
-    name: 'ASUS ROG Strix B650-A',
-    manufacturer: 'ASUS',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/EAEAEA/000000?text=MB',
-    socketType: 'AM5',
-    formFactor: 'ATX',
-    chipsetType: 'B650',
-    ramType: 'DDR5',
-    ramSlotsAmount: 4,
-    maxRAMAmount: 128,
-    sata6GBsAmount: 4,
-    sata3GBsAmount: 0,
-    u2PortAmount: 0,
-    wirelessNetworkingStandard: 'WiFi 6E',
-    hasPowerButtonHeader: true,
-    hasResetButtonHeader: true,
-    hasPowerLEDHeader: true,
-    hasHDDLEDHeader: true,
-    hasECCSupport: false,
-    hasRAIDSupport: true,
-    hasFlashback: true,
-    hasCMOS: true,
-    audioChipset: 'Realtek ALC4080',
-    maxAudioChannels: 7.1,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'mb-001',
-        vendorName: 'Vendor A',
-        fetchedAt: DateTime.now(),
-        price: 279.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  MotherboardComponent(
-    id: 'mb-002',
-    name: 'Gigabyte Z790 AORUS ELITE',
-    manufacturer: 'Gigabyte',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/CCCCCC/000000?text=MB',
-    socketType: 'LGA1700',
-    formFactor: 'ATX',
-    chipsetType: 'Z790',
-    ramType: 'DDR5',
-    ramSlotsAmount: 4,
-    maxRAMAmount: 128,
-    sata6GBsAmount: 6,
-    sata3GBsAmount: 0,
-    u2PortAmount: 0,
-    wirelessNetworkingStandard: 'WiFi 6E',
-    hasPowerButtonHeader: true,
-    hasResetButtonHeader: true,
-    hasPowerLEDHeader: true,
-    hasHDDLEDHeader: true,
-    hasECCSupport: false,
-    hasRAIDSupport: true,
-    hasFlashback: true,
-    hasCMOS: true,
-    audioChipset: 'Realtek ALC1220-VB',
-    maxAudioChannels: 7.1,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'mb-002',
-        vendorName: 'Vendor B',
-        fetchedAt: DateTime.now(),
-        price: 259.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];
-
-final List<MemoryComponent> mockRAMs = [
-  MemoryComponent(
-    id: 'ram-001',
-    name: 'Corsair Vengeance RGB 32GB',
-    manufacturer: 'Corsair',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/000000/FFFFFF?text=RAM',
-    speed: 6000,
-    ramType: 'DDR5',
-    formFactor: 'DIMM',
-    capacity: 32000,
-    casLatency: 36,
-    moduleQuantity: 2,
-    moduleCapacity: 16000,
-    ecc: 'Non-ECC',
-    registeredType: 'Unbuffered',
-    haveHeatSpreader: true,
-    haveRGB: true,
-    height: 44,
-    voltage: 1.35,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'ram-001',
-        vendorName: 'Vendor B',
-        fetchedAt: DateTime.now(),
-        price: 104.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  MemoryComponent(
-    id: 'ram-002',
-    name: 'G.Skill Ripjaws S5 32GB',
-    manufacturer: 'G.Skill',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/FF0000/FFFFFF?text=RAM',
-    speed: 5600,
-    ramType: 'DDR5',
-    formFactor: 'DIMM',
-    capacity: 32000,
-    casLatency: 28,
-    moduleQuantity: 2,
-    moduleCapacity: 16000,
-    ecc: 'Non-ECC',
-    registeredType: 'Unbuffered',
-    haveHeatSpreader: true,
-    haveRGB: false,
-    height: 33,
-    voltage: 1.20,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'ram-002',
-        vendorName: 'Vendor C',
-        fetchedAt: DateTime.now(),
-        price: 94.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];
-
-final List<PowerSupplyComponent> mockPSUs = [
-  PowerSupplyComponent(
-    id: 'psu-001',
-    name: 'Corsair RM850x',
-    manufacturer: 'Corsair',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/FFFF00/000000?text=PSU',
-    powerOutput: 850,
-    formFactor: 'ATX',
-    efficiencyRating: '80+ Gold',
-    modularityType: 'Full',
-    length: 160,
-    isFanless: false,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'psu-001',
-        vendorName: 'Vendor C',
-        fetchedAt: DateTime.now(),
-        price: 134.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  PowerSupplyComponent(
-    id: 'psu-002',
-    name: 'SeaSonic FOCUS Plus Gold 750W',
-    manufacturer: 'SeaSonic',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/000000/FFFFFF?text=PSU',
-    powerOutput: 750,
-    formFactor: 'ATX',
-    efficiencyRating: '80+ Gold',
-    modularityType: 'Full',
-    length: 140,
-    isFanless: false,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'psu-002',
-        vendorName: 'Vendor A',
-        fetchedAt: DateTime.now(),
-        price: 109.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];
-
-final List<StorageComponent> mockStorages = [
-  StorageComponent(
-    id: 'sto-001',
-    name: 'Samsung 980 Pro 1TB',
-    manufacturer: 'Samsung',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/0000FF/FFFFFF?text=SSD',
-    series: '980 Pro',
-    capacity: 1000,
-    driveType: 'SSD',
-    formFactor: 'M.2-2280',
-    interface: 'PCIe 4.0 x4',
-    hasNVMe: true,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'sto-001',
-        vendorName: 'Vendor A',
-        fetchedAt: DateTime.now(),
-        price: 89.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-  StorageComponent(
-    id: 'sto-002',
-    name: 'Crucial P3 2TB',
-    manufacturer: 'Crucial',
-    databaseEntryAt: DateTime.now(),
-    lastEditedAt: DateTime.now(),
-    imageUrl: 'https://placehold.co/100x100/00FFFF/000000?text=SSD',
-    series: 'P3',
-    capacity: 2000,
-    driveType: 'SSD',
-    formFactor: 'M.2-2280',
-    interface: 'PCIe 3.0 x4',
-    hasNVMe: true,
-    prices: [
-      ComponentPrice(
-        id: 'p1',
-        sourceUrl: '',
-        componentId: 'sto-002',
-        vendorName: 'Vendor B',
-        fetchedAt: DateTime.now(),
-        price: 74.99,
-        currency: 'USD',
-        databaseEntryAt: DateTime.now(),
-        lastEditedAt: DateTime.now(),
-      ),
-    ],
-  ),
-];

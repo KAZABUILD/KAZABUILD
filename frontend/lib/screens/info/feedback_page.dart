@@ -1,6 +1,12 @@
+/// This file defines the UI for the user feedback page.
+///
+/// It provides a form for users to submit feedback, suggestions, or bug reports.
+/// The page features staggered entrance animations for a more polished look.
+
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
+/// The main stateful widget for the feedback page.
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
 
@@ -8,22 +14,22 @@ class FeedbackPage extends StatefulWidget {
   State<FeedbackPage> createState() => _FeedbackPageState();
 }
 
+/// The state for the [FeedbackPage], managing animations and form submission.
+///
+/// It uses a [SingleTickerProviderStateMixin] to provide a ticker for the
+/// animation controller.
 class _FeedbackPageState extends State<FeedbackPage>
     with SingleTickerProviderStateMixin {
+  /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
-  late AnimationController _controller;
 
-  // GÜNCELLENDİ: Test için sahte kayıtlı e-posta listesi
-  final List<String> _registeredEmails = [
-    'artun@gmail.com',
-    'ziyad@gmail.com',
-    'adrian@gmail.com',
-    'kacper@gmail.com',
-  ];
+  /// The animation controller that drives all the animations on this page.
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
+    // Initialize and start the animation controller.
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -33,11 +39,14 @@ class _FeedbackPageState extends State<FeedbackPage>
 
   @override
   void dispose() {
+    // Dispose the controller when the widget is removed from the tree to free up resources.
     _controller.dispose();
     super.dispose();
   }
 
-  /// Belirli bir aralıkta hem fade hem de slide animasyonu oluşturan yardımcı fonksiyon
+  /// A reusable helper widget that wraps its child in a staggered fade and slide animation.
+  ///
+  /// This simplifies the process of applying consistent entrance animations to widgets.
   Widget _buildAnimatedWidget({
     required Widget child,
     required Interval interval,
@@ -60,7 +69,8 @@ class _FeedbackPageState extends State<FeedbackPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // GÜNCELLENDİ: E-posta formatını kontrol etmek için Regex
+
+    // Regular expression for basic email format validation.
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
@@ -71,6 +81,7 @@ class _FeedbackPageState extends State<FeedbackPage>
         backgroundColor: theme.colorScheme.surface,
       ),
       backgroundColor: theme.colorScheme.background,
+      // The main container with a subtle gradient background.
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -93,6 +104,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Page title, animated.
                     _buildAnimatedWidget(
                       interval: const Interval(0.0, 0.4, curve: Curves.easeOut),
                       child: Text(
@@ -104,6 +116,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Instructional text, animated.
                     _buildAnimatedWidget(
                       interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
                       child: Text(
@@ -113,6 +126,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                       ),
                     ),
                     const SizedBox(height: 40),
+                    // Form fields, each with a staggered animation.
                     _buildAnimatedWidget(
                       interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
                       child: _buildTextFormField(
@@ -123,7 +137,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                     const SizedBox(height: 24),
                     _buildAnimatedWidget(
                       interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
-                      // GÜNCELLENDİ: E-posta alanı artık özel doğrulama kuralları içeriyor
+
                       child: _buildTextFormField(
                         label: 'Email',
                         hint: 'Enter your registered email',
@@ -133,11 +147,6 @@ class _FeedbackPageState extends State<FeedbackPage>
                           }
                           if (!emailRegex.hasMatch(value)) {
                             return 'Please enter a valid email format.';
-                          }
-                          if (!_registeredEmails.contains(
-                            value.toLowerCase(),
-                          )) {
-                            return 'This email is not registered in our system.';
                           }
                           return null;
                         },
@@ -165,7 +174,9 @@ class _FeedbackPageState extends State<FeedbackPage>
                       interval: const Interval(0.6, 1.0, curve: Curves.easeOut),
                       child: _SubmitButton(
                         onPressed: () {
+                          // Validate the form before proceeding.
                           if (_formKey.currentState!.validate()) {
+                            // TODO: Implement a real API call to send the feedback data to a backend service.
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -175,6 +186,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                               ),
                             );
 
+                            // After a short delay, navigate back to the homepage.
                             Future.delayed(
                               const Duration(milliseconds: 1500),
                               () {
@@ -202,13 +214,12 @@ class _FeedbackPageState extends State<FeedbackPage>
     );
   }
 
-  // Metin alanlarını oluşturan yardımcı widget
+  /// A helper method to create a consistently styled text form field.
   Widget _buildTextFormField({
     required String label,
     required String hint,
     int maxLines = 1,
-    String? Function(String?)?
-    validator, // GÜNCELLENDİ: Validator parametresi eklendi
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       maxLines: maxLines,
@@ -229,7 +240,7 @@ class _FeedbackPageState extends State<FeedbackPage>
           borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
         ),
       ),
-      // GÜNCELLENDİ: Özel veya varsayılan validator kullanılır
+
       validator:
           validator ??
           (value) {
@@ -242,7 +253,7 @@ class _FeedbackPageState extends State<FeedbackPage>
   }
 }
 
-// Gönder butonunun animasyonlu ve efektli hali
+/// A custom submit button with a hover animation for a better desktop experience.
 class _SubmitButton extends StatefulWidget {
   final VoidCallback onPressed;
   const _SubmitButton({required this.onPressed});
@@ -251,20 +262,25 @@ class _SubmitButton extends StatefulWidget {
   State<_SubmitButton> createState() => _SubmitButtonState();
 }
 
+/// The state for [_SubmitButton], which manages the hover effect.
 class _SubmitButtonState extends State<_SubmitButton> {
+  /// A flag to track whether the mouse cursor is currently over the button.
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.02 : 1.0;
     final shadowColor = _isHovered
         ? theme.colorScheme.secondary.withOpacity(0.5)
         : Colors.black.withOpacity(0.2);
 
+    // MouseRegion detects when the cursor enters or leaves the widget's area.
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
+      // AnimatedScale and AnimatedContainer provide smooth transitions for the hover effect.
       child: AnimatedScale(
         scale: scale,
         duration: const Duration(milliseconds: 200),

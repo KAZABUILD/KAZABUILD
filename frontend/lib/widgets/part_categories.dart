@@ -1,5 +1,14 @@
+/// This file defines the "Part Categories" section displayed on the homepage.
+///
+/// It presents a visually appealing grid layout to showcase different PC
+/// component categories, encouraging users to start exploring parts.
+
 import 'package:flutter/material.dart';
 
+/// The main widget for the part categories section.
+///
+/// It arranges a large featured card on the left and a 2x2 grid of smaller
+/// cards on the right, creating a dynamic and engaging layout.
 class PartCategoriesSection extends StatelessWidget {
   const PartCategoriesSection({super.key});
 
@@ -13,10 +22,10 @@ class PartCategoriesSection extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // left big card
+              // The large featured card on the left.
               const Expanded(flex: 2, child: _LargePartCard()),
               const SizedBox(width: 24),
-              // right 4 small card
+              // A 2x2 grid of smaller cards on the right.
               Expanded(
                 flex: 3,
                 child: Column(
@@ -47,6 +56,8 @@ class PartCategoriesSection extends StatelessWidget {
   }
 }
 
+/// A placeholder widget for the large, featured part category card.
+/// TODO: Replace this with a dynamic widget that shows an image, title, and navigates to a specific category.
 class _LargePartCard extends StatelessWidget {
   const _LargePartCard();
   @override
@@ -61,6 +72,8 @@ class _LargePartCard extends StatelessWidget {
   }
 }
 
+/// A placeholder widget for the smaller part category cards.
+/// TODO: Replace this with a dynamic widget that shows an image, title, and navigates to a specific category.
 class _SmallPartCard extends StatelessWidget {
   const _SmallPartCard();
   @override

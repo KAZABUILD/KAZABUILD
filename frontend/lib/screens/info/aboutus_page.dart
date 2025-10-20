@@ -1,5 +1,12 @@
+/// This file defines the "About Us" page for the application.
+///
+/// It provides information about the company's mission, the team behind it,
+/// and the story of its creation. The page features staggered entrance
+/// animations for a more engaging user experience.
+
 import 'package:flutter/material.dart';
 
+/// The main stateful widget for the "About Us" page.
 class AboutUsPage extends StatefulWidget {
   const AboutUsPage({super.key});
 
@@ -7,14 +14,20 @@ class AboutUsPage extends StatefulWidget {
   State<AboutUsPage> createState() => _AboutUsPageState();
 }
 
+/// The state for the [AboutUsPage].
+///
+/// It uses a [SingleTickerProviderStateMixin] to provide a ticker for the
+/// animation controller that orchestrates the page's animations.
 class _AboutUsPageState extends State<AboutUsPage>
     with SingleTickerProviderStateMixin {
+  /// The animation controller that drives all the animations on this page.
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
 
+    // Initialize and start the animation controller.
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -40,6 +53,7 @@ class _AboutUsPageState extends State<AboutUsPage>
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // The main banner at the top of the page.
             _buildBanner(theme),
 
             Padding(
@@ -52,12 +66,14 @@ class _AboutUsPageState extends State<AboutUsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // "Our Mission" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
                       child: _buildSectionTitle(theme, 'Our Mission'),
                     ),
                     const SizedBox(height: 16),
+                    // The text content for the mission.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
@@ -67,6 +83,7 @@ class _AboutUsPageState extends State<AboutUsPage>
                       ),
                     ),
                     const Divider(height: 64),
+                    // "Meet the Team" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
@@ -74,6 +91,7 @@ class _AboutUsPageState extends State<AboutUsPage>
                     ),
                     const SizedBox(height: 24),
 
+                    // A row of cards, each representing a team member.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -136,12 +154,14 @@ class _AboutUsPageState extends State<AboutUsPage>
                       ],
                     ),
                     const Divider(height: 64),
+                    // "Our Story" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.8, 1.2, curve: Curves.easeOut),
                       child: _buildSectionTitle(theme, 'Our Story'),
                     ),
                     const SizedBox(height: 16),
+                    // The text content for the story.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.9, 1.3, curve: Curves.easeOut),
@@ -161,6 +181,7 @@ class _AboutUsPageState extends State<AboutUsPage>
     );
   }
 
+  /// Builds the banner widget at the top of the page with an icon and tagline.
   Widget _buildBanner(ThemeData theme) {
     return _AnimatedFadeSlide(
       controller: _controller,
@@ -204,6 +225,7 @@ class _AboutUsPageState extends State<AboutUsPage>
     );
   }
 
+  /// A helper method to create a consistently styled section title.
   Widget _buildSectionTitle(ThemeData theme, String title) {
     return Text(
       title,
@@ -214,6 +236,9 @@ class _AboutUsPageState extends State<AboutUsPage>
   }
 }
 
+/// A reusable widget that wraps its child in a staggered fade and slide animation.
+///
+/// This simplifies the process of applying consistent entrance animations to widgets.
 class _AnimatedFadeSlide extends StatelessWidget {
   final AnimationController controller;
   final Interval interval;
@@ -243,6 +268,10 @@ class _AnimatedFadeSlide extends StatelessWidget {
   }
 }
 
+/// A card widget to display information about a single team member.
+///
+/// It includes the member's name, role, and image, along with a hover effect
+/// that scales the card up and adds a shadow.
 class _TeamMemberCard extends StatefulWidget {
   final String name;
   final String role;
@@ -258,17 +287,21 @@ class _TeamMemberCard extends StatefulWidget {
   State<_TeamMemberCard> createState() => _TeamMemberCardState();
 }
 
+/// The state for [_TeamMemberCard], which manages the hover state.
 class _TeamMemberCardState extends State<_TeamMemberCard> {
+  /// A flag to track whether the mouse cursor is currently over the card.
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.05 : 1.0;
     final shadowColor = _isHovered
         ? theme.colorScheme.primary.withOpacity(0.4)
         : Colors.black.withOpacity(0.2);
 
+    // MouseRegion detects when the cursor enters or leaves the widget's area.
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),

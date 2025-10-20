@@ -1,8 +1,15 @@
+/// This file defines the "Explore Builds" page, where users can browse,
+/// search, and filter community-submitted PC builds.
+///
+/// It features a dynamic grid layout that adapts to screen size and
+/// includes controls for searching and sorting the builds.
+
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/explore_build/explore_build_model.dart';
 import 'package:frontend/screens/explore_build/build_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
+/// The main widget for the "Explore Builds" screen.
 class ExploreBuildsPage extends StatefulWidget {
   const ExploreBuildsPage({super.key});
 
@@ -10,14 +17,22 @@ class ExploreBuildsPage extends StatefulWidget {
   State<ExploreBuildsPage> createState() => _ExploreBuildsPageState();
 }
 
+/// The state for the [ExploreBuildsPage].
+///
+/// This class manages the list of builds, search queries, and filter states.
 class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
+  // TODO: Replace this with data fetched from a backend service.
+  final List<CommunityBuild> _builds = [];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
+    // Calculate the number of columns for the grid based on screen width.
     final crossAxisCount = (screenWidth / 350).floor().clamp(1, 4);
 
     return Scaffold(
+      // The main container with a gradient background.
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -31,6 +46,7 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
           ),
         ),
         child: Stack(
+          // The decorative wave is placed at the top using a Stack.
           children: [
             Positioned(
               top: 0,
@@ -44,6 +60,7 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
               ),
             ),
             Column(
+              // The main layout consists of the navigation bar and the scrollable content.
               children: [
                 const CustomNavigationBar(),
                 Expanded(
@@ -53,21 +70,21 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
                       children: [
                         _Header(),
                         const SizedBox(height: 24),
+                        // The main grid view that displays the build cards.
                         GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 20,
-                                mainAxisSpacing: 20,
-                                childAspectRatio: 0.75,
+                                crossAxisSpacing: 24,
+                                mainAxisSpacing: 24,
+                                childAspectRatio: 0.8,
                               ),
-                          itemCount: mockCommunityBuilds.length,
+                          // TODO: This should use a list of builds fetched from the backend.
+                          itemCount: _builds.length,
                           itemBuilder: (context, index) {
-                            return _BuildCard(
-                              communityBuild: mockCommunityBuilds[index],
-                            );
+                            return _BuildCard(communityBuild: _builds[index]);
                           },
                         ),
                       ],
@@ -83,6 +100,7 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
   }
 }
 
+/// A custom painter that draws a decorative wave shape at the top of the page.
 class WavePainter extends CustomPainter {
   final Color color;
 
@@ -90,10 +108,12 @@ class WavePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Configures the paint properties (color and style).
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
 
+    // Defines the path for the wave shape using quadratic Bezier curves.
     final path = Path();
     path.moveTo(0, 40);
     path.quadraticBezierTo(size.width * 0.25, 60, size.width * 0.5, 40);
@@ -106,9 +126,11 @@ class WavePainter extends CustomPainter {
   }
 
   @override
+  // The wave does not need to be repainted unless its color or size changes.
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// The header section of the page, containing search, filter, and sort controls.
 class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -116,16 +138,10 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Action buttons for comparing and posting builds.
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Community Builds (${mockCommunityBuilds.length})',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
             Row(
               children: [
                 _StyledButton(
@@ -146,6 +162,7 @@ class _Header extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
+        // Row containing the search field, tags button, and sort dropdown.
         Row(
           children: [
             Expanded(
@@ -174,6 +191,7 @@ class _Header extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             DropdownButtonHideUnderline(
+              // Dropdown for sorting the list of builds.
               child: DropdownButton<String>(
                 value: 'Latest',
                 items: const [
@@ -203,6 +221,10 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// A reusable styled button widget used in the header.
+///
+/// It can be rendered as either a filled [ElevatedButton] or an
+/// [OutlinedButton] based on the `isOutlined` property.
 class _StyledButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -249,6 +271,9 @@ class _StyledButton extends StatelessWidget {
   }
 }
 
+/// A card widget that displays a summary of a single [CommunityBuild].
+///
+/// Tapping on the card navigates to the [BuildDetailPage] for that build.
 class _BuildCard extends StatelessWidget {
   final CommunityBuild communityBuild;
 
@@ -258,6 +283,7 @@ class _BuildCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
+      // Using a Card for consistent elevation and shape.
       elevation: 4,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -275,6 +301,7 @@ class _BuildCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
+              // The main image of the build.
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
@@ -285,6 +312,7 @@ class _BuildCard extends StatelessWidget {
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    // Shows a loading indicator while the image is being fetched.
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
@@ -293,6 +321,7 @@ class _BuildCard extends StatelessWidget {
                         child: const Center(child: CircularProgressIndicator()),
                       );
                     },
+                    // Shows an error icon if the image fails to load.
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 200,
                       color: theme.colorScheme.error.withOpacity(0.1),
@@ -302,6 +331,7 @@ class _BuildCard extends StatelessWidget {
                 ),
               ],
             ),
+            // The content section below the image.
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -309,6 +339,7 @@ class _BuildCard extends StatelessWidget {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    // Build title and star rating.
                     children: [
                       Expanded(
                         child: Text(
@@ -331,6 +362,7 @@ class _BuildCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  // Total price of the build.
                   Text(
                     '\$${communityBuild.totalPrice.toStringAsFixed(2)}',
                     style: theme.textTheme.titleLarge?.copyWith(
@@ -340,6 +372,7 @@ class _BuildCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   for (var component in communityBuild.components.take(3))
+                    // A preview of the first few components in the build.
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4.0),
                       child: Text(
@@ -352,6 +385,7 @@ class _BuildCard extends StatelessWidget {
                 ],
               ),
             ),
+            // Spacer to push the author info to the bottom of the card.
             const Spacer(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 8.0),
@@ -360,6 +394,7 @@ class _BuildCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 12,
                     backgroundColor: theme.colorScheme.primary,
+                    // Author's initial as an avatar.
                     child: Text(
                       communityBuild.author.username.substring(0, 1),
                       style: TextStyle(

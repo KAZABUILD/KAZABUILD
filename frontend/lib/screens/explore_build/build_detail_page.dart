@@ -1,10 +1,18 @@
+/// This file defines the detail page for a community-submitted PC build.
+///
+/// It displays the build's image, title, description, author, and a detailed
+/// list of all the components used in the build, along with their prices.
+/// Users can view specifications and interact with the build (e.g., wishlist).
+
 import 'package:flutter/material.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/explore_build/explore_build_model.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
 
+/// A page that displays the full details of a specific [CommunityBuild].
 class BuildDetailPage extends StatefulWidget {
+  /// The [CommunityBuild] object containing all the data for the page.
   final CommunityBuild build;
   const BuildDetailPage({super.key, required this.build});
 
@@ -12,12 +20,15 @@ class BuildDetailPage extends StatefulWidget {
   State<BuildDetailPage> createState() => _BuildDetailPageState();
 }
 
+/// The state for the [BuildDetailPage].
 class _BuildDetailPageState extends State<BuildDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
+      // The main layout is a column with the navigation bar at the top
+      // and the scrollable content below.
       body: Column(
         children: [
           const CustomNavigationBar(),
@@ -30,7 +41,7 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ana Resim
+                      // The main image for the build.
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: Image.network(
@@ -39,13 +50,16 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Kullanıcı ve Tarih Bilgisi
+
+                      // Meta information like author and post date.
                       _buildMetaInfo(theme),
                       const SizedBox(height: 16),
-                      // Başlık ve Puanlama
+
+                      // The title of the build and its star rating.
                       _buildTitleAndRating(theme),
                       const SizedBox(height: 24),
-                      // Açıklama
+
+                      // The user-written description of the build.
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -58,12 +72,14 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      // Parça Listesi
+
+                      // Header for the component list section.
                       Text(
                         'Specifications:',
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 16),
+                      // A list of all components in the build, each rendered as a tile.
                       ...widget.build.components.map(
                         (component) => _ComponentTile(component: component),
                       ),
@@ -78,12 +94,21 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
     );
   }
 
+  /// Builds the row containing metadata about the build, such as the author and post date.
   Widget _buildMetaInfo(ThemeData theme) {
     return Row(
       children: [
         CircleAvatar(
           radius: 12,
-          child: Text(widget.build.author.username.substring(0, 1)),
+          backgroundImage: widget.build.author.photoURL != null
+              ? NetworkImage(widget.build.author.photoURL!)
+              : null,
+          child: widget.build.author.photoURL == null
+              ? Text(
+                  widget.build.author.username.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(fontSize: 10),
+                )
+              : null,
         ),
         const SizedBox(width: 8),
         Text(widget.build.author.username, style: theme.textTheme.bodyMedium),
@@ -95,13 +120,16 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
           style: theme.textTheme.bodySmall,
         ),
         const Spacer(),
+        // TODO: Implement "Wishlist" functionality.
         OutlinedButton(onPressed: () {}, child: const Text('Wishlist Build')),
         const SizedBox(width: 12),
+        // TODO: Implement "Follow" functionality.
         ElevatedButton(onPressed: () {}, child: const Text('Follow Builds')),
       ],
     );
   }
 
+  /// Builds the row containing the build's title and its star rating.
   Widget _buildTitleAndRating(ThemeData theme) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -113,6 +141,7 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
           ),
         ),
         const Spacer(),
+        // Generates the star rating display based on the build's rating value.
         Row(
           children: List.generate(5, (index) {
             return Icon(
@@ -130,10 +159,30 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
   }
 }
 
-// Parça listesindeki her bir eleman
+/// A tile widget that displays information about a single component in the build list.
 class _ComponentTile extends StatelessWidget {
   final BaseComponent component;
   const _ComponentTile({required this.component});
+
+  /// Returns an appropriate icon for a given [ComponentType].
+  IconData _getIconForType(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return Icons.memory;
+      case ComponentType.gpu:
+        return Icons.developer_board;
+      case ComponentType.motherboard:
+        return Icons.dns;
+      case ComponentType.ram:
+        return Icons.sd_storage;
+      case ComponentType.storage:
+        return Icons.save;
+      case ComponentType.psu:
+        return Icons.power;
+      default:
+        return Icons.settings_input_component;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,19 +193,22 @@ class _ComponentTile extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            Icon(Icons.memory, size: 24), // İleride dinamik ikon eklenebilir
+            // Dynamically sets the icon based on the component type.
+            Icon(_getIconForType(component.type), size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(component.name, style: theme.textTheme.titleMedium),
             ),
+            // Displays the lowest price found for the component.
             Text(
               '\$${component.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: Colors.green,
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(width: 24),
+            // TODO: This should be dynamic, showing the vendor with the lowest price.
             InkWell(
               onTap: () {},
               child: const Text(
@@ -168,6 +220,7 @@ class _ComponentTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 24),
+            // TODO: Implement "Add to build" functionality.
             ElevatedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.add, size: 16),

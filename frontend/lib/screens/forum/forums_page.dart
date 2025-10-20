@@ -1,3 +1,9 @@
+/// This file defines the main forum page where users can browse, filter,
+/// and sort discussion posts.
+///
+/// It features a modern UI with a persistent header for search and filter
+/// actions, and an animated list of post cards.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/screens/forum/forum_model.dart';
@@ -6,6 +12,7 @@ import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
 
+/// The main widget for the forums page.
 class ForumsPage extends StatefulWidget {
   const ForumsPage({super.key});
 
@@ -13,13 +20,26 @@ class ForumsPage extends StatefulWidget {
   State<ForumsPage> createState() => _ForumsPageState();
 }
 
+/// The state for the [ForumsPage].
+///
+/// It manages the UI state for filters, search, and sorting.
 class _ForumsPageState extends State<ForumsPage> {
+  /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// The currently selected category for filtering posts.
   String _selectedCategory = 'All';
+
+  /// The current text in the search input field.
   String _searchQuery = '';
+
+  /// The currently selected option for sorting posts.
   String _selectedSortOption = 'Newest';
+
+  /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
 
+  /// A list of available categories for the filter chips.
   final List<String> _categories = [
     'All',
     'Troubleshooting',
@@ -33,12 +53,14 @@ class _ForumsPageState extends State<ForumsPage> {
     'Unanswered',
   ];
 
+  /// Controller for the main scroll view to manage scroll-related effects if needed.
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
 
+    // Adds a listener to the search controller to update the UI in real-time.
     _searchController.addListener(() {
       if (_searchController.text != _searchQuery) {
         setState(() {
@@ -59,8 +81,10 @@ class _ForumsPageState extends State<ForumsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // apply category search and sort logic
-    List<ForumPost> processedPosts = mockPosts.where((post) {
+    // TODO: Replace this with data fetched from a backend service.
+    final List<ForumPost> allPosts = [];
+    // Apply category and search filters to the list of all posts.
+    List<ForumPost> processedPosts = allPosts.where((post) {
       final categoryMatch =
           _selectedCategory == 'All' || post.category == _selectedCategory;
       final searchMatch = post.title.toLowerCase().contains(
@@ -69,14 +93,14 @@ class _ForumsPageState extends State<ForumsPage> {
       return categoryMatch && searchMatch;
     }).toList();
 
-    // unanswered is a filter so its applied before sorting
+    // The 'Unanswered' option acts as a filter, so it's applied before sorting.
     if (_selectedSortOption == 'Unanswered') {
       processedPosts = processedPosts
           .where((post) => post.replies.isEmpty)
           .toList();
     }
 
-    // sorting logic later we can add more logic in here
+    // Apply sorting based on the selected option.
     switch (_selectedSortOption) {
       case 'Most Viewed':
         processedPosts.sort((a, b) => b.viewCount.compareTo(a.viewCount));
@@ -95,10 +119,13 @@ class _ForumsPageState extends State<ForumsPage> {
         children: [
           CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
+            // CustomScrollView allows for combining different types of scrollable lists and headers.
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
+                // The main header section with the title and "Start Discussion" button.
                 _buildModernHeader(theme, context),
+                // The persistent header that contains search, filter, and sort controls.
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _ModernForumActionsHeader(
@@ -117,6 +144,7 @@ class _ForumsPageState extends State<ForumsPage> {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.all(16.0),
+                  // The main list of forum posts, with staggered animations.
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => AnimationConfiguration.staggeredList(
@@ -141,6 +169,7 @@ class _ForumsPageState extends State<ForumsPage> {
     );
   }
 
+  /// Builds the main header section of the page, which includes the title and a button to create a new post.
   Widget _buildModernHeader(ThemeData theme, BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
@@ -237,7 +266,10 @@ class _ForumsPageState extends State<ForumsPage> {
   }
 }
 
-// SliverPersistentHeaderDelegate
+/// A persistent header delegate that stays visible while scrolling.
+///
+/// It contains the search bar, category filters, and sorting dropdown, allowing
+/// users to refine the post list at any time.
 class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
   final TextEditingController searchController;
   final List<String> categories;
@@ -374,6 +406,10 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
       true;
 }
 
+/// A card widget that displays a summary of a single [ForumPost].
+///
+/// It includes the post title, author, category, a content preview, and stats.
+/// It also has a subtle animation on tap.
 class _ModernPostCard extends StatefulWidget {
   final ForumPost post;
   const _ModernPostCard({required this.post});
@@ -382,6 +418,7 @@ class _ModernPostCard extends StatefulWidget {
   State<_ModernPostCard> createState() => _ModernPostCardState();
 }
 
+/// The state for [_ModernPostCard], which manages the tap animation.
 class _ModernPostCardState extends State<_ModernPostCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
@@ -409,6 +446,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AnimatedBuilder(
+      // The AnimatedBuilder rebuilds the card when the animation value changes.
       animation: _scaleAnimation,
       builder: (context, child) {
         return Transform.scale(
@@ -426,6 +464,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () {
+                // Play a quick "press down" animation on tap before navigating.
                 _animationController.forward().then(
                   (_) => _animationController.reverse(),
                 );
@@ -442,7 +481,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // avatar with gradient background
+                    // A circular avatar for the author with a gradient background.
                     Container(
                       width: 48,
                       height: 48,
@@ -487,6 +526,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                 ),
                               ),
                               const SizedBox(width: 12),
+                              // A chip that displays the post's category with a unique color.
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -511,7 +551,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // Post preview
+                          // A preview of the post's content.
                           if (widget.post.content.isNotEmpty)
                             Container(
                               width: double.infinity,
@@ -531,10 +571,10 @@ class _ModernPostCardState extends State<_ModernPostCard>
                               ),
                             ),
                           const SizedBox(height: 12),
-                          // metadata and stats
+                          // The footer of the card, containing metadata and stats.
                           Row(
                             children: [
-                              // author and date
+                              // Author's avatar, name, and post date.
                               Row(
                                 children: [
                                   CircleAvatar(
@@ -581,7 +621,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                 ],
                               ),
                               const Spacer(),
-                              // Stats
+                              // Chips for displaying view and reply counts.
                               _StatChip(
                                 Icons.visibility,
                                 '${widget.post.viewCount} views',
@@ -606,6 +646,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
     );
   }
 
+  /// Returns a specific color based on the post's category for styling the category chip.
   Color _getCategoryColor(String category, ThemeData theme) {
     switch (category) {
       case 'Troubleshooting':
@@ -620,6 +661,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
   }
 }
 
+/// A small, reusable widget for displaying post statistics like views and replies.
 class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;

@@ -1,10 +1,23 @@
+/// This file defines the data models for the forum feature.
+///
+/// It includes classes for forum posts ([ForumPost]), replies to posts ([PostReply]),
+/// and other related data structures that might be attached to a post.
+
 import 'package:frontend/screens/auth/auth_provider.dart';
 
 // answer structure
+/// Represents a single reply to a [ForumPost].
 class PostReply {
+  /// The unique identifier for the reply.
   final String id;
+
+  /// The user who wrote the reply.
   final AppUser author;
+
+  /// The text content of the reply.
   final String content;
+
+  /// The date and time when the reply was created.
   final DateTime createdAt;
 
   PostReply({
@@ -15,41 +28,42 @@ class PostReply {
   });
 }
 
-class PCComponent {
-  final String type;
-  final String name;
-
-  PCComponent({required this.type, required this.name});
-}
-
-class UserBuild {
-  final String id;
-  final String name;
-  final List<PCComponent> components;
-  final double totalPrice;
-
-  UserBuild({
-    required this.id,
-    required this.name,
-    required this.components,
-    required this.totalPrice,
-  });
-}
-
-// post structure we will add additional things
+/// Represents a single forum post or discussion thread.
 class ForumPost {
+  /// The unique identifier for the post.
   final String id;
+
+  /// The title of the post.
   final String title;
+
+  /// The user who created the post.
   final AppUser author;
+
+  /// The category the post belongs to (e.g., "Troubleshooting", "Build Advice").
   final String category;
+
+  /// The main text content of the post.
   final String content;
+
+  /// The date and time when the post was created.
   final DateTime createdAt;
+
+  /// The timestamp of the most recent activity (e.g., a new reply).
   final DateTime lastActivity;
+
+  /// The number of times the post has been viewed.
   final int viewCount;
+
+  /// A list of all replies to this post.
   final List<PostReply> replies;
 
+  /// The ID of the reply that has been marked as the accepted answer. Null if none.
   final String? acceptedReplyId;
+
+  /// A list of tags associated with the post for easier searching.
   final List<String> tags;
+
+  /// The ID of a [CommunityBuild] that is attached to this post. Null if none.
   final String? attachedBuildId;
 
   ForumPost({
@@ -67,89 +81,4 @@ class ForumPost {
     this.tags = const [],
     this.attachedBuildId,
   });
-}
-
-// tests
-final _testUser1 = AppUser(
-  uid: '1',
-  email: 'test1@kaza.com',
-  username: 'Artun',
-);
-final _testUser2 = AppUser(
-  uid: '2',
-  email: 'test2@kaza.com',
-  username: 'Ziyad',
-);
-final List<UserBuild> mockUserBuilds = [
-  UserBuild(
-    id: 'build_001',
-    name: 'My Overkill Gaming Rig',
-    totalPrice: 2450.00,
-    components: [
-      PCComponent(type: 'CPU', name: 'Intel Core i9-13900K'),
-      PCComponent(type: 'GPU', name: 'NVIDIA GeForce RTX 4090'),
-      PCComponent(type: 'RAM', name: 'G.Skill Trident Z5 32GB DDR5'),
-    ],
-  ),
-  UserBuild(
-    id: 'build_002',
-    name: 'Budget 1080p Machine',
-    totalPrice: 820.50,
-    components: [
-      PCComponent(type: 'CPU', name: 'AMD Ryzen 5 5600X'),
-      PCComponent(type: 'GPU', name: 'NVIDIA GeForce RTX 3060'),
-      PCComponent(type: 'RAM', name: 'Corsair Vengeance LPX 16GB DDR4'),
-    ],
-  ),
-];
-final List<ForumPost> mockPosts = [
-  ForumPost(
-    id: 'post1',
-    title: 'My PC won\'t turn on after installing a new GPU',
-    author: _testUser1,
-    category: 'Troubleshooting',
-    content:
-        'Hey everyone, I just installed a new RTX 4080 and now my PC shows no signs of life. The PSU is a 750W Gold. Any ideas what could be wrong?',
-    createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    lastActivity: DateTime.now().subtract(const Duration(minutes: 5)),
-    viewCount: 124,
-
-    replies: [
-      PostReply(
-        id: 'reply1',
-        author: _testUser2,
-        content:
-            'Did you make sure to plug in all the power connectors to the GPU? Some of them need more than one.',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-      ),
-      PostReply(
-        id: 'reply2',
-        author: _testUser1,
-        content:
-            'That was it! I missed one of the 8-pin connectors. Thanks a lot!',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-    ],
-  ),
-  ForumPost(
-    id: 'post2',
-    title: 'Show off your RGB setup!',
-    author: _testUser2,
-    category: 'Show Off Your Build',
-    content:
-        'Just finished my new build with a ton of RGB. Let\'s see what you guys have created!',
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    lastActivity: DateTime.now().subtract(const Duration(hours: 3)),
-    viewCount: 588,
-
-    replies: [],
-  ),
-];
-
-UserBuild? getBuildById(String id) {
-  try {
-    return mockUserBuilds.firstWhere((build) => build.id == id);
-  } catch (e) {
-    return null;
-  }
 }

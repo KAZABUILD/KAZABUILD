@@ -1,8 +1,14 @@
+/// This file defines the UI for the user's profile page.
+///
+/// It displays the user's personal information, stats (like posts and followers),
+/// and a grid of their completed PC builds.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 
+/// A page that displays the public profile of the currently authenticated user.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -10,13 +16,17 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
+    // Watch the authentication provider to get the current user's data.
     final user = ref.watch(authProvider);
 
+    // If no user is logged in, show a message. This page should not be
+    // accessible without an authenticated user.
     if (user == null) {
       return const Scaffold(body: Center(child: Text("User not logged in.")));
     }
 
     return Scaffold(
+      // The main app bar for the profile page.
       appBar: AppBar(
         title: Text('${user.username}\'s Profile'),
         backgroundColor: theme.colorScheme.surface,
@@ -32,8 +42,10 @@ class ProfilePage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // The main header section with the user's avatar and stats.
             Row(
               children: [
+                // User's profile picture or initial.
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: theme.colorScheme.primaryContainer,
@@ -56,12 +68,14 @@ class ProfilePage extends ConsumerWidget {
                     children: [
                       Text(user.username, style: theme.textTheme.headlineSmall),
 
+                      // Display the user's country if it's available.
                       if (user.country != null) ...[
                         const SizedBox(height: 4),
                         Text(user.country!, style: theme.textTheme.bodyMedium),
                       ],
                       const SizedBox(height: 8),
                       Row(
+                        // TODO: Fetch these stats from the backend instead of hardcoding.
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildStatColumn('Posts', '15'),
@@ -79,15 +93,19 @@ class ProfilePage extends ConsumerWidget {
               ],
             ),
 
+            // "About Me" section, only shown if the user has entered a bio.
             if (user.bio != null && user.bio!.isNotEmpty) ...[
               const Divider(height: 48),
               Text("About Me", style: theme.textTheme.titleLarge),
               const SizedBox(height: 8),
               Text(user.bio!, style: theme.textTheme.bodyMedium),
             ],
+
+            // Section to display the user's public PC builds.
             const Divider(height: 48),
             Text("Completed Builds", style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
+            // A placeholder grid for the user's builds.
             _buildGridPlaceholder(context),
           ],
         ),
@@ -95,6 +113,7 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
+  /// A helper widget to build a single column for the statistics row (e.g., Posts, Followers).
   Widget _buildStatColumn(String label, String value) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -109,6 +128,8 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
+  /// A helper widget that builds a placeholder grid for the user's completed builds.
+  /// TODO: Replace this with a real grid that fetches and displays the user's actual builds.
   Widget _buildGridPlaceholder(BuildContext context) {
     final theme = Theme.of(context);
     return GridView.builder(

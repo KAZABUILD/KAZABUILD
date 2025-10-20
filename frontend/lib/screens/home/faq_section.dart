@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 
+class FaqItem {
+  final String question;
+  final String answer;
+
+  const FaqItem({required this.question, required this.answer});
+}
+
 class FaqSection extends StatelessWidget {
   const FaqSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final List<FaqItem> faqs = [];
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 24.0),
       child: Center(
@@ -15,20 +25,25 @@ class FaqSection extends StatelessWidget {
             children: [
               Text('FaQ', style: theme.textTheme.displaySmall),
               const SizedBox(height: 32),
-              const _FaqItem(
-                question: 'Question 1 will be there',
-                answer: 'We will get the answer in data file',
-              ),
-              const Divider(color: Colors.grey),
-              const _FaqItem(
-                question: 'Question 2 will be there',
-                answer: 'We will get the answer in data file',
-              ),
-              const Divider(color: Colors.grey),
-              const _FaqItem(
-                question: 'Question 3 will be there',
-                answer: 'We will get the answer in data file ',
-              ),
+              if (faqs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48.0),
+                  child: Text(
+                    'Frequently Asked Questions will be shown here soon.',
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: faqs.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(color: Colors.grey),
+                  itemBuilder: (context, index) {
+                    final faq = faqs[index];
+                    return _FaqItem(question: faq.question, answer: faq.answer);
+                  },
+                ),
             ],
           ),
         ),

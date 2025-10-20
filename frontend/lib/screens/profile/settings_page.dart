@@ -1,9 +1,15 @@
+/// This file defines the UI for the user's profile settings page.
+///
+/// It allows authenticated users to view and edit their personal information,
+/// manage privacy settings, and change app-wide preferences like the theme.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/widgets/theme_provider.dart';
 
+/// A page where the authenticated user can manage their account settings.
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
@@ -12,6 +18,8 @@ class SettingsPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final user = ref.watch(authProvider);
 
+    // If no user is logged in, show a message. This page should not be
+    // accessible without an authenticated user.
     if (user == null) {
       return const Scaffold(
         body: Center(child: Text("User not logged in or data not available.")),
@@ -35,10 +43,12 @@ class SettingsPage extends ConsumerWidget {
           _buildSettingsSection(
             theme,
             title: 'Email',
+            // The user's email is typically read-only.
             child: Text(user.email, style: theme.textTheme.bodyLarge),
           ),
           const Divider(height: 40),
 
+          // Section for displaying and editing the username.
           _buildSettingsSection(
             theme,
             title: 'Username',
@@ -46,12 +56,17 @@ class SettingsPage extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(user.username, style: theme.textTheme.bodyLarge),
-                OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+                OutlinedButton(
+                  // TODO: Implement edit functionality (e.g., show a dialog or navigate to a new page).
+                  onPressed: () {},
+                  child: const Text('Edit'),
+                ),
               ],
             ),
           ),
           const Divider(height: 40),
 
+          // Section for displaying and editing the profile picture.
           _buildSettingsSection(
             theme,
             title: 'Profile Picture',
@@ -68,12 +83,17 @@ class SettingsPage extends ConsumerWidget {
                       ? Text(user.username.substring(0, 1).toUpperCase())
                       : null,
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+                OutlinedButton(
+                  // TODO: Implement image picker and upload functionality.
+                  onPressed: () {},
+                  child: const Text('Edit'),
+                ),
               ],
             ),
           ),
           const Divider(height: 40),
 
+          // Section for displaying and editing the user's bio.
           _buildSettingsSection(
             theme,
             title: 'User Bio',
@@ -88,12 +108,17 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+                OutlinedButton(
+                  // TODO: Implement edit functionality.
+                  onPressed: () {},
+                  child: const Text('Edit'),
+                ),
               ],
             ),
           ),
           const Divider(height: 40),
 
+          // Section for displaying and editing the phone number.
           _buildSettingsSection(
             theme,
             title: 'Phone Number',
@@ -104,13 +129,18 @@ class SettingsPage extends ConsumerWidget {
                   user.phoneNumber ?? 'Not set',
                   style: theme.textTheme.bodyLarge,
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+                OutlinedButton(
+                  // TODO: Implement edit functionality.
+                  onPressed: () {},
+                  child: const Text('Edit'),
+                ),
               ],
             ),
           ),
 
           const Divider(height: 40),
 
+          // Section for displaying and editing the address.
           _buildSettingsSection(
             theme,
             title: 'Address',
@@ -125,12 +155,17 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                OutlinedButton(onPressed: () {}, child: const Text('Edit')),
+                OutlinedButton(
+                  // TODO: Implement edit functionality.
+                  onPressed: () {},
+                  child: const Text('Edit'),
+                ),
               ],
             ),
           ),
           const Divider(height: 40),
 
+          // Section for managing profile privacy.
           _buildSettingsSection(
             theme,
             title: 'Profile Privacy',
@@ -142,12 +177,13 @@ class SettingsPage extends ConsumerWidget {
               ),
               value: user.isProfilePrivate,
               onChanged: (bool value) {
-                // todod logic of private public
+                // TODO: Implement logic to update the user's privacy setting via an API call.
               },
             ),
           ),
           const Divider(height: 40),
 
+          // Section for changing the app's theme.
           _buildSettingsSection(
             theme,
             title: 'Theme',
@@ -168,6 +204,10 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  /// A helper method to create a consistently styled section in the settings list.
+  ///
+  /// It takes a [title], an optional [subtitle], and a [child] widget
+  /// which contains the actual setting control (e.g., a Text, a Switch, or a Button).
   Widget _buildSettingsSection(
     ThemeData theme, {
     required String title,

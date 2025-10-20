@@ -15,10 +15,7 @@ class HomeBody extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // 3D Model Viewer with auto-rotation and interaction
-            SizedBox(
-              height: 800,
-              child: Flutter3DViewer(src: 'assets/pc.glb'),
-            ),
+            SizedBox(height: 800, child: Flutter3DViewer(src: 'assets/pc.glb')),
             //const SizedBox(height: 24),
 
             // text box empty
@@ -36,9 +33,9 @@ class HomeBody extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _CustomStartButton(label: "Start now"),
+                _CustomStartButton(label: "Take Quiz"),
                 const SizedBox(width: 20),
-                _CustomStartButton(label: "Start now"),
+                _CustomStartButton(label: "Start Build"),
               ],
             ),
           ],

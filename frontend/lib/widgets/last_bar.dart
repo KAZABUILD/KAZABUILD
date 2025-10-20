@@ -1,3 +1,8 @@
+/// This file defines the final footer bar displayed at the bottom of the homepage.
+///
+/// It includes navigation links, information links, and copyright text,
+/// with a responsive layout that adapts to mobile and desktop screens.
+
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
@@ -5,18 +10,24 @@ import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
+/// The main footer widget for the application.
 class LastBar extends StatelessWidget {
   const LastBar({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Determine if the layout should be for mobile based on screen width.
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 100, vertical: 40),
-      color: Colors.black.withValues(alpha: 0.3),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 20 : 100,
+        vertical: 40,
+      ),
+      color: Colors.black.withOpacity(0.3),
       child: Column(
         children: [
+          // On mobile, stack the columns vertically. On desktop, place them in a row.
           isMobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,6 +57,7 @@ class LastBar extends StatelessWidget {
                     ),
                   ],
                 ),
+          // A divider and copyright notice at the very bottom.
           const Divider(color: Colors.white24, height: 60),
           const Text(
             '© KAZA BUILD',
@@ -57,6 +69,7 @@ class LastBar extends StatelessWidget {
   }
 }
 
+/// A helper widget that displays a single column of links in the footer.
 class _FooterColumn extends StatelessWidget {
   final String title;
   final List<String> items;
@@ -68,6 +81,7 @@ class _FooterColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The title of the link column (e.g., "Links", "Info").
         Text(
           title,
           style: const TextStyle(
@@ -77,12 +91,14 @@ class _FooterColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        // Generate a tappable Text widget for each item in the list.
         ...items.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
 
             child: InkWell(
               onTap: () {
+                // Navigate to the correct page based on the item's text.
                 if (item == 'Contact & Feedback') {
                   Navigator.push(
                     context,
@@ -125,7 +141,7 @@ class _FooterColumn extends StatelessWidget {
                     ),
                   );
                 } else {
-                  ('$item clicked!');
+                  // Placeholder for items without a defined route.
                 }
               },
               child: Text(item, style: const TextStyle(color: Colors.white70)),

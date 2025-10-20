@@ -1,7 +1,12 @@
+/// This file defines the data model for a community-submitted PC build.
+///
+/// The [CommunityBuild] class encapsulates all the information related to a
+/// single PC build shared by a user, including its components, author,
+/// description, and pricing information.
+
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 
-// "Explore Builds" sayfasında gösterilecek bir sistemin veri modeli.
 class CommunityBuild {
   final String id;
   final String title;
@@ -11,7 +16,7 @@ class CommunityBuild {
   final DateTime postedDate;
   final DateTime lastEditedDate;
   final String description;
-  final List<BaseComponent> components; // Artık tam bileşen listesini tutuyor
+  final List<BaseComponent> components;
 
   CommunityBuild({
     required this.id,
@@ -25,30 +30,11 @@ class CommunityBuild {
     required this.components,
   });
 
-  //summing all prices
+  /// A computed property that calculates the total price of the build.
+  ///
+  /// It iterates through all the [components] and sums up their `lowestPrice`.
+  /// If a component has no price, it is treated as 0.
   double get totalPrice {
     return components.fold(0.0, (sum, item) => sum + (item.lowestPrice ?? 0.0));
   }
 }
-
-// test datas
-final _testUser = AppUser(
-  uid: 'user1',
-  email: 'test@test.com',
-  username: 'KazaBuilder',
-);
-
-final List<CommunityBuild> mockCommunityBuilds = [
-  CommunityBuild(
-    id: 'build-1',
-    title: 'The Arctic White Beast',
-    rating: 4.5,
-    imageUrl: 'https://picsum.photos/seed/white-pc/1200/800',
-    author: _testUser,
-    postedDate: DateTime(2025, 10, 10),
-    lastEditedDate: DateTime(2025, 10, 10),
-    description:
-        'A clean, powerful, and cool build focused on aesthetics without sacrificing performance. Perfect for 1440p gaming and streaming.',
-    components: [mockCPUs.first],
-  ),
-];

@@ -1,3 +1,10 @@
+/// This file defines the UI for the post detail page.
+///
+/// It displays the full content of a single forum post, followed by a list
+/// of all its replies. It also includes a section at the bottom for users
+/// (both registered and guests) to submit their own replies. The page features
+/// animations for a smooth user experience.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/screens/forum/forum_model.dart';
@@ -5,6 +12,7 @@ import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:intl/intl.dart';
 
 class PostDetailPage extends StatefulWidget {
+  /// The [ForumPost] object containing the data to be displayed.
   final ForumPost post;
   const PostDetailPage({super.key, required this.post});
 
@@ -12,14 +20,22 @@ class PostDetailPage extends StatefulWidget {
   State<PostDetailPage> createState() => _PostDetailPageState();
 }
 
+/// The state for the [PostDetailPage].
+///
+/// Manages the list of replies and the animations for the page elements.
 class _PostDetailPageState extends State<PostDetailPage>
     with TickerProviderStateMixin {
+  /// A local list of replies, initialized from the post object.
+  /// This allows for adding new replies in real-time without refetching.
   late List<PostReply> _replies;
+
+  /// The main animation controller for staggering the appearance of page elements.
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
+    // Initialize the replies list and start the animation controller.
     _replies = List.from(widget.post.replies);
     _controller = AnimationController(
       vsync: this,
@@ -34,6 +50,7 @@ class _PostDetailPageState extends State<PostDetailPage>
     super.dispose();
   }
 
+  /// Adds a new reply to the local list and triggers a UI update.
   void _addReply(PostReply newReply) {
     setState(() {
       _replies.add(newReply);
@@ -54,14 +71,17 @@ class _PostDetailPageState extends State<PostDetailPage>
       body: Column(
         children: [
           Expanded(
+            // CustomScrollView is used to combine different types of scrollable content.
             child: CustomScrollView(
               slivers: [
+                // The header containing the original post content.
                 SliverToBoxAdapter(
                   child: _PostHeader(
                     post: widget.post,
                     animationController: _controller,
                   ),
                 ),
+                // A header to show the number of replies.
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -77,6 +97,7 @@ class _PostDetailPageState extends State<PostDetailPage>
                     ),
                   ),
                 ),
+                // If there are no replies, show a placeholder message.
                 if (_replies.isEmpty)
                   const SliverToBoxAdapter(
                     child: Center(
@@ -90,11 +111,13 @@ class _PostDetailPageState extends State<PostDetailPage>
                     ),
                   )
                 else
+                  // Otherwise, build a list of reply cards with staggered animations.
                   SliverList.builder(
                     itemCount: _replies.length,
                     itemBuilder: (context, index) {
                       final animation = CurvedAnimation(
                         parent: _controller,
+                        // Each reply card animates in slightly after the previous one.
                         curve: Interval(
                           0.3 + (0.6 * index / _replies.length),
                           1.0,
@@ -116,6 +139,7 @@ class _PostDetailPageState extends State<PostDetailPage>
               ],
             ),
           ),
+          // The input section at the bottom for submitting a new reply.
           _ReplyInputSection(onReplySubmitted: _addReply),
         ],
       ),
@@ -123,7 +147,7 @@ class _PostDetailPageState extends State<PostDetailPage>
   }
 }
 
-// header section
+/// A widget that displays the header of the detail page, containing the original post.
 class _PostHeader extends StatelessWidget {
   final ForumPost post;
   final AnimationController animationController;
@@ -132,11 +156,13 @@ class _PostHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Defines the animation curve for the header's appearance.
     final animation = CurvedAnimation(
       parent: animationController,
       curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
     );
 
+    // The header fades and slides in from the bottom.
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
@@ -147,6 +173,7 @@ class _PostHeader extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           padding: const EdgeInsets.all(20),
+          // A decorated container for the post content.
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -169,6 +196,7 @@ class _PostHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Post title.
               Text(
                 post.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -177,6 +205,7 @@ class _PostHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              // Author information and post date.
               Row(
                 children: [
                   CircleAvatar(
@@ -204,6 +233,7 @@ class _PostHeader extends StatelessWidget {
                 ],
               ),
               const Divider(height: 28),
+              // The main content of the post.
               Text(
                 post.content,
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -219,7 +249,7 @@ class _PostHeader extends StatelessWidget {
   }
 }
 
-// reply card section
+/// A card widget that displays a single reply to the post.
 class _ReplyCard extends StatelessWidget {
   final PostReply reply;
   const _ReplyCard({required this.reply});
@@ -230,6 +260,7 @@ class _ReplyCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
+      // A decorated container for the reply.
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -245,6 +276,7 @@ class _ReplyCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Author's avatar.
           CircleAvatar(
             backgroundColor: theme.colorScheme.secondaryContainer,
             child: Text(
@@ -257,6 +289,7 @@ class _ReplyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Author's username and the time of the reply.
                 Row(
                   children: [
                     Text(
@@ -277,6 +310,7 @@ class _ReplyCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
+                // The content of the reply.
                 Text(
                   reply.content,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -293,7 +327,8 @@ class _ReplyCard extends StatelessWidget {
   }
 }
 
-// reply input section
+/// A stateful widget that provides a text field and a button for submitting replies.
+/// It handles both authenticated users and guests.
 class _ReplyInputSection extends ConsumerStatefulWidget {
   final Function(PostReply) onReplySubmitted;
   const _ReplyInputSection({required this.onReplySubmitted});
@@ -302,8 +337,12 @@ class _ReplyInputSection extends ConsumerStatefulWidget {
   ConsumerState<_ReplyInputSection> createState() => _ReplyInputSectionState();
 }
 
+/// The state for the [_ReplyInputSection].
 class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
+  /// Controller for the main reply text field.
   final _replyController = TextEditingController();
+
+  /// Controller for the guest name field, shown only if the user is not logged in.
   final _guestNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -314,10 +353,13 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
     super.dispose();
   }
 
+  /// Validates the form and submits the new reply.
   void _submitReply() {
     if (_formKey.currentState!.validate()) {
+      // Check if a user is logged in via the authProvider.
       final currentUser = ref.read(authProvider);
 
+      // If no user is logged in, create a temporary "guest" user.
       final author =
           currentUser ??
           AppUser(
@@ -326,6 +368,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
             email: '',
           );
 
+      // Create a new PostReply object with the form data.
       final newReply = PostReply(
         id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
         author: author,
@@ -333,8 +376,10 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
         createdAt: DateTime.now(),
       );
 
+      // Call the callback function to add the reply to the list in the parent widget.
       widget.onReplySubmitted(newReply);
 
+      // Clear the text fields and remove focus after submission.
       _replyController.clear();
       _guestNameController.clear();
       FocusScope.of(context).unfocus();
@@ -345,8 +390,10 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentUser = ref.watch(authProvider);
+    // Determine if the current user is a guest.
     final isGuest = currentUser == null;
 
+    // Use Material widget to provide elevation and a consistent background.
     return Material(
       elevation: 12,
       color: theme.colorScheme.surface,
@@ -363,6 +410,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // If the user is a guest, show an additional field for their name.
               if (isGuest) ...[
                 TextFormField(
                   controller: _guestNameController,
@@ -385,6 +433,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // The avatar of the user who is replying.
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
                     child: Text(
@@ -396,6 +445,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
+                    // The main text field for the reply content.
                     child: TextFormField(
                       controller: _replyController,
                       maxLines: 3,
@@ -414,6 +464,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   ),
                   const SizedBox(width: 12),
                   Container(
+                    // The submit button.
                     height: 55,
                     width: 55,
                     decoration: BoxDecoration(

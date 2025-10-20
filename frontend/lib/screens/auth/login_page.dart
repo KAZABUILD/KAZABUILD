@@ -1,3 +1,9 @@
+/// This file defines the UI for the user login screen.
+///
+/// It includes a form for users to enter their credentials, links to sign up
+/// or reset their password, and options for social media login.
+/// It uses Riverpod for state management to handle the authentication process.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
@@ -6,6 +12,8 @@ import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
+/// The main widget for the login page.
+/// It's a `ConsumerStatefulWidget` to interact with Riverpod providers.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -14,7 +22,10 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -27,10 +38,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       backgroundColor: theme.colorScheme.background,
       body: Column(
         children: [
-          CustomNavigationBar(showProfileArea: false, scaffoldKey: _scaffoldKey),
+          // The main navigation bar, configured not to show profile details on this page.
+          CustomNavigationBar(
+            showProfileArea: false,
+            scaffoldKey: _scaffoldKey,
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
+                // Ensures the content is scrollable on smaller screens.
                 return SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
@@ -42,17 +58,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 400),
 
+                          // The main login form.
                           child: Form(
                             key: _formKey,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                // App logo and title.
                                 const Header(),
                                 const SizedBox(height: 32),
+                                // Toggle buttons for switching between Sign In and Sign Up.
                                 _AuthToggleButtons(
                                   isSignIn: true,
                                   onSignUpTap: () {
+                                    // Navigates to the SignUpPage with a fade transition.
                                     Navigator.pushReplacement(
                                       context,
                                       PageRouteBuilder(
@@ -80,6 +100,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   style: theme.textTheme.bodyMedium,
                                 ),
                                 const SizedBox(height: 24),
+                                // Text fields for username/email and password.
                                 CustomTextField(
                                   label: 'Username or Email',
                                   icon: Icons.person_outline,
@@ -103,6 +124,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
+                                    // "Remember me" checkbox.
                                     Row(
                                       children: [
                                         Checkbox(
@@ -112,6 +134,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         const Text('Remember me'),
                                       ],
                                     ),
+                                    // "Forgot password?" link.
                                     TextButton(
                                       onPressed: () {
                                         Navigator.push(
@@ -128,14 +151,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 ),
                                 const SizedBox(height: 16),
 
+                                // The primary sign-in button.
                                 PrimaryButton(
                                   text: 'Sign In',
                                   icon: Icons.arrow_forward,
                                   onPressed: () {
+                                    // Validate the form before proceeding.
                                     if (_formKey.currentState!.validate()) {
-                                      ref
-                                          .read(authProvider.notifier)
-                                          .signInForTest();
+                                      // TODO: Implement actual sign-in logic here.
+                                      // For now, it just reads the provider and navigates home.
+                                      ref.read(authProvider.notifier);
 
                                       Navigator.of(
                                         context,
@@ -143,7 +168,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     }
                                   },
                                 ),
+                                // Divider with "OR" text.
                                 const OrDivider(),
+                                // Social login buttons.
                                 const SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
@@ -175,6 +202,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
+/// A widget that displays "Sign In" and "Sign Up" toggle buttons.
+/// The currently active button is styled differently.
 class _AuthToggleButtons extends StatelessWidget {
   final bool isSignIn;
   final VoidCallback onSignUpTap;
@@ -184,11 +213,13 @@ class _AuthToggleButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Style for the selected (active) button.
     final selectedStyle = ElevatedButton.styleFrom(
       backgroundColor: theme.colorScheme.primary,
       foregroundColor: theme.colorScheme.onPrimary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
+    // Style for the unselected button.
     final unselectedStyle = ElevatedButton.styleFrom(
       backgroundColor: theme.colorScheme.surface,
       foregroundColor: theme.colorScheme.onSurface,

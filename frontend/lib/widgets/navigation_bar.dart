@@ -1,3 +1,10 @@
+/// This file defines the main navigation components for the application.
+///
+/// It includes:
+/// - [CustomNavigationBar]: A responsive app bar that adapts to desktop and mobile.
+/// - [_MobileAppBar]: The app bar specifically for smaller screens.
+/// - [CustomDrawer]: The slide-out navigation drawer for mobile.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
@@ -14,16 +21,28 @@ import 'package:frontend/screens/builder/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 
+/// A simple data class to represent a PC part in the dropdown menu.
 class PcPart {
+  /// The display name of the part (e.g., "CPU").
   final String name;
+
+  /// The icon to display next to the part name.
   final IconData icon;
+
+  /// The [ComponentType] associated with the part, used for navigation.
   final ComponentType type;
 
   PcPart({required this.name, required this.icon, required this.type});
 }
 
+/// A responsive navigation bar that shows a full bar on desktop and a
+/// minimal app bar with a drawer on mobile.
 class CustomNavigationBar extends ConsumerWidget {
+  /// Determines whether to show the user profile/login area.
+  /// Defaults to `true`.
   final bool showProfileArea;
+
+  /// A key to control the Scaffold's drawer, passed from the parent page.
   final GlobalKey<ScaffoldState>? scaffoldKey;
 
   const CustomNavigationBar({
@@ -38,7 +57,7 @@ class CustomNavigationBar extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Use drawer for screens smaller than 1000px
+    // For screens smaller than 1000px, show the mobile-specific app bar.
     if (screenWidth < 1000) {
       return _MobileAppBar(
         showProfileArea: showProfileArea,
@@ -46,7 +65,7 @@ class CustomNavigationBar extends ConsumerWidget {
       );
     }
 
-    // Desktop navigation bar
+    // For wider screens, show the full desktop navigation bar.
     final user = ref.watch(authProvider);
 
     return Container(
@@ -55,11 +74,12 @@ class CustomNavigationBar extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // The logo and app name, which navigates to the homepage on tap.
           InkWell(
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const HomePage()),
-                    (Route<dynamic> route) => false,
+                (Route<dynamic> route) => false,
               );
             },
             borderRadius: BorderRadius.circular(8),
@@ -74,6 +94,7 @@ class CustomNavigationBar extends ConsumerWidget {
               ],
             ),
           ),
+          // The main navigation buttons in the center of the bar.
           Row(
             children: const [
               _NavButton(title: 'Build Now'),
@@ -83,6 +104,7 @@ class CustomNavigationBar extends ConsumerWidget {
               _PartsDropdownMenu(),
             ],
           ),
+          // The right-hand side of the bar with user profile and other actions.
           Row(
             children: [
               if (showProfileArea)
@@ -101,14 +123,12 @@ class CustomNavigationBar extends ConsumerWidget {
   }
 }
 
+/// The app bar designed for mobile layouts.
 class _MobileAppBar extends ConsumerWidget {
   final bool showProfileArea;
   final GlobalKey<ScaffoldState>? scaffoldKey;
 
-  const _MobileAppBar({
-    required this.showProfileArea,
-    this.scaffoldKey,
-  });
+  const _MobileAppBar({required this.showProfileArea, this.scaffoldKey});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -121,6 +141,7 @@ class _MobileAppBar extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // The hamburger menu icon to open the drawer.
           IconButton(
             icon: const Icon(Icons.menu),
             onPressed: () {
@@ -131,11 +152,12 @@ class _MobileAppBar extends ConsumerWidget {
               }
             },
           ),
+          // The app logo and name, centered.
           InkWell(
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const HomePage()),
-                    (Route<dynamic> route) => false,
+                (Route<dynamic> route) => false,
               );
             },
             borderRadius: BorderRadius.circular(8),
@@ -152,9 +174,8 @@ class _MobileAppBar extends ConsumerWidget {
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              ThemeToggleButton(),
-            ],
+            // Actions like the theme toggle button.
+            children: const [ThemeToggleButton()],
           ),
         ],
       ),
@@ -162,6 +183,8 @@ class _MobileAppBar extends ConsumerWidget {
   }
 }
 
+/// The slide-out navigation drawer for mobile layouts.
+/// It contains all the navigation links and user-specific actions.
 class CustomDrawer extends ConsumerWidget {
   final bool showProfileArea;
   const CustomDrawer({super.key, this.showProfileArea = true});
@@ -175,19 +198,14 @@ class CustomDrawer extends ConsumerWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // The header of the drawer.
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-            ),
+            decoration: BoxDecoration(color: theme.colorScheme.primary),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(
-                  Icons.build,
-                  color: theme.colorScheme.onPrimary,
-                  size: 40,
-                ),
+                Icon(Icons.build, color: theme.colorScheme.onPrimary, size: 40),
                 const SizedBox(height: 10),
                 Text(
                   'Kaza Build',
@@ -200,6 +218,7 @@ class CustomDrawer extends ConsumerWidget {
               ],
             ),
           ),
+          // If a user is logged in, show their profile information.
           if (showProfileArea && user != null) ...[
             ListTile(
               leading: CircleAvatar(
@@ -223,6 +242,7 @@ class CustomDrawer extends ConsumerWidget {
             ),
             const Divider(),
           ],
+          // If no user is logged in, show Sign In and Sign Up options.
           if (showProfileArea && user == null) ...[
             ListTile(
               leading: const Icon(Icons.login),
@@ -248,6 +268,7 @@ class CustomDrawer extends ConsumerWidget {
             ),
             const Divider(),
           ],
+          // Main navigation links.
           ListTile(
             leading: const Icon(Icons.construction),
             title: const Text('Build Now'),
@@ -264,7 +285,10 @@ class CustomDrawer extends ConsumerWidget {
             title: const Text('Explore Builds'),
             onTap: () {
               Navigator.pop(context);
-              // Add your navigation here
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ExploreBuildsPage()),
+              );
             },
           ),
           ListTile(
@@ -290,6 +314,7 @@ class CustomDrawer extends ConsumerWidget {
             },
           ),
           const Divider(),
+          // An expandable tile for all the individual part categories.
           ExpansionTile(
             leading: const Icon(Icons.category),
             title: const Text('Parts'),
@@ -313,6 +338,7 @@ class CustomDrawer extends ConsumerWidget {
               );
             }).toList(),
           ),
+          // If a user is logged in, show Settings and Log Out options.
           if (showProfileArea && user != null) ...[
             const Divider(),
             ListTile(
@@ -336,13 +362,12 @@ class CustomDrawer extends ConsumerWidget {
             ),
           ],
           const Divider(),
+          // Language selector at the bottom of the drawer.
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                LanguageSelector(),
-              ],
+              children: const [LanguageSelector()],
             ),
           ),
         ],
@@ -351,6 +376,7 @@ class CustomDrawer extends ConsumerWidget {
   }
 }
 
+/// A reusable text button for the main desktop navigation bar.
 class _NavButton extends StatelessWidget {
   final String title;
   const _NavButton({required this.title});
@@ -360,6 +386,7 @@ class _NavButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextButton(
+        // Navigate to the appropriate page based on the button's title.
         onPressed: () {
           if (title == 'Build Now') {
             Navigator.push(
@@ -384,6 +411,7 @@ class _NavButton extends StatelessWidget {
               ),
             );
           } else {
+            // Placeholder for any buttons without a defined route.
             print('$title clicked');
           }
         },
@@ -397,6 +425,8 @@ class _NavButton extends StatelessWidget {
   }
 }
 
+/// The widget displayed in the profile area when the user is not logged in.
+/// It provides "Sign In" and "Sign Up" buttons.
 class _SignInArea extends StatelessWidget {
   const _SignInArea();
 
@@ -415,6 +445,7 @@ class _SignInArea extends StatelessWidget {
 
     return Row(
       children: [
+        // A generic user icon.
         CircleAvatar(
           radius: 14,
           backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
@@ -424,6 +455,7 @@ class _SignInArea extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // "Sign In" and "Sign Up" links.
             Text('Welcome', style: theme.textTheme.bodySmall),
             Row(
               children: [
@@ -456,6 +488,10 @@ class _SignInArea extends StatelessWidget {
   }
 }
 
+/// The widget displayed in the profile area when a user is logged in.
+///
+/// It shows the user's avatar and name and provides a dropdown menu with
+/// links to their profile, settings, and a log out option.
 class _LoggedInProfileArea extends ConsumerWidget {
   final AppUser user;
   const _LoggedInProfileArea({required this.user});
@@ -465,6 +501,7 @@ class _LoggedInProfileArea extends ConsumerWidget {
     final theme = Theme.of(context);
     return PopupMenuButton<String>(
       offset: const Offset(0, 40),
+      // Handle navigation or actions based on the selected menu item.
       onSelected: (value) {
         if (value == 'profile') {
           Navigator.push(
@@ -480,12 +517,14 @@ class _LoggedInProfileArea extends ConsumerWidget {
           ref.read(authProvider.notifier).signOut();
         }
       },
+      // Define the items to be shown in the dropdown menu.
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(value: 'profile', child: Text('Profile')),
         const PopupMenuItem<String>(value: 'settings', child: Text('Settings')),
         const PopupMenuDivider(),
         const PopupMenuItem<String>(value: 'logout', child: Text('Log Out')),
       ],
+      // The child of the PopupMenuButton is the widget that is displayed on the AppBar.
       child: Row(
         children: [
           CircleAvatar(
@@ -518,9 +557,12 @@ class _LoggedInProfileArea extends ConsumerWidget {
   }
 }
 
+/// A dropdown menu specifically for navigating to different PC part categories.
 class _PartsDropdownMenu extends StatelessWidget {
   const _PartsDropdownMenu();
 
+  /// A static list of all PC part categories to be displayed in the menu.
+  /// This keeps the data self-contained within the widget.
   static final List<PcPart> parts = [
     PcPart(name: 'CPU', icon: Icons.memory, type: ComponentType.cpu),
     PcPart(name: 'GPU', icon: Icons.developer_board, type: ComponentType.gpu),
@@ -552,6 +594,8 @@ class _PartsDropdownMenu extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // A "Parts" button that navigates to a default part picker page (CPU).
+        // This is useful for users who just want to start browsing parts.
         TextButton(
           onPressed: () {
             Navigator.push(
@@ -569,8 +613,10 @@ class _PartsDropdownMenu extends StatelessWidget {
           ),
           child: Text('Parts', style: textStyle),
         ),
+        // The dropdown arrow that opens the popup menu.
         PopupMenuButton<PcPart>(
           offset: const Offset(0, 45),
+          // When a part is selected, navigate to the PartPickerPage for that component type.
           onSelected: (PcPart part) {
             Navigator.push(
               context,
@@ -582,6 +628,7 @@ class _PartsDropdownMenu extends StatelessWidget {
               ),
             );
           },
+          // Build the list of menu items from the static `parts` list.
           itemBuilder: (BuildContext context) {
             return parts.map((PcPart part) {
               return PopupMenuItem<PcPart>(
