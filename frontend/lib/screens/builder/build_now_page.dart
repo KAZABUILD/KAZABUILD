@@ -1,9 +1,11 @@
-/// This file defines the main PC builder interface.
+/// This file defines the main PC builder interface, the "Build Now" page.
 ///
-/// It allows users to select components for a new PC build, view the total price,
-/// check for compatibility issues, and see the estimated wattage. The state of the
-/// build is managed using Riverpod, with `BuildNotifier` holding the list of
-/// selected components.
+/// It allows users to view and manage a list of PC component slots. Users can
+/// add components by navigating to the `PartPickerPage`, remove them, and see
+/// a running total of the price and estimated wattage.
+/// The state of the build is managed using Riverpod, with `BuildNotifier` holding
+/// the list of selected components. The page is responsive, adapting its layout
+/// for mobile and desktop screens.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,11 +17,13 @@ import 'package:frontend/widgets/navigation_bar.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
-/// This notifier handles adding and removing components from the current build.
+/// This notifier handles adding, updating, and removing components from the current build.
+/// It holds the central "source of truth" for the user's in-progress PC.
 class BuildNotifier extends StateNotifier<List<PcComponent>> {
+  /// Initializes the build with a default set of empty component slots.
   BuildNotifier() : super(_initialState);
 
-  /// Defines the default set of component slots for a new PC build.
+  /// Defines the default template for a new PC build, listing all necessary component types.
   static final List<PcComponent> _initialState = [
     PcComponent(name: 'CPU', type: ComponentType.cpu),
     PcComponent(name: 'Motherboard', type: ComponentType.motherboard),
@@ -34,7 +38,8 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 
   /// Adds or updates a component in the build.
   ///
-  /// Finds the correct component slot by its [ComponentType] and updates it.
+  /// It finds the correct component slot by its [ComponentType] and replaces
+  /// the `selectedProduct` with the new one. This triggers a state update.
   void addComponent(BaseComponent newProduct) {
     final currentState = List<PcComponent>.from(state);
     final componentIndex = currentState.indexWhere(
@@ -49,7 +54,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 
   /// Removes a selected component from a slot, setting it back to null.
   ///
-  /// Finds the component slot by its [ComponentType] to clear it.
+  /// Finds the component slot by its [ComponentType] and clears the `selectedProduct`.
   void removeComponent(ComponentType type) {
     final currentState = List<PcComponent>.from(state);
     final componentIndex = currentState.indexWhere((c) => c.type == type);
@@ -83,6 +88,7 @@ class PcComponent {
   BaseComponent? selectedProduct;
 
   /// A flag to indicate if the selected component is compatible with the rest of the build.
+  // TODO: Implement compatibility check logic to update this flag.
   bool isCompatible;
 
   PcComponent({
@@ -106,11 +112,12 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// A mock link for sharing the build. This will be generated dynamically in the future.
+  /// A mock link for sharing the build.
+  // TODO: This should be generated dynamically based on the build's state.
   final String buildLink = 'https://kazabuild.com/b/somerandom123';
 
-  // TODO: This local `_components` list is currently used for the UI.
-  // For better state management, this should be replaced by watching the `buildProvider`.
+  // TODO: This local `_components` list is currently a duplicate of the state in `buildProvider`.
+  // For better state management, this should be removed and the UI should directly `ref.watch(buildProvider)`.
   final List<PcComponent> _components = [
     PcComponent(name: 'CPU', type: ComponentType.cpu),
     PcComponent(name: 'Motherboard', type: ComponentType.motherboard),
@@ -123,12 +130,12 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     PcComponent(name: 'Monitor', type: ComponentType.monitor),
   ];
 
-  /// A getter to check if any components have been selected.
+  /// A computed property to check if any components have been selected in the build.
   bool get _isBuildEmpty {
     return _components.every((component) => component.selectedProduct == null);
   }
 
-  /// A getter to calculate the total price of all selected components.
+  /// A computed property to calculate the total price of all selected components.
   double get _totalPrice {
     return _components.fold(
       0.0,
@@ -136,7 +143,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     );
   }
 
-  /// A getter to calculate the estimated power consumption in watts.
+  /// A computed property to calculate the estimated power consumption in watts.
+  /// This is based on the Thermal Design Power (TDP) of the CPU and GPU.
+  // TODO: Make this calculation more comprehensive by including other components.
   int get _estimatedWattage {
     return _components.fold(0, (sum, item) {
       final product = item.selectedProduct;
@@ -150,7 +159,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     });
   }
 
-  /// A getter to determine the overall compatibility status of the build.
+  /// A computed property to determine the overall compatibility status of the build.
+  // TODO: Implement a real compatibility check engine instead of this placeholder logic.
   String get _compatibilityStatus {
     final selectedComponents = _components
         .where((c) => c.selectedProduct != null)
@@ -169,7 +179,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final theme = Theme.of(context);
     final isMobile = MediaQuery.of(context).size.width < 700;
 
-    // Watches the selected currency and gets its details for price conversion.
+    /// Watches the selected currency and gets its details for price conversion.
     final selectedCurrency = ref.watch(currencyProvider);
     final currencyData = currencyDetails[selectedCurrency]!;
     final convertedPrice = _totalPrice * currencyData.exchangeRate;
@@ -184,6 +194,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
+
+              /// The main content column of the page.
               child: Column(
                 children: [
                   _TopBar(
@@ -195,6 +207,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     estimatedWattage: _estimatedWattage,
                     isMobile: isMobile,
                   ),
+                  // The compatibility and price bar is only shown if the build is not empty.
                   if (!_isBuildEmpty) ...[
                     const SizedBox(height: 16),
                     _CompatibilityAndPriceBar(
@@ -209,15 +222,18 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                   _ComponentTable(
                     theme: theme,
                     components: _components,
+
+                    /// Callback to remove a component from the build.
+                    /// This updates the local state.
                     onRemove: (index) {
                       setState(() {
                         _components[index].selectedProduct = null;
                       });
                     },
                     onAdd: (index) async {
-                      // Navigates to the PartPickerPage to let the user select a component.
-                      // The result (the selected component) is returned via Navigator.pop.
-                      final selectedComponent =
+                      /// Navigates to the PartPickerPage to let the user select a component.
+                      /// The result (the selected component) is returned via `Navigator.pop`.
+                      final BaseComponent? selectedComponent =
                           await Navigator.push<BaseComponent>(
                             context,
                             MaterialPageRoute(
@@ -228,7 +244,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             ),
                           );
 
-                      // If a component was selected, update the state.
+                      /// If a component was selected and the widget is still mounted, update the state.
                       if (selectedComponent != null && mounted) {
                         setState(() {
                           _components[index].selectedProduct =
@@ -296,8 +312,10 @@ class _TopBar extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
-      // Displays a different layout for mobile and desktop.
+
+      /// Displays a different layout for mobile and desktop.
       child: isMobile
+          /// Mobile layout for the top bar.
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -367,6 +385,7 @@ class _TopBar extends StatelessWidget {
               ],
             )
           : Row(
+              /// Desktop layout for the top bar.
               children: [
                 IconButton(
                   icon: const Icon(Icons.link, size: 20),
@@ -455,6 +474,8 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
             : const Color(0xFF0C4F2A),
         borderRadius: BorderRadius.circular(8),
       ),
+
+      /// Displays a different layout for mobile and desktop.
       child: isMobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,6 +500,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Row(
+                  // Price and currency row for mobile.
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
@@ -487,7 +509,8 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
-                    // Dropdown to allow the user to change the currency.
+
+                    /// Dropdown to allow the user to change the currency.
                     DropdownButton<Currency>(
                       value: ref.watch(currencyProvider),
                       onChanged: (Currency? newCurrency) {
@@ -526,6 +549,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
               ],
             )
           : Row(
+              /// Desktop layout for the compatibility and price bar.
               children: [
                 Icon(
                   hasIssues ? Icons.warning_amber : Icons.check_circle,
@@ -611,8 +635,10 @@ class _ComponentTable extends StatelessWidget {
         color: theme.colorScheme.surface.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
       ),
-      // Renders a list of cards on mobile and a table on desktop.
+
+      /// Renders a list of cards on mobile and a table on desktop.
       child: isMobile
+          /// Mobile layout: A vertical list of cards for each component.
           ? Column(
               children: List.generate(components.length, (index) {
                 final component = components[index];
@@ -702,11 +728,13 @@ class _ComponentTable extends StatelessWidget {
                 );
               }),
             )
+          /// Desktop layout: A structured table with headers.
           : Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  // Table header row.
+
+                  /// Table header row.
                   child: Row(
                     children: [
                       const Expanded(
@@ -740,7 +768,8 @@ class _ComponentTable extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 24),
-                // Generates a row for each component slot.
+
+                /// Generates a row for each component slot.
                 ...List.generate(components.length, (index) {
                   final component = components[index];
                   final product = component.selectedProduct;
@@ -761,7 +790,8 @@ class _ComponentTable extends StatelessWidget {
                         ),
                         Expanded(
                           flex: 4,
-                          // Displays the selected product's name or a placeholder.
+
+                          /// Displays the selected product's name or a placeholder.
                           child: product == null
                               ? Text(
                                   'No part selected.',
@@ -777,7 +807,8 @@ class _ComponentTable extends StatelessWidget {
                         ),
                         Expanded(
                           flex: 2,
-                          // Displays the price of the selected product.
+
+                          /// Displays the price of the selected product.
                           child: Padding(
                             padding: const EdgeInsets.only(right: 24.0),
                             child: Text(
@@ -793,7 +824,8 @@ class _ComponentTable extends StatelessWidget {
                         ),
                         SizedBox(
                           width: 120,
-                          // Shows an "Add Part" button or "Edit/Delete" icons.
+
+                          /// Shows an "Add Part" button or "Edit/Delete" icons.
                           child: product == null
                               ? Center(
                                   child: ElevatedButton.icon(

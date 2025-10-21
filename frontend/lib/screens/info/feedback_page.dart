@@ -1,6 +1,6 @@
 /// This file defines the UI for the user feedback page.
 ///
-/// It provides a form for users to submit feedback, suggestions, or bug reports.
+/// It provides a form for users to submit feedback, suggestions, or bug reports,
 /// The page features staggered entrance animations for a more polished look.
 
 import 'package:flutter/material.dart';
@@ -29,7 +29,8 @@ class _FeedbackPageState extends State<FeedbackPage>
   @override
   void initState() {
     super.initState();
-    // Initialize and start the animation controller.
+
+    /// Initialize and start the animation controller to trigger the entrance animations.
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -39,7 +40,7 @@ class _FeedbackPageState extends State<FeedbackPage>
 
   @override
   void dispose() {
-    // Dispose the controller when the widget is removed from the tree to free up resources.
+    /// Dispose the controller when the widget is removed from the tree to free up resources.
     _controller.dispose();
     super.dispose();
   }
@@ -51,11 +52,13 @@ class _FeedbackPageState extends State<FeedbackPage>
     required Widget child,
     required Interval interval,
   }) {
+    // The SlideTransition animates the widget's position from an offset to zero.
     return SlideTransition(
       position: Tween<Offset>(
         begin: const Offset(0, 0.3),
         end: Offset.zero,
       ).animate(CurvedAnimation(parent: _controller, curve: interval)),
+      // The FadeTransition animates the widget's opacity from 0.0 to 1.0.
       child: FadeTransition(
         opacity: Tween<double>(
           begin: 0.0,
@@ -70,7 +73,7 @@ class _FeedbackPageState extends State<FeedbackPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Regular expression for basic email format validation.
+    /// Regular expression for basic email format validation.
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
@@ -81,7 +84,8 @@ class _FeedbackPageState extends State<FeedbackPage>
         backgroundColor: theme.colorScheme.surface,
       ),
       backgroundColor: theme.colorScheme.background,
-      // The main container with a subtle gradient background.
+
+      /// The main container with a subtle gradient background for visual appeal.
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -101,10 +105,11 @@ class _FeedbackPageState extends State<FeedbackPage>
               constraints: const BoxConstraints(maxWidth: 500),
               child: Form(
                 key: _formKey,
+                // The main column that holds all form elements.
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Page title, animated.
+                    /// Page title, animated.
                     _buildAnimatedWidget(
                       interval: const Interval(0.0, 0.4, curve: Curves.easeOut),
                       child: Text(
@@ -116,7 +121,8 @@ class _FeedbackPageState extends State<FeedbackPage>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Instructional text, animated.
+
+                    /// Instructional text, animated.
                     _buildAnimatedWidget(
                       interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
                       child: Text(
@@ -126,7 +132,8 @@ class _FeedbackPageState extends State<FeedbackPage>
                       ),
                     ),
                     const SizedBox(height: 40),
-                    // Form fields, each with a staggered animation.
+
+                    /// Form fields, each with a staggered animation for a sequential appearance.
                     _buildAnimatedWidget(
                       interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
                       child: _buildTextFormField(
@@ -137,7 +144,6 @@ class _FeedbackPageState extends State<FeedbackPage>
                     const SizedBox(height: 24),
                     _buildAnimatedWidget(
                       interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
-
                       child: _buildTextFormField(
                         label: 'Email',
                         hint: 'Enter your registered email',
@@ -174,10 +180,11 @@ class _FeedbackPageState extends State<FeedbackPage>
                       interval: const Interval(0.6, 1.0, curve: Curves.easeOut),
                       child: _SubmitButton(
                         onPressed: () {
-                          // Validate the form before proceeding.
+                          /// Validate the form before proceeding.
                           if (_formKey.currentState!.validate()) {
                             // TODO: Implement a real API call to send the feedback data to a backend service.
                             ScaffoldMessenger.of(context).showSnackBar(
+                              // Show a success message to the user.
                               const SnackBar(
                                 content: Text(
                                   'Your message has been sent successfully!',
@@ -186,7 +193,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                               ),
                             );
 
-                            // After a short delay, navigate back to the homepage.
+                            /// After a short delay, navigate back to the homepage.
                             Future.delayed(
                               const Duration(milliseconds: 1500),
                               () {
@@ -221,6 +228,7 @@ class _FeedbackPageState extends State<FeedbackPage>
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
+    // A standard TextFormField with consistent styling for this page.
     return TextFormField(
       maxLines: maxLines,
       decoration: InputDecoration(
@@ -240,7 +248,7 @@ class _FeedbackPageState extends State<FeedbackPage>
           borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
         ),
       ),
-
+      // A default validator that checks if the field is empty.
       validator:
           validator ??
           (value) {
@@ -270,17 +278,19 @@ class _SubmitButtonState extends State<_SubmitButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Determine the scale and shadow color based on the hover state.
+
+    /// Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.02 : 1.0;
     final shadowColor = _isHovered
         ? theme.colorScheme.secondary.withOpacity(0.5)
         : Colors.black.withOpacity(0.2);
 
-    // MouseRegion detects when the cursor enters or leaves the widget's area.
+    /// [MouseRegion] detects when the cursor enters or leaves the widget's area to trigger the hover effect.
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      // AnimatedScale and AnimatedContainer provide smooth transitions for the hover effect.
+
+      /// [AnimatedScale] and [AnimatedContainer] provide smooth transitions for the hover effect.
       child: AnimatedScale(
         scale: scale,
         duration: const Duration(milliseconds: 200),

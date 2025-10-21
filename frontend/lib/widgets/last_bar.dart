@@ -1,10 +1,11 @@
 /// This file defines the final footer bar displayed at the bottom of the homepage.
 ///
-/// It includes navigation links, information links, and copyright text,
+/// It includes navigation links, informational links, and copyright text,
 /// with a responsive layout that adapts to mobile and desktop screens.
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
+import 'package:frontend/screens/forum/forums_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
@@ -16,18 +17,18 @@ class LastBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine if the layout should be for mobile based on screen width.
+    /// Determine if the layout should be for mobile based on screen width.
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 100,
+        horizontal: isMobile ? 20 : 100, // Less horizontal padding on mobile.
         vertical: 40,
       ),
       color: Colors.black.withOpacity(0.3),
       child: Column(
         children: [
-          // On mobile, stack the columns vertically. On desktop, place them in a row.
+          /// On mobile, stack the columns vertically. On desktop, place them in a row.
           isMobile
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,7 +37,7 @@ class LastBar extends StatelessWidget {
                       title: 'Links',
                       items: ['Home', 'Builds', 'Guides', 'Forums'],
                     ),
-                    SizedBox(height: 40),
+                    const SizedBox(height: 40),
                     const _FooterColumn(
                       title: 'Info',
                       items: ['About Us', 'Contact & Feedback'],
@@ -57,7 +58,8 @@ class LastBar extends StatelessWidget {
                     ),
                   ],
                 ),
-          // A divider and copyright notice at the very bottom.
+
+          /// A divider and copyright notice at the very bottom.
           const Divider(color: Colors.white24, height: 60),
           const Text(
             '© KAZA BUILD',
@@ -71,7 +73,10 @@ class LastBar extends StatelessWidget {
 
 /// A helper widget that displays a single column of links in the footer.
 class _FooterColumn extends StatelessWidget {
+  /// The title of the link column (e.g., "Links", "Info").
   final String title;
+
+  /// The list of link texts to display in the column.
   final List<String> items;
 
   const _FooterColumn({required this.title, required this.items});
@@ -81,7 +86,7 @@ class _FooterColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // The title of the link column (e.g., "Links", "Info").
+        /// The title of the link column.
         Text(
           title,
           style: const TextStyle(
@@ -91,14 +96,16 @@ class _FooterColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // Generate a tappable Text widget for each item in the list.
+
+        /// Generate a tappable [Text] widget for each item in the list.
         ...items.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
-
             child: InkWell(
               onTap: () {
-                // Navigate to the correct page based on the item's text.
+                /// Navigate to the correct page based on the item's text.
+                // TODO: Refactor this to use named routes (e.g., `Navigator.pushNamed(context, '/feedback')`)
+                // for better maintainability and to avoid using `MaterialPageRoute` directly.
                 if (item == 'Contact & Feedback') {
                   Navigator.push(
                     context,
@@ -140,8 +147,13 @@ class _FooterColumn extends StatelessWidget {
                       builder: (context) => const BuildNowPage(),
                     ),
                   );
+                } else if (item == 'Forums') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ForumsPage()),
+                  );
                 } else {
-                  // Placeholder for items without a defined route.
+                  /// Placeholder for any items that might be added without a defined route.
                 }
               },
               child: Text(item, style: const TextStyle(color: Colors.white70)),

@@ -37,6 +37,7 @@ class _AboutUsPageState extends State<AboutUsPage>
 
   @override
   void dispose() {
+    // Dispose the controller when the widget is removed from the tree to free up resources.
     _controller.dispose();
     super.dispose();
   }
@@ -52,8 +53,9 @@ class _AboutUsPageState extends State<AboutUsPage>
       backgroundColor: theme.colorScheme.background,
       body: SingleChildScrollView(
         child: Column(
+          // The main column that holds all sections of the page.
           children: [
-            // The main banner at the top of the page.
+            /// The main banner at the top of the page.
             _buildBanner(theme),
 
             Padding(
@@ -66,14 +68,15 @@ class _AboutUsPageState extends State<AboutUsPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // "Our Mission" section.
+                    /// "Our Mission" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
                       child: _buildSectionTitle(theme, 'Our Mission'),
                     ),
                     const SizedBox(height: 16),
-                    // The text content for the mission.
+
+                    /// The text content for the mission.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
@@ -83,7 +86,8 @@ class _AboutUsPageState extends State<AboutUsPage>
                       ),
                     ),
                     const Divider(height: 64),
-                    // "Meet the Team" section.
+
+                    /// "Meet the Team" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
@@ -91,7 +95,7 @@ class _AboutUsPageState extends State<AboutUsPage>
                     ),
                     const SizedBox(height: 24),
 
-                    // A row of cards, each representing a team member.
+                    /// A row of cards, each representing a team member.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -154,14 +158,16 @@ class _AboutUsPageState extends State<AboutUsPage>
                       ],
                     ),
                     const Divider(height: 64),
-                    // "Our Story" section.
+
+                    /// "Our Story" section.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.8, 1.2, curve: Curves.easeOut),
                       child: _buildSectionTitle(theme, 'Our Story'),
                     ),
                     const SizedBox(height: 16),
-                    // The text content for the story.
+
+                    /// The text content for the story.
                     _AnimatedFadeSlide(
                       controller: _controller,
                       interval: const Interval(0.9, 1.3, curve: Curves.easeOut),
@@ -183,6 +189,7 @@ class _AboutUsPageState extends State<AboutUsPage>
 
   /// Builds the banner widget at the top of the page with an icon and tagline.
   Widget _buildBanner(ThemeData theme) {
+    // This widget is wrapped in an animation to fade and slide in.
     return _AnimatedFadeSlide(
       controller: _controller,
       interval: const Interval(0.0, 0.4, curve: Curves.easeIn),
@@ -241,9 +248,14 @@ class _AboutUsPageState extends State<AboutUsPage>
 /// This simplifies the process of applying consistent entrance animations to widgets.
 class _AnimatedFadeSlide extends StatelessWidget {
   final AnimationController controller;
+
+  /// The time interval within the controller's duration during which this animation runs.
   final Interval interval;
+
+  /// The widget to be animated.
   final Widget child;
 
+  /// Creates a reusable animation wrapper.
   const _AnimatedFadeSlide({
     required this.controller,
     required this.interval,
@@ -252,11 +264,13 @@ class _AnimatedFadeSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The SlideTransition animates the widget's position from an offset to zero.
     return SlideTransition(
       position: Tween<Offset>(
         begin: const Offset(0, 0.3),
         end: Offset.zero,
       ).animate(CurvedAnimation(parent: controller, curve: interval)),
+      // The FadeTransition animates the widget's opacity from 0.0 to 1.0.
       child: FadeTransition(
         opacity: Tween<double>(
           begin: 0.0,
@@ -276,6 +290,7 @@ class _TeamMemberCard extends StatefulWidget {
   final String name;
   final String role;
   final String imageUrl;
+  // TODO: Replace placeholder imageUrl with real image assets or network URLs.
 
   const _TeamMemberCard({
     required this.name,
@@ -295,13 +310,14 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Determine the scale and shadow color based on the hover state.
+
+    /// Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.05 : 1.0;
     final shadowColor = _isHovered
         ? theme.colorScheme.primary.withOpacity(0.4)
         : Colors.black.withOpacity(0.2);
 
-    // MouseRegion detects when the cursor enters or leaves the widget's area.
+    /// [MouseRegion] detects when the cursor enters or leaves the widget's area to trigger the hover effect.
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),

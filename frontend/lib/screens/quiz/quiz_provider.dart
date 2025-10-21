@@ -1,10 +1,10 @@
 /// This file defines the state management for the interactive PC builder quiz.
 ///
 /// It uses Riverpod to manage the user's answers and the current step of the quiz.
-/// - [QuizAnswers]: A model to hold the user's responses to the quiz questions.
-/// - [QuizNotifier]: A `StateNotifier` to manage the state of the `QuizAnswers`.
-/// - [quizProvider]: A global provider to access the quiz state.
-/// - [quizStepProvider]: A simple provider to track the current question number.
+/// - `QuizAnswers`: An immutable model to hold the user's responses to the quiz questions.
+/// - `QuizNotifier`: A `StateNotifier` to manage the state of the `QuizAnswers`.
+/// - `quizProvider`: A global provider to access the quiz state.
+/// - `quizStepProvider`: A simple provider to track the current question number.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/screens/explore_build/explore_build_model.dart';
@@ -12,6 +12,7 @@ import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:frontend/models/component_models.dart';
 
 /// A data class that holds the user's answers from the quiz.
+/// It's designed to be immutable to work well with Riverpod's state management.
 class QuizAnswers {
   /// The user's selected occupation or hobby (e.g., "Gamer", "Developer").
   final String? occupation;
@@ -22,6 +23,7 @@ class QuizAnswers {
   /// The user's primary intended use for the PC (e.g., "Gaming", "Work").
   final String? usagePurpose;
 
+  /// Creates an instance of quiz answers.
   QuizAnswers({this.occupation, this.budgetRange, this.usagePurpose});
 
   /// Creates a copy of this `QuizAnswers` instance with the given fields
@@ -66,12 +68,15 @@ class QuizNotifier extends StateNotifier<QuizAnswers> {
   ///
   /// [user] is the currently authenticated user, which might be used for
   /// personalization in the future.
-  // TODO: Implement the backend API call to get recommendations.
+  // TODO: Implement a real backend API call to get recommendations. This should
+  // likely be moved to a separate repository and called from a FutureProvider
+  // on the results page, rather than being a synchronous method here.
   List<CommunityBuild> getRecommendedBuilds(AppUser? user) {
     return [];
   }
 
   /// Resets all quiz answers to their initial empty state.
+  /// This is useful when the user wants to retake the quiz.
   void resetQuiz() {
     state = QuizAnswers();
   }

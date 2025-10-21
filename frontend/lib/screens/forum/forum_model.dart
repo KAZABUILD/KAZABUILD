@@ -1,11 +1,12 @@
 /// This file defines the data models for the forum feature.
 ///
-/// It includes classes for forum posts ([ForumPost]), replies to posts ([PostReply]),
-/// and other related data structures that might be attached to a post.
+/// It includes immutable classes for:
+/// - [ForumPost]: Represents a single discussion thread, containing all its
+///   details, metadata, and associated replies.
+/// - [PostReply]: Represents a single comment or reply within a [ForumPost].
 
 import 'package:frontend/screens/auth/auth_provider.dart';
 
-// answer structure
 /// Represents a single reply to a [ForumPost].
 class PostReply {
   /// The unique identifier for the reply.
@@ -20,6 +21,7 @@ class PostReply {
   /// The date and time when the reply was created.
   final DateTime createdAt;
 
+  /// Creates an instance of a post reply.
   PostReply({
     required this.id,
     required this.author,
@@ -66,6 +68,7 @@ class ForumPost {
   /// The ID of a [CommunityBuild] that is attached to this post. Null if none.
   final String? attachedBuildId;
 
+  /// Creates an instance of a forum post.
   ForumPost({
     required this.id,
     required this.title,
@@ -74,9 +77,10 @@ class ForumPost {
     required this.content,
     required this.createdAt,
     required this.lastActivity,
+    // Defaults to 0 if not provided.
     this.viewCount = 0,
+    // Defaults to an empty list if not provided.
     this.replies = const [],
-
     this.acceptedReplyId,
     this.tags = const [],
     this.attachedBuildId,

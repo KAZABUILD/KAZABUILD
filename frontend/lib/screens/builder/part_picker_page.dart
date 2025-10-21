@@ -1,9 +1,15 @@
-/// This file defines the UI for the part picker screen.
+/// This file defines the UI for the part picker screen, a core feature of the PC builder.
 ///
 /// It allows users to browse, search, and filter a list of PC components
-/// of a specific type (e.g., CPU, GPU). The page consists of a filter panel
-/// on the left and a product list on the right. The state is managed locally
-/// within this widget.
+/// of a specific type (e.g., CPU, GPU). The page is structured with a filter panel
+/// on the left and a product list on the right for desktop views.
+///
+/// Key features include:
+/// - Dynamic filter generation based on the `ComponentType`.
+/// - Real-time filtering based on search text, price range, and component-specific attributes.
+/// - A summary of the user's current build.
+/// - A responsive layout that should be adapted for mobile screens.
+/// - When a user selects a part, it is returned to the `BuildNowPage`.
 
 import 'package:flutter/material.dart';
 
@@ -37,10 +43,11 @@ class PartPickerPage extends StatefulWidget {
 /// Manages the list of all products, the filtered list of products,
 /// and the state of all applied filters.
 class _PartPickerPageState extends State<PartPickerPage> {
-  /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
+  /// A key to manage the [Scaffold], particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  // TODO: This list should be populated by fetching data from a backend service.
+
   /// The complete list of products for the current component type.
+  // TODO: This list should be populated by fetching data from a backend service, ideally using a Riverpod FutureProvider.
   List<BaseComponent> _allProducts = [];
 
   /// The list of products after all filters have been applied.
@@ -49,7 +56,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
   /// Controller for the text-based search input.
   final _searchController = TextEditingController();
 
-  // --- Common Filters ---
+  // --- State for Common Filters ---
   /// The currently selected price range.
   RangeValues _currentRangeValues = const RangeValues(0, 1000);
 
@@ -57,7 +64,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
   List<String> _selectedBrands = [];
 
   // --- CPU Specific Filters ---
-  /// A list of selected CPU socket types.
+  /// State for selected CPU socket types.
   List<String> _selectedCpuSockets = [];
 
   /// A list of selected CPU series (e.g., "Core i9", "Ryzen 7").
@@ -67,34 +74,44 @@ class _PartPickerPageState extends State<PartPickerPage> {
   bool? _cpuIncludesCooler;
 
   // --- Motherboard Specific Filters ---
+  /// State for selected motherboard form factors.
   List<String> _selectedMotherboardFormFactors = [];
   List<String> _selectedMotherboardSockets = [];
   List<String> _selectedMotherboardChipsets = [];
 
   // --- RAM Specific Filters ---
+  /// State for selected RAM types (e.g., DDR4, DDR5).
   List<String> _selectedRamTypes = [];
   List<int> _selectedRamModules = [];
   bool? _ramHasRgb;
 
   // --- Storage Specific Filters ---
+  /// State for selected storage types (e.g., SSD, HDD).
   List<String> _selectedStorageTypes = [];
   List<String> _selectedStorageInterfaces = [];
 
   // --- PSU Specific Filters ---
+  /// State for selected PSU efficiency ratings (e.g., 80+ Gold).
   List<String> _selectedPsuEfficiency = [];
   List<String> _selectedPsuWattage = [];
   List<String> _selectedPsuModularity = [];
 
   // --- Case Specific Filters ---
+  /// State for selected PC Case form factors.
   List<String> _selectedCaseFormFactors = [];
 
   @override
   void initState() {
     super.initState();
-    // TODO: Fetch all products for the given `widget.componentType` from a service here.
-    // For now, it initializes with an empty list.
 
-    // Initial filter application and listener setup.
+    /// Initializes the page state.
+    // TODO: Fetch all products for the given `widget.componentType` from a backend service here.
+    // For now, it initializes with a hardcoded empty list. This should be replaced
+    // with an async call, and the UI should handle loading states.
+    // Example:
+    // ref.read(productRepositoryProvider).getProducts(widget.componentType).then((products) {
+    //   setState(() { _allProducts = products; _applyFilters(); });
+    // });
     _applyFilters();
     _searchController.addListener(_applyFilters);
   }
@@ -110,17 +127,21 @@ class _PartPickerPageState extends State<PartPickerPage> {
   /// the `_filteredProducts` list to refresh the UI.
   void _applyFilters() {
     setState(() {
+      // Start with the full list and narrow it down.
       _filteredProducts = _allProducts.where((product) {
-        // --- Common Filters Logic ---
+        // --- Common Filter Logic ---
+        // Text search filter (case-insensitive).
         final searchLower = _searchController.text.toLowerCase();
         if (_searchController.text.isNotEmpty &&
             !product.name.toLowerCase().contains(searchLower))
           return false;
 
+        // Price range filter.
         final price = product.lowestPrice ?? 0.0;
         if (price < _currentRangeValues.start ||
             price > _currentRangeValues.end)
           return false;
+        // Manufacturer (brand) filter.
         if (_selectedBrands.isNotEmpty &&
             !_selectedBrands.contains(product.manufacturer))
           return false;
@@ -128,6 +149,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
         // --- Component-Specific Filters Logic ---
         switch (product.type) {
           case ComponentType.cpu:
+            // Apply CPU-specific filters.
             final p = product as CPUComponent;
             if (_selectedCpuSockets.isNotEmpty &&
                 !_selectedCpuSockets.contains(p.socketType))
@@ -140,6 +162,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
               return false;
             break;
           case ComponentType.motherboard:
+            // Apply Motherboard-specific filters.
             final p = product as MotherboardComponent;
             if (_selectedMotherboardFormFactors.isNotEmpty &&
                 !_selectedMotherboardFormFactors.contains(p.formFactor))
@@ -152,6 +175,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
               return false;
             break;
           case ComponentType.ram:
+            // Apply RAM-specific filters.
             final p = product as MemoryComponent;
             if (_selectedRamTypes.isNotEmpty &&
                 !_selectedRamTypes.contains(p.ramType))
@@ -162,6 +186,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
             if (_ramHasRgb != null && p.haveRGB != _ramHasRgb) return false;
             break;
           case ComponentType.storage:
+            // Apply Storage-specific filters.
             final p = product as StorageComponent;
             if (_selectedStorageTypes.isNotEmpty &&
                 !_selectedStorageTypes.contains(p.driveType))
@@ -171,6 +196,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
               return false;
             break;
           case ComponentType.psu:
+            // Apply PSU-specific filters.
             final p = product as PowerSupplyComponent;
             if (_selectedPsuEfficiency.isNotEmpty &&
                 p.efficiencyRating != null &&
@@ -179,6 +205,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
             if (_selectedPsuModularity.isNotEmpty &&
                 !_selectedPsuModularity.contains(p.modularityType))
               return false;
+            // Wattage filter logic for ranges.
             if (_selectedPsuWattage.isNotEmpty) {
               bool wattageMatch = _selectedPsuWattage.any((range) {
                 final parts = range.split('-');
@@ -190,12 +217,14 @@ class _PartPickerPageState extends State<PartPickerPage> {
             }
             break;
           case ComponentType.pcCase:
+            // Apply Case-specific filters.
             final p = product as CaseComponent;
             if (_selectedCaseFormFactors.isNotEmpty &&
                 !_selectedCaseFormFactors.contains(p.formFactor))
               return false;
             break;
           default:
+            // No specific filters for other component types yet.
             break;
         }
         return true;
@@ -203,7 +232,8 @@ class _PartPickerPageState extends State<PartPickerPage> {
     });
   }
 
-  /// A generic helper function to add or remove an item from a filter list.
+  /// A generic helper function to update a list-based filter (e.g., checkboxes).
+  /// It adds or removes an item from the list and then reapplies all filters.
   void _updateFilterList<T>(List<T> selectedList, T value, bool isSelected) {
     setState(() {
       if (isSelected) {
@@ -215,7 +245,8 @@ class _PartPickerPageState extends State<PartPickerPage> {
     });
   }
 
-  /// A helper function to update a boolean (or nullable boolean) filter.
+  /// A helper function to update a boolean or nullable boolean filter (e.g., radio buttons or chips).
+  /// It sets the new value and then reapplies all filters.
   void _updateFilterBool(Function(bool?) setter, bool? value) {
     setState(() {
       setter(value);
@@ -225,6 +256,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // TODO: Implement a responsive layout that switches to a single-column view on mobile.
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
@@ -242,7 +274,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // The left panel containing the build summary and filters.
+                  /// The left panel containing the build summary and all filter options.
                   SizedBox(
                     width: 280,
                     child: _LeftPanel(
@@ -322,7 +354,8 @@ class _PartPickerPageState extends State<PartPickerPage> {
                     ),
                   ),
                   const SizedBox(width: 32),
-                  // The right panel displaying the list of filtered products.
+
+                  /// The right panel displaying the list of filtered products.
                   Expanded(
                     child: _ProductList(
                       componentType: widget.componentType,
@@ -342,6 +375,7 @@ class _PartPickerPageState extends State<PartPickerPage> {
 
 /// The left-side panel of the Part Picker page, containing the build summary and all filters.
 class _LeftPanel extends StatelessWidget {
+  // --- Properties for passing data and callbacks ---
   final List<PcComponent> currentBuild;
   final List<BaseComponent> allProducts;
   final ComponentType componentType;
@@ -420,17 +454,18 @@ class _LeftPanel extends StatelessWidget {
     required this.onCaseFormFactorChanged,
   });
 
-  /// Calculates the number of parts currently selected in the build.
+  /// A computed property that calculates the number of parts currently selected in the build.
   int get _selectedPartCount =>
       currentBuild.where((c) => c.selectedProduct != null).length;
 
-  /// Calculates the total price of the current build.
+  /// A computed property that calculates the total price of the current build.
   double get _totalPrice => currentBuild.fold(
     0.0,
     (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
   );
 
-  /// Calculates the estimated wattage of the current build based on CPU and GPU TDP.
+  /// A computed property that calculates the estimated wattage of the current build based on CPU and GPU TDP.
+  // TODO: Make this calculation more comprehensive by including other components.
   int get _estimatedWattage => currentBuild.fold(0, (sum, item) {
     final p = item.selectedProduct;
     if (p is CPUComponent) return sum + p.thermalDesignPower.toInt();
@@ -443,7 +478,8 @@ class _LeftPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // A checkbox to toggle the compatibility filter (functionality to be implemented).
+        /// A checkbox to toggle the compatibility filter.
+        // TODO: Implement the actual compatibility filtering logic.
         CheckboxListTile(
           title: const Text(
             'Compatibility Filter',
@@ -456,13 +492,16 @@ class _LeftPanel extends StatelessWidget {
           activeColor: AppColorsDark.textPurple,
         ),
         const SizedBox(height: 16),
+
+        /// Displays a summary of the user's current build.
         _BuildSummary(
           partCount: _selectedPartCount,
           totalPrice: _totalPrice,
           estimatedWattage: _estimatedWattage,
         ),
         const SizedBox(height: 24),
-        // The main filter panel, which is scrollable.
+
+        /// The main filter panel, which is scrollable and contains all filter widgets.
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -528,6 +567,7 @@ class _BuildSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A styled container for the summary information.
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -535,6 +575,7 @@ class _BuildSummary extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        // Each piece of information is displayed in a `_SummaryRow`.
         children: [
           _SummaryRow(label: 'Parts:', value: '$partCount/12'),
           const SizedBox(height: 8),
@@ -581,6 +622,7 @@ class _SummaryRow extends StatelessWidget {
 }
 
 /// The main filter panel widget that dynamically builds filter options based on the component type.
+// TODO: Consider breaking this down into smaller, more manageable widgets if it becomes too complex.
 class _FilterPanel extends StatelessWidget {
   final List<BaseComponent> allProducts;
   final ComponentType componentType;
@@ -675,6 +717,7 @@ class _FilterPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      // The list of filters is built dynamically.
       children: [
         ..._buildComponentSpecificFilters(),
         _buildFilterSection<String>(
@@ -692,6 +735,7 @@ class _FilterPanel extends StatelessWidget {
 
   /// Dynamically builds the list of filter widgets based on the current [componentType].
   List<Widget> _buildComponentSpecificFilters() {
+    // A switch statement determines which set of filters to show.
     switch (componentType) {
       case ComponentType.cpu:
         return [
@@ -838,6 +882,7 @@ class _FilterPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section title.
         Text(
           'Price Range',
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -851,6 +896,7 @@ class _FilterPanel extends StatelessWidget {
             overlayColor: AppColorsDark.textPurple.withAlpha(32),
             valueIndicatorColor: AppColorsDark.buttonPurple,
           ),
+          // The actual RangeSlider widget.
           child: RangeSlider(
             values: currentRangeValues,
             min: 0,
@@ -863,6 +909,7 @@ class _FilterPanel extends StatelessWidget {
             onChanged: onPriceChanged,
           ),
         ),
+        // Labels showing the current min and max values of the slider.
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -890,12 +937,14 @@ class _FilterPanel extends StatelessWidget {
     String Function(T)? displayMapper,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
+    // Each filter section is a column containing a title and a list of checkboxes.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         ...List.generate(items.length, (index) {
+          // Determine the text to display for the checkbox.
           final item = items[index];
           final displayItem =
               displayMapper?.call(item) ??
@@ -922,6 +971,7 @@ class _FilterPanel extends StatelessWidget {
     required bool? value,
     required Function(bool?) onChanged,
   }) {
+    // This filter uses custom `_BooleanChip` widgets for selection.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1005,15 +1055,16 @@ class _ProductList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // The top bar with product count and search field.
+        /// The top bar with product count and search field.
         _TopBar(searchController: searchController, count: products.length),
         const SizedBox(height: 24),
-        // The header row for the product list table.
+
+        /// The header row for the product list table, which is also dynamic.
         _ProductListHeader(componentType: componentType),
         const SizedBox(height: 8),
         Expanded(
           child: products.isEmpty
-              // Display a message if no products match the filters.
+              /// Display a message if no products match the filters.
               ? const Center(child: Text("No products match your criteria."))
               : ListView.builder(
                   itemCount: products.length,
@@ -1021,7 +1072,7 @@ class _ProductList extends StatelessWidget {
                     final product = products[index];
 
                     switch (product.type) {
-                      // Dynamically choose the correct row widget based on the product type.
+                      /// Dynamically choose the correct row widget based on the product type.
                       case ComponentType.cpu:
                         return _CpuProductRow(product: product as CPUComponent);
                       case ComponentType.motherboard:
@@ -1069,6 +1120,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TODO: Make this layout responsive for mobile.
     return Row(
       children: [
         Text(
@@ -1079,6 +1131,7 @@ class _TopBar extends StatelessWidget {
         SizedBox(
           width: 250,
           child: TextField(
+            // The search input field.
             controller: searchController,
             decoration: InputDecoration(
               hintText: 'Search processors...',
@@ -1095,6 +1148,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
+        // A button to navigate to a comparison page (not yet implemented).
         OutlinedButton.icon(
           onPressed: () {},
           icon: const Icon(Icons.compare_arrows),
@@ -1109,6 +1163,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
+        // A button to add all filtered items to the build (not yet implemented).
         ElevatedButton.icon(
           onPressed: () {},
           icon: const Icon(Icons.add, size: 20),
@@ -1137,6 +1192,7 @@ class _ProductListHeader extends StatelessWidget {
     List<String> headers;
     List<int> flexValues;
 
+    // The headers and their corresponding flex values change based on the component type.
     switch (componentType) {
       case ComponentType.cpu:
         headers = const [
@@ -1179,6 +1235,7 @@ class _ProductListHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
+        // Generate the header cells from the lists defined above.
         children: List.generate(headers.length, (index) {
           return Expanded(
             flex: flexValues[index],
@@ -1200,6 +1257,7 @@ abstract class _ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The base structure for every product row is a Card with a Row inside.
     return Card(
       color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -1218,6 +1276,7 @@ abstract class _ProductRow extends StatelessWidget {
   List<Widget> buildRow(BuildContext context);
 
   /// A reusable widget for the first cell in a row, typically showing the product image and name.
+  /// It includes an error builder for the network image.
   Widget buildNameCell({int flex = 5}) {
     return Expanded(
       flex: flex,
@@ -1242,12 +1301,13 @@ abstract class _ProductRow extends StatelessWidget {
     );
   }
 
-  /// A reusable widget for a simple text cell.
+  /// A reusable widget for a simple text cell with a specified flex factor.
   Widget buildTextCell(String text, {int flex = 2}) {
     return Expanded(flex: flex, child: Text(text));
   }
 
   /// A reusable widget for the last cell, showing the price and an "Add" button.
+  /// When the "Add" button is pressed, it pops the current page and returns the selected `product`.
   Widget buildPriceCell(BuildContext context, {int flex = 3}) {
     return Expanded(
       flex: flex,
@@ -1265,6 +1325,7 @@ abstract class _ProductRow extends StatelessWidget {
           const SizedBox(width: 24),
           ElevatedButton.icon(
             onPressed: () {
+              // Pop the navigator and pass the selected product back to the previous screen (`BuildNowPage`).
               Navigator.pop(context, product);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1308,6 +1369,7 @@ class _CpuProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type to access its properties.
     final p = product as CPUComponent;
     return [
       buildNameCell(flex: 4),
@@ -1332,6 +1394,7 @@ class _MotherboardProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type.
     final p = product as MotherboardComponent;
     return [
       buildNameCell(flex: 5),
@@ -1350,6 +1413,7 @@ class _RamProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type.
     final p = product as MemoryComponent;
     return [
       buildNameCell(flex: 5),
@@ -1371,6 +1435,7 @@ class _StorageProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type.
     final p = product as StorageComponent;
     return [
       buildNameCell(flex: 5),
@@ -1389,6 +1454,7 @@ class _PsuProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type.
     final p = product as PowerSupplyComponent;
     return [
       buildNameCell(flex: 5),
@@ -1407,6 +1473,7 @@ class _CaseProductRow extends _ProductRow {
 
   @override
   List<Widget> buildRow(BuildContext context) {
+    // Cast the product to the specific type.
     final p = product as CaseComponent;
     return [
       buildNameCell(flex: 5),
@@ -1425,6 +1492,7 @@ class _RatingStars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Generates 5 stars, filling them based on the rating value.
     return Row(
       children: List.generate(5, (index) {
         if (index < rating.floor()) {

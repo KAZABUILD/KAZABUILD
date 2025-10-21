@@ -1,8 +1,9 @@
 /// This file defines the detail page for a community-submitted PC build.
 ///
-/// It displays the build's image, title, description, author, and a detailed
-/// list of all the components used in the build, along with their prices.
-/// Users can view specifications and interact with the build (e.g., wishlist).
+/// It presents a comprehensive view of a single build, including its main image,
+/// title, description, author details, and a detailed list of all the components
+/// used. Each component is displayed with its name, price, and actions.
+/// Users can interact with the build through actions like "Wishlist" or "Follow".
 
 import 'package:flutter/material.dart';
 import 'package:frontend/models/component_models.dart';
@@ -27,8 +28,9 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
-      // The main layout is a column with the navigation bar at the top
-      // and the scrollable content below.
+
+      /// The main layout is a column with the navigation bar at the top
+      /// and the scrollable content below.
       body: Column(
         children: [
           const CustomNavigationBar(),
@@ -37,11 +39,12 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
               padding: const EdgeInsets.all(32.0),
               child: Center(
                 child: ConstrainedBox(
+                  // Constrains the maximum width for better readability on large screens.
                   constraints: const BoxConstraints(maxWidth: 900),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // The main image for the build.
+                      /// The main image for the build, with rounded corners.
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: Image.network(
@@ -51,15 +54,15 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Meta information like author and post date.
+                      /// Meta information like author and post date.
                       _buildMetaInfo(theme),
                       const SizedBox(height: 16),
 
-                      // The title of the build and its star rating.
+                      /// The title of the build and its star rating.
                       _buildTitleAndRating(theme),
                       const SizedBox(height: 24),
 
-                      // The user-written description of the build.
+                      /// The user-written description of the build, displayed in a styled container.
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -73,7 +76,7 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Header for the component list section.
+                      /// Header for the component list section.
                       Text(
                         'Specifications:',
                         style: theme.textTheme.headlineSmall,
@@ -98,6 +101,7 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
   Widget _buildMetaInfo(ThemeData theme) {
     return Row(
       children: [
+        // Author's avatar.
         CircleAvatar(
           radius: 12,
           backgroundImage: widget.build.author.photoURL != null
@@ -111,10 +115,12 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
               : null,
         ),
         const SizedBox(width: 8),
+        // Author's username.
         Text(widget.build.author.username, style: theme.textTheme.bodyMedium),
         const SizedBox(width: 8),
         Text('•', style: theme.textTheme.bodySmall),
         const SizedBox(width: 8),
+        // Date the build was posted.
         Text(
           'Posted on: ${DateFormat.yMMMMd().format(widget.build.postedDate)}',
           style: theme.textTheme.bodySmall,
@@ -134,6 +140,7 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // The main title of the build.
         Text(
           widget.build.title,
           style: theme.textTheme.headlineMedium?.copyWith(
@@ -141,7 +148,8 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
           ),
         ),
         const Spacer(),
-        // Generates the star rating display based on the build's rating value.
+
+        /// Generates the star rating display based on the build's rating value.
         Row(
           children: List.generate(5, (index) {
             return Icon(
@@ -164,7 +172,7 @@ class _ComponentTile extends StatelessWidget {
   final BaseComponent component;
   const _ComponentTile({required this.component});
 
-  /// Returns an appropriate icon for a given [ComponentType].
+  /// A helper method that returns an appropriate icon for a given [ComponentType].
   IconData _getIconForType(ComponentType type) {
     switch (type) {
       case ComponentType.cpu:
@@ -193,13 +201,14 @@ class _ComponentTile extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            // Dynamically sets the icon based on the component type.
+            /// Dynamically sets the icon based on the component type.
             Icon(_getIconForType(component.type), size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(component.name, style: theme.textTheme.titleMedium),
             ),
-            // Displays the lowest price found for the component.
+
+            /// Displays the lowest price found for the component.
             Text(
               '\$${component.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -208,7 +217,7 @@ class _ComponentTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 24),
-            // TODO: This should be dynamic, showing the vendor with the lowest price.
+            // TODO: This should be dynamic, showing the vendor with the lowest price, not hardcoded.
             InkWell(
               onTap: () {},
               child: const Text(

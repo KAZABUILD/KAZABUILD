@@ -1,6 +1,6 @@
 /// This file defines the UI for the interactive PC builder quiz.
 ///
-/// It guides the user through a series of questions to understand their needs
+/// It guides the user through a series of questions to understand their needs,
 /// (e.g., occupation, budget, usage) and then presents recommended PC builds
 /// based on their answers. The state is managed using Riverpod.
 
@@ -22,26 +22,31 @@ class QuizPage extends ConsumerStatefulWidget {
 ///
 /// Manages the current step of the quiz and handles user interactions.
 class _QuizPageState extends ConsumerState<QuizPage> {
-  //for questions for now empty
+  /// A list to hold the quiz questions. It's initially empty.
+  // TODO: This should be populated by fetching data from a backend service.
   List<Map<String, dynamic>> _questions = [];
 
   @override
   void initState() {
     super.initState();
+    // Trigger the question fetching process when the widget is first created.
     _fetchQuestions();
   }
 
-  /// Fetches quiz questions from the backend.
+  /// A placeholder method for fetching quiz questions from a backend.
   void _fetchQuestions() {
     // TODO: Fetch the quiz questions from your backend API here.
-    // After fetching, update the state, for example:
+    // After fetching, update the state to rebuild the widget with the questions, for example:
     // setState(() { _questions = fetchedQuestions; });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Watch the providers to get the current state and the notifiers to update it.
+
+    /// Watch the providers to get the current state and read the notifiers to update it.
+    /// `ref.watch` rebuilds the widget when the state changes.
+    /// `ref.read` is used for one-time reads, typically inside callbacks like `onPressed`.
     final currentStep = ref.watch(quizStepProvider);
     final quizAnswers = ref.watch(quizProvider);
     final quizNotifier = ref.read(quizProvider.notifier);
@@ -49,6 +54,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     final bool hasQuestions = _questions.isNotEmpty;
     final Map<String, dynamic>? currentQuestion =
+        // Safely get the current question map if questions are loaded and the step is valid.
         hasQuestions && currentStep < _questions.length
         ? _questions[currentStep]
         : null;
@@ -56,6 +62,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     /// A helper function to retrieve the currently selected answer for the current step.
     String? getSelectedAnswer() {
       if (!hasQuestions || currentQuestion == null) return null;
+      // The logic here depends on the structure of your `quizAnswers` state.
       switch (currentStep) {
         case 0:
           return quizAnswers.occupation;
@@ -73,6 +80,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       body: Column(
         children: [
           const CustomNavigationBar(),
+          // The main content area of the quiz.
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -82,7 +90,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // A progress bar to show the user's progress through the quiz.
+                      /// A progress bar to show the user's progress through the quiz.
                       LinearProgressIndicator(
                         value: hasQuestions && _questions.isNotEmpty
                             ? (currentStep + 1) / _questions.length
@@ -95,7 +103,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Displays the current question text.
+                      /// Displays the current question text, or a loading message.
                       Text(
                         currentQuestion != null
                             ? currentQuestion['question'] as String
@@ -107,11 +115,12 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // If questions are loaded, display the answer options in a grid.
+                      /// If questions are loaded, display the answer options in a grid.
                       hasQuestions && currentQuestion != null
                           ? GridView.builder(
                               shrinkWrap: true,
-                              // The grid displays 2 options per row.
+
+                              /// The grid displays 2 options per row.
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2,
@@ -127,8 +136,9 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                 final isSelected =
                                     option == getSelectedAnswer();
                                 return GestureDetector(
-                                  // When an option is tapped, update the state using the answer_setter function.
+                                  /// When an option is tapped, update the state using the `answer_setter` function.
                                   onTap: () {
+                                    // This dynamic function call allows each question to update a different part of the state.
                                     final answerSetter =
                                         currentQuestion['answer_setter']
                                             as void Function(
@@ -138,6 +148,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                     answerSetter(quizNotifier, option);
                                   },
                                   child: AnimatedContainer(
+                                    // Provides a smooth visual feedback when an option is selected.
                                     // Provides a smooth visual feedback when an option is selected.
                                     duration: const Duration(milliseconds: 200),
                                     decoration: BoxDecoration(
@@ -182,7 +193,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                 );
                               },
                             )
-                          // If questions are not loaded, show a placeholder.
+                          /// If questions are not loaded yet, show a placeholder.
                           : Container(
                               height: 250,
                               decoration: BoxDecoration(
@@ -200,14 +211,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             ),
                       const SizedBox(height: 32),
 
-                      // Navigation buttons to move between steps or finish the quiz.
+                      /// Navigation buttons to move between steps or finish the quiz.
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Opacity(
                             opacity: currentStep > 0 && hasQuestions
                                 ? 1.0
-                                : 0.0,
+                                : 0.0, // The "Back" button is only visible after the first step.
                             // The "Back" button is only visible after the first step.
                             child: TextButton.icon(
                               onPressed: currentStep > 0 && hasQuestions
@@ -221,7 +232,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             ),
                           ),
 
-                          // Displays the current step number.
+                          /// Displays the current step number.
                           Text(
                             hasQuestions
                                 ? 'Step ${currentStep + 1} of ${_questions.length}'
@@ -229,19 +240,20 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             style: theme.textTheme.bodyMedium,
                           ),
 
-                          // The "Next" or "Finish" button.
+                          /// The "Next" or "Finish" button.
                           ElevatedButton.icon(
                             onPressed:
                                 !hasQuestions ||
-                                    getSelectedAnswer() == null ||
+                                    getSelectedAnswer() ==
+                                        null || // Disabled until an answer is selected.
                                     currentQuestion == null
                                 ? null
                                 : () {
-                                    // If not the last step, go to the next one.
+                                    /// If not the last step, go to the next one.
                                     if (currentStep < _questions.length - 1) {
                                       stepNotifier.state++;
                                     } else {
-                                      // If it is the last step, navigate to the results page.
+                                      /// If it is the last step, navigate to the results page.
                                       Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(

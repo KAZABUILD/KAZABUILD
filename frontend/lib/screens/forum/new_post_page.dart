@@ -1,8 +1,9 @@
 /// This file defines the UI for creating a new forum post.
 ///
 /// It provides a form for users to enter a title, message, and category for
-/// their new discussion. It also includes functionality to attach one of their
-/// saved PC builds to the post.
+/// their new discussion. It also includes functionality to attach one of their saved
+/// PC builds to the post, and features entrance animations for a polished
+/// user experience.
 
 import 'package:flutter/material.dart';
 
@@ -21,10 +22,13 @@ class NewPostPage extends StatefulWidget {
 /// Manages the form state, animations, and the logic for submitting the new post.
 class _NewPostPageState extends State<NewPostPage>
     with SingleTickerProviderStateMixin {
+  /// A global key to manage the [Form] state, used for validation.
   final _formKey = GlobalKey<FormState>();
 
   /// The currently selected category for the new post.
   String? _selectedCategory;
+
+  /// A static list of available categories for the dropdown.
   final List<String> _categories = [
     'Troubleshooting',
     'Build Advice',
@@ -39,7 +43,7 @@ class _NewPostPageState extends State<NewPostPage>
   /// The [CommunityBuild] object that the user has chosen to attach to the post.
   CommunityBuild? _attachedBuild;
 
-  // TODO: This list should be populated by fetching the current user's saved builds from a service.
+  // TODO: This list should be populated by fetching the current user's saved builds from a backend service.
   /// A list of the user's saved builds, available to be attached to the post.
   final List<CommunityBuild> _userBuilds = [];
 
@@ -58,7 +62,8 @@ class _NewPostPageState extends State<NewPostPage>
   @override
   void initState() {
     super.initState();
-    // Initialize and start the entrance animations for the page.
+
+    /// Initialize and start the entrance animations for the page.
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -77,6 +82,7 @@ class _NewPostPageState extends State<NewPostPage>
 
   @override
   void dispose() {
+    // Clean up controllers to prevent memory leaks.
     _animationController.dispose();
     _titleController.dispose();
     _contentController.dispose();
@@ -102,15 +108,15 @@ class _NewPostPageState extends State<NewPostPage>
   /// Handles the form validation and submission of the new post.
   Future<void> _submitPost() async {
     // First, validate all form fields.
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
 
-      // TODO: Replace this with a real API call to the backend service.
+      // TODO: Replace this mock delay with a real API call to the backend service to save the post.
       await Future.delayed(const Duration(seconds: 1));
 
       if (!mounted) return;
 
-      // Print the form data to the console for debugging.
+      /// Print the form data to the console for debugging purposes.
       print('Title: ${_titleController.text}');
       print('Content: ${_contentController.text}');
       print('Category: $_selectedCategory');
@@ -118,7 +124,7 @@ class _NewPostPageState extends State<NewPostPage>
 
       setState(() => _isLoading = false);
 
-      // Show a success message to the user.
+      /// Show a success message to the user upon successful submission.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -137,7 +143,7 @@ class _NewPostPageState extends State<NewPostPage>
         ),
       );
 
-      // Pop the current page to return to the main forum page.
+      /// Pop the current page to return to the main forum page.
       Navigator.pop(context);
     }
   }
@@ -153,7 +159,8 @@ class _NewPostPageState extends State<NewPostPage>
         elevation: 0,
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
-        // The "Post" button in the AppBar, which shows a loading indicator when busy.
+
+        /// The "Post" button in the AppBar, which shows a loading indicator when busy.
         actions: [
           TextButton.icon(
             onPressed: _isLoading ? null : _submitPost,
@@ -174,7 +181,8 @@ class _NewPostPageState extends State<NewPostPage>
           ),
         ],
       ),
-      // The main body is animated to fade and slide in on page load.
+
+      /// The main body is animated to fade and slide in on page load.
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SlideTransition(
@@ -187,7 +195,8 @@ class _NewPostPageState extends State<NewPostPage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildHeader(theme),
-                  // The main form fields for creating the post.
+
+                  /// The main form fields for creating the post.
                   const SizedBox(height: 24),
                   _buildCategorySection(theme),
                   const SizedBox(height: 24),
@@ -196,10 +205,11 @@ class _NewPostPageState extends State<NewPostPage>
                   _buildContentField(theme),
                   const SizedBox(height: 24),
 
-                  // Section for attaching a PC build to the post.
+                  /// Section for attaching a PC build to the post.
                   _buildAttachBuildSection(theme),
                   const SizedBox(height: 32),
-                  // The main submit button at the bottom of the form.
+
+                  /// The main submit button at the bottom of the form.
                   _buildSubmitButton(theme),
                 ],
               ),
@@ -325,6 +335,7 @@ class _NewPostPageState extends State<NewPostPage>
   Widget _buildAttachBuildSection(ThemeData theme) {
     if (_attachedBuild == null) {
       return OutlinedButton.icon(
+        // Button to open the build selection sheet.
         icon: const Icon(Icons.add_circle_outline),
         label: const Text('Attach Your Build'),
         style: OutlinedButton.styleFrom(
@@ -339,6 +350,7 @@ class _NewPostPageState extends State<NewPostPage>
       );
     } else {
       return Card(
+        // A summary card of the attached build.
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -354,6 +366,7 @@ class _NewPostPageState extends State<NewPostPage>
           subtitle: Text(
             'Total: \$${_attachedBuild!.totalPrice.toStringAsFixed(2)}',
           ),
+          // Button to remove the attached build.
           trailing: IconButton(
             tooltip: 'Remove Build',
             icon: Icon(Icons.cancel, color: theme.colorScheme.error),
@@ -384,8 +397,8 @@ class _NewPostPageState extends State<NewPostPage>
             ),
             const Divider(height: 1),
 
-            // If there are no saved builds, this list will be empty.
-            // TODO: Add a message for when `_userBuilds` is empty.
+            /// If there are no saved builds, this list will be empty.
+            // TODO: Add a user-friendly message for when `_userBuilds` is empty.
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -397,6 +410,7 @@ class _NewPostPageState extends State<NewPostPage>
                     title: Text(build.title),
                     subtitle: Text(() {
                       // Safely try to find the CPU component to display its name.
+                      // Safely try to find the CPU component to display its name.
                       try {
                         final cpu = build.components.firstWhere(
                           (c) => c.type == ComponentType.cpu,
@@ -407,6 +421,7 @@ class _NewPostPageState extends State<NewPostPage>
                       }
                     }()),
                     onTap: () {
+                      // Set the selected build as attached and close the sheet.
                       setState(() => _attachedBuild = build);
                       Navigator.pop(context);
                     },

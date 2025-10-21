@@ -1,8 +1,13 @@
 /// This file defines the main forum page where users can browse, filter,
-/// and sort discussion posts.
+/// and sort discussion posts. It serves as the central hub for community
+/// interaction.
 ///
-/// It features a modern UI with a persistent header for search and filter
-/// actions, and an animated list of post cards.
+/// Key features include:
+/// - A modern, visually appealing header with a gradient and call-to-action button.
+/// - A `SliverPersistentHeader` that keeps search, filter, and sort controls
+///   accessible while scrolling.
+/// - An animated list of post cards that fade and slide in for a smooth
+///   user experience, powered by `flutter_staggered_animations`.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -24,7 +29,7 @@ class ForumsPage extends StatefulWidget {
 ///
 /// It manages the UI state for filters, search, and sorting.
 class _ForumsPageState extends State<ForumsPage> {
-  /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
+  /// A key to manage the [Scaffold], particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// The currently selected category for filtering posts.
@@ -39,13 +44,15 @@ class _ForumsPageState extends State<ForumsPage> {
   /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
 
-  /// A list of available categories for the filter chips.
+  /// A static list of available categories for the filter chips.
   final List<String> _categories = [
     'All',
     'Troubleshooting',
     'Build Advice',
     'Show Off Your Build',
   ];
+
+  /// A static list of available options for the sort dropdown.
   final List<String> _sortOptions = [
     'Newest',
     'Most Popular',
@@ -53,14 +60,14 @@ class _ForumsPageState extends State<ForumsPage> {
     'Unanswered',
   ];
 
-  /// Controller for the main scroll view to manage scroll-related effects if needed.
+  /// Controller for the main [CustomScrollView] to manage scroll-related effects if needed.
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
 
-    // Adds a listener to the search controller to update the UI in real-time.
+    /// Adds a listener to the search controller to update the UI in real-time as the user types.
     _searchController.addListener(() {
       if (_searchController.text != _searchQuery) {
         setState(() {
@@ -72,6 +79,7 @@ class _ForumsPageState extends State<ForumsPage> {
 
   @override
   void dispose() {
+    // Clean up controllers to prevent memory leaks.
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -81,9 +89,12 @@ class _ForumsPageState extends State<ForumsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // TODO: Replace this with data fetched from a backend service.
+    // TODO: Replace this mock data with a list fetched from a backend service.
+    // This should ideally be handled by a Riverpod `FutureProvider` to manage
+    // loading and error states gracefully.
     final List<ForumPost> allPosts = [];
-    // Apply category and search filters to the list of all posts.
+
+    /// Apply category and search filters to the list of all posts.
     List<ForumPost> processedPosts = allPosts.where((post) {
       final categoryMatch =
           _selectedCategory == 'All' || post.category == _selectedCategory;
@@ -93,14 +104,14 @@ class _ForumsPageState extends State<ForumsPage> {
       return categoryMatch && searchMatch;
     }).toList();
 
-    // The 'Unanswered' option acts as a filter, so it's applied before sorting.
+    /// The 'Unanswered' option acts as a filter, so it's applied before sorting.
     if (_selectedSortOption == 'Unanswered') {
       processedPosts = processedPosts
           .where((post) => post.replies.isEmpty)
           .toList();
     }
 
-    // Apply sorting based on the selected option.
+    /// Apply sorting based on the selected option.
     switch (_selectedSortOption) {
       case 'Most Viewed':
         processedPosts.sort((a, b) => b.viewCount.compareTo(a.viewCount));
@@ -119,13 +130,14 @@ class _ForumsPageState extends State<ForumsPage> {
         children: [
           CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
-            // CustomScrollView allows for combining different types of scrollable lists and headers.
+            /// [CustomScrollView] allows for combining different types of scrollable lists and headers.
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                // The main header section with the title and "Start Discussion" button.
+                /// The main header section with the title and "Start Discussion" button.
                 _buildModernHeader(theme, context),
-                // The persistent header that contains search, filter, and sort controls.
+
+                /// The persistent header that contains search, filter, and sort controls.
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _ModernForumActionsHeader(
@@ -144,7 +156,8 @@ class _ForumsPageState extends State<ForumsPage> {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.all(16.0),
-                  // The main list of forum posts, with staggered animations.
+
+                  /// The main list of forum posts, with staggered animations for a polished look.
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => AnimationConfiguration.staggeredList(
@@ -172,6 +185,7 @@ class _ForumsPageState extends State<ForumsPage> {
   /// Builds the main header section of the page, which includes the title and a button to create a new post.
   Widget _buildModernHeader(ThemeData theme, BuildContext context) {
     return SliverToBoxAdapter(
+      /// A decorative container with a gradient background for the header.
       child: Container(
         height: 280,
         decoration: BoxDecoration(
@@ -194,6 +208,7 @@ class _ForumsPageState extends State<ForumsPage> {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
+                /// The main title and subtitle of the forum page.
                 Row(
                   children: [
                     Container(
@@ -235,6 +250,8 @@ class _ForumsPageState extends State<ForumsPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                /// A prominent button to encourage users to start a new discussion.
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -289,6 +306,7 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
     required this.onSortOptionSelected,
   });
 
+  /// Builds the content of the persistent header.
   @override
   Widget build(
     BuildContext context,
@@ -296,6 +314,8 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final theme = Theme.of(context);
+
+    /// The main container for the actions header, with a background color and shadow.
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -310,7 +330,7 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
-          // search Bar
+          /// The search bar for filtering posts by title.
           SizedBox(
             height: 48,
             child: TextField(
@@ -332,7 +352,8 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
             ),
           ),
           const SizedBox(height: 8),
-          // categories and sorting
+
+          /// A row containing the category filter chips and the sorting dropdown.
           Row(
             children: [
               Expanded(
@@ -369,6 +390,7 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
               ),
               const SizedBox(width: 8),
 
+              /// The dropdown menu for sorting the posts.
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -398,10 +420,14 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
   }
 
   @override
+  /// The maximum height of the header.
   double get maxExtent => 130;
   @override
+  /// The minimum height of the header (it doesn't shrink).
   double get minExtent => 130;
   @override
+  /// Determines if the header should rebuild. Set to true for simplicity,
+  /// but can be optimized by comparing old and new delegate properties.
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
       true;
 }
@@ -447,6 +473,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
     final theme = Theme.of(context);
     return AnimatedBuilder(
       // The AnimatedBuilder rebuilds the card when the animation value changes.
+      // The AnimatedBuilder rebuilds the card when the animation value changes.
       animation: _scaleAnimation,
       builder: (context, child) {
         return Transform.scale(
@@ -464,8 +491,9 @@ class _ModernPostCardState extends State<_ModernPostCard>
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () {
-                // Play a quick "press down" animation on tap before navigating.
+                /// Play a quick "press down" animation on tap before navigating.
                 _animationController.forward().then(
+                  // After the forward animation completes...
                   (_) => _animationController.reverse(),
                 );
                 Navigator.push(
@@ -481,7 +509,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // A circular avatar for the author with a gradient background.
+                    /// A circular avatar for the author with a gradient background.
                     Container(
                       width: 48,
                       height: 48,
@@ -526,7 +554,8 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // A chip that displays the post's category with a unique color.
+
+                              /// A chip that displays the post's category with a unique color.
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -551,7 +580,8 @@ class _ModernPostCardState extends State<_ModernPostCard>
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // A preview of the post's content.
+
+                          /// A preview of the post's content, displayed in a subtle container.
                           if (widget.post.content.isNotEmpty)
                             Container(
                               width: double.infinity,
@@ -571,10 +601,11 @@ class _ModernPostCardState extends State<_ModernPostCard>
                               ),
                             ),
                           const SizedBox(height: 12),
-                          // The footer of the card, containing metadata and stats.
+
+                          /// The footer of the card, containing metadata and stats.
                           Row(
                             children: [
-                              // Author's avatar, name, and post date.
+                              /// Author's avatar, name, and post date.
                               Row(
                                 children: [
                                   CircleAvatar(
@@ -621,7 +652,8 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                 ],
                               ),
                               const Spacer(),
-                              // Chips for displaying view and reply counts.
+
+                              /// Chips for displaying view and reply counts.
                               _StatChip(
                                 Icons.visibility,
                                 '${widget.post.viewCount} views',

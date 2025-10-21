@@ -1,8 +1,13 @@
 /// This file defines the UI for the user registration (Sign Up) screen.
 ///
 /// It includes a comprehensive form for new users to enter their details
-/// such as username, email, password, and other optional information.
-/// It also provides links to the login page and the privacy policy.
+/// such as username, email, and password. It also features fields for optional
+/// information like birth date and gender.
+///
+/// The page integrates social sign-up options, a link to the login page for
+/// existing users, and a mandatory agreement to the terms and privacy policy,
+/// which is displayed via a dialog. It is fully responsive and uses reusable
+/// widgets from `auth_widgets.dart` for a consistent UI.
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -29,13 +34,13 @@ class _SignUpPageState extends State<SignUpPage> {
   /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
 
-  /// Controller for the birth date text field to manage its value.
+  /// Controller for the birth date text field to programmatically set its value.
   final _birthDateController = TextEditingController();
 
   /// The currently selected gender from the dropdown.
   String? _selectedGender;
 
-  /// The currently selected country from the dropdown.
+  /// The currently selected country from the dropdown. (Currently unused in the UI).
   String? _selectedCountry;
 
   /// A list of options for the gender selection dropdown.
@@ -47,6 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
   ];
 
   /// Displays a date picker dialog and updates the birth date text field.
+  /// This is triggered when the user taps the 'Birth Date' text field.
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -54,6 +60,7 @@ class _SignUpPageState extends State<SignUpPage> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
+    // If a date is selected, format it and set it as the text field's value.
     if (picked != null) {
       setState(() {
         _birthDateController.text = DateFormat('dd/MM/yyyy').format(picked);
@@ -62,6 +69,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   @override
+  /// Cleans up the controller when the widget is removed from the widget tree.
   void dispose() {
     _birthDateController.dispose();
     super.dispose();
@@ -71,7 +79,7 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Regular expression for email validation.
+    /// A regular expression for validating email address format.
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
@@ -81,8 +89,8 @@ class _SignUpPageState extends State<SignUpPage> {
       drawer: CustomDrawer(showProfileArea: false),
       backgroundColor: theme.colorScheme.background,
       body: Column(
-        // The main navigation bar, configured not to show profile details on this page.
         children: [
+          // The main navigation bar, configured not to show profile details on this page.
           CustomNavigationBar(
             showProfileArea: false,
             scaffoldKey: _scaffoldKey,
@@ -90,7 +98,7 @@ class _SignUpPageState extends State<SignUpPage> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // Ensures the content is scrollable on smaller screens.
+                /// Ensures the content is scrollable to prevent overflow on smaller screens.
                 return SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
@@ -101,7 +109,8 @@ class _SignUpPageState extends State<SignUpPage> {
                         padding: const EdgeInsets.all(32.0),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 400),
-                          // The main sign-up form.
+
+                          /// The main sign-up form, which handles input and validation.
                           child: Form(
                             key: _formKey,
                             child: Column(
@@ -122,7 +131,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                   style: theme.textTheme.bodyMedium,
                                 ),
                                 const SizedBox(height: 32),
-                                // Social sign-up buttons.
+
+                                /// Social sign-up buttons for quick registration.
                                 const SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
@@ -133,7 +143,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                   iconPath: 'apple_icon.svg',
                                 ),
                                 const OrDivider(text: 'OR CONTINUE WITH EMAIL'),
-                                // Form fields for user details.
+
+                                /// Form fields for collecting user details.
                                 CustomTextField(
                                   label: 'Username',
                                   icon: Icons.person_outline,
@@ -150,6 +161,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   autovalidateMode:
                                       AutovalidateMode.onUserInteraction,
                                   validator: (value) {
+                                    // Provides real-time validation for the email format.
                                     if (value == null || value.isEmpty)
                                       return 'Please enter your email address';
                                     if (!emailRegex.hasMatch(value))
@@ -168,6 +180,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                       : null,
                                 ),
                                 const SizedBox(height: 16),
+
+                                /// A read-only text field that opens a date picker on tap.
                                 CustomTextField(
                                   label: 'Birth Date',
                                   icon: Icons.cake_outlined,
@@ -176,6 +190,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                   onTap: () => _selectDate(context),
                                 ),
                                 const SizedBox(height: 16),
+
+                                /// A dropdown menu for gender selection.
                                 DropdownButtonFormField<String>(
                                   value: _selectedGender,
                                   decoration: const InputDecoration(
@@ -204,10 +220,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                   icon: Icons.home_outlined,
                                 ),
                                 const SizedBox(height: 24),
-                                // The primary button to create the account.
+
+                                /// The primary button to submit the form and create the account.
                                 PrimaryButton(
                                   text: 'Create Account',
                                   onPressed: () {
+                                    // Validates all form fields before proceeding.
                                     if (_formKey.currentState!.validate()) {
                                       ScaffoldMessenger.of(
                                         context,
@@ -220,10 +238,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                   },
                                 ),
                                 const SizedBox(height: 24),
-                                // Text with a link to the privacy policy.
+
+                                /// A text widget with a tappable link to the privacy policy.
                                 const _TermsAndPolicyText(),
                                 const SizedBox(height: 16),
-                                // Link to navigate to the login page.
+
+                                /// A link to navigate to the login page for existing users.
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -273,25 +293,29 @@ class _TermsAndPolicyText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final smallTextStyle = theme.textTheme.bodySmall?.copyWith(
-      // A lighter color for the non-link part of the text.
+
+    /// Style for the non-interactive part of the text.
+    final defaultStyle = theme.textTheme.bodySmall?.copyWith(
       color: Colors.grey.shade500,
     );
-    final linkStyle = theme.textTheme.bodySmall?.copyWith(
+
+    /// Style for the tappable link, making it visually distinct.
+    final linkStyle = defaultStyle?.copyWith(
       color: theme.colorScheme.primary,
-      // Underline to indicate it's a tappable link.
       decoration: TextDecoration.underline,
     );
 
+    /// Uses [Text.rich] to combine different text styles in a single widget.
     return Text.rich(
       TextSpan(
         text: 'By continuing, you agree to our ',
-        style: smallTextStyle,
+        style: defaultStyle,
         children: <TextSpan>[
           TextSpan(
             text: 'Terms and Privacy Policy',
             style: linkStyle,
-            // A gesture recognizer to handle the tap event on the link.
+
+            /// A gesture recognizer to handle the tap event on the link, which opens the dialog.
             recognizer: TapGestureRecognizer()
               ..onTap = () {
                 showDialog(

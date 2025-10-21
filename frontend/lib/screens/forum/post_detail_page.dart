@@ -1,9 +1,9 @@
 /// This file defines the UI for the post detail page.
 ///
 /// It displays the full content of a single forum post, followed by a list
-/// of all its replies. It also includes a section at the bottom for users
-/// (both registered and guests) to submit their own replies. The page features
-/// animations for a smooth user experience.
+/// of all its replies. It also includes a section at the bottom for both
+/// registered users and guests to submit their own replies. The page features
+/// staggered entrance animations for a polished user experience.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +11,7 @@ import 'package:frontend/screens/forum/forum_model.dart';
 import 'package:frontend/screens/auth/auth_provider.dart';
 import 'package:intl/intl.dart';
 
+/// A page that displays the full details of a single [ForumPost] and its replies.
 class PostDetailPage extends StatefulWidget {
   /// The [ForumPost] object containing the data to be displayed.
   final ForumPost post;
@@ -29,13 +30,14 @@ class _PostDetailPageState extends State<PostDetailPage>
   /// This allows for adding new replies in real-time without refetching.
   late List<PostReply> _replies;
 
-  /// The main animation controller for staggering the appearance of page elements.
+  /// The main animation controller for staggering the appearance of the page elements.
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the replies list and start the animation controller.
+
+    /// Initialize the replies list and start the animation controller.
     _replies = List.from(widget.post.replies);
     _controller = AnimationController(
       vsync: this,
@@ -46,11 +48,12 @@ class _PostDetailPageState extends State<PostDetailPage>
 
   @override
   void dispose() {
+    // Clean up the controller to prevent memory leaks.
     _controller.dispose();
     super.dispose();
   }
 
-  /// Adds a new reply to the local list and triggers a UI update.
+  /// Adds a new reply to the local list and triggers a UI update to show it instantly.
   void _addReply(PostReply newReply) {
     setState(() {
       _replies.add(newReply);
@@ -71,17 +74,18 @@ class _PostDetailPageState extends State<PostDetailPage>
       body: Column(
         children: [
           Expanded(
-            // CustomScrollView is used to combine different types of scrollable content.
+            /// [CustomScrollView] is used to combine different types of scrollable content.
             child: CustomScrollView(
               slivers: [
-                // The header containing the original post content.
+                /// The header containing the original post content.
                 SliverToBoxAdapter(
                   child: _PostHeader(
                     post: widget.post,
                     animationController: _controller,
                   ),
                 ),
-                // A header to show the number of replies.
+
+                /// A header to show the number of replies.
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -97,7 +101,8 @@ class _PostDetailPageState extends State<PostDetailPage>
                     ),
                   ),
                 ),
-                // If there are no replies, show a placeholder message.
+
+                /// If there are no replies, show a placeholder message.
                 if (_replies.isEmpty)
                   const SliverToBoxAdapter(
                     child: Center(
@@ -111,13 +116,14 @@ class _PostDetailPageState extends State<PostDetailPage>
                     ),
                   )
                 else
-                  // Otherwise, build a list of reply cards with staggered animations.
+                  /// Otherwise, build a list of reply cards with staggered animations.
                   SliverList.builder(
                     itemCount: _replies.length,
                     itemBuilder: (context, index) {
                       final animation = CurvedAnimation(
                         parent: _controller,
-                        // Each reply card animates in slightly after the previous one.
+
+                        /// Each reply card animates in slightly after the previous one.
                         curve: Interval(
                           0.3 + (0.6 * index / _replies.length),
                           1.0,
@@ -139,7 +145,8 @@ class _PostDetailPageState extends State<PostDetailPage>
               ],
             ),
           ),
-          // The input section at the bottom for submitting a new reply.
+
+          /// The input section at the bottom for submitting a new reply.
           _ReplyInputSection(onReplySubmitted: _addReply),
         ],
       ),
@@ -156,13 +163,14 @@ class _PostHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Defines the animation curve for the header's appearance.
+
+    /// Defines the animation curve for the header's appearance.
     final animation = CurvedAnimation(
       parent: animationController,
       curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
     );
 
-    // The header fades and slides in from the bottom.
+    /// The header fades and slides in from the bottom.
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
@@ -173,7 +181,8 @@ class _PostHeader extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           padding: const EdgeInsets.all(20),
-          // A decorated container for the post content.
+
+          /// A decorated container for the post content.
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -196,7 +205,7 @@ class _PostHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Post title.
+              /// Post title.
               Text(
                 post.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -205,7 +214,8 @@ class _PostHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // Author information and post date.
+
+              /// Author information and post date.
               Row(
                 children: [
                   CircleAvatar(
@@ -233,7 +243,8 @@ class _PostHeader extends StatelessWidget {
                 ],
               ),
               const Divider(height: 28),
-              // The main content of the post.
+
+              /// The main content of the post.
               Text(
                 post.content,
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -260,7 +271,8 @@ class _ReplyCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
-      // A decorated container for the reply.
+
+      /// A decorated container for the reply.
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -276,7 +288,7 @@ class _ReplyCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Author's avatar.
+          /// Author's avatar.
           CircleAvatar(
             backgroundColor: theme.colorScheme.secondaryContainer,
             child: Text(
@@ -289,7 +301,7 @@ class _ReplyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Author's username and the time of the reply.
+                /// Author's username and the time of the reply.
                 Row(
                   children: [
                     Text(
@@ -310,7 +322,8 @@ class _ReplyCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // The content of the reply.
+
+                /// The content of the reply.
                 Text(
                   reply.content,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -355,11 +368,11 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
 
   /// Validates the form and submits the new reply.
   void _submitReply() {
-    if (_formKey.currentState!.validate()) {
-      // Check if a user is logged in via the authProvider.
+    if (_formKey.currentState?.validate() ?? false) {
+      /// Check if a user is logged in via the authProvider.
       final currentUser = ref.read(authProvider);
 
-      // If no user is logged in, create a temporary "guest" user.
+      /// If no user is logged in, create a temporary "guest" user object.
       final author =
           currentUser ??
           AppUser(
@@ -368,7 +381,10 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
             email: '',
           );
 
-      // Create a new PostReply object with the form data.
+      // TODO: Send the new reply to a backend service to be persisted.
+      // The backend should return the created reply object with a real ID.
+
+      /// Create a new PostReply object with the form data.
       final newReply = PostReply(
         id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
         author: author,
@@ -376,10 +392,10 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
         createdAt: DateTime.now(),
       );
 
-      // Call the callback function to add the reply to the list in the parent widget.
+      /// Call the callback function to add the reply to the list in the parent widget.
       widget.onReplySubmitted(newReply);
 
-      // Clear the text fields and remove focus after submission.
+      /// Clear the text fields and remove focus after submission.
       _replyController.clear();
       _guestNameController.clear();
       FocusScope.of(context).unfocus();
@@ -390,10 +406,11 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentUser = ref.watch(authProvider);
-    // Determine if the current user is a guest.
+
+    /// Determine if the current user is a guest.
     final isGuest = currentUser == null;
 
-    // Use Material widget to provide elevation and a consistent background.
+    /// Use [Material] widget to provide elevation and a consistent background.
     return Material(
       elevation: 12,
       color: theme.colorScheme.surface,
@@ -410,7 +427,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // If the user is a guest, show an additional field for their name.
+              /// If the user is a guest, show an additional field for their name.
               if (isGuest) ...[
                 TextFormField(
                   controller: _guestNameController,
@@ -433,7 +450,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // The avatar of the user who is replying.
+                  /// The avatar of the user who is replying.
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
                     child: Text(
@@ -445,7 +462,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    // The main text field for the reply content.
+                    /// The main text field for the reply content.
                     child: TextFormField(
                       controller: _replyController,
                       maxLines: 3,
@@ -464,7 +481,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   ),
                   const SizedBox(width: 12),
                   Container(
-                    // The submit button.
+                    /// The submit button.
                     height: 55,
                     width: 55,
                     decoration: BoxDecoration(
