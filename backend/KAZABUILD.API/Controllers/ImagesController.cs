@@ -55,18 +55,57 @@ namespace KAZABUILD.API.Controllers
 
             //Ensure the provided file exists
             if (file == null || file.Length == 0)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Provided File Doesn't Exist"
+                );
+
                 return BadRequest("No file uploaded.");
+            }
 
             //Get the file extension
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
 
             //Check if the file is of an allowed type
             if (!_mediaSettings.AllowedFileTypes.Contains(ext))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Invalid File Type"
+                );
+
                 return BadRequest($"File type {ext} not allowed.");
+            }
 
             //Check if the file is within the size limit
             if (file.Length > _mediaSettings.MaxFileSizeMB * 1024 * 1024)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - File Size Invalid"
+                );
+
                 return BadRequest($"File size exceeds the {_mediaSettings.MaxFileSizeMB}MB limit.");
+            }
 
             //Check if current user has admin permissions if the file is of component type
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
@@ -335,25 +374,45 @@ namespace KAZABUILD.API.Controllers
                         "Operation Failed - Invalid Target"
                     );
 
-                    //Return proper unauthorized response
+                    //Return proper failure response
                     return BadRequest(new { message = "Invalid Target Type!" });
             }
 
-            //Create the directory if missing
-            if (!Directory.Exists(_mediaSettings.StorageRootPath))
-                Directory.CreateDirectory(_mediaSettings.StorageRootPath);
+            //Declaration of the final location of the file.
+            string savePath;
 
-            //Get file extension and name
-            var fileExtension = Path.GetExtension(file.FileName);
-            var fileName = $"{Guid.NewGuid()}{fileExtension}";
-
-            //Get the path to save the to
-            var savePath = Path.Combine(_mediaSettings.StorageRootPath, fileName);
-
-            //Save the file
-            await using (var stream = new FileStream(savePath, FileMode.Create))
+            try
             {
+                //Create the directory if missing
+                if (!Directory.Exists(_mediaSettings.StorageRootPath))
+                    Directory.CreateDirectory(_mediaSettings.StorageRootPath);
+
+                //Get file extension and name
+                var fileExtension = Path.GetExtension(file.FileName);
+                var fileName = $"{Guid.NewGuid()}{fileExtension}";
+
+                //Get the path to save the to
+                savePath = Path.Combine(_mediaSettings.StorageRootPath, fileName);
+
+                //Save the file
+                await using var stream = new FileStream(savePath, FileMode.Create);
                 await file.CopyToAsync(stream);
+            }
+            catch(Exception ex)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Image",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.ERROR,
+                    $"Operation Failed - File Save Failed With Error: {ex}"
+                );
+
+                //Return proper unauthorized response
+                return BadRequest(new { message = "Saving File Failed!" });
             }
 
             //Add the save location to the image object
@@ -384,7 +443,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "Comment posted successfully!", id = image.Id });
+            return Ok(new { message = "Image added successfully!", id = image.Id });
         }
 
         /// <summary>
@@ -498,7 +557,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "Comment updated successfully!" });
+            return Ok(new { message = "Image updated successfully!" });
         }
 
         /// <summary>
@@ -549,7 +608,7 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
+                    "GET",
                     "Image",
                     ip,
                     Guid.Empty,
@@ -625,7 +684,7 @@ namespace KAZABUILD.API.Controllers
                     //Log failure
                     await _logger.LogAsync(
                         currentUserId,
-                        "POST",
+                        "GET",
                         "Image",
                         ip,
                         Guid.Empty,
@@ -736,7 +795,7 @@ namespace KAZABUILD.API.Controllers
             //Log Description string declaration
             string logDescription;
 
-            //Get all queried images as a list
+            //Get all queried images as a list, filter to exclude images the user cannot access
             List<Image> images = await query
                 .Include(i => i.User)
                     .ThenInclude(u => u!.Followers)
@@ -854,8 +913,8 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
-                    "UserComment",
+                    "GET",
+                    "Image",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -926,7 +985,7 @@ namespace KAZABUILD.API.Controllers
                 return NotFound(new { message = "Image not found!" });
             }
 
-            //Check if current user has admin permissions or if they are deleting an image in their own entity
+            //Check if current user has admin or staff permissions or if they are deleting an image in their own entity
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = (image.UserId != null && currentUserId == image.UserId) ||
@@ -940,8 +999,8 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
-                    "UserFollow",
+                    "DELETE",
+                    "Image",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -987,11 +1046,12 @@ namespace KAZABUILD.API.Controllers
         /// Download the file through a controlled route.
         /// Users can download all images that aren't on private profiles.
         /// Staff can download all.
+        /// Can be accessed like this: <img src={`https://BACKEND_DOMAIN/api/images/download/${image.id}`}/>
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        [HttpGet("{id}/file")]
-        public async Task<IActionResult> GetImageFile(Guid id)
+        [HttpGet("download/{id}")]
+        public async Task<IActionResult> DownloadImageFile(Guid id)
         {
             //Get image id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -1008,7 +1068,7 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "DELETE",
+                    "GET",
                     "Image",
                     ip,
                     id,
@@ -1031,10 +1091,10 @@ namespace KAZABUILD.API.Controllers
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
+                    "GET",
                     "Image",
                     ip,
-                    Guid.Empty,
+                    id,
                     PrivacyLevel.WARNING,
                     "Operation Failed - Unauthorized Access"
                 );
@@ -1043,26 +1103,27 @@ namespace KAZABUILD.API.Controllers
                 return Forbid();
             }
 
-            var filePath = Path.Combine("wwwroot", image.Name);
-            if (!System.IO.File.Exists(filePath))
+            //Check if the file exists
+            if (!System.IO.File.Exists(image.Location))
                 return NotFound();
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
-            var contentType = "image/" + Path.GetExtension(filePath).TrimStart('.');
+            //Get the file and the type of its content
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(image.Location);
+            var contentType = "image/" + Path.GetExtension(image.Location).TrimStart('.');
 
             //Log the download
             await _logger.LogAsync(
                 currentUserId,
-                "DELETE",
+                "GET",
                 "Image",
                 ip,
-                image.Id,
+                id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation - Image download started"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("image.deleted", new
+            await _publisher.PublishAsync("image.downloaded", new
             {
                 imageId = id,
                 deletedBy = currentUserId
@@ -1072,7 +1133,3 @@ namespace KAZABUILD.API.Controllers
         }
     }
 }
-
-
-//TODO - documentation, error checking for file operations, download endpoint, expand to messages and notifications
-//<img src={`https://your-api.com/api/images/${image.id}/file`} />
