@@ -1046,11 +1046,12 @@ namespace KAZABUILD.API.Controllers
         /// Download the file through a controlled route.
         /// Users can download all images that aren't on private profiles.
         /// Staff can download all.
-        /// Can be accessed like this: <img src={`https://BACKEND_DOMAIN/api/images/download/${image.id}`}/>
+        /// Can be accessed in html like a link instead of fetching.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("download/{id}")]
+        [Authorize(Policy = "AllUsers")]
         public async Task<IActionResult> DownloadImageFile(Guid id)
         {
             //Get image id and role from the request claims

@@ -72,6 +72,7 @@ namespace KAZABUILD.Domain.Entities
         /// <summary>
         /// Location where the image is saved in the storage.
         /// Includes the name of the folder it's saved in, (e.g., wwwroot/filename.png).
+        /// The name of the folder is taken from the appsettings.json folder.
         /// </summary>
         [Required]
         [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
