@@ -39,11 +39,10 @@ namespace KAZABUILD.API.Controllers
         /// User can add images to their own text fields, while administration can also add them for components.
         /// </summary>
         /// <param name="dto"></param>
-        /// <param name="file"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddImage([FromForm] CreateImageDto dto, [FromForm] IFormFile file)
+        public async Task<IActionResult> AddImage([FromForm] CreateImageDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -54,7 +53,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Ensure the provided file exists
-            if (file == null || file.Length == 0)
+            if (dto.File == null || dto.File.Length == 0)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -71,7 +70,7 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Get the file extension
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var ext = Path.GetExtension(dto.File.FileName).ToLowerInvariant();
 
             //Check if the file is of an allowed type
             if (!_mediaSettings.AllowedFileTypes.Contains(ext))
@@ -91,7 +90,7 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Check if the file is within the size limit
-            if (file.Length > _mediaSettings.MaxFileSizeMB * 1024 * 1024)
+            if (dto.File.Length > _mediaSettings.MaxFileSizeMB * 1024 * 1024)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -388,7 +387,7 @@ namespace KAZABUILD.API.Controllers
                     Directory.CreateDirectory(_mediaSettings.StorageRootPath);
 
                 //Get file extension and name
-                var fileExtension = Path.GetExtension(file.FileName);
+                var fileExtension = Path.GetExtension(dto.File.FileName);
                 var fileName = $"{Guid.NewGuid()}{fileExtension}";
 
                 //Get the path to save the to
@@ -396,7 +395,7 @@ namespace KAZABUILD.API.Controllers
 
                 //Save the file
                 await using var stream = new FileStream(savePath, FileMode.Create);
-                await file.CopyToAsync(stream);
+                await dto.File.CopyToAsync(stream);
             }
             catch(Exception ex)
             {

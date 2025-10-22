@@ -1,11 +1,18 @@
 using KAZABUILD.Domain.Enums;
 
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Image
 {
     public class CreateImageDto
     {
+        /// <summary>
+        /// The actual image file that will be saved in a folder.
+        /// </summary>
+        [Required]
+        public IFormFile File { get; set; } = default!;
+
         /// <summary>
         /// Name which is used for the image in the html.
         /// Can be used to match the returned images to their proper name.
