@@ -4,10 +4,11 @@
 /// title, description, author details, and a detailed list of all the components
 /// used. Each component is displayed with its name, price, and actions.
 /// Users can interact with the build through actions like "Wishlist" or "Follow".
+library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/screens/explore_build/explore_build_model.dart';
+import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
 

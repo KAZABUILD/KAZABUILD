@@ -2,6 +2,7 @@
 ///
 /// It provides a form for users to submit feedback, suggestions, or bug reports,
 /// The page features staggered entrance animations for a more polished look.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/home/homepage.dart';

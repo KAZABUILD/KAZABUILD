@@ -8,6 +8,7 @@
 /// - [SocialButton]: Buttons for third-party authentication (Google, etc.).
 /// - [OrDivider]: A visual separator with text.
 /// - [CustomTextField]: A styled text input field with validation and other features.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';

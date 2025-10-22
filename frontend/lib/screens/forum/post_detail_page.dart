@@ -4,11 +4,12 @@
 /// of all its replies. It also includes a section at the bottom for both
 /// registered users and guests to submit their own replies. The page features
 /// staggered entrance animations for a polished user experience.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/screens/forum/forum_model.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/forum_model.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:intl/intl.dart';
 
 /// A page that displays the full details of a single [ForumPost] and its replies.

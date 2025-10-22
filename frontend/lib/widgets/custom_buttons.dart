@@ -2,6 +2,7 @@
 ///
 /// It aims to centralize button styles and behaviors to ensure a consistent
 /// look and feel across different parts of the app.
+library;
 
 import 'package:flutter/material.dart';
 
@@ -29,6 +30,7 @@ class CustomStartButton extends StatelessWidget {
       onPressed: onPressed,
       child: Text(
         label,
+        
         // Applies a bold style to the button's text.
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
       ),

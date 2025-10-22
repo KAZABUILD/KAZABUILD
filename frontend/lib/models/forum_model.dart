@@ -4,8 +4,9 @@
 /// - [ForumPost]: Represents a single discussion thread, containing all its
 ///   details, metadata, and associated replies.
 /// - [PostReply]: Represents a single comment or reply within a [ForumPost].
+library;
 
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 
 /// Represents a single reply to a [ForumPost].
 class PostReply {

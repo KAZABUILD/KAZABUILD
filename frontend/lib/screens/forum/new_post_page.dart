@@ -4,11 +4,12 @@
 /// their new discussion. It also includes functionality to attach one of their saved
 /// PC builds to the post, and features entrance animations for a polished
 /// user experience.
+library;
 
 import 'package:flutter/material.dart';
 
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/screens/explore_build/explore_build_model.dart';
+import 'package:frontend/models/explore_build_model.dart';
 
 class NewPostPage extends StatefulWidget {
   const NewPostPage({super.key});

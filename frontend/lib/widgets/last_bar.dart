@@ -2,6 +2,7 @@
 ///
 /// It includes navigation links, informational links, and copyright text,
 /// with a responsive layout that adapts to mobile and desktop screens.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';

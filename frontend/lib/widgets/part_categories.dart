@@ -2,6 +2,7 @@
 ///
 /// It presents a visually appealing, asymmetrical grid layout to showcase different
 /// PC component categories, encouraging users to start exploring parts for their build.
+library;
 
 import 'package:flutter/material.dart';
 
@@ -33,17 +34,17 @@ class PartCategoriesSection extends StatelessWidget {
                   children: [
                     const Row(
                       children: [
-                        const Expanded(child: _SmallPartCard()),
-                        const SizedBox(width: 24),
-                        const Expanded(child: _SmallPartCard()),
+                        Expanded(child: _SmallPartCard()),
+                        SizedBox(width: 24),
+                        Expanded(child: _SmallPartCard()),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    const Row(
+                    SizedBox(height: 24),
+                    Row(
                       children: [
-                        const Expanded(child: _SmallPartCard()),
-                        const SizedBox(width: 24),
-                        const Expanded(child: _SmallPartCard()),
+                        Expanded(child: _SmallPartCard()),
+                        SizedBox(width: 24),
+                        Expanded(child: _SmallPartCard()),
                       ],
                     ),
                   ],

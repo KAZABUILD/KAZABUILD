@@ -3,10 +3,11 @@
 /// It displays the user's public information, including their avatar, username,
 /// stats (like posts and followers), a bio, and a grid of their completed
 /// PC builds. It fetches user data using the Riverpod `authProvider`.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 
 /// A page that displays the public profile of the currently authenticated user.

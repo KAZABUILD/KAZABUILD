@@ -10,6 +10,7 @@
 /// - `authProvider`: A global `StateNotifierProvider` that makes the `AuthStateNotifier`
 ///   and its state (`AppUser?`) available to the entire widget tree. This allows any
 ///   widget to react to authentication changes or trigger authentication events.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

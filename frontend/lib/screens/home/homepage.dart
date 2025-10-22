@@ -3,6 +3,7 @@
 /// It serves as the primary entry point for users, assembling various sections
 /// into a single, scrollable page. The page is structured to guide users
 /// through the app's key features.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/home/faq_section.dart';

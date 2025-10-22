@@ -4,6 +4,7 @@
 /// global state management using Riverpod by wrapping the entire app in a
 /// `ProviderScope`. It also defines the top-level `MaterialApp` and connects
 /// it to the theme provider to enable dynamic theme switching.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

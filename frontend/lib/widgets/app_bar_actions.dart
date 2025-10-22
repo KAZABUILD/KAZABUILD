@@ -3,6 +3,7 @@
 /// It includes:
 /// - [ThemeToggleButton]: An icon button to switch between light and dark themes.
 /// - [LanguageSelector]: A dropdown menu to change the application's language.
+library;
 
 import 'dart:developer';
 
@@ -49,12 +50,12 @@ class LanguageSelector extends StatefulWidget {
 
 class _LanguageSelectorState extends State<LanguageSelector> {
   /// The language code of the currently selected language (e.g., 'uk', 'tr').
-  String _selectedLanguageCode = 'uk';
+  String _selectedLanguageCode = 'en';
 
   /// A map containing the data for each supported language, including the
   /// asset path for its flag and its display name.
   final Map<String, Map<String, String>> _languages = {
-    'uk': {'flag': 'assets/uk_flag.png', 'name': 'English'},
+    'en': {'flag': 'assets/uk_flag.png', 'name': 'English'},
     'tr': {'flag': 'assets/tr_flag.png', 'name': 'Türkçe'},
     'pl': {'flag': 'assets/pl_flag.png', 'name': 'Polski'},
   };

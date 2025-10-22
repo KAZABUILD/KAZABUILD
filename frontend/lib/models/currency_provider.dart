@@ -8,6 +8,7 @@
 /// - [CurrencyNotifier]: A `StateNotifier` to manage the currently selected currency.
 /// - [currencyProvider]: A global `StateNotifierProvider` to make the currency
 ///   state accessible throughout the app.
+library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

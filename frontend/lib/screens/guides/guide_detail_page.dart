@@ -5,9 +5,10 @@
 /// dynamically renders the guide's content, which is structured as a list of
 /// different text blocks (e.g., headers and paragraphs), making it flexible
 /// for various article formats.
+library;
 
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/guides/guide_model.dart';
+import 'package:frontend/models/guide_model.dart';
 import 'package:intl/intl.dart';
 
 /// A page that displays the detailed content of a [Guide].

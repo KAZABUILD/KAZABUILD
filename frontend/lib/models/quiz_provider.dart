@@ -5,11 +5,12 @@
 /// - `QuizNotifier`: A `StateNotifier` to manage the state of the `QuizAnswers`.
 /// - `quizProvider`: A global provider to access the quiz state.
 /// - `quizStepProvider`: A simple provider to track the current question number.
+library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/screens/explore_build/explore_build_model.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
-import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/auth_provider.dart';
+//import 'package:frontend/models/component_models.dart';
 
 /// A data class that holds the user's answers from the quiz.
 /// It's designed to be immutable to work well with Riverpod's state management.

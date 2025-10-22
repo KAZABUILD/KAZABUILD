@@ -5,11 +5,12 @@
 /// - `_MobileAppBar`: The app bar specifically for smaller screens.
 /// - `CustomDrawer`: The slide-out navigation drawer for mobile.
 /// - Helper widgets for navigation buttons, dropdowns, and user profile areas.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/explore_build/explore_builds_page.dart';
@@ -18,7 +19,7 @@ import 'package:frontend/screens/profile/profile_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
-import 'package:frontend/screens/builder/part_picker_page.dart';
+import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 
@@ -61,7 +62,7 @@ class CustomNavigationBar extends ConsumerWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     /// For screens smaller than 1000px, show the mobile-specific app bar.
-    if (screenWidth < 1000) {
+    if (screenWidth < 1100) {
       return _MobileAppBar(
         showProfileArea: showProfileArea,
         scaffoldKey: scaffoldKey,

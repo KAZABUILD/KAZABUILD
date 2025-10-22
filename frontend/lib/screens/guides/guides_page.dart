@@ -5,9 +5,10 @@
 /// view on wider screens (desktop) and a list view on narrower screens (mobile).
 /// Each guide is presented as an interactive card with a hover effect and a
 /// hero animation that provides a smooth transition to the `GuideDetailPage`.
+library;
 
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/guides/guide_model.dart';
+import 'package:frontend/models/guide_model.dart';
 import 'package:frontend/screens/guides/guide_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 

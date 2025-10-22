@@ -3,13 +3,14 @@
 /// It displays a curated list of recommended PC builds based on the answers the
 /// user provided in the interactive quiz. Each recommendation is shown as a
 /// card with key specifications and a link to view more details.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/screens/quiz/quiz_provider.dart';
-import 'package:frontend/screens/explore_build/explore_build_model.dart';
+import 'package:frontend/models/quiz_provider.dart';
+import 'package:frontend/models/explore_build_model.dart';
 
 /// A page that displays the recommended PC builds after a user completes the quiz.
 /// It's a `ConsumerWidget` to interact with Riverpod providers.

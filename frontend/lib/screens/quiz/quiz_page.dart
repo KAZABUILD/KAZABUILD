@@ -3,12 +3,13 @@
 /// It guides the user through a series of questions to understand their needs,
 /// (e.g., occupation, budget, usage) and then presents recommended PC builds
 /// based on their answers. The state is managed using Riverpod.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/widgets/quiz_result_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/screens/quiz/quiz_provider.dart';
+import 'package:frontend/models/quiz_provider.dart';
 
 /// The main widget for the interactive quiz.
 class QuizPage extends ConsumerStatefulWidget {

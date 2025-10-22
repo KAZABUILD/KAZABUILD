@@ -3,6 +3,7 @@
 /// It uses Riverpod to allow users to switch between light, dark, and system
 /// default themes. The selected theme is made available globally so that the
 /// entire UI can react to changes.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

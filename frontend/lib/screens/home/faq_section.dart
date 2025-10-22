@@ -3,6 +3,7 @@
 ///
 /// It uses a simple data class, [FaqItem], to represent each question/answer
 /// pair and renders them in a list of expandable tiles ([ExpansionTile]).
+library;
 
 import 'package:flutter/material.dart';
 

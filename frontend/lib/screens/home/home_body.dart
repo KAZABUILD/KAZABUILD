@@ -4,6 +4,7 @@
 /// of a PC to engage users. Below the model, it provides clear call-to-action
 /// buttons that guide users to the main features of the app: taking the quiz
 /// to get recommendations or starting a new PC build from scratch.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';

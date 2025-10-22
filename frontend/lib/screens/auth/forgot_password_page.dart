@@ -6,10 +6,10 @@
 ///
 /// It utilizes reusable authentication widgets like `CustomTextField` and
 /// `PrimaryButton` to maintain a consistent UI across authentication flows.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
-import 'package:frontend/widgets/navigation_bar.dart'; // Assuming CustomNavigationBar might be used, though not directly in this snippet.
 
 /// A stateless widget that renders the "Forgot Password" page.
 class ForgotPasswordPage extends StatelessWidget {

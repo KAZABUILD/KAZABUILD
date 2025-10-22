@@ -10,6 +10,7 @@
 /// - A summary of the user's current build.
 /// - A responsive layout that should be adapted for mobile screens.
 /// - When a user selects a part, it is returned to the `BuildNowPage`.
+library;
 
 import 'package:flutter/material.dart';
 

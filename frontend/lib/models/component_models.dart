@@ -13,6 +13,7 @@
 ///
 /// All models are designed to be immutable (`@immutable`) to ensure data integrity
 /// and predictability throughout the application's state management.
+library;
 
 import 'package:flutter/foundation.dart';
 import 'dart:math';

@@ -8,6 +8,7 @@
 /// existing users, and a mandatory agreement to the terms and privacy policy,
 /// which is displayed via a dialog. It is fully responsive and uses reusable
 /// widgets from `auth_widgets.dart` for a consistent UI.
+library;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

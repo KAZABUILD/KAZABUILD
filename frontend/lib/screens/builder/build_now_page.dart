@@ -6,13 +6,14 @@
 /// The state of the build is managed using Riverpod, with `BuildNotifier` holding
 /// the list of selected components. The page is responsive, adapting its layout
 /// for mobile and desktop screens.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/screens/builder/currency_provider.dart';
-import 'package:frontend/screens/builder/part_picker_page.dart';
+import 'package:frontend/models/currency_provider.dart';
+import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.

@@ -10,10 +10,11 @@
 /// for handling authentication processes and interacting with the `authProvider`.
 /// It reuses common authentication widgets defined in `auth_widgets.dart`
 /// to ensure a consistent look and feel across all authentication flows.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';

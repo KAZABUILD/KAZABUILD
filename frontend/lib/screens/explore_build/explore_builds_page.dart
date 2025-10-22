@@ -7,9 +7,10 @@
 /// - A responsive grid layout that adjusts the number of columns based on screen width.
 /// - Controls for searching, filtering (via tags), and sorting the builds.
 /// - Each build is presented as an interactive card that navigates to the `BuildDetailPage`.
+library;
 
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/explore_build/explore_build_model.dart';
+import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/screens/explore_build/build_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 

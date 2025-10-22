@@ -3,6 +3,7 @@
 /// The [Guide] class encapsulates all the information related to a piece of
 /// written content, such as a tutorial or a "how-to" article, that is
 /// displayed on the "Guides" page of the application.
+library;
 
 /// Represents a single guide or article within the application.
 class Guide {

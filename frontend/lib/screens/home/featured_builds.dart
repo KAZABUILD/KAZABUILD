@@ -2,10 +2,11 @@
 ///
 /// It uses a `CarouselSlider` to showcase a curated list of PC builds, allowing
 /// users to see a preview and navigate to the build's detail page.
+library;
 
 import 'package:flutter/material.dart';
 import '../../core/constants/app_color.dart';
-import '../explore_build/explore_build_model.dart';
+import '../../models/explore_build_model.dart';
 import '../explore_build/build_detail_page.dart';
 import 'package:carousel_slider/carousel_slider.dart'
     show CarouselSlider, CarouselOptions, CarouselSliderController;

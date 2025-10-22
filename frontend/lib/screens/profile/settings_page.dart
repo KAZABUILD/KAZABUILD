@@ -3,10 +3,11 @@
 /// It allows authenticated users to view and edit their personal information
 /// (like username, bio, and profile picture), manage privacy settings, and
 /// change app-wide preferences such as the theme.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/widgets/theme_provider.dart';
 

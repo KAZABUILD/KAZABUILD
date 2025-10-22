@@ -3,6 +3,7 @@
 /// It provides information about the company's mission, the team behind it,
 /// and the story of its creation. The page features staggered entrance
 /// animations for a more engaging user experience.
+library;
 
 import 'package:flutter/material.dart';
 

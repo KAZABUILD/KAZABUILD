@@ -4,9 +4,10 @@
 /// single PC build shared by a user. This model is used throughout the app,
 /// particularly on the "Explore Builds" page and the "Build Detail" page,
 /// to represent a complete, user-created computer setup.
+library;
 
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/screens/auth/auth_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 
 /// Represents a complete PC build created and shared by a user in the community.
 class CommunityBuild {

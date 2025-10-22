@@ -4,6 +4,7 @@
 /// It is designed to be shown during the user registration process to obtain
 /// consent before an account is created. The dialog is intentionally kept
 /// simple, providing a brief overview and actions to accept or reject the terms.
+library;
 
 import 'package:flutter/material.dart';
 

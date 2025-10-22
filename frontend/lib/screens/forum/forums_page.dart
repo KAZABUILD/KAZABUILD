@@ -8,10 +8,11 @@
 ///   accessible while scrolling.
 /// - An animated list of post cards that fade and slide in for a smooth
 ///   user experience, powered by `flutter_staggered_animations`.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:frontend/screens/forum/forum_model.dart';
+import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
