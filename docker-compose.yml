@@ -69,3 +69,4 @@ volumes:
     driver: local
   rabbitmq-log:
     driver: local
+
