@@ -128,6 +128,21 @@ All models have protections against adding invalid values but any call made shou
    - `Description` -> nullable string storing additional information about the activity and error if one occurred
    - `IpAddress` -> the IP address of the user that called the logged activity
 
+ - Image (Image included in a body of text by a user or assigned to a component by an administrator)
+   - `Id` -> automatically assigned GUID
+   - `CommentTargetType` -> Enum storing what type of location the image is displayed at
+   - `UserId` -> nullable GUID storing which profile the image is displayed at
+   - `BuildId` -> nullable GUID storing which build the image is displayed at
+   - `ForumPostId` -> nullable GUID storing which forum post the image is displayed at
+   - `ComponentId` -> nullable GUID storing which component the image is displayed at
+   - `SubComponentId` -> nullable GUID storing which sub-component the image is displayed at
+   - `UserCommentId` -> nullable GUID storing which comment the image is displayed at
+   - `Name` -> string storing the name assigned to the file
+   - `Location` -> nullable GUID assigned by the backend, which stores the location of the file in the backend
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+
 ### User Domain
  - User (individual user account, profile and settings):
    - `Id` -> automatically assigned GUID
@@ -192,7 +207,7 @@ All models have protections against adding invalid values but any call made shou
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
  
- - UserComment (reply to different types of objects)
+ - UserComment (reply to different types of objects, only one foreign object id can be assigned to an object)
    - `Id` -> automatically assigned GUID
    - `UserId` -> GUID storing the user's id that wrote the comment
    - `Content` -> string storing the html text in the comment
@@ -595,39 +610,53 @@ To see what fields should be provided in an API request check the swagger docume
  - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
 
 ### Auth specific API calls
- - `Auth/POST/login` allows anyone to login using their password and either Login or Email, sends confirmation email if enabled on user's account
- - `Auth/POST/verify-2fa` redirect endpoint that verifies user login with 2fa, never call manually
- - `Auth/POST/google-login` allows anyone to login using their google account, connects to google services, has some fields missing and requires further user account setup in the frontend (missing birth date)
- - `Auth/POST/register` allows anyone to register a new account, requires providing all user account fields, sends confirmation email
- - `Auth/POST/confirm-register` redirect endpoint that verifies user registration, never call manually, redirects to frontend
- - `Auth/POST/reset-password` allows anyone to reset user's password, requires providing the old and new passwords, sends confirmation email
- - `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend
+ - `Auth/POST/login` allows anyone to login using their password and either Login or Email, sends confirmation email if enabled on user's account.
+ - `Auth/POST/verify-2fa` redirect endpoint that verifies user login with 2fa, never call manually.
+ - `Auth/POST/google-login` allows anyone to login using their google account, connects to google services, has some fields missing and requires further user account setup in the frontend (missing birth date).
+ - `Auth/POST/register` allows anyone to register a new account, requires providing all user account fields, sends confirmation email.
+ - `Auth/POST/confirm-register` redirect endpoint that verifies user registration, never call manually, redirects to frontend.
+ - `Auth/POST/reset-password` allows anyone to reset user's password, requires providing the old and new passwords, sends confirmation email.
+ - `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend.
+
+### UserComment specific API calls
+ - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
+
+### Image specific API calls
+ - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
+ - `images/POST/add` allows the user to add an image (or gif/video) to the website:
+   - administrators can add images to components and sub-components.
+   - users can add images to their own comments, builds, forum posts and profiles.
+ - `images/GET/download/{id}` download the specified image file from the database using the id:
+   - private profiles and builds can only be downloaded by users with correct permissions;
+   - can be accessed in html like this: <img src={`https://BACKEND_DOMAIN/api/images/download/${image.id}`}.
 
 ### Polymorphic class variation API calls
  - `GET/{id}` works the same as the normal version except:
-   - requires the user to specify what type of subclass to use in order to work properly
-   - delivers a different response based on the type of subclass requested
+   - requires the user to specify what type of subclass to use in order to work properly;
+   - delivers a different response based on the type of subclass requested.
  - `POST/add` works the same as the normal version except:
-   - requires the user to specify what type of subclass to use in order to work properly
-   - the user has to provide specific fields correctly for each subclass
+   - requires the user to specify what type of subclass to use in order to work properly;
+   - the user has to provide specific fields correctly for each subclass.
  - `POST/get` works the same as the normal version except:
-   - requires the user to specify what type of subclass to use in order to work properly
-   - delivers a set of different responses based on the type of subclass requested
+   - requires the user to specify what type of subclass to use in order to work properly;
+   - delivers a set of different responses based on the type of subclass requested.
  - `PUT/{id}` works the same as the normal version except:
    - requires the user to specify what type of subclass to use in order to work properly
-   - the user has to provide specific fields correctly for each subclass
+   - the user has to provide specific fields correctly for each subclass.
 
 ### Build related API calls
 These calls work just like the basic ones but they have additional protections since users can interact with builds created by others.
 
 ### Admin specific API calls
- - `Admin/reset` resets the system_admin user account using data provided in the appsettings.json file
-   - only accessible by super admins
- - `Admin/seed/{password}` generates random fake entries for all tables using in the project
-   - only accessible by super admins during development
+ - `Admin/POST/reset` resets the system_admin user account using data provided in the appsettings.json file:
+   - only accessible by super admins.
+ - `Admin/POST/seed/{password}` generates random fake entries for all tables using in the project:
+   - only accessible by super admins during development.
+ - `Admin/POST/reset-database` resets all tables in the database:
+   - only accessible by super admins during development.
 
 ## Enums
-All strings accepted as the enums in the controllers endpoints.
+All enums are accepted as either strings or integers in the controllers endpoints.
 
  - UserRole
    - BANNED
@@ -716,4 +745,3 @@ All strings accepted as the enums in the controllers endpoints.
    - PUBLISHED
    - OFFICIAL
    - GENERATED
- 

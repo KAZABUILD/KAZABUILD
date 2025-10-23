@@ -64,5 +64,6 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         public ICollection<ComponentReview> Reviews { get; set; } = [];
         public ICollection<BuildComponent> Builds { get; set; } = [];
         public ICollection<UserComment> Comments { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

@@ -92,5 +92,6 @@ namespace KAZABUILD.Domain.Entities.Users
         public BaseComponent? Component { get; set; } = default!;
         public ComponentReview? ComponentReview { get; set; } = default!;
         public Build? Build { get; set; } = default!;
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

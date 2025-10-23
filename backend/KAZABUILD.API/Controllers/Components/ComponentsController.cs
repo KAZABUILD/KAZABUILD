@@ -2299,7 +2299,7 @@ namespace KAZABUILD.API.Controllers.Components
                 try
                 {
                     //Create a component response list
-                    responses = [.. Linq.Enumerable.Select<BaseComponent, BaseComponentResponseDto>(components, component =>
+                    responses = [.. Enumerable.Select<BaseComponent, BaseComponentResponseDto>(components, component =>
                     {
                         return component switch
                         {
@@ -2544,7 +2544,7 @@ namespace KAZABUILD.API.Controllers.Components
                 try
                 {
                     //Create a component response list
-                    responses = [.. Linq.Enumerable.Select<BaseComponent, BaseComponentResponseDto>(components, component =>
+                    responses = [.. Enumerable.Select<BaseComponent, BaseComponentResponseDto>(components, component =>
                     {
                         return component switch
                         {

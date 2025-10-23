@@ -44,5 +44,6 @@ namespace KAZABUILD.Domain.Entities.Components.SubComponents
         public ICollection<ComponentPart> Components { get; set; } = [];
         public ICollection<SubComponentPart> MainSubComponents { get; set; } = [];
         public ICollection<SubComponentPart> SubComponents { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

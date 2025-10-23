@@ -62,6 +62,12 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            //Get the Media settings from appsettings
+            services.AddOptions<MediaSettings>()
+                .Bind(config.GetSection("Media"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             //Return the services with all the options added
             return services;
         }

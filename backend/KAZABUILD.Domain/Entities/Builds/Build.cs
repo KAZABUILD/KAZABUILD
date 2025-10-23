@@ -61,5 +61,6 @@ namespace KAZABUILD.Domain.Entities.Builds
         public ICollection<Tag> Tags { get; set; } = [];
         public ICollection<BuildTag> BuildTags { get; set; } = [];
         public ICollection<UserComment> Comments { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

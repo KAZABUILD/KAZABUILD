@@ -16,13 +16,7 @@ namespace KAZABUILD.Application.DTOs.Users.UserComment
 
         public CommentTargetType? CommentTargetType { get; set; }
 
-        public Guid? ForumPostId { get; set; }
-
-        public Guid? BuildId { get; set; }
-
-        public Guid? ComponentId { get; set; }
-
-        public Guid? ComponentReviewId { get; set; }
+        public Guid? TargetId { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

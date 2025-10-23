@@ -1,3 +1,4 @@
+using Azure;
 using KAZABUILD.Application.DTOs.Users.UserComment;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
+using static Google.Apis.Requests.BatchRequest;
 
 namespace KAZABUILD.API.Controllers.Users
 {
@@ -449,16 +451,16 @@ namespace KAZABUILD.API.Controllers.Users
             switch (userComment.CommentTargetType)
             {
                 case CommentTargetType.BUILD:
-                    response.BuildId = userComment.BuildId;
+                    response.TargetId = userComment.BuildId;
                     break;
                 case CommentTargetType.COMPONENT:
-                    response.ComponentId = userComment.ComponentId;
+                    response.TargetId = userComment.ComponentId;
                     break;
                 case CommentTargetType.REVIEW:
-                    response.ComponentReviewId = userComment.ComponentReviewId;
+                    response.TargetId = userComment.ComponentReviewId;
                     break;
                 case CommentTargetType.FORUM:
-                    response.ForumPostId = userComment.ForumPostId;
+                    response.TargetId = userComment.ForumPostId;
                     break;
                 default:
                     //Log failure
@@ -583,7 +585,11 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
+            //Get all queried userComments as a list
             List<UserComment> userComments = await query.ToListAsync();
+
+            //Declare the failure check boolean
+            bool failure = false;
 
             //Declare response variable
             List<UserCommentResponseDto> responses;
@@ -597,21 +603,41 @@ namespace KAZABUILD.API.Controllers.Users
                 //Create a userComment response list
                 responses = [.. userComments.Select(userComment =>
                 {
-                    //Return a follow response
-                    return new UserCommentResponseDto
+                    //Create a response
+                    var response = new UserCommentResponseDto
                     {
                         Id = userComment.Id,
                         UserId = userComment.UserId,
                         Content = userComment.Content,
                         PostedAt = userComment.PostedAt,
                         ParentCommentId = userComment.ParentCommentId,
-                        CommentTargetType = userComment.CommentTargetType,
-                        ComponentId = userComment.CommentTargetType == CommentTargetType.COMPONENT ? userComment.ComponentId : null,
-                        ComponentReviewId = userComment.CommentTargetType == CommentTargetType.REVIEW ? userComment.ComponentReviewId : null,
-                        BuildId = userComment.CommentTargetType == CommentTargetType.BUILD ? userComment.BuildId : null,
-                        ForumPostId = userComment.CommentTargetType == CommentTargetType.FORUM ? userComment.ForumPostId : null
+                        CommentTargetType = userComment.CommentTargetType
                     };
+
+                    //Add the target id depending on the CommentTargetType
+                    switch (userComment.CommentTargetType)
+                    {
+                        case CommentTargetType.BUILD:
+                            response.TargetId = userComment.BuildId;
+                            break;
+                        case CommentTargetType.COMPONENT:
+                            response.TargetId = userComment.ComponentId;
+                            break;
+                        case CommentTargetType.REVIEW:
+                            response.TargetId = userComment.ComponentReviewId;
+                            break;
+                        case CommentTargetType.FORUM:
+                            response.TargetId = userComment.ForumPostId;
+                            break;
+                        default:
+                            failure = true;
+                            break;
+                            
+                    }
+
+                    return response;
                 })];
+
             }
             else //Return admin knowledge if has privileges
             {
@@ -619,22 +645,62 @@ namespace KAZABUILD.API.Controllers.Users
                 logDescription = "Successful Operation - Admin Access, Multiple UserComments";
 
                 //Create a userComment response list
-                responses = [.. userComments.Select(userComment => new UserCommentResponseDto
+                responses = [.. userComments.Select(userComment =>
                 {
-                    Id = userComment.Id,
-                    UserId = userComment.UserId,
-                    Content = userComment.Content,
-                    PostedAt = userComment.PostedAt,
-                    ParentCommentId = userComment.ParentCommentId,
-                    CommentTargetType = userComment.CommentTargetType,
-                    ComponentId = userComment.CommentTargetType == CommentTargetType.COMPONENT ? userComment.ComponentId : null,
-                    ComponentReviewId = userComment.CommentTargetType == CommentTargetType.REVIEW ? userComment.ComponentReviewId : null,
-                    BuildId = userComment.CommentTargetType == CommentTargetType.BUILD ? userComment.BuildId : null,
-                    ForumPostId = userComment.CommentTargetType == CommentTargetType.FORUM ? userComment.ForumPostId : null,
-                    DatabaseEntryAt = userComment.DatabaseEntryAt,
-                    LastEditedAt = userComment.LastEditedAt,
-                    Note = userComment.Note
+                    //Create a response
+                    var response = new UserCommentResponseDto
+                    {
+                        Id = userComment.Id,
+                        UserId = userComment.UserId,
+                        Content = userComment.Content,
+                        PostedAt = userComment.PostedAt,
+                        ParentCommentId = userComment.ParentCommentId,
+                        DatabaseEntryAt = userComment.DatabaseEntryAt,
+                        LastEditedAt = userComment.LastEditedAt,
+                        Note = userComment.Note
+                    };
+
+                    //Add the target id depending on the CommentTargetType
+                    switch (userComment.CommentTargetType)
+                    {
+                        case CommentTargetType.BUILD:
+                            response.TargetId = userComment.BuildId;
+                            break;
+                        case CommentTargetType.COMPONENT:
+                            response.TargetId = userComment.ComponentId;
+                            break;
+                        case CommentTargetType.REVIEW:
+                            response.TargetId = userComment.ComponentReviewId;
+                            break;
+                        case CommentTargetType.FORUM:
+                            response.TargetId = userComment.ForumPostId;
+                            break;
+                        default:
+                            failure = true;
+                            break;
+
+                    }
+
+                    return response;
                 })];
+            }
+
+            //Return failure if some assignment failed
+            if (failure)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "UserComment",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Invalid Target"
+                );
+
+                //Return proper unauthorized response
+                return BadRequest(new { message = "Invalid Target Type!" });
             }
 
             //Log success
@@ -724,7 +790,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Save changes to the database
             await _db.SaveChangesAsync();
 
-            //Log the update
+            //Log the deletion
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
