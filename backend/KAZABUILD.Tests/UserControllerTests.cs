@@ -5,12 +5,15 @@ using System.Text.Json.Serialization;
 using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
+using KAZABUILD.Tests.ControllerServices;
 using KAZABUILD.Tests.Utils;
 
 namespace KAZABUILD.Tests;
 
 public class UserControllerTests : BaseIntegrationTest
 {
+    private UsersControllerClient _api_user_client = null!;
+    private UsersControllerClient _api_admin_client = null!;
     private HttpClient _client_user = null!;
     private HttpClient _client_admin = null!;
     private readonly User admin;
@@ -20,6 +23,7 @@ public class UserControllerTests : BaseIntegrationTest
     public UserControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
         admin = UserFactory.GenerateUser(login: "temp_admin", role: UserRole.ADMINISTRATOR);
+
         user = UserFactory.GenerateUser(login: "temp_user", role: UserRole.USER);
 
         // Configure JsonSerializerOptions to handle enums as strings
@@ -42,13 +46,17 @@ public class UserControllerTests : BaseIntegrationTest
         // Creating user clients
         _client_user = await HttpClientFactory.Create(_factory, user);
         _client_admin = await HttpClientFactory.Create(_factory, admin);
+
+        // Initialization of controller clients
+        _api_admin_client = new UsersControllerClient(_client_admin);
+        _api_user_client = new UsersControllerClient(_client_user);
     }
 
     [Fact]
     public async Task DeleteUser_WithLowerRank_ShouldReturnForbidden()
     {
         // Act
-        var response = await _client_user.DeleteAsync($"/Users/{admin.Id}");
+        var response = await _api_user_client.DeleteUser(user.Id.ToString());
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -61,7 +69,7 @@ public class UserControllerTests : BaseIntegrationTest
         var updateDto = new UpdateUserDto { Login = "newLoginWithCorrectLength" };
 
         // Act
-        var response = await _client_user.PutAsJsonAsync($"/Users/{admin.Id}", updateDto);
+        var response = await _api_user_client.UpdateUser(admin.Id.ToString(), updateDto);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -74,7 +82,7 @@ public class UserControllerTests : BaseIntegrationTest
         var nonExistentId = Guid.NewGuid();
 
         // Act
-        var response = await _client_user.GetAsync($"/Users/{nonExistentId}");
+        var response = await _api_user_client.GetUser(nonExistentId.ToString());
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -99,7 +107,7 @@ public class UserControllerTests : BaseIntegrationTest
     public async Task GetUser_ForOtherUser_ShouldReturnLimitedProfile()
     {
         // Act
-        var response = await _client_user.GetAsync($"/Users/{admin.Id}");
+        var response = await _api_user_client.GetUser(admin.Id.ToString());
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -119,7 +127,7 @@ public class UserControllerTests : BaseIntegrationTest
         var updateUserDto = new UpdateUserDto { DisplayName = newDisplayName };
 
         // Act
-        var response = await _client_user.PutAsJsonAsync($"/Users/{user.Id}", updateUserDto);
+        var response = await _api_user_client.UpdateUser(user.Id.ToString(), updateUserDto);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -136,10 +144,10 @@ public class UserControllerTests : BaseIntegrationTest
         await _context.SaveChangesAsync();
 
         // Act
-        var response = await _client_admin.DeleteAsync($"/Users/{userToDelete.Id}");
+        var response = await _api_admin_client.DeleteUser(userToDelete.Id.ToString());
         response.EnsureSuccessStatusCode();
         var deletedUser = await _context.Users.FindAsync(userToDelete.Id);
-        var new_response = await _client_admin.GetAsync($"/Users/{userToDelete.Id}");
+        var new_response = await _api_admin_client.GetUser(deletedUser.Id.ToString());
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, new_response.StatusCode);
