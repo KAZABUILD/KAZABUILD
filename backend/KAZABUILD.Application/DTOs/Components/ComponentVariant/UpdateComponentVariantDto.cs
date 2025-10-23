@@ -6,20 +6,11 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentVariant
     public class UpdateComponentVariantDto
     {
         /// <summary>
-        /// Name of the color.
-        /// Modifies the Color table instead of the variant.
-        /// </summary>
-        [Required]
-        [StringLength(30, ErrorMessage = "Color Name cannot be longer than 30 characters!")]
-        [MinLength(3, ErrorMessage = "Color Name must be at least 3 characters long!")]
-        public string? ColorName { get; set; }
-
-        /// <summary>
         /// Id of the color.
         /// </summary>
         [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
         [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
-        public string? ColorCode { get; set; } = default!;
+        public List<string>? ColorCodes { get; set; }
 
         /// <summary>
         /// Whether the color variant is available in online shops.
