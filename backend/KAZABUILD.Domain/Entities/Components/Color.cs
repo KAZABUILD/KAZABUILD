@@ -35,6 +35,6 @@ namespace KAZABUILD.Domain.Entities.Components
         public string? Note { get; set; }
 
         //Database relationships
-        public ICollection<ComponentVariant> Components { get; set; } = [];
+        public ICollection<ColorVariant> ColorVariants { get; set; } = [];
     }
 }
