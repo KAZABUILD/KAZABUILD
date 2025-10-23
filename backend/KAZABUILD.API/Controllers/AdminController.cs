@@ -129,7 +129,7 @@ namespace KAZABUILD.API.Controllers
         public async Task<IActionResult> Seed(string password)
         {
             //Only allowed in development
-            if (!_env.IsDevelopment())
+            if (!(_env.IsDevelopment() || _env.IsEnvironment("Testing")))
                 return Forbid("Seeding is only allowed in Development environment!");
 
             //Get user id from the request
@@ -223,7 +223,7 @@ namespace KAZABUILD.API.Controllers
         public async Task<IActionResult> ResetDatabase()
         {
             //Only allowed in development
-            if (!_env.IsDevelopment())
+            if (!(_env.IsDevelopment() || _env.IsEnvironment("Testing")))
                 return Forbid("Seeding is only allowed in Development environment!");
 
             //Get user id from the request
