@@ -452,7 +452,7 @@ namespace KAZABUILD.API.Controllers.Components
 
             //Apply search
             //This search is special since the color names are stored in the Color model not ComponentVariant
-            //This has to be revised since the calculations happen in memory instead of sql
+            //This has to be revised since the calculations happen in memory instead of SQL
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query

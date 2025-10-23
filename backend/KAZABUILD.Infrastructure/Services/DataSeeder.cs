@@ -251,10 +251,16 @@ namespace KAZABUILD.Infrastructure.Services
             else if (typeof(T) == typeof(ComponentVariant))
             {
                 var componentIds = ids1 ?? [Guid.Empty];
-                var colorCodes = idsOptional ?? ["#FFFFFF"];
 
                 List<ComponentPrice> componentPrice = await _context.ComponentPrices.Where(p => componentIds.Contains(p.ComponentId)).OrderBy(p => p.Price).ToListAsync();
-                return (Faker<T>)(object)GetComponentVariantFaker(componentIds, colorCodes, componentPrice);
+                return (Faker<T>)(object)GetComponentVariantFaker(componentIds, componentPrice);
+            }
+            else if (typeof(T) == typeof(ColorVariant))
+            {
+                var componentIds = ids1 ?? [Guid.Empty];
+                var colorCodes = idsOptional ?? ["#FFFFFF"];
+
+                return (Faker<T>)(object)GetColorVariantFaker(componentIds, colorCodes);
             }
             else if (typeof(T) == typeof(SubComponentPart))
             {
@@ -1056,10 +1062,9 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(r => r.LastEditedAt, (f, r) => f.Date.Between(r.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(r => r.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
-        private Faker<ComponentVariant> GetComponentVariantFaker(List<Guid> componentIds, List<string> colorCodes, List<ComponentPrice> prices) => new Faker<ComponentVariant>("en")
+        private Faker<ComponentVariant> GetComponentVariantFaker(List<Guid> componentIds, List<ComponentPrice> prices) => new Faker<ComponentVariant>("en")
             .RuleFor(v => v.Id, f => Guid.NewGuid())
             .RuleFor(v => v.ComponentId, f => f.PickRandom(componentIds))
-            .RuleFor(v => v.ColorCode, f => f.PickRandom(colorCodes))
             .RuleFor(v => v.IsAvailable, f => f.Random.Bool(0.9f))
             .RuleFor(v => v.AdditionalPrice, (f, v) =>
             {
@@ -1076,6 +1081,14 @@ namespace KAZABUILD.Infrastructure.Services
 
                 return additionalPrice;
             })
+            .RuleFor(v => v.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(v => v.LastEditedAt, (f, v) => f.Date.Between(v.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(v => v.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<ColorVariant> GetColorVariantFaker(List<Guid> componentVariantIds, List<string> colorCodes) => new Faker<ColorVariant>("en")
+            .RuleFor(v => v.Id, f => Guid.NewGuid())
+            .RuleFor(v => v.ComponentVariantId, f => f.PickRandom(componentVariantIds))
+            .RuleFor(v => v.ColorCode, f => f.PickRandom(colorCodes))
             .RuleFor(v => v.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(v => v.LastEditedAt, (f, v) => f.Date.Between(v.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(v => v.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);

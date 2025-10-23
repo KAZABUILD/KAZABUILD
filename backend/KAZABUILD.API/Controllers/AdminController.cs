@@ -178,7 +178,8 @@ namespace KAZABUILD.API.Controllers
             await _seeder.SeedAsync<ComponentCompatibility, Guid>(500, componentIds);
             await _seeder.SeedAsync<ComponentPrice, Guid>(300, componentIds);
             List<Guid> componentReviewIds = await _seeder.SeedAsync<ComponentReview, Guid>(300, componentIds);
-            await _seeder.SeedAsync<ComponentVariant, Guid>(500, componentIds, idsOptional: colorCodes);
+            await _seeder.SeedAsync<ComponentVariant, Guid>(500, componentIds);
+            await _seeder.SeedAsync<ColorVariant, Guid>(5000, componentIds, idsOptional: colorCodes);
 
             //Seed all build domain tables
             List<Guid> buildIds = await _seeder.SeedAsync<Build, Guid>(200, userIds);
