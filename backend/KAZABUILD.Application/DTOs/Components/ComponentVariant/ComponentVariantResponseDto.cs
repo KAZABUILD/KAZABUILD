@@ -6,9 +6,10 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentVariant
 
         public Guid? ComponentId { get; set; }
 
-        public string? ColorCode { get; set; }
-
-        public string? ColorName { get; set; }
+        /// <summary>
+        /// List of pairs of color codes and names.
+        /// </summary>
+        public List<Tuple<string, string>>? Colors { get; set; }
 
         public bool? IsAvailable { get; set; }
 

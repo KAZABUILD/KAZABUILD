@@ -70,6 +70,6 @@
   "Media": { //Settings for image and other uploads
     "StorageRootPath": "wwwroot/media", //Where the files are uploaded to and can later be accessed from
     "MaxFileSizeMB": 25,
-    "AllowedFileTypes": [ ".IMAGE_FORAMT", ".IMAGE_FORAMT", ".GIF_FORAMT", ".VIDEO_FORAMT" ] //Allowed media formats
+    "AllowedFileTypes": [ ".IMAGE_FORMAT", ".IMAGE_FORMAT", ".GIF_FORMAT", ".VIDEO_FORMAT" ] //Allowed media formats
   }
 }

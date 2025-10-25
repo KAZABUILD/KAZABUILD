@@ -35,6 +35,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<BaseSubComponent> SubComponents { get; set; } = default!;
         public DbSet<Color> Colors { get; set; } = default!;
         public DbSet<ComponentVariant> ComponentVariants { get; set; } = default!;
+        public DbSet<ColorVariant> ColorVariants { get; set; } = default!;
         public DbSet<ComponentCompatibility> ComponentCompatibilities { get; set; } = default!;
         public DbSet<ComponentPart> ComponentParts { get; set; } = default!;
         public DbSet<ComponentPrice> ComponentPrices { get; set; } = default!;
@@ -270,18 +271,27 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<CaseComponent>()
                 .OwnsOne(u => u.Dimensions);
 
-            //====================================== COMPONENT COLOR ======================================//
+            //====================================== COMPONENT VARIANT ======================================//
 
-            //Register relationships, disable cascade delete for colors, must be handled in API calls
+            //Register relationships with Component
             modelBuilder.Entity<ComponentVariant>()
                 .HasOne(m => m.Component)
                 .WithMany(u => u.Colors)
                 .HasForeignKey(m => m.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<ComponentVariant>()
+            //====================================== COLOR VARIANT ======================================//
+
+            //Register relationships, disable cascade delete for colors, must be handled in API calls
+            modelBuilder.Entity<ColorVariant>()
+                .HasOne(m => m.ComponentVariant)
+                .WithMany(u => u.ColorVariants)
+                .HasForeignKey(m => m.ComponentVariantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ColorVariant>()
                 .HasOne(m => m.Color)
-                .WithMany(u => u.Components)
+                .WithMany(u => u.ColorVariants)
                 .HasForeignKey(m => m.ColorCode)
                 .OnDelete(DeleteBehavior.Restrict);
 

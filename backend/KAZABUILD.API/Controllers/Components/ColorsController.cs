@@ -430,8 +430,8 @@ namespace KAZABUILD.API.Controllers.Components
             //Convert the hex code string into a guid
             Guid guidId = GuidConversionHelper.FromString(id);
 
-            //Get the color to delete
-            var color = await _db.Colors.Include(c => c.Components).FirstOrDefaultAsync(c => c.ColorCode == id);
+            //Get the color to delete with associated variants
+            var color = await _db.Colors.Include(c => c.ColorVariants).ThenInclude(v => v.ComponentVariant).FirstOrDefaultAsync(c => c.ColorCode == id);
             if (color == null)
             {
                 //Log failure
@@ -450,9 +450,9 @@ namespace KAZABUILD.API.Controllers.Components
             }
 
             //Delete all associated ComponentVariants
-            if (color.Components.Count != 0)
+            if (color.ColorVariants.Count != 0)
             {
-                _db.ComponentVariants.RemoveRange(color.Components);
+                _db.ComponentVariants.RemoveRange(color.ColorVariants.Select(v => v.ComponentVariant!));
             }
 
             //Delete the color

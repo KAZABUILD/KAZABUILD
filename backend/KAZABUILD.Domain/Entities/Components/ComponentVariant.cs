@@ -6,8 +6,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace KAZABUILD.Domain.Entities.Components
 {
     /// <summary>
-    /// Model storing the connection between components and colors.
-    /// Represents which color variants a component is available in.
+    /// Model representing a variant of an component.
+    /// The ComponentVariant can be multi-colored, which is stored in the ColorVariant model.
     /// </summary>
     public class ComponentVariant
     {
@@ -19,14 +19,6 @@ namespace KAZABUILD.Domain.Entities.Components
         /// </summary>
         [Required]
         public Guid ComponentId { get; set; } = default!;
-
-        /// <summary>
-        /// Id of the color.
-        /// </summary>
-        [Required]
-        [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
-        [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
-        public string ColorCode { get; set; } = default!;
 
         /// <summary>
         /// Whether the color variant is available in online shops.
@@ -54,8 +46,8 @@ namespace KAZABUILD.Domain.Entities.Components
         public string? Note { get; set; }
 
         //Database relationships
-        public Color? Color { get; set; } = default!;
-
         public BaseComponent? Component { get; set; } = default!;
+
+        public ICollection<ColorVariant> ColorVariants { get; set; } = [];
     }
 }
