@@ -1,6 +1,8 @@
 # KazaBuild Frontend
 
-A comprehensive Flutter application for PC building, component selection, and community interaction. This frontend provides an intuitive interface for users to build custom PCs, explore components, participate in forums, and access educational content.
+The frontend of this application has been entirely written in Flutter a dart framework that creates a frontend for an application across many platforms from one codebase.
+
+In this section, we created all the pages that are viewed from the user side of things. Everything from the home page to the info pages is listed in the directory.
 
 ## Getting Started
 
@@ -23,12 +25,29 @@ samples, guidance on mobile development, and a full API reference.
  - `flutter build web --release --dart-define=API_BASE_URL=https://api.yourdomain.com` to run production version
 
 ## Flutter Packages:
-- `dio` - HTTP client for API communication
-- `flutter_riverpod` - State management solution
-- `flutter_dotenv` - Environment variable management
-- `json_annotation` - JSON serialization annotations
-- `build_runner` - Code generation
-- `json_serializable` - JSON serialization code generation
+**Core dependencies:**
+- `dio` – HTTP client for API communication  
+- `flutter_riverpod` – State management solution  
+- `flutter_dotenv` – Environment variable management  
+- `json_annotation` – JSON serialization annotations  
+- `intl` – Internationalization and localization support  
+- `intl_utils` – Generates localization files and helpers  
+- `flutter_3d_controller` – Displays and controls 3D models in Flutter  
+- `carousel_slider` – Image and content carousel widget  
+- `flutter_svg` – Renders SVG graphics and icons  
+- `flutter_staggered_animations` – Provides staggered animations for lists and grids  
+- `flutter_quill` – Rich text editor with formatting support  
+- `cupertino_icons` – iOS-style icon set  
+
+**Development dependencies:**
+- `flutter_test` – Testing framework for Flutter  
+- `flutter_lints` – Enforces Dart and Flutter code style rules  
+- `build_runner` – Code generation utility  
+- `json_serializable` – Generates JSON serialization code  
+
+**Dependency overrides:**
+- `analyzer` – Ensures compatibility with build_runner and related packages  
+- `test_api` – Matches flutter_test requirements  
 
 ## Features
 
@@ -42,6 +61,8 @@ samples, guidance on mobile development, and a full API reference.
 - **Multi-language Support**: English, Polish, and Turkish localization
 - **Responsive Design**: Optimized for desktop and mobile devices
 - **Dark/Light Theme**: Dynamic theme switching
+- **3D models**: 3D model Interactivity created in the backend for fun
+- **Admin Controls**: Dashboard created for admins to control various features of the application, such as (user roles, pc components, and many more...)
 
 ## Pages
 
@@ -49,7 +70,6 @@ samples, guidance on mobile development, and a full API reference.
 - **LoginPage** (`screens/auth/login_page.dart`): User authentication with email/password and social login options (Google, GitHub, Discord)
 - **SignUpPage** (`screens/auth/signup_page.dart`): New user registration with form validation
 - **ForgotPasswordPage** (`screens/auth/forgot_password_page.dart`): Password recovery functionality
-- **PrivacyPolicyDialog** (`screens/auth/privacy_policy_dialog.dart`): Privacy policy acceptance dialog
 
 ### Main Application Pages
 - **HomePage** (`screens/home/homepage.dart`): Landing page with featured builds, part categories, and FAQ section
