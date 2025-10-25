@@ -83,10 +83,10 @@ class ProfilePage extends ConsumerWidget {
                           _buildStatColumn('Posts', '15'),
                           _buildStatColumn('Builds', '3'),
 
-                          _buildStatColumn(
-                            'Followers',
-                            user.followers.toString(),
-                          ),
+                          // _buildStatColumn(
+                          //   'Followers',
+                          //   user.followers.toString(),
+                          // ),
                         ],
                       ),
                     ],

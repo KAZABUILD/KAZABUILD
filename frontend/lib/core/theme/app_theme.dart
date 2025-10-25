@@ -1,3 +1,7 @@
+/// Defines the application's themes, including light and dark modes.
+/// This file sets up the color schemes and text styles used throughout the app.
+library;
+
 import 'package:flutter/material.dart';
 import '../constants/app_color.dart';
 

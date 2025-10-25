@@ -21,7 +21,6 @@ class QuizPage extends ConsumerStatefulWidget {
 
 /// The state for the [QuizPage].
 ///
-/// Manages the current step of the quiz and handles user interactions.
 class _QuizPageState extends ConsumerState<QuizPage> {
   /// A list to hold the quiz questions. It's initially empty.
   // TODO: This should be populated by fetching data from a backend service.
@@ -149,7 +148,6 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                     answerSetter(quizNotifier, option);
                                   },
                                   child: AnimatedContainer(
-                                    // Provides a smooth visual feedback when an option is selected.
                                     // Provides a smooth visual feedback when an option is selected.
                                     duration: const Duration(milliseconds: 200),
                                     decoration: BoxDecoration(

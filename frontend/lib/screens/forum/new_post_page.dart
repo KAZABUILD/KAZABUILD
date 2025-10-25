@@ -411,7 +411,6 @@ class _NewPostPageState extends State<NewPostPage>
                     title: Text(build.title),
                     subtitle: Text(() {
                       // Safely try to find the CPU component to display its name.
-                      // Safely try to find the CPU component to display its name.
                       try {
                         final cpu = build.components.firstWhere(
                           (c) => c.type == ComponentType.cpu,

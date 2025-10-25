@@ -38,9 +38,6 @@ class AppUser {
   /// The user's country of residence.
   final String? country;
 
-  /// The number of followers the user has.
-  final int followers;
-
   /// The user's phone number.
   final String? phoneNumber;
 
@@ -71,8 +68,7 @@ class AppUser {
     this.photoURL,
     this.bio,
     this.country,
-    // Defaults to 0 if not provided.
-    this.followers = 0,
+    /// TODO: review the backend for this model.
     this.phoneNumber,
     this.isProfilePrivate = false,
     this.themePreference = ThemeMode.dark,
