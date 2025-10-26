@@ -98,6 +98,12 @@ namespace KAZABUILD.Domain.Entities.Users
         /// </summary>
         public Address? Address { get; set; }
 
+        /// <summary>
+        /// Date when the user ban expires.
+        /// Empty or outdated if user not banned.
+        /// </summary>
+        public DateTime? BannedUntil { get; set; }
+
         //User Settings fields
         /// <summary>
         /// Setting for who can see user's profile.

@@ -77,6 +77,12 @@ namespace KAZABUILD.Application.DTOs.Users.User
         public Address? Address { get; set; }
 
         /// <summary>
+        /// Date when the user ban expires.
+        /// Empty or outdated if user not banned.
+        /// </summary>
+        public DateTime? BannedUntil { get; set; }
+
+        /// <summary>
         /// Setting for who can see user's profile.
         /// Hides profiles from browsing if set to private.
         /// </summary>

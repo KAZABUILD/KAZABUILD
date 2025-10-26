@@ -31,6 +31,8 @@ namespace KAZABUILD.Application.DTOs.Users.User
 
         public Address? Address { get; set; }
 
+        public DateTime? BannedUntil { get; set; }
+
         public ProfileAccessibility? ProfileAccessibility { get; set; }
 
         public Theme? Theme { get; set; }
