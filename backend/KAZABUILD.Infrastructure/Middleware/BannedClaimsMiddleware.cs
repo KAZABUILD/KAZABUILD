@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 
 namespace KAZABUILD.Infrastructure.Middleware
@@ -13,25 +14,26 @@ namespace KAZABUILD.Infrastructure.Middleware
     /// </summary>
     /// <param name="next"></param>
     /// <param name="db"></param>
-    public class BannedClaimsMiddleware(RequestDelegate next, KAZABUILDDBContext db)
+    public class BannedClaimsMiddleware(RequestDelegate next)
     {
         //Variable storing the next part of the pipeline
         private readonly RequestDelegate _next = next;
-
-        //Variable storing the database
-        private readonly KAZABUILDDBContext _db = db;
 
         //Cache for recent ip address calls
         private static readonly MemoryCache _cache = new(new MemoryCacheOptions());
 
         /// <summary>
         /// Function inserted in the API request process.
-        /// Adds a claim for any anonymous user.
+        /// Overrides claims with a Banned user role if the Ip is banned.
         /// </summary>
         /// <param name="context"></param>
+        /// <param name="services"></param>
         /// <returns></returns>
-        public async Task Invoke(HttpContext context)
+        public async Task InvokeAsync(HttpContext context, IServiceProvider services)
         {
+            //Get scoped database
+            var _db = services.GetRequiredService<KAZABUILDDBContext>();
+
             //Get the ip for the user
             var ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? context.Connection.RemoteIpAddress?.ToString();

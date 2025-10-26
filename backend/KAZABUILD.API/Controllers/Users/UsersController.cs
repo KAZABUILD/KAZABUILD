@@ -310,13 +310,6 @@ namespace KAZABUILD.API.Controllers.Users
                     }
                 }
             }
-            if(dto.BannedUntil != null)
-            {
-                if (dto.BannedUntil == DateTime.MinValue)
-                    user.BannedUntil = null;
-                else
-                    user.BannedUntil = dto.BannedUntil;
-            }
             if (dto.ProfileAccessibility != null)
             {
                 user.ProfileAccessibility = (ProfileAccessibility)dto.ProfileAccessibility;
@@ -368,6 +361,13 @@ namespace KAZABUILD.API.Controllers.Users
                     changedFields.Add("Login: " + user.Login);
 
                     user.Login = dto.Login;
+                }
+                if (dto.BannedUntil != null)
+                {
+                    if (dto.BannedUntil == DateTime.MinValue)
+                        user.BannedUntil = null;
+                    else
+                        user.BannedUntil = dto.BannedUntil;
                 }
                 if (dto.Note != null)
                 {
