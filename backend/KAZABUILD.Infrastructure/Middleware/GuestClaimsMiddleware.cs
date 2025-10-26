@@ -11,7 +11,7 @@ namespace KAZABUILD.Infrastructure.Middleware
     /// <param name="next"></param>
     public class GuestClaimsMiddleware(RequestDelegate next)
     {
-        //Variable storing the part of the pipeline
+        //Variable storing the next part of the pipeline
         private readonly RequestDelegate _next = next;
 
         /// <summary>

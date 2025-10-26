@@ -150,6 +150,9 @@ namespace KAZABUILD.API
             //Enable middleware for handling guest user claims
             app.UseMiddleware<GuestClaimsMiddleware>();
 
+            //Enable middleware for handling ip blocks
+            app.UseMiddleware<BannedClaimsMiddleware>();
+
             //Enables rate limiting
             app.UseRateLimiter();
 
