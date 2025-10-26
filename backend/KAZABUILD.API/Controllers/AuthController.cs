@@ -175,11 +175,14 @@ namespace KAZABUILD.API.Controllers
                     return BadRequest(new { message = "Unable to determine the IP address" });
                 }
 
+                //Generate a new token
+                var tokenString = Guid.NewGuid().ToString("N");
+
                 //Generate an authentication token
                 var token = new UserToken
                 {
                     UserId = user.Id,
-                    Token = Guid.NewGuid().ToString("N").Substring(0, 6),
+                    TokenHash = _hasher.Hash(tokenString),
                     TokenType = TokenType.LOGIN_2FA,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(10),
@@ -188,7 +191,7 @@ namespace KAZABUILD.API.Controllers
                 };
 
                 //Create the email message body with html
-                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.Token);
+                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, tokenString);
 
                 //Try to send the confirmation email
                 try
@@ -196,9 +199,20 @@ namespace KAZABUILD.API.Controllers
                     //Send the confirmation email
                     await _smtp.SendEmailAsync(user.Email, "KAZABUILD login verification code", body);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Auth",
+                        ip,
+                        user.Id,
+                        PrivacyLevel.ERROR,
+                        $"Operation Failed - Failed To Send A Verification Email: {ex}"
+                    );
+
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send a verification email. Please try again later." });
                 }
 
                 //Add the token to the database
@@ -278,7 +292,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && t.Token == dto.Token && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -558,11 +572,14 @@ namespace KAZABUILD.API.Controllers
             //Add the user to the database
             _db.Users.Add(user);
 
+            //Generate a new token
+            var tokenString = Guid.NewGuid().ToString("N");
+
             //Create the registration token
             var token = new UserToken
             {
                 UserId = user.Id,
-                Token = Guid.NewGuid().ToString("N"),
+                TokenHash = _hasher.Hash(tokenString),
                 TokenType = TokenType.CONFIRM_REGISTER,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
@@ -572,7 +589,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={token.Token}&userId={user.Id}";
+            var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={tokenString}&userId={user.Id}";
             //Create the email message body with html
             var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
@@ -632,7 +649,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -765,10 +782,13 @@ namespace KAZABUILD.API.Controllers
                 return BadRequest(new { message = "Unable to determine the IP address" });
             }
 
+            //Generate a new token
+            var tokenString = Guid.NewGuid().ToString("N");
+
             var token = new UserToken
             {
                 UserId = user.Id,
-                Token = Guid.NewGuid().ToString("N"),
+                TokenHash = _hasher.Hash(tokenString),
                 TokenType = TokenType.RESET_PASSWORD,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(2),
@@ -778,7 +798,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
+            var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={tokenString}&userId={user.Id}";
 
             //Create the email message body with html
             var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
@@ -839,7 +859,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)

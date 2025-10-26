@@ -13,7 +13,6 @@ namespace KAZABUILD.Infrastructure.Middleware
     /// Custom middleware that makes is so ip banned users are treated as banned
     /// </summary>
     /// <param name="next"></param>
-    /// <param name="db"></param>
     public class BannedClaimsMiddleware(RequestDelegate next)
     {
         //Variable storing the next part of the pipeline
