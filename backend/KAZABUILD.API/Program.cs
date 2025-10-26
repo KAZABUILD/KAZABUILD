@@ -82,6 +82,9 @@ namespace KAZABUILD.API
                         PrivacyLevel.CRITICAL,
                         $"Database connection failed."
                     );
+
+                    //Flush any stashed logs
+                    await logger.FlushStashedLogsAsync();
                 }
             }
             catch (Exception ex)
