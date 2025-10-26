@@ -330,6 +330,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(u => u.Birth, f => f.Date.Past(60, DateTime.UtcNow.AddYears(-18)))
             .RuleFor(u => u.RegisteredAt, f => f.Date.Past(2))
             .RuleFor(u => u.Address, f => null)
+            .RuleFor(u => u.BannedUntil, f => null)
             .RuleFor(u => u.ProfileAccessibility, f => f.PickRandom<ProfileAccessibility>())
             .RuleFor(u => u.Theme, f => f.PickRandom<Theme>())
             .RuleFor(u => u.Language, f => f.PickRandom<Language>())

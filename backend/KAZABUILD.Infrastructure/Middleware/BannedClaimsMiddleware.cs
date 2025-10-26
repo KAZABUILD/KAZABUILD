@@ -47,7 +47,7 @@ namespace KAZABUILD.Infrastructure.Middleware
             if (!_cache.TryGetValue(ip, out bool isBlocked))
             {
                 //If the ip is not in cache query the database
-                isBlocked = await db.BlockedIps.AnyAsync(b => b.IpAddress == ip);
+                isBlocked = await _db.BlockedIps.AnyAsync(b => b.IpAddress == ip);
 
                 //Add the new ip to the cache for 10 minutes
                 _cache.Set(ip, isBlocked, TimeSpan.FromMinutes(10));
