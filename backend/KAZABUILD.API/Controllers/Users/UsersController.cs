@@ -68,9 +68,9 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper conflict response
                 if (dto.Email == isUserAvailable.Email)
-                    return Conflict(new { message = "Email Already In Use" });
+                    return Conflict(new { message = "Email already in use" });
                 else
-                    return Conflict(new { message = "Login Already In Use" });
+                    return Conflict(new { message = "Login already in use" });
             }
 
             //Check if the user has sufficient permissions
@@ -756,6 +756,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
+            //Get all users
             List<User> users = await query.ToListAsync();
 
             //Declare response variable

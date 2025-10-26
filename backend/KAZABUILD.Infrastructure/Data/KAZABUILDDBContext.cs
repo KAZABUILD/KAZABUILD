@@ -19,6 +19,7 @@ namespace KAZABUILD.Infrastructure.Data
         //General tables
         public DbSet<Image> Images { get; set; } = default!;
         public DbSet<Log> Logs { get; set; } = default!;
+        public DbSet<BlockedIp> BlockedIps { get; set; }
 
         //User related tables
         public DbSet<User> Users { get; set; } = default!;

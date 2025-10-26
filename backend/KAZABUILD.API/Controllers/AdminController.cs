@@ -1,5 +1,9 @@
+using KAZABUILD.Application.DTOs.Admin;
+using KAZABUILD.Application.DTOs.Users.User;
+using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
+using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components;
 using KAZABUILD.Domain.Entities.Components.Components;
@@ -12,7 +16,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace KAZABUILD.API.Controllers
 {
@@ -265,6 +271,197 @@ namespace KAZABUILD.API.Controllers
 
             //Return success response
             return Ok(new { message = "Database reset successfully!" });
+        }
+
+        /// <summary>
+        /// Allows the administration to block an ip address from accessing the website.
+        /// Adds the ip address to a blocklist.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [HttpPost("block-ip")]
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> BlockIp([FromBody] BlockIpRequestDto request)
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if the Ip is already blocked
+            if (await _db.BlockedIps.AnyAsync(b => b.IpAddress == request.IpAddress))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Admin",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - The Ip Is Already Blocked"
+                );
+
+                //Return a conflict response
+                return Conflict(new { message = "This Ip is already blocked!" });
+            }
+
+            //Create an ip block object
+            var blockedIp = new BlockedIp
+            {
+                IpAddress = request.IpAddress,
+                BlockedByUserId = currentUserId,
+                CreatedAt = DateTime.UtcNow,
+                Reason = request.Reason
+            };
+
+            //Add the new blockedIp to the database
+            _db.BlockedIps.Add(blockedIp);
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
+
+            //Log the creation
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Admin",
+                ip,
+                blockedIp.Id,
+                PrivacyLevel.CRITICAL,
+                $"Successful Operation - Blocked New Ip From Accessing The Website"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("admin.blockedIp", new
+            {
+                blockedIpId = blockedIp.Id,
+                resetBy = currentUserId
+            });
+
+            //Return success response
+            return Ok(new { message = $"Ip successfully blocked!" });
+        }
+
+        /// <summary>
+        /// Allows the administration to get the full list of blocked Ip addresses.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("block-ip")]
+        [Authorize(Policy = "Admins")]
+        public async Task<ActionResult<BlockedIpResponseDto>> GetBlocklist()
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Get the blocklist
+            List<BlockedIp> blocklist = await _db.BlockedIps.ToListAsync();
+
+            //Declare response variable
+            List<BlockedIpResponseDto> responses;
+
+            //Create a userFollow response list
+            responses = [.. blocklist.Select(blockedIp =>
+            {
+                //Return a blockedIp response
+                return new BlockedIpResponseDto
+                {
+                    Id = blockedIp.Id,
+                    IpAddress = blockedIp.IpAddress,
+                    CreatedAt = blockedIp.CreatedAt,
+                    BlockedByUserId = blockedIp.BlockedByUserId,
+                    Reason = blockedIp.Reason,
+                };
+            })];
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "UserFollow",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                $"Successful Operation - Amin Access"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("admin.gotBlocklist", new
+            {
+                blockedIpIds = blocklist.Select(f => f.Id),
+                resetBy = currentUserId
+            });
+
+            //Return success response
+            return Ok(responses);
+        }
+
+        /// <summary>
+        /// Allows the administration to unblock ip addresses and allow users using them to access the website again.
+        /// </summary>
+        /// <param name="ipAddress"></param>
+        /// <returns></returns>
+        [HttpDelete("block-ip/{ipAddress}")]
+        [Authorize(Policy = "Admins")]
+        public async Task<IActionResult> UnblockIp(string ipAddress)
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if the Ip is in the blocklist
+            var blockedIp = await _db.BlockedIps.FirstOrDefaultAsync(b => b.IpAddress == ipAddress);
+            if (blockedIp == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "DELETE",
+                    "Admin",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - The Ip Is Already Blocked"
+                );
+
+                return NotFound(new { message = "Ip not found in blocklist!" });
+            }
+
+            //Remove the block from the database
+            _db.BlockedIps.Remove(blockedIp);
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
+
+            //Log the creation
+            await _logger.LogAsync(
+                currentUserId,
+                "DELETE",
+                "Admin",
+                ip,
+                blockedIp.Id,
+                PrivacyLevel.CRITICAL,
+                $"Successful Operation - Ip Allowed Access To The Website Again"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("admin.unblockedIp", new
+            {
+                blockedIpId = blockedIp.Id,
+                resetBy = currentUserId
+            });
+
+            //Return success response
+            return Ok(new { message = $"Ip has been unblocked!" });
         }
     }
 }
