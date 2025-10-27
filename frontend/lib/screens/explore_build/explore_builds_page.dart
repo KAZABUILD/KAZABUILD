@@ -29,6 +29,7 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
   // TODO: Replace this mock data with a list fetched from a backend service,
   // ideally using a Riverpod FutureProvider to handle loading and error states.
   final List<CommunityBuild> _builds = [];
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +41,9 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
     final crossAxisCount = (screenWidth / 350).floor().clamp(1, 4);
 
     return Scaffold(
+      key: _scaffoldKey,
+      // The navigation drawer that slides in from the left on mobile.
+      drawer: CustomDrawer(showProfileArea: true),
       // The main container with a gradient background.
       body: Container(
         decoration: BoxDecoration(
