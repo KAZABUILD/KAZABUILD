@@ -8,10 +8,40 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:flutter/gestures.dart';
 
 /// The main content widget for the homepage.
-class HomeBody extends StatelessWidget {
+class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
+
+  @override
+  State<HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<HomeBody> {
+  late Flutter3DController _controller;
+  bool _isRotating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Flutter3DController();
+
+    // Listen for when the model is fully loaded, then start slow rotation.
+    _controller.onModelLoaded.addListener(() {
+      if (_controller.onModelLoaded.value == true) {
+        debugPrint('3D model loaded, starting slow rotation...');
+        _controller.startRotation(rotationSpeed: 30);
+        _isRotating = true;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.stopRotation();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +56,44 @@ class HomeBody extends StatelessWidget {
           children: [
             /// A 3D model viewer that displays an interactive model of a PC.
             /// The `flutter_3d_controller` package is used to render the `.glb` asset.
-            SizedBox(height: 800, child: Flutter3DViewer(src: 'assets/pc.glb')),
+            SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Listener(
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) {
+                  // Block scroll events to prevent zoom
+                  
+                }
+              },
+              child: GestureDetector(
+                onPanStart: (_) {
+                  if (_isRotating) {
+                    _controller.pauseRotation();
+                  }
+                },
+                onPanEnd: (_) {
+                  if (_isRotating) {
+                    _controller.startRotation(rotationSpeed: 30);
+                  }
+                },
+                onPanCancel: () {
+                  if (_isRotating) {
+                    _controller.startRotation(rotationSpeed: 30);
+                  }
+                },
+                child: Container(
+                  height: 700,
+                  width: 700,
+                  padding: const EdgeInsets.all(40), 
+                  child: Flutter3DViewer(
+                    src: 'assets/3d_models/pc.glb',
+                    controller: _controller, 
+                    enableTouch: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
             /// A placeholder container for a future text box.
             // TODO: Replace this with a dynamic text box displaying a slogan, a short description, or user-specific information.

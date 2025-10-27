@@ -42,7 +42,7 @@ class _SignUpPageState extends State<SignUpPage> {
   String? _selectedGender;
 
   /// The currently selected country from the dropdown. (Currently unused in the UI).
-  String? _selectedCountry;
+  //String? _selectedCountry;
 
   /// A list of options for the gender selection dropdown.
   final List<String> _genderOptions = [
