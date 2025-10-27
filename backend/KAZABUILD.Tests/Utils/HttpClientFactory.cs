@@ -7,37 +7,23 @@ namespace KAZABUILD.Tests.Utils
 {
     public static class HttpClientAssigner
     {
-        public static async Task AssignUserToClientAsync(HttpClient client, User user, string? ip = null, string? password = null)
+        public static async Task AssignUserToClientAsync(HttpClient client, User user)
         {
-            // ensure there's a default IP if none provided
-            ip ??= "127.0.0.1";
-            password ??= "password123!";
-
-            // Remove any existing values to avoid duplicates
-            if (client.DefaultRequestHeaders.Contains("X-Forwarded-For"))
-                client.DefaultRequestHeaders.Remove("X-Forwarded-For");
-            if (client.DefaultRequestHeaders.Contains("X-Real-IP"))
-                client.DefaultRequestHeaders.Remove("X-Real-IP");
-
-            // Add the IP header(s)
-            client.DefaultRequestHeaders.TryAddWithoutValidation("X-Forwarded-For", ip);
-            client.DefaultRequestHeaders.TryAddWithoutValidation("X-Real-IP", ip);
-
             var loginPayload = new
             {
                 Login = user.Login,
-                Password = password
+                Password = "password123!"
             };
 
             var response = await client.PostAsJsonAsync("/Auth/login", loginPayload);
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Login failed with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}\n Message: {response.Content.ReadAsStringAsync().Result}");
+                throw new Exception($"Login failed with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}");
             }
             else
             {
-                Console.WriteLine($"Login succeeded with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}");
+                Console.WriteLine("Login succeeded with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}");
             }
 
             var json = await response.Content.ReadAsStringAsync();
@@ -56,9 +42,9 @@ namespace KAZABUILD.Tests.Utils
     }
     public static class HttpClientFactory
     {
-        public async static Task<HttpClient> Create(WebApplicationFactory<API.Program> factory, User user, string? ip = null, string? password = null) {
+        public async static Task<HttpClient> Create(WebApplicationFactory<API.Program> factory, User user) {
             var client = factory.CreateClient();
-            await HttpClientAssigner.AssignUserToClientAsync(client, user, ip, password);
+            await HttpClientAssigner.AssignUserToClientAsync(client, user);
             return client;
         }
 
