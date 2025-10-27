@@ -55,9 +55,9 @@ class _LanguageSelectorState extends State<LanguageSelector> {
   /// A map containing the data for each supported language, including the
   /// asset path for its flag and its display name.
   final Map<String, Map<String, String>> _languages = {
-    'en': {'flag': 'assets/uk_flag.png', 'name': 'English'},
-    'tr': {'flag': 'assets/tr_flag.png', 'name': 'Türkçe'},
-    'pl': {'flag': 'assets/pl_flag.png', 'name': 'Polski'},
+    'en': {'flag': 'assets/flags/uk_flag.png', 'name': 'English'},
+    'tr': {'flag': 'assets/flags/tr_flag.png', 'name': 'Türkçe'},
+    'pl': {'flag': 'assets/flags/pl_flag.png', 'name': 'Polski'},
   };
 
   @override

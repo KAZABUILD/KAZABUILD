@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:frontend/screens/home/homepage.dart';
 import 'dart:async';
 
@@ -55,10 +56,10 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.build_circle_outlined,
-                size: 80,
-                color: theme.colorScheme.primary,
+              Image.asset(
+                'assets/logo/kaza.png',
+                width: 200,
+                height: 200,
               ),
               const SizedBox(height: 24),
               Text(

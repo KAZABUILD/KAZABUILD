@@ -89,10 +89,13 @@ class CustomNavigationBar extends ConsumerWidget {
             borderRadius: BorderRadius.circular(8),
             child: Row(
               children: [
-                Icon(Icons.build, color: colorScheme.primary, size: 28),
-                const SizedBox(width: 8),
+                Image.asset(
+                  "assets/logo/kaza.png",
+                  width: 40,
+                  height: 40,
+                ),
                 const Text(
-                  'KazaBuild',
+                  'AZABUILD',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                 ),
               ],
@@ -170,11 +173,14 @@ class _MobileAppBar extends ConsumerWidget {
             borderRadius: BorderRadius.circular(8),
             child: Row(
               children: [
-                Icon(Icons.build, color: colorScheme.primary, size: 24),
-                const SizedBox(width: 8),
+                Image.asset(
+                  "assets/logo/kaza.png",
+                  width: 30,
+                  height: 30,
+                ),
                 const Text(
-                  'KazaBuild',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  'AZABUILD',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color:Color.fromRGBO(143, 104, 255, 100)),
                 ),
               ],
             ),
@@ -208,15 +214,18 @@ class CustomDrawer extends ConsumerWidget {
         children: [
           /// The header of the drawer.
           DrawerHeader(
-            decoration: BoxDecoration(color: theme.colorScheme.primary),
+            decoration: BoxDecoration(color:Color.fromARGB(255, 9, 0, 26)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(Icons.build, color: theme.colorScheme.onPrimary, size: 40),
-                const SizedBox(height: 10),
+                Image.asset(
+                  "assets/logo/kaza.png",
+                  width: 45,
+                  height: 45,
+                ),
                 Text(
-                  'Kaza Build',
+                  'KazaBuild',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimary,
                     fontSize: 24,
@@ -392,54 +401,85 @@ class CustomDrawer extends ConsumerWidget {
 }
 
 /// A reusable text button for the main desktop navigation bar.
-class _NavButton extends StatelessWidget {
+class _NavButton extends StatefulWidget {
   final String title;
-  const _NavButton({required this.title});
+  const _NavButton({required this.title, Key? key}) : super(key: key);
+
+  @override
+  State<_NavButton> createState() => _NavButtonState();
+}
+
+class _NavButtonState extends State<_NavButton> {
+  bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: TextButton(
-        /// Navigate to the appropriate page based on the button's title.
-        // TODO: Refactor this to use named routes (e.g., `Navigator.pushNamed(context, '/build')`).
-        onPressed: () {
-          if (title == 'Build Now') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const BuildNowPage()),
-            );
-          } else if (title == 'Guides') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const GuidesPage()),
-            );
-          } else if (title == 'Forums') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ForumsPage()),
-            );
-          } else if (title == 'Explore Builds') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ExploreBuildsPage(),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: () {
+                final title = widget.title;
+                if (title == 'Build Now') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const BuildNowPage()),
+                  );
+                } else if (title == 'Guides') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const GuidesPage()),
+                  );
+                } else if (title == 'Forums') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ForumsPage()),
+                  );
+                } else if (title == 'Explore Builds') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ExploreBuildsPage()),
+                  );
+                } else {
+                  print('$title clicked');
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: _isHovering
+                    ? colorScheme.secondary
+                    : theme.textTheme.bodyLarge?.color,
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
-            );
-          } else {
-            /// Placeholder for any buttons without a defined route.
-            print('$title clicked');
-          }
-        },
-        style: TextButton.styleFrom(
-          foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              child: Text(widget.title),
+            ),
+
+            /// Animated underline on hover
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 2,
+              width: _isHovering ? 20 : 0,
+              color: colorScheme.secondary,
+            ),
+          ],
         ),
-        child: Text(title),
       ),
     );
   }
 }
+
 
 /// The widget displayed in the profile area when the user is not logged in.
 /// It provides "Sign In" and "Sign Up" buttons.
@@ -577,7 +617,7 @@ class _LoggedInProfileArea extends ConsumerWidget {
 }
 
 /// A dropdown menu specifically for navigating to different PC part categories.
-class _PartsDropdownMenu extends StatelessWidget {
+class _PartsDropdownMenu extends StatefulWidget {
   const _PartsDropdownMenu();
 
   /// A static list of all PC part categories to be displayed in the menu.
@@ -603,6 +643,92 @@ class _PartsDropdownMenu extends StatelessWidget {
   ];
 
   @override
+  State<_PartsDropdownMenu> createState() => _PartsDropdownMenuState();
+}
+
+class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
+  OverlayEntry? _overlayEntry;
+  bool _isHoveringDropdown = false;
+  bool _isHoveringButton = false;
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    super.dispose();
+  }
+
+  void _showDropdown() {
+    if (_overlayEntry != null) return;
+
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final Offset offset = renderBox.localToGlobal(Offset.zero);
+    final Size size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx,
+        top: offset.dy + size.height,
+        child: MouseRegion(
+          onEnter: (_) {
+            setState(() {
+              _isHoveringDropdown = true;
+            });
+          },
+          onExit: (_) {
+            setState(() {
+              _isHoveringDropdown = false;
+            });
+            // Add a small delay before hiding to allow for clicking
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (!_isHoveringDropdown) {
+                _hideDropdown();
+              }
+            });
+          },
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 200,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _PartsDropdownMenu.parts.map((PcPart part) {
+                  return _DropdownItem(part: part, onTap: () {
+                    _hideDropdown();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PartPickerPage(
+                          componentType: part.type,
+                          currentBuild: const [],
+                        ),
+                      ),
+                    );
+                  });
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideDropdown() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textStyle = TextStyle(
       color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -610,70 +736,127 @@ class _PartsDropdownMenu extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        /// A "Parts" button that navigates to a default part picker page (CPU).
-        /// This is useful for users who just want to start browsing parts.
-        TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const PartPickerPage(
-                  componentType: ComponentType.cpu,
-                  currentBuild: [],
-                ),
-              ),
-            );
-          },
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          child: Text('Parts', style: textStyle),
-        ),
-
-        /// The dropdown arrow that opens the popup menu.
-        PopupMenuButton<PcPart>(
-          offset: const Offset(0, 45),
-
-          /// When a part is selected, navigate to the PartPickerPage for that component type.
-          onSelected: (PcPart part) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PartPickerPage(
-                  componentType: part.type,
-                  currentBuild: const [],
-                ),
-              ),
-            );
-          },
-
-          /// Build the list of menu items from the static `parts` list.
-          itemBuilder: (BuildContext context) {
-            return parts.map((PcPart part) {
-              return PopupMenuItem<PcPart>(
-                value: part,
-                child: Row(
-                  children: [
-                    Icon(part.icon, size: 20),
-                    const SizedBox(width: 12),
-                    Text(part.name),
-                  ],
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHoveringButton = true);
+        _showDropdown();
+      },
+      onExit: (_) {
+        setState(() => _isHoveringButton = false);
+        // Add a small delay before hiding to allow for clicking
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (!_isHoveringDropdown) {
+            _hideDropdown();
+          }
+        });
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          /// A "Parts" button that navigates to a default part picker page (CPU).
+          /// This is useful for users who just want to start browsing parts.
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PartPickerPage(
+                    componentType: ComponentType.cpu,
+                    currentBuild: [],
+                  ),
                 ),
               );
-            }).toList();
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 4.0, right: 8.0),
-            child: Icon(
-              Icons.arrow_drop_down,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: _isHoveringButton
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).textTheme.bodyLarge?.color,
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
+            child: Text('Parts', style: textStyle),
+          ),
+
+          /// Animated underline on hover
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 2,
+            width: _isHoveringButton ? 20 : 0,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dropdown item widget with hover effects for the parts dropdown menu.
+class _DropdownItem extends StatefulWidget {
+  final PcPart part;
+  final VoidCallback onTap;
+
+  const _DropdownItem({
+    required this.part,
+    required this.onTap,
+  });
+
+  @override
+  State<_DropdownItem> createState() => _DropdownItemState();
+}
+
+class _DropdownItemState extends State<_DropdownItem> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: _isHovering 
+                ? colorScheme.secondary.withOpacity(0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.part.icon, 
+                size: 20,
+                color: _isHovering 
+                    ? colorScheme.secondary
+                    : theme.textTheme.bodyMedium?.color,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                widget.part.name,
+                style: TextStyle(
+                  color: _isHovering 
+                      ? colorScheme.secondary
+                      : theme.textTheme.bodyMedium?.color,
+                  fontWeight: _isHovering ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

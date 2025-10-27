@@ -41,10 +41,11 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
-    - assets/uk_flag.png
-    - assets/tr_flag.png
-    - assets/pl_flag.png
-    - assets/pc.glb
-    - assets/google_icon.svg
-    - assets/apple_icon.svg
+  - assets/flags/
+  - assets/images/
+  - assets/3d_models/
+  - assets/icons/
+  - assets/logo/
+  - assets/logo/kaza.svg
+  - assets/font/
 
