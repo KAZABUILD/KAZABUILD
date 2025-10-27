@@ -1,12 +1,14 @@
-﻿using KAZABUILD.Infrastructure.Data;
+﻿using KAZABUILD.Application.Interfaces;
+using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Tests.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 public abstract class BaseIntegrationTest : IClassFixture<KazaWebApplicationFactory>, IAsyncLifetime
 {
-    public readonly KazaWebApplicationFactory _factory;
-    public KAZABUILDDBContext _context = null!;
+    protected readonly KazaWebApplicationFactory _factory;
+    protected KAZABUILDDBContext _context = null!;
     private IServiceScope _scope = null!;
+    protected IDataSeeder _dataSeeder = null!;
 
     protected BaseIntegrationTest(KazaWebApplicationFactory factory)
     {
@@ -19,6 +21,7 @@ public abstract class BaseIntegrationTest : IClassFixture<KazaWebApplicationFact
 
         _scope = _factory.Services.CreateScope();
         _context = _scope.ServiceProvider.GetRequiredService<KAZABUILDDBContext>();
+        _dataSeeder = _scope.ServiceProvider.GetRequiredService<IDataSeeder>();
 
         await _context.SaveChangesAsync();
     }

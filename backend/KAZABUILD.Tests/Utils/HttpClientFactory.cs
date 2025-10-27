@@ -12,14 +12,18 @@ namespace KAZABUILD.Tests.Utils
             var loginPayload = new
             {
                 Login = user.Login,
-                Password = "Password123"
+                Password = "password123!"
             };
 
             var response = await client.PostAsJsonAsync("/Auth/login", loginPayload);
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Login failed with status code: {response.StatusCode}");
+                throw new Exception($"Login failed with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}");
+            }
+            else
+            {
+                Console.WriteLine("Login succeeded with status code: {response.StatusCode} For user with rank: {user.UserRole} and login: {user.Login}");
             }
 
             var json = await response.Content.ReadAsStringAsync();
