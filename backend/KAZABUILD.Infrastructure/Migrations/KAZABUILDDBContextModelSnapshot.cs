@@ -48,8 +48,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("LastEditedAt")
                         .HasColumnType("datetime2");
@@ -197,8 +197,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("LastEditedAt")
                         .HasColumnType("datetime2");
@@ -241,6 +241,39 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasKey("ColorCode");
 
                     b.ToTable("Colors");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ColorVariant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ColorCode")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<Guid>("ComponentVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ColorCode");
+
+                    b.HasIndex("ComponentVariantId");
+
+                    b.ToTable("ColorVariants");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
@@ -417,11 +450,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ColorCode")
-                        .IsRequired()
-                        .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)");
-
                     b.Property<Guid>("ComponentId")
                         .HasColumnType("uniqueidentifier");
 
@@ -439,8 +467,6 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ColorCode");
 
                     b.HasIndex("ComponentId");
 
@@ -551,6 +577,71 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("SubComponents", (string)null);
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Image", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BuildId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ForumPostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("LocationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid?>("SubComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserCommentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuildId");
+
+                    b.HasIndex("ComponentId");
+
+                    b.HasIndex("ForumPostId");
+
+                    b.HasIndex("SubComponentId");
+
+                    b.HasIndex("UserCommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Images");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Log", b =>
@@ -1353,8 +1444,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("Height")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
+                        .HasPrecision(7, 4)
+                        .HasColumnType("decimal(7,4)");
 
                     b.Property<decimal>("ModuleCapacity")
                         .HasPrecision(8, 2)
@@ -1801,6 +1892,25 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ColorVariant", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Color", "Color")
+                        .WithMany("ColorVariants")
+                        .HasForeignKey("ColorCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.ComponentVariant", "ComponentVariant")
+                        .WithMany("ColorVariants")
+                        .HasForeignKey("ComponentVariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Color");
+
+                    b.Navigation("ComponentVariant");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentCompatibility", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "CompatibleComponent")
@@ -1863,19 +1973,11 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.Components.Color", "Color")
-                        .WithMany("Components")
-                        .HasForeignKey("ColorCode")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
                         .WithMany("Colors")
                         .HasForeignKey("ComponentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Color");
 
                     b.Navigation("Component");
                 });
@@ -1897,6 +1999,51 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("MainSubComponent");
 
                     b.Navigation("SubComponent");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Image", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
+                        .WithMany("Images")
+                        .HasForeignKey("BuildId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
+                        .WithMany("Images")
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
+                        .WithMany("Images")
+                        .HasForeignKey("ForumPostId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", "SubComponent")
+                        .WithMany("Images")
+                        .HasForeignKey("SubComponentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "UserComment")
+                        .WithMany("Images")
+                        .HasForeignKey("UserCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("Images")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Build");
+
+                    b.Navigation("Component");
+
+                    b.Navigation("ForumPost");
+
+                    b.Navigation("SubComponent");
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserComment");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
@@ -2265,6 +2412,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("Components");
 
+                    b.Navigation("Images");
+
                     b.Navigation("Interactions");
                 });
 
@@ -2275,12 +2424,17 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Color", b =>
                 {
-                    b.Navigation("Components");
+                    b.Navigation("ColorVariants");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentReview", b =>
                 {
                     b.Navigation("Comments");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.ComponentVariant", b =>
+                {
+                    b.Navigation("ColorVariants");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", b =>
@@ -2295,6 +2449,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("CompatibleToComponents");
 
+                    b.Navigation("Images");
+
                     b.Navigation("Prices");
 
                     b.Navigation("Reviews");
@@ -2306,6 +2462,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 {
                     b.Navigation("Components");
 
+                    b.Navigation("Images");
+
                     b.Navigation("MainSubComponents");
 
                     b.Navigation("SubComponents");
@@ -2314,6 +2472,8 @@ namespace KAZABUILD.Infrastructure.Migrations
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
@@ -2333,6 +2493,8 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("ForumPosts");
 
+                    b.Navigation("Images");
+
                     b.Navigation("Notifications");
 
                     b.Navigation("ReceivedMessages");
@@ -2349,6 +2511,8 @@ namespace KAZABUILD.Infrastructure.Migrations
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
                 {
                     b.Navigation("ChildComments");
+
+                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }

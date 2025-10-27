@@ -12,12 +12,10 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentVariant
         public Guid ComponentId { get; set; } = default!;
 
         /// <summary>
-        /// Id of the color.
+        /// List with Ids of colors of the Component Variant.
         /// </summary>
         [Required]
-        [StringLength(7, ErrorMessage = "Color Code must be a valid hex code, so no longer than 7 characters")]
-        [RegularExpression(@"^#(?:[0-9a-fA-F]{3}){1,2}$", ErrorMessage = "Color Code must be a valid hex format (#RGB or #RRGGBB)")]
-        public string ColorCode { get; set; } = default!;
+        public List<string> ColorCodes { get; set; } = [];
 
         /// <summary>
         /// Name of the color.

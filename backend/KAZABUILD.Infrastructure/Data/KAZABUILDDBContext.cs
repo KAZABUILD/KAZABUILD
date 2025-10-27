@@ -17,6 +17,7 @@ namespace KAZABUILD.Infrastructure.Data
         }
 
         //General tables
+        public DbSet<Image> Images { get; set; } = default!;
         public DbSet<Log> Logs { get; set; } = default!;
 
         //User related tables
@@ -34,6 +35,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<BaseSubComponent> SubComponents { get; set; } = default!;
         public DbSet<Color> Colors { get; set; } = default!;
         public DbSet<ComponentVariant> ComponentVariants { get; set; } = default!;
+        public DbSet<ColorVariant> ColorVariants { get; set; } = default!;
         public DbSet<ComponentCompatibility> ComponentCompatibilities { get; set; } = default!;
         public DbSet<ComponentPart> ComponentParts { get; set; } = default!;
         public DbSet<ComponentPrice> ComponentPrices { get; set; } = default!;
@@ -269,18 +271,27 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<CaseComponent>()
                 .OwnsOne(u => u.Dimensions);
 
-            //====================================== COMPONENT COLOR ======================================//
+            //====================================== COMPONENT VARIANT ======================================//
 
-            //Register relationships, disable cascade delete for colors, must be handled in API calls
+            //Register relationships with Component
             modelBuilder.Entity<ComponentVariant>()
                 .HasOne(m => m.Component)
                 .WithMany(u => u.Colors)
                 .HasForeignKey(m => m.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<ComponentVariant>()
+            //====================================== COLOR VARIANT ======================================//
+
+            //Register relationships, disable cascade delete for colors, must be handled in API calls
+            modelBuilder.Entity<ColorVariant>()
+                .HasOne(m => m.ComponentVariant)
+                .WithMany(u => u.ColorVariants)
+                .HasForeignKey(m => m.ComponentVariantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ColorVariant>()
                 .HasOne(m => m.Color)
-                .WithMany(u => u.Components)
+                .WithMany(u => u.ColorVariants)
                 .HasForeignKey(m => m.ColorCode)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -439,6 +450,51 @@ namespace KAZABUILD.Infrastructure.Data
                     j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
                     j => j.HasOne<Build>().WithMany().HasForeignKey("BuildId")
                 );
+
+            //====================================== IMAGE ======================================//
+
+            //Configure ImageTargetType enum as string
+            modelBuilder
+                .Entity<Image>()
+                .Property(u => u.LocationType)
+                .HasConversion<string>();
+
+            //Register relationships, restrict cascade deletes, image deletes should be handled in the controllers
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.ForumPost)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.ForumPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.Component)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.ComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.SubComponent)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.SubComponentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.Build)
+                .WithMany(u => u.Images)
+                .HasForeignKey(c => c.BuildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(c => c.UserComment)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(c => c.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

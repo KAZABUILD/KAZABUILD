@@ -17,7 +17,11 @@ namespace KAZABUILD.Infrastructure.Services
     {
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
-        //Task executed once a day
+        /// <summary>
+        /// The cleanup task executed once a day.
+        /// </summary>
+        /// <param name="stoppingToken"></param>
+        /// <returns></returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)

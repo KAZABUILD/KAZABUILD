@@ -9,6 +9,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -32,7 +33,7 @@ namespace KAZABUILD.API.Controllers.Components
 
         /// <summary>
         /// API Endpoint for creating a new ComponentVariant for administration.
-        /// Callers can create new colors if they provide a color name.
+        /// Multiple colors can be assigned to a Variant if it's multicolored.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
@@ -67,50 +68,48 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "Component not found!" });
             }
 
-            //Check if the Color exists, if not create it
-            var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == dto.ColorCode);
-            if (color == null && dto.ColorName != null)
-            {
-                //Create a color to add
-                color = new()
-                {
-                    ColorCode = dto.ColorCode,
-                    ColorName = dto.ColorName,
-                    DatabaseEntryAt = DateTime.UtcNow,
-                    LastEditedAt = DateTime.UtcNow
-                };
-
-                //Add the color to the database
-                _db.Colors.Add(color);
-            }
-            //Return a failure response if new color name not provided
-            if (color == null && dto.ColorName == null)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "ComponentVariant",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned Color Doesn't Exist"
-                );
-
-                //Return proper error response
-                return BadRequest(new { message = "Color unable to be created! Provide a Color Name or an existing color." });
-            }
-
             //Create a componentVariant to add
             ComponentVariant componentVariant = new()
             {
                 ComponentId = dto.ComponentId,
-                ColorCode = dto.ColorCode,
                 IsAvailable = dto.IsAvailable,
                 AdditionalPrice = dto.AdditionalPrice,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
+
+            //For each Color, check if it exists, if it does add it
+            foreach (var colorCode in dto.ColorCodes)
+            {
+                //Return a failure response if the color doesn't exist
+                var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == colorCode);
+                if (color == null)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "ComponentVariant",
+                        ip,
+                        Guid.Empty,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - Assigned Color Doesn't Exist"
+                    );
+
+                    //Return proper error response
+                    return BadRequest(new { message = "Color doesn't exist!" });
+                }
+
+                //Create a colorVariant to add
+                ColorVariant colorVariant = new()
+                {
+                    ColorCode = colorCode,
+                    ComponentVariantId = componentVariant.Id
+                };
+
+                //Add the colorVariant to the database
+                _db.ColorVariants.Add(colorVariant);
+            }
 
             //Add the componentVariant to the database
             _db.ComponentVariants.Add(componentVariant);
@@ -142,7 +141,7 @@ namespace KAZABUILD.API.Controllers.Components
 
         /// <summary>
         /// API endpoint for updating the selected ComponentVariant for administration,
-        /// can update the Colors's name as well.
+        /// Can update multicolored Variants as well.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
@@ -160,7 +159,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentVariant to edit
-            var componentVariant = await _db.ComponentVariants.FirstOrDefaultAsync(v => v.Id == id);
+            var componentVariant = await _db.ComponentVariants.Include(v => v.ColorVariants).FirstOrDefaultAsync(v => v.Id == id);
             //Check if the componentVariant exists
             if (componentVariant == null)
             {
@@ -183,25 +182,69 @@ namespace KAZABUILD.API.Controllers.Components
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrWhiteSpace(dto.ColorName))
+            if (dto.ColorCodes != null)
             {
-                //Get the color
-                var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == componentVariant.ColorCode);
+                changedFields.Add("ColorCodes: " + string.Join("-", componentVariant.ColorVariants.Select(v => v.ColorCode)));
 
-                changedFields.Add("ColorName: " + color!.ColorName);
+                //Delete old colorVariants
+                foreach (var colorVariant in componentVariant.ColorVariants)
+                {
+                    //Return a failure response if the color doesn't exist
+                    var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == colorVariant.ColorCode);
+                    if (color == null)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "ComponentVariant",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Assigned Color Doesn't Exist"
+                        );
 
-                //Update the color name and last edit date
-                color!.ColorName = dto.ColorName;
-                color!.LastEditedAt = DateTime.UtcNow;
+                        //Return proper error response
+                        return BadRequest(new { message = "Color doesn't exist!" });
+                    }
 
-                //Update the color in the database
-                _db.Colors.Update(color);
-            }
-            if (!string.IsNullOrWhiteSpace(dto.ColorCode))
-            {
-                changedFields.Add("ColorCode: " + componentVariant.ColorCode);
+                    //Add the color to the database
+                    _db.ColorVariants.Remove(colorVariant);
+                }
 
-                componentVariant.ColorCode = dto.ColorCode;
+                //Create new colorVariants
+                foreach (var colorCode in dto.ColorCodes)
+                {
+                    //Return a failure response if the color doesn't exist
+                    var color = await _db.Colors.FirstOrDefaultAsync(c => c.ColorCode == colorCode);
+                    if (color == null)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "ComponentVariant",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Assigned Color Doesn't Exist"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Color doesn't exist!" });
+                    }
+
+                    //Create a colorVariant to add
+                    ColorVariant colorVariant = new()
+                    {
+                        ColorCode = colorCode,
+                        ComponentVariantId = componentVariant.Id
+                    };
+
+                    //Add the colorVariant to the database
+                    _db.ColorVariants.Add(colorVariant);
+                }
+
             }
             if (dto.IsAvailable != null)
             {
@@ -281,7 +324,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentVariant to return
-            var componentVariant = await _db.ComponentVariants.FirstOrDefaultAsync(v => v.Id == id);
+            var componentVariant = await _db.ComponentVariants.Include(v => v.ColorVariants).ThenInclude(v => v.Color).FirstOrDefaultAsync(v => v.Id == id);
             if (componentVariant == null)
             {
                 //Log failure
@@ -319,7 +362,7 @@ namespace KAZABUILD.API.Controllers.Components
                 {
                     Id = componentVariant.Id,
                     ComponentId = componentVariant.ComponentId,
-                    ColorCode = componentVariant.ColorCode,
+                    Colors = [.. componentVariant.ColorVariants.Select(v => Tuple.Create(v.ColorCode, v.Color!.ColorName))],
                     IsAvailable = componentVariant.IsAvailable,
                     AdditionalPrice = componentVariant.AdditionalPrice
                 };
@@ -334,7 +377,7 @@ namespace KAZABUILD.API.Controllers.Components
                 {
                     Id = componentVariant.Id,
                     ComponentId = componentVariant.ComponentId,
-                    ColorCode = componentVariant.ColorCode,
+                    Colors = [.. componentVariant.ColorVariants.Select(v => Tuple.Create(v.ColorCode, v.Color!.ColorName))],
                     IsAvailable = componentVariant.IsAvailable,
                     AdditionalPrice = componentVariant.AdditionalPrice,
                     DatabaseEntryAt = componentVariant.DatabaseEntryAt,
@@ -396,11 +439,11 @@ namespace KAZABUILD.API.Controllers.Components
             }
             if (dto.ColorCode != null)
             {
-                query = query.Where(v => dto.ColorCode.Contains(v.ColorCode));
+                query = query.Include(v => v.ColorVariants).Where(v => dto.ColorCode.Any(col => v.ColorVariants.Any(var => var.ColorCode == col)));
             }
             if (dto.ColorName != null)
             {
-                query = query.Include(v => v.Color).Where(v => dto.ColorName.Contains(v.Color!.ColorName));
+                query = query.Include(v => v.ColorVariants).ThenInclude(v => v.Color).Where(v => dto.ColorName.Any(col => v.ColorVariants.Any(var => var.Color!.ColorName == col)));
             }
             if (dto.IsAvailable != null)
             {
@@ -408,9 +451,23 @@ namespace KAZABUILD.API.Controllers.Components
             }
 
             //Apply search
+            //This search is special since the color names are stored in the Color model not ComponentVariant
+            //This has to be revised since the calculations happen in memory instead of SQL
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(v => v.Color).Search(dto.Query, v => v.Color!.ColorName, v => v.ColorCode);
+                query = query
+                    .Include(v => v.ColorVariants)
+                        .ThenInclude(var => var.Color)
+                    .Select(v => new
+                    {
+                        Variant = v,
+                        ColorCodes = string.Join("-", v.ColorVariants.Select(cv => cv.ColorCode)),
+                        ColorNames = string.Join("-", v.ColorVariants.Select(cv => cv.Color!.ColorName))
+                    })
+                    .AsEnumerable()
+                    .AsQueryable()
+                    .Search(dto.Query, x => x.ColorCodes, x => x.ColorNames)
+                    .Select(x => x.Variant);
             }
 
             //Order by specified field if provided
@@ -449,7 +506,7 @@ namespace KAZABUILD.API.Controllers.Components
                     {
                         Id = componentVariant.Id,
                         ComponentId = componentVariant.ComponentId,
-                        ColorCode = componentVariant.ColorCode,
+                        Colors = [.. componentVariant.ColorVariants.Select(v => Tuple.Create(v.ColorCode, v.Color!.ColorName))],
                         IsAvailable = componentVariant.IsAvailable,
                         AdditionalPrice = componentVariant.AdditionalPrice
                     };
@@ -465,7 +522,7 @@ namespace KAZABUILD.API.Controllers.Components
                 {
                     Id = componentVariant.Id,
                     ComponentId = componentVariant.ComponentId,
-                    ColorCode = componentVariant.ColorCode,
+                    Colors = [.. componentVariant.ColorVariants.Select(v => Tuple.Create(v.ColorCode, v.Color!.ColorName))],
                     IsAvailable = componentVariant.IsAvailable,
                     AdditionalPrice = componentVariant.AdditionalPrice,
                     DatabaseEntryAt = componentVariant.DatabaseEntryAt,

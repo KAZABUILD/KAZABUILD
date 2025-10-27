@@ -24,4 +24,8 @@
   <ProjectReference Include="..\KAZABUILD.API\KAZABUILD.API.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Tests\IntegrationTests\" />
+  </ItemGroup>
+
 </Project>

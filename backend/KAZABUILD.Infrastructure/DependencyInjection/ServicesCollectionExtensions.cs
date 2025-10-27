@@ -8,9 +8,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding custom services to the app services
+    /// <summary>
+    /// Extension for adding custom services to the app services.
+    /// </summary>
     public static class ServicesCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding custom services to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="config"></param>
+        /// <returns></returns>
         public static IServiceCollection AddServices(this IServiceCollection services, IConfiguration config)
         {
             //Add hashing for passwords, tokens, etc.
@@ -22,7 +30,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add authorization service
             services.AddScoped<IAuthorizationService, AuthorizationService>();
 
-            //Add loggin service
+            //Add logging service
             services.AddScoped<ILoggerService, LoggerService>();
 
             //Add logs and token cleanup service
@@ -33,6 +41,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             services.AddSingleton<IRabbitMqConnection, RabbitMQConnection>();
             services.AddSingleton<IRabbitMQPublisher, RabbitMQPublisher>();
             services.AddHostedService<RabbitMQConsumer>();
+
+            //Add the cleanup service
+            services.AddScoped<IDataSeeder, DataSeeder>();
 
             //Return the services with all the custom services added
             return services;

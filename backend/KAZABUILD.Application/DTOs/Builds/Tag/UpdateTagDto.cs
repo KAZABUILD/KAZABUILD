@@ -14,7 +14,7 @@ namespace KAZABUILD.Application.DTOs.Builds.Tag
         /// <summary>
         /// Explanation of what the Tag is Describing.
         /// </summary>
-        [StringLength(50, ErrorMessage = "Description cannot be longer than 500 characters!")]
+        [StringLength(500, ErrorMessage = "Description cannot be longer than 500 characters!")]
         public string? Description { get; set; }
 
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]

@@ -60,7 +60,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MonitorComponent
         /// <summary>
         /// Maximum brightness of the Monitor in nits (cd/m2).
         /// </summary>
-        [Range(0, 100, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
+        [Range(0, 5000, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
         public decimal? MaxBrightness { get; set; }
 
         /// <summary>

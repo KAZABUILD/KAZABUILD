@@ -8,7 +8,11 @@ using System.Text.Json;
 
 namespace KAZABUILD.Infrastructure.Messaging
 {
-    //Publishes messages to RabbitMQ queue
+    /// <summary>
+    /// Publishes messages to the RabbitMQ queue.
+    /// </summary>
+    /// <param name="connection"></param>
+    /// <param name="serviceProvider"></param>
     public class RabbitMQPublisher(IRabbitMqConnection connection, IServiceProvider serviceProvider) : IRabbitMQPublisher
     {
         //Variable which stores the connection to rabbitMQ
@@ -17,7 +21,13 @@ namespace KAZABUILD.Infrastructure.Messaging
         //Variable storing the service provider required to use the logger
         private readonly IServiceProvider _serviceProvider = serviceProvider;
 
-        //Function that publishes requests to the queue
+        /// <summary>
+        /// Function that publishes requests to the queue.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="queueName"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
         public async Task PublishAsync<T>(string queueName, T message)
         {
             //Declare variable necessary to store the rabbitMQ channel to close it later
@@ -59,7 +69,7 @@ namespace KAZABUILD.Infrastructure.Messaging
             }
             finally
             {
-                //Graceful shutdown
+                //Perform graceful shutdown
                 if (channel is not null)
                 {
                     try { await channel.CloseAsync(); } catch { }

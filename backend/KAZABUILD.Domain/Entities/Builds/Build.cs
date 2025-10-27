@@ -33,7 +33,7 @@ namespace KAZABUILD.Domain.Entities.Builds
         /// Description of the Build written by the user.
         /// </summary>
         [Required]
-        [StringLength(50, ErrorMessage = "Description cannot be longer than 500 characters!")]
+        [StringLength(5000, ErrorMessage = "Description cannot be longer than 5000 characters!")]
         public string Description { get; set; } = default!;
 
         /// <summary>
@@ -61,5 +61,6 @@ namespace KAZABUILD.Domain.Entities.Builds
         public ICollection<Tag> Tags { get; set; } = [];
         public ICollection<BuildTag> BuildTags { get; set; } = [];
         public ICollection<UserComment> Comments { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

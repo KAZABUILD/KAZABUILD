@@ -4,9 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace KAZABUILD.Infrastructure.DependencyInjection
 {
-    //Extension for adding options to the app services
+    /// <summary>
+    /// Extension for adding options from appsettings.json to the app services.
+    /// </summary>
     public static class OptionsServiceCollectionExtensions
     {
+        /// <summary>
+        /// Function for adding options from appsettings.json to the app services.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="config"></param>
+        /// <returns></returns>
         public static IServiceCollection AddOptions(this IServiceCollection services, IConfiguration config)
         {
             //Get JWT Authentication from appsettings
@@ -27,7 +35,8 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-            //Get the allwed frontend origins and redirect urls from appsettings
+            //Get the allowed frontend origins and redirect urls from appsettings
+            //Also used for CORS
             services.AddOptions<FrontendSettings>()
                 .Bind(config.GetSection("Frontend"))
                 .ValidateDataAnnotations()
@@ -47,9 +56,15 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-            //Get the OAuth settigns from appsettings
+            //Get the OAuth settings from appsettings
             services.AddOptions<OAuthSettings>()
                 .Bind(config.GetSection("Authentication"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            //Get the Media settings from appsettings
+            services.AddOptions<MediaSettings>()
+                .Bind(config.GetSection("Media"))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 

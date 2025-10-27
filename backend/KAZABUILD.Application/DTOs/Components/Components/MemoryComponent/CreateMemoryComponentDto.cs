@@ -92,13 +92,13 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MemoryComponent
         /// <summary>
         /// The Height of the RAM module in mm.
         /// </summary>
-        [Range(10, 1000, ErrorMessage = "Height must be between 10 and 65 mm")]
+        [Range(10, 100, ErrorMessage = "Height must be between 10 and 100 mm")]
         public decimal? Height { get; set; }
 
         /// <summary>
         /// The operating Voltage of the RAM.
         /// </summary>
-        [Range(0, 40, ErrorMessage = "Voltage must be between 0 and 20 V")]
+        [Range(0, 20, ErrorMessage = "Voltage must be between 0 and 20 V")]
         public decimal? Voltage { get; set; }
     }
 }

@@ -85,6 +85,25 @@ namespace KAZABUILD.API.Controllers.Components
                 return BadRequest(new { message = "SubComponent not found!" });
             }
 
+            //Check if the subComponent isn't already a part of the Component
+            var part = await _db.ComponentParts.FirstOrDefaultAsync(p => p.ComponentId == dto.ComponentId && p.SubComponentId == dto.SubComponentId);
+            if (part != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "BuildInteraction",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - SubComponent Already A Part Of This Component"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Part already exists!" });
+            }
+
             //Create a componentPart to add
             ComponentPart componentPart = new()
             {

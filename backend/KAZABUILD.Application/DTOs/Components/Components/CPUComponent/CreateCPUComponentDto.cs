@@ -152,7 +152,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CPUComponent
         /// Thermal Design Power (TDP), the maximum heat the CPU can generate in Watts.
         /// </summary>
         [Required]
-        [Range(1, 600, ErrorMessage = "Thermal Design Power must be between 1 and 1000 W")]
+        [Range(1, 600, ErrorMessage = "Thermal Design Power must be between 1 and 600 W")]
         public decimal ThermalDesignPower { get; set; } = default!;
     }
 }
