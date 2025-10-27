@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KAZABUILD.API.Controllers.Users
 {
@@ -21,14 +22,16 @@ namespace KAZABUILD.API.Controllers.Users
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
+    /// <param name="aes"></param>
     [ApiController]
     [Route("[controller]")]
-    public class MessagesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class MessagesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IEncryptionService aes) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
+        private readonly IEncryptionService _aes = aes;
 
         /// <summary>
         /// API Endpoint for sending a new Message.
@@ -89,12 +92,16 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
+            //Encrypt the message
+            var (cipher, iv) = _aes.Encrypt(dto.Content);
+
             //Create a message to add
             Message message = new()
             {
                 SenderId = dto.SenderId,
                 ReceiverId = dto.ReceiverId,
-                Content = dto.Content,
+                CipherText = cipher,
+                IV = iv,
                 Title = dto.Title,
                 SentAt = dto.SentAt,
                 IsRead = dto.IsRead,
@@ -208,9 +215,16 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 if (!string.IsNullOrWhiteSpace(dto.Content))
                 {
-                    changedFields.Add("Content: " + message.Content);
+                    //Decrypt the cipher
+                    var content = _aes.Decrypt(message.CipherText, message.IV);
 
-                    message.Content = dto.Content;
+                    //Encrypt the message
+                    var (cipher, iv) = _aes.Encrypt(dto.Content);
+
+                    changedFields.Add("Content: " + cipher);
+
+                    message.CipherText = cipher;
+                    message.IV = iv;
                 }
                 if (!string.IsNullOrWhiteSpace(dto.Title))
                 {
@@ -349,6 +363,9 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
+            //Decrypt the cipher
+            var content = _aes.Decrypt(message.CipherText, message.IV);
+
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -361,7 +378,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Id = message.Id,
                     SenderId = message.SenderId,
                     ReceiverId = message.ReceiverId,
-                    Content = message.Content,
+                    Content = content,
                     Title = message.Title,
                     SentAt = message.SentAt,
                     IsRead = message.IsRead
@@ -378,7 +395,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Id = message.Id,
                     SenderId = message.SenderId,
                     ReceiverId = message.ReceiverId,
-                    Content = message.Content,
+                    Content = content,
                     Title = message.Title,
                     SentAt = message.SentAt,
                     IsRead = message.IsRead,
@@ -463,7 +480,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Apply search based on credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(m => m.Sender).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Content, m => m.Sender!.DisplayName);
+                query = query.Include(m => m.Sender).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Sender!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -497,13 +514,16 @@ namespace KAZABUILD.API.Controllers.Users
                 //Create a message response list
                 responses = [.. messages.Select(message =>
                 {
-                    //Return a follow response
+                    //Decrypt the cipher
+                    var content = _aes.Decrypt(message.CipherText, message.IV);
+
+                    //Return a message response
                     return new MessageResponseDto
                     {
                         Id = message.Id,
                         SenderId = message.SenderId,
                         ReceiverId = message.ReceiverId,
-                        Content = message.Content,
+                        Content = content,
                         Title = message.Title,
                         SentAt = message.SentAt,
                         IsRead = message.IsRead
@@ -516,20 +536,26 @@ namespace KAZABUILD.API.Controllers.Users
                 logDescription = "Successful Operation - Admin Access, Multiple Messages";
 
                 //Create a message response list
-                responses = [.. messages.Select(message => new MessageResponseDto
+                responses = [.. messages.Select(message =>
                 {
-                    Id = message.Id,
-                    SenderId = message.SenderId,
-                    ReceiverId = message.ReceiverId,
-                    Content = message.Content,
-                    Title = message.Title,
-                    SentAt = message.SentAt,
-                    IsRead = message.IsRead,
-                    DatabaseEntryAt = message.DatabaseEntryAt,
-                    LastEditedAt = message.LastEditedAt,
-                    Note = message.Note
-                })];
+                    //Decrypt the cipher
+                    var content = _aes.Decrypt(message.CipherText, message.IV);
 
+                    //Return a message response
+                    return new MessageResponseDto
+                    {
+                        Id = message.Id,
+                        SenderId = message.SenderId,
+                        ReceiverId = message.ReceiverId,
+                        Content = content,
+                        Title = message.Title,
+                        SentAt = message.SentAt,
+                        IsRead = message.IsRead,
+                        DatabaseEntryAt = message.DatabaseEntryAt,
+                        LastEditedAt = message.LastEditedAt,
+                        Note = message.Note
+                    };
+                })];
             }
 
             //Log success

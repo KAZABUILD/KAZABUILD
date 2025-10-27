@@ -16,9 +16,9 @@
  - Migrations can be reviewed in `backend/KAZABUILD.Infrastructure/Migrations`.
 
 ## Search function
- - Enable full-text search on the SQL server in order to use the search functionality in get API calls
-   - Follow this guide to install - `https://www.mssqltips.com/sqlservertip/6841/add-full-text-search-sql-server`
- - Whenever a new model is added to the database the user has to manually add the search index for it as well:
+ - Enable full-text search on the SQL server in order to use the search functionality in get API calls.
+   - Follow this guide to install - `https://www.mssqltips.com/sqlservertip/6841/add-full-text-search-sql-server`.
+ - Whenever a new model is added to the database the user has to manually add the search index for it as well:.
    - Create a new migration.
    - Add this to the up function:
      - `migrationBuilder.Sql(@"
@@ -26,11 +26,12 @@
             (SELECT * FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('dbo.[table_name]'))
                 CREATE FULLTEXT INDEX ON [table_name]([field_name1] LANGUAGE 0, [field_name2] LANGUAGE 0, ...)
                 KEY INDEX PK_[table_name];
-        ", suppressTransaction: true);`
+        ", suppressTransaction: true);`.
    - Add this to the down function:
-     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`
-   - Replace the table_name and field_name with proper database context table name and fields used in search in the controller
- - The migrations have to be deleted and remade in order for the application to run with full-text search
+     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`.
+   - Replace the table_name and field_name with proper database context table name and fields used in search in the controller.
+ - The migrations have to be deleted and remade in order for the application to run with full-text search.
+   - `Update-Database -Target:0` can be used to revert migrations to the start.
 
 ## NuGet Packages:
  - `MediatR`

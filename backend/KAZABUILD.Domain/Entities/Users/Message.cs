@@ -26,11 +26,17 @@ namespace KAZABUILD.Domain.Entities.Users
         public Guid ReceiverId { get; set; } = default!;
 
         /// <summary>
-        /// Text content of the message.
+        /// Encrypted content of the message.
         /// </summary>
         [Required]
         [MaxLength(1000, ErrorMessage = "Content cannot be longer than 1000 characters!")]
-        public string Content { get; set; } = default!;
+        public string CipherText { get; set; } = default!;
+
+        /// <summary>
+        /// Initialization Vector used during encryption process.
+        /// </summary>
+        [Required]
+        public string IV { get; set; } = default!;
 
         /// <summary>
         /// Title of the message.

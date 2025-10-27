@@ -9,6 +9,7 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -17,11 +18,13 @@ namespace KAZABUILD.Infrastructure.Services
     /// </summary>
     /// <param name="context"></param>
     /// <param name="hasher"></param>
-    public class DataSeeder(KAZABUILDDBContext context, IHashingService hasher) : IDataSeeder
+    /// <param name="aes"></param>
+    public class DataSeeder(KAZABUILDDBContext context, IHashingService hasher, IEncryptionService aes) : IDataSeeder
     {
         //Services used for data seeding
         private readonly KAZABUILDDBContext _context = context;
         private readonly IHashingService _hasher = hasher;
+        private readonly IEncryptionService _aes = aes;
 
         /// <summary>
         /// Function used to seed the database with fake data.
@@ -131,6 +134,7 @@ namespace KAZABUILD.Infrastructure.Services
                 var componentId = ids4 ?? [Guid.Empty];
                 var componentReviewId = ids5 ?? [Guid.Empty];
 
+                //Get comments from the same generation batch
                 var commentIds = await _context.UserComments.Where(c => userIds.Contains(c.UserId)).Select(c => c.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildId, componentId, componentReviewId, commentTargetTypes, commentIds);
@@ -380,7 +384,6 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(m => m.Id, f => Guid.NewGuid())
             .RuleFor(m => m.SenderId, f => f.PickRandom(userIds))
             .RuleFor(m => m.ReceiverId, f => f.PickRandom(userIds))
-            .RuleFor(m => m.Content, f => f.Lorem.Paragraphs(1))
             .RuleFor(m => m.Title, f =>
             {
                 var title = f.Lorem.Sentence(3);
@@ -398,7 +401,15 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(m => m.MessageType, f => f.PickRandom<MessageType>())
             .RuleFor(m => m.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(m => m.LastEditedAt, (f, m) => f.Date.Between(m.DatabaseEntryAt, DateTime.UtcNow))
-            .RuleFor(m => m.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+            .RuleFor(m => m.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null)
+            .FinishWith((f, m) =>
+            {
+                var plainText = f.Lorem.Paragraphs(1);
+
+                var (cipher, iv) = _aes.Encrypt(plainText);
+                m.CipherText = cipher;
+                m.IV = iv;
+            });
 
         private Faker<UserComment> GetUserCommentFaker(List<Guid> userIds, List<Guid> forumPostIds, List<Guid> buildIds, List<Guid> componentIds, List<Guid> componentReviewIds, List<CommentTargetType> commentTargetTypes, List<Guid> commentIds) => new Faker<UserComment>("en")
             .RuleFor(c => c.Id, f => Guid.NewGuid())

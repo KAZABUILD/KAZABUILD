@@ -24,6 +24,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add hashing for passwords, tokens, etc.
             services.AddScoped<IHashingService, HashingService>();
 
+            //Add encryption for messages
+            services.AddScoped<IEncryptionService, EncryptionService>();
+
             //Add email smtp service
             services.AddScoped<IEmailService, SmtpEmailService>();
 
