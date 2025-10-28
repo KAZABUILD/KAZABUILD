@@ -1,11 +1,11 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "KazaBuild",
+    "short_name": "KazaBuild",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A PC building platform to help you build your dream PC.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
