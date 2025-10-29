@@ -17,7 +17,7 @@ import 'package:frontend/screens/extra/spalsh_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
-// EKLENEN IMPORTLAR
+
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';

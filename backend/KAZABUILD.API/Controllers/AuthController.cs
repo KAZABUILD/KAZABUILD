@@ -508,8 +508,7 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // Get user id from the request, or use Guid.Empty for anonymous users
-            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
@@ -552,7 +551,7 @@ namespace KAZABUILD.API.Controllers
                 ImageUrl = dto.ImageUrl,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
-                Address = dto.Address != null ? new Domain.ValueObjects.Address(dto.Address.Country, dto.Address.Province, dto.Address.City, dto.Address.Street, dto.Address.StreetNumber, dto.Address.PostalCode, dto.Address.ApartmentNumber) : null,
+                Address = dto.Address,
                 ProfileAccessibility = dto.ProfileAccessibility,
                 Theme = dto.Theme,
                 Language = dto.Language,

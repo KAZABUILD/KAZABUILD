@@ -44,9 +44,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _passwordController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _phoneNumberController = TextEditingController();
-  /// Controller for the birth date text field to programmatically set its value.
+
   final _birthDateController = TextEditingController();
-  // Adres alanları için yeni controller'lar
   final _countryController = TextEditingController();
   final _cityController = TextEditingController();
   final _streetController = TextEditingController();

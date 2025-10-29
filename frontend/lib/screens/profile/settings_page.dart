@@ -47,12 +47,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _pickAndUploadImage(String userId) async {
     final ImagePicker picker = ImagePicker();
-    // Kullanıcıya galeriden bir resim seçtir
+    
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       try {
-        // authProvider üzerinden resmi yükle
+        
         await ref.read(authProvider.notifier).uploadProfilePicture(userId, image.path);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +60,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           );
         }
       } catch (e) {
-        // Hata durumunda kullanıcıyı bilgilendir
+        
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
       }
     }

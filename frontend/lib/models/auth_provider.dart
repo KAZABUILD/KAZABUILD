@@ -129,9 +129,9 @@ class Address {
   final String? province;
   final String? city;
   final String? street;
-  final String? streetNumber; // Backend'in string beklediği varsayılarak güncellendi
+  final String? streetNumber; 
   final String? postalCode;
-  final String? apartmentNumber; // Backend'in string beklediği varsayılarak güncellendi
+  final String? apartmentNumber; 
 
   const Address({
     this.country,
@@ -242,7 +242,7 @@ class AppUser {
       username: json['login'],
       email: json['email'],
       photoURL: json['imageUrl'],
-      // Backend'den gelen `imageURL`'in tam bir URL olduğundan emin olmalıyız.
+    
       bio: json['description'],
       phoneNumber: json['phoneNumber'],
       gender: json['gender'],
@@ -315,7 +315,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   Future<String> signUp(Map<String, dynamic> userData) async {
     state = const AsyncValue.loading();
     try {
-      // userData map'i artık signup_page.dart tarafından doğru formatta hazırlanmış olmalı.
+      
       if (!userData.containsKey('password') || userData['password'] == null || userData['password'].toString().isEmpty) {
         throw Exception('Password is required for registration.');
       }
@@ -446,12 +446,11 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     }
 
     try {
-      // Resmi 'USER' tipiyle ve kullanıcı ID'si ile yükle
+      
       final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
       final imageId = imageResponse.data['id'];
 
-      // Resim yüklendikten sonra, kullanıcının 'imageUrl' alanını güncelle
-      // Backend'in `imageURL`'i tam yol olarak beklediğini varsayıyoruz.
+      
       final imageUrl = '$apiBaseUrl/Images/download/$imageId';
       await updateUserProfile({'imageUrl': imageUrl});
     } catch (e) {
