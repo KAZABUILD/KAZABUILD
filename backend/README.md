@@ -222,6 +222,16 @@ All models have protections against adding invalid values but any call made shou
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
  
+ - UserCommentInteraction (represents interactions that a user can have with a comment)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that interacted with the comment
+   - `UserCommentId` -> GUID storing the comment's id that the user interacted with
+   - `IsLiked` -> boolean storing whether the user liked the comment
+   - `IsDisliked` -> boolean storing whether the user disliked the comment
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+   - 
  - Notification (notification about events, promo, or important notices)
    - `Id` -> automatically assigned GUID
    - `UserId` -> GUID storing the user's id that received the notification

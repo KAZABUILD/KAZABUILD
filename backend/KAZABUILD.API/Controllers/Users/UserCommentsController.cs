@@ -1,4 +1,3 @@
-using Azure;
 using KAZABUILD.Application.DTOs.Users.UserComment;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;

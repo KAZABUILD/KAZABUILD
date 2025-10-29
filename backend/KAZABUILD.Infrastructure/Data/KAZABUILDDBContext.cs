@@ -27,6 +27,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<UserFollow> UserFollows { get; set; } = default!;
         public DbSet<UserToken> UserTokens { get; set; } = default!;
         public DbSet<UserComment> UserComments { get; set; } = default!;
+        public DbSet<UserCommentInteraction> UserCommentInteractions { get; set; } = default!;
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<Message> Messages { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
@@ -195,6 +196,21 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(c => c.ParentComment)
                 .WithMany(pc => pc.ChildComments)
                 .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== USER COMMENT INTERACTION ======================================//
+
+            //Register relationships, disable cascade delete for comments, should remain in database until the user deletes it
+            modelBuilder.Entity<UserCommentInteraction>()
+                .HasOne(i => i.User)
+                .WithMany(u => u.UserCommentInteractions)
+                .HasForeignKey(i => i.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserCommentInteraction>()
+                .HasOne(i => i.UserComment)
+                .WithMany(u => u.UserCommentInteractions)
+                .HasForeignKey(i => i.UserCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== FORUM POST ======================================//

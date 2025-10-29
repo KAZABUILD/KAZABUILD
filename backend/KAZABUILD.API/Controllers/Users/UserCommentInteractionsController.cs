@@ -1,9 +1,10 @@
-using Azure;
 using KAZABUILD.Application.DTOs.Builds.BuildInteraction;
+using KAZABUILD.Application.DTOs.Users.UserCommentInteraction;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -13,18 +14,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
-namespace KAZABUILD.API.Controllers.Builds
+namespace KAZABUILD.API.Controllers.Users
 {
     /// <summary>
-    /// Controller for BuildInteraction related endpoints.
-    /// Allows users to interact with public builds.
+    /// Controller for UserCommentInteraction related endpoints.
+    /// Allows users to interact with public userComments.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class BuildInteractionsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserCommentInteractionsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -32,15 +33,15 @@ namespace KAZABUILD.API.Controllers.Builds
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new BuildInteraction.
-        /// Used to mark that a user interacted with a build.
+        /// API Endpoint for creating a new UserCommentInteraction.
+        /// Used to mark that a user interacted with a userComment.
         /// Users can mark their own interactions, while admins can mark them for all.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddBuildInteraction([FromBody] CreateBuildInteractionDto dto)
+        public async Task<IActionResult> AddUserCommentInteraction([FromBody] CreateUserCommentInteractionDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -50,23 +51,23 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the build exists
-            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == dto.BuildId);
-            if (build == null)
+            //Check if the userComment exists
+            var userComment = await _db.UserComments.Include(c => c.Build).FirstOrDefaultAsync(c => c.Id == dto.UserCommentId);
+            if (userComment == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Build Doesn't Exist"
+                    "Operation Failed - UserComment Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Build not found!" });
+                return BadRequest(new { message = "Comment not found!" });
             }
 
             //Check if the user exists
@@ -77,7 +78,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -89,28 +90,28 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Check if the user hadn't already interacted with this component
-            var interaction = await _db.BuildInteractions.FirstOrDefaultAsync(i => i.UserId == dto.UserId && i.BuildId == dto.BuildId);
+            var interaction = await _db.UserCommentInteractions.FirstOrDefaultAsync(i => i.UserId == dto.UserId && i.UserCommentId == dto.UserCommentId);
             if (interaction != null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Build Already Interacted With"
+                    "Operation Failed - UserComment Already Interacted With"
                 );
 
                 //Return proper error response
                 return BadRequest(new { message = "Interaction already exists!" });
             }
 
-            //Check if current user has admin permissions, is interacting as themselves or if they are adding an interaction to their own build
+            //Check if current user has admin permissions, is interacting as themselves or if they are adding an interaction to their own userComment
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;
-            var ownBuild = currentUserId == build.UserId;
+            var ownUserComment = currentUserId == userComment.UserId;
 
             //Check if the user has correct permission
             if (!isPrivileged && !isSelf)
@@ -119,7 +120,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildComponent",
+                    "UserCommentComponent",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -130,39 +131,37 @@ namespace KAZABUILD.API.Controllers.Builds
                 return Forbid();
             }
 
-            //Check if the user isn't interacting with a private build
-            if (!isPrivileged && !ownBuild && (build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED))
+            //Check if the user isn't interacting with a comment on a private build
+            if (!isPrivileged && !ownUserComment && (userComment.Build == null || userComment.Build.Status == BuildStatus.DRAFT || userComment.Build.Status == BuildStatus.GENERATED))
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Invalid Build Status"
+                    "Operation Failed - Invalid UserComment Status"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Build is not public!" });
+                return BadRequest(new { message = "UserComment is not public!" });
             }
 
-            //Create a buildInteraction to add
-            BuildInteraction buildInteraction = new()
+            //Create a userCommentInteraction to add
+            UserCommentInteraction userCommentInteraction = new()
             {
-                BuildId = dto.BuildId,
+                UserCommentId = dto.UserCommentId,
                 UserId = dto.UserId,
                 IsLiked = dto.IsLiked,
-                IsWishlisted = dto.IsWishlisted,
-                Rating = dto.Rating,
-                UserNote = dto.UserNote,
+                IsDisliked = dto.IsDisliked,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the buildInteraction to the database
-            _db.BuildInteractions.Add(buildInteraction);
+            //Add the userCommentInteraction to the database
+            _db.UserCommentInteractions.Add(userCommentInteraction);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -171,26 +170,26 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "BuildInteraction",
+                "UserCommentInteraction",
                 ip,
-                buildInteraction.Id,
+                userCommentInteraction.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New BuildInteraction Created"
+                "Successful Operation - New UserCommentInteraction Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("buildInteraction.created", new
+            await _publisher.PublishAsync("userCommentInteraction.created", new
             {
-                buildInteractionId = buildInteraction.Id,
+                userCommentInteractionId = userCommentInteraction.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { buildInteraction = "BuildInteraction created successfully!", id = buildInteraction.Id });
+            return Ok(new { userCommentInteraction = "UserCommentInteraction created successfully!", id = userCommentInteraction.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected BuildInteraction.
+        /// API endpoint for updating the selected UserCommentInteraction.
         /// Users can modify all fields.
         /// </summary>
         /// <param name="id"></param>
@@ -198,7 +197,7 @@ namespace KAZABUILD.API.Controllers.Builds
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> UpdateBuildInteraction(Guid id, [FromBody] UpdateBuildInteractionDto dto)
+        public async Task<IActionResult> UpdateUserCommentInteraction(Guid id, [FromBody] UpdateUserCommentInteractionDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -208,50 +207,50 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the buildInteraction to edit
-            var buildInteraction = await _db.BuildInteractions.Include(c => c.Build).FirstOrDefaultAsync(i => i.Id == id);
+            //Get the userCommentInteraction to edit
+            var userCommentInteraction = await _db.UserCommentInteractions.Include(c => c.UserComment).FirstOrDefaultAsync(i => i.Id == id);
 
-            //Check if the buildInteraction exists
-            if (buildInteraction == null)
+            //Check if the userCommentInteraction exists
+            if (userCommentInteraction == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such BuildInteraction"
+                    "Operation Failed - No Such UserCommentInteraction"
                 );
 
                 //Return not found response
-                return NotFound(new { buildInteraction = "BuildInteraction not found!" });
+                return NotFound(new { userCommentInteraction = "UserCommentInteraction not found!" });
             }
 
-            //Check if the build was deleted
-            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == buildInteraction.BuildId);
-            if (build == null)
+            //Check if the userComment was deleted
+            var userComment = await _db.UserComments.FirstOrDefaultAsync(b => b.Id == userCommentInteraction.UserCommentId);
+            if (userComment == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildComponent",
+                    "UserCommentComponent",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.ERROR,
-                    "Operation Failed - Build Doesn't Exist"
+                    "Operation Failed - UserComment Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Build not found!" });
+                return BadRequest(new { message = "UserComment not found!" });
             }
 
-            //Check if current user is modifying their own build, is interacting as themselves or if they have admin permissions
+            //Check if current user is modifying their own userComment, is interacting as themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == buildInteraction.UserId;
-            var ownBuild = currentUserId == build.UserId;
+            var isSelf = currentUserId == userCommentInteraction.UserId;
+            var ownUserComment = currentUserId == userComment.UserId;
 
             //Return an unauthorized response if the user doesn't have correct privileges
             if (!isSelf && !isPrivileged)
@@ -260,7 +259,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildComponent",
+                    "UserCommentComponent",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -272,13 +271,13 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Check if the user isn't interacting with a private build
-            if (!isPrivileged && !ownBuild && (build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED))
+            if (!isPrivileged && !ownUserComment && (userComment.Build == null || userComment.Build.Status == BuildStatus.DRAFT || userComment.Build.Status == BuildStatus.GENERATED))
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -286,58 +285,43 @@ namespace KAZABUILD.API.Controllers.Builds
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "Build is not public!" });
+                return BadRequest(new { message = "Comment left under a non-public build!" });
             }
 
             //Track changes for logging
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (dto.IsWishlisted != null)
-            {
-                changedFields.Add("Quantity: " + buildInteraction.IsWishlisted);
-
-                buildInteraction.IsWishlisted = (bool)dto.IsWishlisted;
-            }
             if (dto.IsLiked != null)
             {
-                changedFields.Add("IsLiked: " + buildInteraction.IsLiked);
+                changedFields.Add("IsLiked: " + userCommentInteraction.IsLiked);
 
-                buildInteraction.IsLiked = (bool)dto.IsLiked;
+                userCommentInteraction.IsLiked = (bool)dto.IsLiked;
             }
-            if (dto.Rating != null)
+            if (dto.IsDisliked != null)
             {
-                changedFields.Add("Rating: " + buildInteraction.Rating);
+                changedFields.Add("IsDisliked: " + userCommentInteraction.IsDisliked);
 
-                buildInteraction.Rating = (int)dto.Rating;
-            }
-            if (dto.UserNote != null)
-            {
-                changedFields.Add("UserNote: " + buildInteraction.UserNote);
-
-                if (string.IsNullOrWhiteSpace(dto.UserNote))
-                    buildInteraction.UserNote = null;
-                else
-                    buildInteraction.UserNote = dto.UserNote;
+                userCommentInteraction.IsDisliked = (bool)dto.IsDisliked;
             }
             if (isPrivileged)
             {
                 if (dto.Note != null)
                 {
-                    changedFields.Add("Note: " + buildInteraction.Note);
+                    changedFields.Add("Note: " + userCommentInteraction.Note);
 
                     if (string.IsNullOrWhiteSpace(dto.Note))
-                        buildInteraction.Note = null;
+                        userCommentInteraction.Note = null;
                     else
-                        buildInteraction.Note = dto.Note;
+                        userCommentInteraction.Note = dto.Note;
                 }
             }
 
             //Update edit timestamp
-            buildInteraction.LastEditedAt = DateTime.UtcNow;
+            userCommentInteraction.LastEditedAt = DateTime.UtcNow;
 
-            //Update the buildInteraction
-            _db.BuildInteractions.Update(buildInteraction);
+            //Update the userCommentInteraction
+            _db.UserCommentInteractions.Update(userCommentInteraction);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -349,33 +333,33 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "BuildInteraction",
+                "UserCommentInteraction",
                 ip,
-                buildInteraction.Id,
+                userCommentInteraction.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("buildInteraction.updated", new
+            await _publisher.PublishAsync("userCommentInteraction.updated", new
             {
-                buildInteractionId = id,
+                userCommentInteractionId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { buildInteraction = "BuildInteraction updated successfully!" });
+            return Ok(new { userCommentInteraction = "UserCommentInteraction updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the BuildInteraction specified by id,
+        /// API endpoint for getting the UserCommentInteraction specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<BuildInteractionResponseDto>> GetBuildInteraction(Guid id)
+        public async Task<ActionResult<UserCommentInteractionResponseDto>> GetUserCommentInteraction(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -385,44 +369,47 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the buildInteraction to return
-            var buildInteraction = await _db.BuildInteractions.Include(i => i.Build).FirstOrDefaultAsync(i => i.Id == id);
-            if (buildInteraction == null)
+            //Get the userCommentInteraction to return
+            var userCommentInteraction = await _db.UserCommentInteractions.Include(i => i.UserComment).FirstOrDefaultAsync(i => i.Id == id);
+            if (userCommentInteraction == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such BuildInteraction"
+                    "Operation Failed - No Such UserCommentInteraction"
                 );
 
                 //Return not found response
-                return NotFound(new { buildInteraction = "BuildInteraction not found!" });
+                return NotFound(new { userCommentInteraction = "UserCommentInteraction not found!" });
             }
+
+            //Check if the userComment was deleted
+            var userComment = await _db.UserComments.Include(c => c.Build).FirstOrDefaultAsync(b => b.Id == userCommentInteraction.UserCommentId);
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            BuildInteractionResponseDto response;
+            UserCommentInteractionResponseDto response;
 
-            //Check if current user is getting their own build, is interacting as themselves or if they have admin permissions
+            //Check if current user is getting their own userComment, is interacting as themselves or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == buildInteraction.UserId;
-            var ownBuild = buildInteraction.Build != null && currentUserId == buildInteraction.Build.UserId;
+            var isSelf = currentUserId == userCommentInteraction.UserId;
+            var ownUserComment = userComment != null && currentUserId == userComment.UserId;
 
             //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isPrivileged && !isSelf && !ownBuild && (buildInteraction.Build == null || buildInteraction.Build.Status == BuildStatus.DRAFT || buildInteraction.Build.Status == BuildStatus.GENERATED))
+            if (!isPrivileged && !isSelf && !ownUserComment && (userComment == null || userComment.Build == null || userComment.Build.Status == BuildStatus.DRAFT || userComment.Build.Status == BuildStatus.GENERATED))
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "BuildComponent",
+                    "UserCommentComponent",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -439,19 +426,17 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create buildInteraction response
-                response = new BuildInteractionResponseDto
+                //Create userCommentInteraction response
+                response = new UserCommentInteractionResponseDto
                 {
-                    Id = buildInteraction.Id,
-                    BuildId = buildInteraction.BuildId,
-                    UserId = buildInteraction.UserId,
-                    IsLiked = buildInteraction.IsLiked,
-                    IsWishlisted = buildInteraction.IsWishlisted,
-                    Rating = buildInteraction.Rating,
-                    UserNote = buildInteraction.UserNote,
-                    DatabaseEntryAt = buildInteraction.DatabaseEntryAt,
-                    LastEditedAt = buildInteraction.LastEditedAt,
-                    Note = buildInteraction.Note,
+                    Id = userCommentInteraction.Id,
+                    UserCommentId = userCommentInteraction.UserCommentId,
+                    UserId = userCommentInteraction.UserId,
+                    IsLiked = userCommentInteraction.IsLiked,
+                    IsDisliked = userCommentInteraction.IsDisliked,
+                    DatabaseEntryAt = userCommentInteraction.DatabaseEntryAt,
+                    LastEditedAt = userCommentInteraction.LastEditedAt,
+                    Note = userCommentInteraction.Note,
                 };
             }
             else if (isSelf)
@@ -459,16 +444,14 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Change log description
                 logDescription = "Successful Operation - Private Access";
 
-                //Create buildInteraction response
-                response = new BuildInteractionResponseDto
+                //Create userCommentInteraction response
+                response = new UserCommentInteractionResponseDto
                 {
-                    Id = buildInteraction.Id,
-                    BuildId = buildInteraction.BuildId,
-                    UserId = buildInteraction.UserId,
-                    IsLiked = buildInteraction.IsLiked,
-                    IsWishlisted = buildInteraction.IsWishlisted,
-                    Rating = buildInteraction.Rating,
-                    UserNote = buildInteraction.UserNote
+                    Id = userCommentInteraction.Id,
+                    UserCommentId = userCommentInteraction.UserCommentId,
+                    UserId = userCommentInteraction.UserId,
+                    IsLiked = userCommentInteraction.IsLiked,
+                    IsDisliked = userCommentInteraction.IsDisliked,
                 };
             }
             else
@@ -476,14 +459,13 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Change log description
                 logDescription = "Successful Operation - Public Access";
 
-                //Create buildInteraction response
-                response = new BuildInteractionResponseDto
+                //Create userCommentInteraction response
+                response = new UserCommentInteractionResponseDto
                 {
-                    Id = buildInteraction.Id,
-                    BuildId = buildInteraction.BuildId,
-                    IsLiked = buildInteraction.IsLiked,
-                    IsWishlisted = buildInteraction.IsWishlisted,
-                    Rating = buildInteraction.Rating
+                    Id = userCommentInteraction.Id,
+                    UserCommentId = userCommentInteraction.UserCommentId,
+                    IsLiked = userCommentInteraction.IsLiked,
+                    IsDisliked = userCommentInteraction.IsDisliked,
                 };
             }
 
@@ -491,7 +473,7 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "BuildInteraction",
+                "UserCommentInteraction",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -499,27 +481,27 @@ namespace KAZABUILD.API.Controllers.Builds
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("buildInteraction.got", new
+            await _publisher.PublishAsync("userCommentInteraction.got", new
             {
-                buildInteractionId = id,
+                userCommentInteractionId = id,
                 gotBy = currentUserId
             });
 
-            //Return the buildInteraction
+            //Return the userCommentInteraction
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting BuildInteractions with pagination and search,
+        /// API endpoint for getting UserCommentInteractions with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<BuildInteractionResponseDto>>> GetBuildInteractions([FromBody] GetBuildInteractionDto dto)
+        public async Task<ActionResult<IEnumerable<UserCommentInteractionResponseDto>>> GetUserCommentInteractions([FromBody] GetUserCommentInteractionDto dto)
         {
-            //Get buildInteraction id and claims from the request
+            //Get userCommentInteraction id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -531,38 +513,30 @@ namespace KAZABUILD.API.Controllers.Builds
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.BuildInteractions.Include(i => i.Build).AsNoTracking();
+            var query = _db.UserCommentInteractions.Include(i => i.UserComment).AsNoTracking();
 
             //Filter by the variables if included
             if (dto.UserId != null)
             {
                 query = query.Where(i => dto.UserId.Contains(i.UserId));
             }
-            if (dto.BuildId != null)
+            if (dto.UserCommentId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
-            }
-            if (dto.IsWishlisted != null)
-            {
-                query = query.Where(i => dto.IsWishlisted == i.IsWishlisted);
+                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
             }
             if (dto.IsLiked != null)
             {
                 query = query.Where(i => dto.IsLiked == i.IsLiked);
             }
-            if (dto.RatingStart != null)
+            if (dto.IsDisliked != null)
             {
-                query = query.Where(i => i.Rating >= dto.RatingStart);
-            }
-            if (dto.RatingEnd != null)
-            {
-                query = query.Where(i => i.Rating <= dto.RatingEnd);
+                query = query.Where(i => dto.IsDisliked == i.IsDisliked);
             }
 
             //Apply search based om credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
+                query = query.Include(i => i.User).Search(dto.Query, i => i.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -571,7 +545,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get buildInteractions with paging
+            //Get userCommentInteractions with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -582,45 +556,42 @@ namespace KAZABUILD.API.Controllers.Builds
             //Log Description string declaration
             string logDescription;
 
-            List<BuildInteraction> buildInteractions = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).ToListAsync();
+            List<UserCommentInteraction> userCommentInteractions = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.UserComment != null && currentUserId == i.UserComment.UserId) || (i.UserComment != null && i.UserComment.Build != null && i.UserComment.Build.Status != BuildStatus.DRAFT && i.UserComment.Build.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare response variable
-            List<BuildInteractionResponseDto> responses;
+            List<UserCommentInteractionResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple BuildInteractions";
+                logDescription = "Successful Operation - User Access, Multiple UserCommentInteractions";
 
-                //Create a buildInteraction response list
-                responses = [.. buildInteractions.Select(buildInteraction =>
+                //Create a userCommentInteraction response list
+                responses = [.. userCommentInteractions.Select(userCommentInteraction =>
                 {
                     //Check the if is own interaction
-                    if(currentUserId == buildInteraction.UserId)
+                    if(currentUserId == userCommentInteraction.UserId)
                     {
-                        //Return a BuildInteraction response
-                        return new BuildInteractionResponseDto
+                        //Return a CommentInteraction response
+                        return new UserCommentInteractionResponseDto
                         {
-                            Id = buildInteraction.Id,
-                            BuildId = buildInteraction.BuildId,
-                            UserId = buildInteraction.UserId,
-                            IsLiked = buildInteraction.IsLiked,
-                            IsWishlisted = buildInteraction.IsWishlisted,
-                            Rating = buildInteraction.Rating,
-                            UserNote = buildInteraction.UserNote
+                            Id = userCommentInteraction.Id,
+                            UserCommentId = userCommentInteraction.UserCommentId,
+                            UserId = userCommentInteraction.UserId,
+                            IsLiked = userCommentInteraction.IsLiked,
+                            IsDisliked = userCommentInteraction.IsDisliked
                         };
                     }
                     else
                     {
-                        //Return a BuildInteraction response
-                        return new BuildInteractionResponseDto
+                        //Return a CommentInteraction response
+                        return new UserCommentInteractionResponseDto
                         {
-                            Id = buildInteraction.Id,
-                            BuildId = buildInteraction.BuildId,
-                            IsLiked = buildInteraction.IsLiked,
-                            IsWishlisted = buildInteraction.IsWishlisted,
-                            Rating = buildInteraction.Rating
+                            Id = userCommentInteraction.Id,
+                            UserCommentId = userCommentInteraction.UserCommentId,
+                            IsLiked = userCommentInteraction.IsLiked,
+                            IsDisliked = userCommentInteraction.IsDisliked
                         };
                     }
                 })];
@@ -628,21 +599,19 @@ namespace KAZABUILD.API.Controllers.Builds
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple BuildInteractions";
+                logDescription = "Successful Operation - Admin Access, Multiple UserCommentInteractions";
 
-                //Create a buildInteraction response list
-                responses = [.. buildInteractions.Select(buildInteraction => new BuildInteractionResponseDto
+                //Create a userCommentInteraction response list
+                responses = [.. userCommentInteractions.Select(userCommentInteraction => new UserCommentInteractionResponseDto
                 {
-                    Id = buildInteraction.Id,
-                    BuildId = buildInteraction.BuildId,
-                    UserId = buildInteraction.UserId,
-                    IsLiked = buildInteraction.IsLiked,
-                    IsWishlisted = buildInteraction.IsWishlisted,
-                    Rating = buildInteraction.Rating,
-                    UserNote = buildInteraction.UserNote,
-                    DatabaseEntryAt = buildInteraction.DatabaseEntryAt,
-                    LastEditedAt = buildInteraction.LastEditedAt,
-                    Note = buildInteraction.Note
+                    Id = userCommentInteraction.Id,
+                    UserCommentId = userCommentInteraction.UserCommentId,
+                    UserId = userCommentInteraction.UserId,
+                    IsLiked = userCommentInteraction.IsLiked,
+                    IsDisliked = userCommentInteraction.IsDisliked,
+                    DatabaseEntryAt = userCommentInteraction.DatabaseEntryAt,
+                    LastEditedAt = userCommentInteraction.LastEditedAt,
+                    Note = userCommentInteraction.Note
                 })];
 
             }
@@ -651,7 +620,7 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "BuildInteraction",
+                "UserCommentInteraction",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -659,28 +628,28 @@ namespace KAZABUILD.API.Controllers.Builds
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("buildInteraction.gotBuildInteractions", new
+            await _publisher.PublishAsync("userCommentInteraction.gotUserCommentInteractions", new
             {
-                buildInteractionIds = buildInteractions.Select(i => i.Id),
+                userCommentInteractionIds = userCommentInteractions.Select(i => i.Id),
                 gotBy = currentUserId
             });
 
-            //Return the buildInteractions
+            //Return the userCommentInteractions
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected BuildInteraction for staff.
-        /// Used to remove marking that a user interacted with a build.
+        /// API endpoint for deleting the selected UserCommentInteraction for staff.
+        /// Used to remove marking that a user interacted with a userComment.
         /// Users can remove marking for their own interactions, while admins can remove them for all.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteBuildInteraction(Guid id)
+        public async Task<IActionResult> DeleteUserCommentInteraction(Guid id)
         {
-            //Get buildInteraction id and role from the request claims
+            //Get userCommentInteraction id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -688,28 +657,28 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the buildInteraction to delete
-            var buildInteraction = await _db.BuildInteractions.Include(i => i.Build).FirstOrDefaultAsync(i => i.Id == id);
-            if (buildInteraction == null)
+            //Get the userCommentInteraction to delete
+            var userCommentInteraction = await _db.UserCommentInteractions.Include(i => i.UserComment).FirstOrDefaultAsync(i => i.Id == id);
+            if (userCommentInteraction == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such BuildInteraction"
+                    "Operation Failed - No Such UserCommentInteraction"
                 );
 
                 //Return not found response
-                return NotFound(new { buildInteraction = "BuildInteraction not found!" });
+                return NotFound(new { userCommentInteraction = "UserCommentInteraction not found!" });
             }
 
-            //Check if current user is deleting their own buildInteraction or if they have admin permissions
+            //Check if current user is deleting their own userCommentInteraction or if they have admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == buildInteraction.UserId;
+            var isSelf = currentUserId == userCommentInteraction.UserId;
 
             //Return an unauthorized response if the user doesn't have correct privileges
             if (!isSelf && !isPrivileged)
@@ -718,7 +687,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "BuildInteraction",
+                    "UserCommentInteraction",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
@@ -729,8 +698,8 @@ namespace KAZABUILD.API.Controllers.Builds
                 return Forbid();
             }
 
-            //Delete the buildInteraction
-            _db.BuildInteractions.Remove(buildInteraction);
+            //Delete the userCommentInteraction
+            _db.UserCommentInteractions.Remove(userCommentInteraction);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -739,22 +708,22 @@ namespace KAZABUILD.API.Controllers.Builds
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "BuildInteraction",
+                "UserCommentInteraction",
                 ip,
-                buildInteraction.Id,
+                userCommentInteraction.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("buildInteraction.deleted", new
+            await _publisher.PublishAsync("userCommentInteraction.deleted", new
             {
-                buildInteractionId = id,
+                userCommentInteractionId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { buildInteraction = "BuildInteraction deleted successfully!" });
+            return Ok(new { userCommentInteraction = "UserCommentInteraction deleted successfully!" });
         }
     }
 }
