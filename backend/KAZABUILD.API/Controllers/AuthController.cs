@@ -187,17 +187,29 @@ namespace KAZABUILD.API.Controllers
                     LastEditedAt = DateTime.UtcNow,
                 };
 
-                //Create the email message body with html
-                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.Token);
-
                 //Try to send the confirmation email
                 try
                 {
+                    //Create the email message body with html
+                    var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.Token);
+
                     //Send the confirmation email
                     await _smtp.SendEmailAsync(user.Email, "KAZABUILD login verification code", body);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Auth",
+                        ip,
+                        user.Id,
+                        PrivacyLevel.ERROR,
+                        $"Operation Failed - Sending Email Failed: {ex}"
+                    );
+
+                    //Return an internal error response
                     return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
                 }
 
@@ -571,19 +583,31 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow,
             };
 
-            //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={token.Token}&userId={user.Id}";
-            //Create the email message body with html
-            var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
-
             //Try to send the confirmation email
             try
             {
+                //Create the confirmation backend call link
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={token.Token}&userId={user.Id}";
+                //Create the email message body with html
+                var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
+
                 //Send the confirmation email
                 await _smtp.SendEmailAsync(user.Email, "Confirm your KAZABUILD account", body);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.ERROR,
+                    $"Operation Failed - Sending Email Failed: {ex}"
+                );
+
+                //Return an internal error response
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
             }
 
@@ -777,20 +801,32 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
-
-            //Create the email message body with html
-            var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
-
             //Try to send the confirmation email
             try
             {
+                //Create the confirmation backend call link
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
+
+                //Create the email message body with html
+                var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
+
                 //Send the confirmation email
                 await _smtp.SendEmailAsync(user.Email, "Confirm password reset for your KAZABUILD account", body);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.ERROR,
+                    $"Operation Failed - Sending Email Failed: {ex}"
+                );
+
+                //Return an internal error response
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
             }
 

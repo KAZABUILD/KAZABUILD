@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MailKit.Net.Smtp;
+using KAZABUILD.Infrastructure.SMTP;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -24,18 +25,30 @@ namespace KAZABUILD.Infrastructure.Services
         /// </summary>
         /// <param name="to"></param>
         /// <param name="subject"></param>
-        /// <param name="body"></param>
+        /// <param name="content"></param>
         /// <returns></returns>
-        public async Task SendEmailAsync(string to, string subject, string body)
+        public async Task SendEmailAsync(string to, string subject, EmailContent content)
         {
             try
             {
-                //Create the message to be sent
+                //Create the message to be sent and fill its contents
                 var message = new MimeMessage();
                 message.From.Add(MailboxAddress.Parse(_settings.Username));
                 message.To.Add(MailboxAddress.Parse(to));
                 message.Subject = subject;
-                message.Body = new TextPart("html") { Text = body };
+
+                //Create a builder that allows embeding in a message 
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = content.HtmlBody
+                };
+
+                //Embed an image in the body
+                var image = builder.LinkedResources.Add(content.ImagePath);
+                image.ContentId = content.ContentId;
+
+                //Append the html body to the message
+                message.Body = builder.ToMessageBody();
 
                 //Create the client which will send the message
                 using var client = new SmtpClient();
