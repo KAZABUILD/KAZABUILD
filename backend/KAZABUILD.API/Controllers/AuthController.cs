@@ -534,6 +534,7 @@ namespace KAZABUILD.API.Controllers
                 Login = dto.Login,
                 Email = dto.Email,
                 DisplayName = dto.DisplayName,
+                PasswordHash = _hasher.Hash(dto.Password),
                 PhoneNumber = dto.PhoneNumber,
                 Description = dto.Description,
                 Gender = dto.Gender,

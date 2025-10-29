@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
-using static Google.Apis.Requests.BatchRequest;
 
 namespace KAZABUILD.API.Controllers.Users
 {

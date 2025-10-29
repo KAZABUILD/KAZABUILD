@@ -30,6 +30,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<ForumPost> ForumPosts { get; set; } = default!;
         public DbSet<Message> Messages { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
+        public DbSet<UserActivity> UserActivities { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
@@ -242,17 +243,26 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register relationship with user
             modelBuilder.Entity<Notification>()
-                .HasOne(m => m.User)
+                .HasOne(n => n.User)
                 .WithMany(u => u.Notifications)
-                .HasForeignKey(m => m.UserId)
+                .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER ACTIVITY ======================================//
+
+            //Register relationship with user
+            modelBuilder.Entity<UserActivity>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.UserActivities)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== COMPONENT ======================================//
 
             //Configure ComponentType as string
             modelBuilder
                 .Entity<BaseComponent>()
-                .Property(u => u.Type)
+                .Property(c => c.Type)
                 .HasConversion<string>();
 
             //Register a Table-Per-Table polymorphic relationship to subclasses
@@ -270,78 +280,78 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register dimension as a ValueObject
             modelBuilder.Entity<CaseComponent>()
-                .OwnsOne(u => u.Dimensions);
+                .OwnsOne(c => c.Dimensions);
 
             //====================================== COMPONENT VARIANT ======================================//
 
             //Register relationships with Component
             modelBuilder.Entity<ComponentVariant>()
-                .HasOne(m => m.Component)
+                .HasOne(v => v.Component)
                 .WithMany(u => u.Colors)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(v => v.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== COLOR VARIANT ======================================//
 
             //Register relationships, disable cascade delete for colors, must be handled in API calls
             modelBuilder.Entity<ColorVariant>()
-                .HasOne(m => m.ComponentVariant)
+                .HasOne(v => v.ComponentVariant)
                 .WithMany(u => u.ColorVariants)
-                .HasForeignKey(m => m.ComponentVariantId)
+                .HasForeignKey(v => v.ComponentVariantId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ColorVariant>()
-                .HasOne(m => m.Color)
+                .HasOne(v => v.Color)
                 .WithMany(u => u.ColorVariants)
-                .HasForeignKey(m => m.ColorCode)
+                .HasForeignKey(v => v.ColorCode)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== COMPONENT COMPATIBILITY ======================================//
 
             //Register relationships, disable cascade delete, must be handled in API calls
             modelBuilder.Entity<ComponentCompatibility>()
-                .HasOne(m => m.Component)
+                .HasOne(c => c.Component)
                 .WithMany(u => u.CompatibleComponents)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(c => c.ComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ComponentCompatibility>()
-                .HasOne(m => m.CompatibleComponent)
+                .HasOne(c => c.CompatibleComponent)
                 .WithMany(u => u.CompatibleToComponents)
-                .HasForeignKey(m => m.CompatibleComponentId)
+                .HasForeignKey(c => c.CompatibleComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== COMPONENT PRICE ======================================//
 
             //Register relationship with component
             modelBuilder.Entity<ComponentPrice>()
-                .HasOne(m => m.Component)
+                .HasOne(p => p.Component)
                 .WithMany(u => u.Prices)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(p => p.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== COMPONENT REVIEW ======================================//
 
             //Register relationship with component
             modelBuilder.Entity<ComponentReview>()
-                .HasOne(m => m.Component)
+                .HasOne(r => r.Component)
                 .WithMany(u => u.Reviews)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(r => r.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== COMPONENT PART ======================================//
 
             //Register relationships, disable cascade delete for subComponents, must be handled in API calls
             modelBuilder.Entity<ComponentPart>()
-                .HasOne(m => m.Component)
+                .HasOne(p => p.Component)
                 .WithMany(u => u.SubComponents)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(p => p.ComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ComponentPart>()
-                .HasOne(m => m.SubComponent)
+                .HasOne(p => p.SubComponent)
                 .WithMany(u => u.Components)
-                .HasForeignKey(m => m.SubComponentId)
+                .HasForeignKey(p => p.SubComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== SUBCOMPONENT ======================================//
@@ -349,7 +359,7 @@ namespace KAZABUILD.Infrastructure.Data
             //Configure SubComponentType as string
             modelBuilder
                 .Entity<BaseSubComponent>()
-                .Property(u => u.Type)
+                .Property(c => c.Type)
                 .HasConversion<string>();
 
             //Register a Table-Per-Table polymorphic relationship to subclasses
@@ -364,22 +374,22 @@ namespace KAZABUILD.Infrastructure.Data
             //Configure PortType as string
             modelBuilder
                 .Entity<PortSubComponent>()
-                .Property(p => p.PortType)
+                .Property(c => c.PortType)
                 .HasConversion<string>();
 
             //====================================== SUBCOMPONENT PART ======================================//
 
             //Register relationships, disable cascade delete for non-main subComponents, must be handled in API calls
             modelBuilder.Entity<SubComponentPart>()
-                .HasOne(m => m.MainSubComponent)
+                .HasOne(p => p.MainSubComponent)
                 .WithMany(u => u.SubComponents)
-                .HasForeignKey(m => m.MainSubComponentId)
+                .HasForeignKey(p => p.MainSubComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<SubComponentPart>()
-                .HasOne(m => m.SubComponent)
+                .HasOne(p => p.SubComponent)
                 .WithMany(u => u.MainSubComponents)
-                .HasForeignKey(m => m.SubComponentId)
+                .HasForeignKey(p => p.SubComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== BUILD ======================================//
@@ -392,54 +402,54 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register relationship with user, restrict cascade delete and handle deletion separately
             modelBuilder.Entity<Build>()
-                .HasOne(t => t.User)
+                .HasOne(b => b.User)
                 .WithMany(u => u.Builds)
-                .HasForeignKey(t => t.UserId)
+                .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== BUILD COMPONENT ======================================//
 
             //Register relationships, disable cascade delete for components, should remain in database until the user deletes it
             modelBuilder.Entity<BuildComponent>()
-                .HasOne(m => m.Build)
+                .HasOne(c => c.Build)
                 .WithMany(u => u.Components)
-                .HasForeignKey(m => m.BuildId)
+                .HasForeignKey(c => c.BuildId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<BuildComponent>()
-                .HasOne(m => m.Component)
+                .HasOne(c => c.Component)
                 .WithMany(u => u.Builds)
-                .HasForeignKey(m => m.ComponentId)
+                .HasForeignKey(c => c.ComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== BUILD INTERACTION ======================================//
 
             //Register relationships, disable cascade delete for builds, should remain in database until the user deletes it
             modelBuilder.Entity<BuildInteraction>()
-                .HasOne(m => m.User)
+                .HasOne(i => i.User)
                 .WithMany(u => u.BuildInteractions)
-                .HasForeignKey(m => m.UserId)
+                .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<BuildInteraction>()
-                .HasOne(m => m.Build)
+                .HasOne(i => i.Build)
                 .WithMany(u => u.Interactions)
-                .HasForeignKey(m => m.BuildId)
+                .HasForeignKey(i => i.BuildId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== BUILD TAG ======================================//
 
             //Register relationships, disable cascade delete for builds, must be handled in API calls
             modelBuilder.Entity<BuildTag>()
-                .HasOne(m => m.Tag)
-                .WithMany(u => u.BuildTags)
-                .HasForeignKey(m => m.TagId)
+                .HasOne(t => t.Tag)
+                .WithMany(t => t.BuildTags)
+                .HasForeignKey(t => t.TagId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<BuildTag>()
-                .HasOne(m => m.Build)
-                .WithMany(u => u.BuildTags)
-                .HasForeignKey(m => m.BuildId)
+                .HasOne(t => t.Build)
+                .WithMany(b => b.BuildTags)
+                .HasForeignKey(t => t.BuildId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             //Register the lists which ignore the buildTag in the middle
@@ -448,8 +458,8 @@ namespace KAZABUILD.Infrastructure.Data
                 .WithMany(t => t.Builds)
                 .UsingEntity<Dictionary<string, object>>(
                     "BuildTag",
-                    j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
-                    j => j.HasOne<Build>().WithMany().HasForeignKey("BuildId")
+                    b => b.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
+                    b => b.HasOne<Build>().WithMany().HasForeignKey("BuildId")
                 );
 
             //====================================== IMAGE ======================================//
@@ -457,44 +467,44 @@ namespace KAZABUILD.Infrastructure.Data
             //Configure ImageTargetType enum as string
             modelBuilder
                 .Entity<Image>()
-                .Property(u => u.LocationType)
+                .Property(i => i.LocationType)
                 .HasConversion<string>();
 
             //Register relationships, restrict cascade deletes, image deletes should be handled in the controllers
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.User)
+                .HasOne(i => i.User)
                 .WithMany(u => u.Images)
-                .HasForeignKey(c => c.UserId)
+                .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.ForumPost)
+                .HasOne(i => i.ForumPost)
                 .WithMany(u => u.Images)
-                .HasForeignKey(c => c.ForumPostId)
+                .HasForeignKey(i => i.ForumPostId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.Component)
+                .HasOne(i => i.Component)
                 .WithMany(u => u.Images)
-                .HasForeignKey(c => c.ComponentId)
+                .HasForeignKey(i => i.ComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.SubComponent)
+                .HasOne(i => i.SubComponent)
                 .WithMany(u => u.Images)
-                .HasForeignKey(c => c.SubComponentId)
+                .HasForeignKey(i => i.SubComponentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.Build)
+                .HasOne(i => i.Build)
                 .WithMany(u => u.Images)
-                .HasForeignKey(c => c.BuildId)
+                .HasForeignKey(i => i.BuildId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Image>()
-                .HasOne(c => c.UserComment)
+                .HasOne(i => i.UserComment)
                 .WithMany(pc => pc.Images)
-                .HasForeignKey(c => c.UserCommentId)
+                .HasForeignKey(i => i.UserCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

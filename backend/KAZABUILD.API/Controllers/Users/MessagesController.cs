@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace KAZABUILD.API.Controllers.Users
 {

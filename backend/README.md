@@ -261,6 +261,16 @@ All models have protections against adding invalid values but any call made shou
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
+ 
+ - UserActivity (log of an activity user performed on the website)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that performed the activity
+   - `ActivityType` -> string storing the type of activity the user performed
+   - `TargettId` -> nullable GUID storing the Id of the object the user performed the activity for
+   - `Timestamp` -> date object storing when the user performed the activity
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
 
 ### Component Domain
 
@@ -623,6 +633,9 @@ To see what fields should be provided in an API request check the swagger docume
 
 ### UserComment specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
+
+### UserActivity specific API calls
+ - `UserActivities/POST/get-views` allows the user to view how many times an activity has been performed
 
 ### Image specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
