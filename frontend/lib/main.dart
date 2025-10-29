@@ -8,10 +8,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/router.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
-
-import 'screens/extra/spalsh_page.dart';
 
 /// The main function that runs when the application starts.
 void main() {
@@ -32,11 +31,12 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watches the `themeProvider` for changes. When the theme mode changes
     // (e.g., from light to dark), this widget will rebuild to apply the new theme.
+    final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
 
     // MaterialApp is the root of the app's UI, providing routing, theming,
     // and other core functionalities.
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Kaza Build',
 
       // Defines the theme to use when the app is in light mode.
@@ -50,8 +50,8 @@ class MyApp extends ConsumerWidget {
 
       // Hides the "debug" banner in the top-right corner of the app.
       debugShowCheckedModeBanner: false,
-      // Sets the initial screen of the application to be the SplashScreen.
-      home: const SplashScreen(),
+      // The router configuration from our router provider.
+      routerConfig: router,
     );
   }
 }

@@ -70,11 +70,11 @@ class QuizNotifier extends StateNotifier<QuizAnswers> {
   /// [user] is the currently authenticated user, which might be used for
   /// personalization in the future.
   // TODO: Implement a real backend API call to get recommendations. This should
-  // likely be moved to a separate repository and called from a FutureProvider
+  // likely be moved to a separate service and called from a FutureProvider
   // on the results page, rather than being a synchronous method here.
-  List<CommunityBuild> getRecommendedBuilds(AppUser? user) {
-    return [];
-  }
+  //List<Build> getRecommendedBuilds(AppUser? user) {
+  //  return [];
+  //}
 
   /// Resets all quiz answers to their initial empty state.
   /// This is useful when the user wants to retake the quiz.

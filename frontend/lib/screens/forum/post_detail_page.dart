@@ -1,31 +1,57 @@
 /// This file defines the UI for the post detail page.
 ///
 /// It displays the full content of a single forum post, followed by a list
-/// of all its replies. It also includes a section at the bottom for both
-/// registered users and guests to submit their own replies. The page features
-/// staggered entrance animations for a polished user experience.
+/// of all its replies. It fetches detailed data for a specific post and allows users
+/// users to submit new replies.
 library;
 
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/forum_provider.dart';
+import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/forum_model.dart';
+
 import 'package:intl/intl.dart';
 
+/// A provider that fetches the details of a single forum post by its ID.
+///
+/// This will eventually fetch the post and its replies.
+final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId) async {
+  final forumService = ref.read(forumServiceProvider); // Use read for initial fetch
+  // The backend's GET /ForumPosts/{id} endpoint is needed for this.
+  // As a workaround, we use the list endpoint and filter by ID.
+  final posts = await forumService.getPosts({'id': postId, 'paging': false}); // Backend expects single ID for filter
+  if (posts.isNotEmpty) {
+    return posts.first;
+  } else {
+    throw Exception('Post not found');
+  }
+});
+
+/// A provider to fetch the author's details based on their ID.
+final userProvider = FutureProvider.family<AppUser, String>((ref, userId) async {
+  // This uses the existing auth service to fetch user data.
+  final authService = ref.read(authServiceProvider); // Use read as it's a one-time fetch
+  final userResponse = await authService.getUserById(userId);
+  return AppUser.fromJson(userResponse.data);
+});
+
 /// A page that displays the full details of a single [ForumPost] and its replies.
-class PostDetailPage extends StatefulWidget {
+class PostDetailPage extends ConsumerStatefulWidget {
   /// The [ForumPost] object containing the data to be displayed.
-  final ForumPost post;
+  final ForumPost post; // Initial post data, replies will be fetched/added
   const PostDetailPage({super.key, required this.post});
 
   @override
-  State<PostDetailPage> createState() => _PostDetailPageState();
+  ConsumerState<PostDetailPage> createState() => _PostDetailPageState();
 }
 
 /// The state for the [PostDetailPage].
 ///
 /// Manages the list of replies and the animations for the page elements.
-class _PostDetailPageState extends State<PostDetailPage>
+class _PostDetailPageState extends ConsumerState<PostDetailPage>
     with TickerProviderStateMixin {
   /// A local list of replies, initialized from the post object.
   /// This allows for adding new replies in real-time without refetching.
@@ -67,7 +93,7 @@ class _PostDetailPageState extends State<PostDetailPage>
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: Text(widget.post.category),
+        title: Text(widget.post.topic),
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
         foregroundColor: theme.colorScheme.onSurface,
@@ -148,7 +174,10 @@ class _PostDetailPageState extends State<PostDetailPage>
           ),
 
           /// The input section at the bottom for submitting a new reply.
-          _ReplyInputSection(onReplySubmitted: _addReply),
+          _ReplyInputSection(
+            post: widget.post,
+            onReplySubmitted: _addReply,
+          ),
         ],
       ),
     );
@@ -156,14 +185,15 @@ class _PostDetailPageState extends State<PostDetailPage>
 }
 
 /// A widget that displays the header of the detail page, containing the original post.
-class _PostHeader extends StatelessWidget {
+class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
   final ForumPost post;
   final AnimationController animationController;
   const _PostHeader({required this.post, required this.animationController});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final authorAsync = ref.watch(userProvider(post.creatorId));
 
     /// Defines the animation curve for the header's appearance.
     final animation = CurvedAnimation(
@@ -218,23 +248,29 @@ class _PostHeader extends StatelessWidget {
 
               /// Author information and post date.
               Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: theme.colorScheme.primary,
-                    child: Text(
-                      post.author.username.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
+                children: authorAsync.when(
+                  data: (author) => [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: theme.colorScheme.primary,
+                      child: Text(
+                        author.username.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'by ${post.author.username}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(width: 8),
+                    Text(
+                      'by ${author.username}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
+                    const Spacer(),
+                  ],
+                  loading: () => [const CircularProgressIndicator()],
+                  error: (e, s) => [const Text('Unknown Author')],
+                ) +
+                    [
                   Text(
                     DateFormat.yMMMMd().format(post.createdAt),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -243,6 +279,7 @@ class _PostHeader extends StatelessWidget {
                   ),
                 ],
               ),
+
               const Divider(height: 28),
 
               /// The main content of the post.
@@ -253,6 +290,12 @@ class _PostHeader extends StatelessWidget {
                   color: theme.colorScheme.onSurface,
                 ),
               ),
+
+              /// If the post is linked to a build, show a tappable card.
+              if (post.build != null) ...[
+                const SizedBox(height: 16),
+                _LinkedBuildCard(linkedBuild: post.build!),
+              ],
             ],
           ),
         ),
@@ -261,14 +304,77 @@ class _PostHeader extends StatelessWidget {
   }
 }
 
-/// A card widget that displays a single reply to the post.
-class _ReplyCard extends StatelessWidget {
-  final PostReply reply;
-  const _ReplyCard({required this.reply});
+/// A card that displays information about a build linked to a forum post.
+/// Tapping it navigates to the build's detail page.
+class _LinkedBuildCard extends StatelessWidget {
+  final Build linkedBuild;
+
+  const _LinkedBuildCard({required this.linkedBuild});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        elevation: 0,
+        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.2)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            // Navigate to the build detail page.
+            context.go('/build/${linkedBuild.id}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.memory,
+                  color: theme.colorScheme.onPrimaryContainer,
+                  size: 32,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Linked Build',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7)),
+                      ),
+                      Text(
+                        linkedBuild.name,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimaryContainer),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onPrimaryContainer),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A card widget that displays a single reply to the post.
+class _ReplyCard extends ConsumerWidget {
+  final PostReply reply;
+  const _ReplyCard({required this.reply});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final authorAsync = ref.watch(userProvider(reply.authorId));
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -290,27 +396,35 @@ class _ReplyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           /// Author's avatar.
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.secondaryContainer,
-            child: Text(
-              reply.author.username.substring(0, 1).toUpperCase(),
-              style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+          authorAsync.when(
+            data: (author) => CircleAvatar(
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              child: Text(
+                author.username.substring(0, 1).toUpperCase(),
+                style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+              ),
             ),
+            loading: () => const CircleAvatar(),
+            error: (e, s) => const CircleAvatar(child: Icon(Icons.error)),
           ),
+
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 /// Author's username and the time of the reply.
-                Row(
-                  children: [
-                    Text(
-                      reply.author.username,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                authorAsync.when(
+                  data: (author) => Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          author.username,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
                     const Spacer(),
                     Text(
                       DateFormat(
@@ -320,7 +434,10 @@ class _ReplyCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ],
+                    ],
+                  ),
+                  loading: () => const SizedBox(height: 20),
+                  error: (e, s) => const Text('Unknown Author'),
                 ),
                 const SizedBox(height: 8),
 
@@ -344,8 +461,9 @@ class _ReplyCard extends StatelessWidget {
 /// A stateful widget that provides a text field and a button for submitting replies.
 /// It handles both authenticated users and guests.
 class _ReplyInputSection extends ConsumerStatefulWidget {
+  final ForumPost post;
   final Function(PostReply) onReplySubmitted;
-  const _ReplyInputSection({required this.onReplySubmitted});
+  const _ReplyInputSection({required this.post, required this.onReplySubmitted});
 
   @override
   ConsumerState<_ReplyInputSection> createState() => _ReplyInputSectionState();
@@ -361,6 +479,15 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Listen to the guest name controller to rebuild the avatar on text change.
+    _guestNameController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _replyController.dispose();
     _guestNameController.dispose();
@@ -368,38 +495,54 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   }
 
   /// Validates the form and submits the new reply.
-  void _submitReply() {
+  void _submitReply() async {
     if (_formKey.currentState?.validate() ?? false) {
       /// Check if a user is logged in via the authProvider.
-      final currentUser = ref.read(authProvider);
+      final currentUser = ref.read(authProvider).value;
 
       /// If no user is logged in, create a temporary "guest" user object.
-      final author =
-          currentUser ??
-          AppUser(
-            uid: 'guest_${DateTime.now().millisecondsSinceEpoch}',
-            username: _guestNameController.text.trim(),
-            email: '',
-          );
+      final authorId = currentUser?.uid;
+      final replyContent = _replyController.text.trim();
+      final guestName = _guestNameController.text.trim();
 
-      // TODO: Send the new reply to a backend service to be persisted.
-      // The backend should return the created reply object with a real ID.
+      if (authorId == null && guestName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your name or log in to reply.')),
+        );
+        return;
+      }
 
-      /// Create a new PostReply object with the form data.
-      final newReply = PostReply(
-        id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
-        author: author,
-        content: _replyController.text.trim(),
-        createdAt: DateTime.now(),
-      );
+      // Show loading indicator if needed
+      // setState(() => _isLoading = true); // If you add a loading state to _ReplyInputSection
 
-      /// Call the callback function to add the reply to the list in the parent widget.
-      widget.onReplySubmitted(newReply);
+      try {
+        // Call the API to create the reply
+        // For guest users, we pass null for userId. Backend will handle it.
+        // The backend's UserComment model has UserId, Content, CommentTargetType, ForumPostId.
+        // We assume the backend will return the created comment's ID and details.
+        final responseMessage = await ref.read(forumProvider.notifier).createForumReply(
+          widget.post.id,
+          replyContent,
+          authorId,
+        );
 
-      /// Clear the text fields and remove focus after submission.
-      _replyController.clear();
-      _guestNameController.clear();
-      FocusScope.of(context).unfocus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseMessage), backgroundColor: Colors.green),
+        );
+
+        // Invalidate the provider to refetch the post and its replies.
+        ref.invalidate(postDetailProvider(widget.post.id));
+
+        _replyController.clear();
+        _guestNameController.clear();
+        FocusScope.of(context).unfocus();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      } finally {
+        // setState(() => _isLoading = false); // If you add a loading state
+      }
     }
   }
 
@@ -409,7 +552,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
     final currentUser = ref.watch(authProvider);
 
     /// Determine if the current user is a guest.
-    final isGuest = currentUser == null;
+    final isGuest = currentUser.value == null;
 
     /// Use [Material] widget to provide elevation and a consistent background.
     return Material(
@@ -429,7 +572,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
             mainAxisSize: MainAxisSize.min,
             children: [
               /// If the user is a guest, show an additional field for their name.
-              if (isGuest) ...[
+              if (currentUser.value == null) ...[
                 TextFormField(
                   controller: _guestNameController,
                   decoration: InputDecoration(
@@ -455,9 +598,11 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
                     child: Text(
-                      isGuest
-                          ? 'G'
-                          : currentUser.username.substring(0, 1).toUpperCase(),
+                      currentUser.value != null
+                          ? (currentUser.value!.username.isNotEmpty
+                            ? currentUser.value!.username[0].toUpperCase()
+                            : '?')
+                          : (_guestNameController.text.isNotEmpty ? _guestNameController.text[0].toUpperCase() : 'G'),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),

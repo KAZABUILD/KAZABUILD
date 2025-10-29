@@ -1,55 +1,55 @@
-/// This file defines the UI for the "Forgot Password" screen.
+/// This file defines the UI for the "Confirm Reset Password" screen.
 ///
-/// It provides a simple form where users can enter their email address
-/// to receive a password reset link. This page is typically accessed from
-/// the login screen.
-///
-/// It utilizes reusable authentication widgets like `CustomTextField` and
-/// `PrimaryButton` to maintain a consistent UI across authentication flows.
+/// This page is accessed via a link sent to the user's email. It allows
+/// the user to enter and confirm a new password. The page extracts the
+/// reset token from the URL query parameters to authorize the change.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 
-/// A widget that renders the "Forgot Password" page.
-/// It's a `ConsumerStatefulWidget` to manage local state (loading) and interact with Riverpod.
-class ForgotPasswordPage extends ConsumerStatefulWidget {
-  const ForgotPasswordPage({super.key});
+/// A widget that allows a user to set a new password.
+///
+/// It requires a `token` from the password reset email to function.
+class ConfirmResetPasswordPage extends ConsumerStatefulWidget {
+  /// The password reset token from the URL.
+  final String token;
+
+  const ConfirmResetPasswordPage({super.key, required this.token});
 
   @override
-  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ConfirmResetPasswordPage> createState() =>
+      _ConfirmResetPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
+class _ConfirmResetPasswordPageState
+    extends ConsumerState<ConfirmResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    );
-    // The Scaffold provides the basic visual structure for the page.
+
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
-      // AppBar for navigation back to the previous screen.
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // A back button to return to the previous screen (usually the login page).
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-          // Pops the current route off the navigator stack.
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -62,48 +62,54 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment
-                    .stretch, // Stretches children horizontally.
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Page title.
                   Text(
-                    'Reset Password',
+                    'Set New Password',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.textTheme.headlineMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  // Instructional text guiding the user on how to proceed.
                   Text(
-                    'Enter the email address associated with your account and we\'ll send you a link to reset your password.',
+                    'Please enter your new password below. Make sure it\'s secure.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 32),
-                  // Custom text field for email input.
                   CustomTextField(
-                    controller: _emailController,
-                    label: 'Email address',
-                    icon: Icons.email_outlined,
-                    keyboardType:
-                        TextInputType.emailAddress, // Suggests email keyboard.
+                    controller: _passwordController,
+                    label: 'New Password',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email address';
+                        return 'Please enter a new password';
                       }
-                      if (!emailRegex.hasMatch(value)) {
-                        return 'Please enter a valid email address';
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _confirmPasswordController,
+                    label: 'Confirm New Password',
+                    icon: Icons.lock_person_outlined,
+                    isPassword: true,
+                    validator: (value) {
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
-                  // Button to submit the password reset request.
                   PrimaryButton(
-                    text: _isLoading ? 'Sending Link...' : 'Send Reset Link',
+                    text: _isLoading ? 'Resetting...' : 'Reset Password',
                     icon: null,
-                    onPressed: _isLoading ? null : _sendResetLink,
+                    onPressed: _isLoading ? null : _resetPassword,
                   ),
                 ],
               ),
@@ -114,8 +120,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     );
   }
 
-  /// Handles the logic for sending the password reset link.
-  void _sendResetLink() async {
+  /// Handles the logic for confirming the password reset.
+  void _resetPassword() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -125,13 +131,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     try {
       final successMessage = await ref
           .read(authProvider.notifier)
-          .requestPasswordReset(_emailController.text);
+          .confirmPasswordReset(widget.token, _passwordController.text);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(successMessage),
           backgroundColor: Colors.green,
         ));
+        // Navigate to login page and clear the navigation stack.
+        if (context.mounted) GoRouter.of(context).go('/login');
       }
     } catch (e) {
       if (mounted) {

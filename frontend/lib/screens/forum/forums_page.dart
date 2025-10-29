@@ -1,7 +1,7 @@
 /// This file defines the main forum page where users can browse, filter,
 /// and sort discussion posts. It serves as the central hub for community
 /// interaction.
-///
+/// It now fetches live data from the backend using Riverpod providers.
 /// Key features include:
 /// - A modern, visually appealing header with a gradient and call-to-action button.
 /// - A `SliverPersistentHeader` that keeps search, filter, and sort controls
@@ -9,27 +9,28 @@
 /// - An animated list of post cards that fade and slide in for a smooth
 ///   user experience, powered by `flutter_staggered_animations`.
 library;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/models/forum_model.dart';
+import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
 
 /// The main widget for the forums page.
-class ForumsPage extends StatefulWidget {
+class ForumsPage extends ConsumerStatefulWidget {
   const ForumsPage({super.key});
 
   @override
-  State<ForumsPage> createState() => _ForumsPageState();
+  ConsumerState<ForumsPage> createState() => _ForumsPageState();
 }
 
 /// The state for the [ForumsPage].
 ///
 /// It manages the UI state for filters, search, and sorting.
-class _ForumsPageState extends State<ForumsPage> {
+class _ForumsPageState extends ConsumerState<ForumsPage> {
   /// A key to manage the [Scaffold], particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -56,9 +57,7 @@ class _ForumsPageState extends State<ForumsPage> {
   /// A static list of available options for the sort dropdown.
   final List<String> _sortOptions = [
     'Newest',
-    'Most Popular',
-    'Most Viewed',
-    'Unanswered',
+    'Oldest',
   ];
 
   /// Controller for the main [CustomScrollView] to manage scroll-related effects if needed.
@@ -89,39 +88,7 @@ class _ForumsPageState extends State<ForumsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // TODO: Replace this mock data with a list fetched from a backend service.
-    // This should ideally be handled by a Riverpod `FutureProvider` to manage
-    // loading and error states gracefully.
-    final List<ForumPost> allPosts = [];
-
-    /// Apply category and search filters to the list of all posts.
-    List<ForumPost> processedPosts = allPosts.where((post) {
-      final categoryMatch =
-          _selectedCategory == 'All' || post.category == _selectedCategory;
-      final searchMatch = post.title.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      return categoryMatch && searchMatch;
-    }).toList();
-
-    /// The 'Unanswered' option acts as a filter, so it's applied before sorting.
-    if (_selectedSortOption == 'Unanswered') {
-      processedPosts = processedPosts
-          .where((post) => post.replies.isEmpty)
-          .toList();
-    }
-
-    /// Apply sorting based on the selected option.
-    switch (_selectedSortOption) {
-      case 'Most Viewed':
-        processedPosts.sort((a, b) => b.viewCount.compareTo(a.viewCount));
-        break;
-      case 'Newest':
-      default:
-        processedPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-    }
+    final allPostsAsync = ref.watch(allForumPostsProvider);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -133,7 +100,7 @@ class _ForumsPageState extends State<ForumsPage> {
           Expanded(
             /// [CustomScrollView] allows for combining different types of scrollable lists and headers.
             child: CustomScrollView(
-              controller: _scrollController,
+              // controller: _scrollController, // Keep if needed for effects
               slivers: [
                 /// The main header section with the title and "Start Discussion" button.
                 _buildModernHeader(theme, context),
@@ -155,25 +122,58 @@ class _ForumsPageState extends State<ForumsPage> {
                     },
                   ),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16.0),
+                allPostsAsync.when(
+                  loading: () => const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (err, stack) => SliverFillRemaining(
+                    child: Center(child: Text('Error: $err')),
+                  ),
+                  data: (allPosts) {
+                    /// Apply category and search filters to the list of all posts.
+                    List<ForumPost> processedPosts = allPosts.where((post) {
+                      final categoryMatch = _selectedCategory == 'All' ||
+                          post.topic == _selectedCategory;
+                      final searchMatch = post.title
+                          .toLowerCase()
+                          .contains(_searchQuery.toLowerCase());
+                      return categoryMatch && searchMatch;
+                    }).toList();
 
-                  /// The main list of forum posts, with staggered animations for a polished look.
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => AnimationConfiguration.staggeredList(
-                        position: index,
-                        duration: const Duration(milliseconds: 375),
-                        child: SlideAnimation(
-                          verticalOffset: 50.0,
-                          child: FadeInAnimation(
-                            child: _ModernPostCard(post: processedPosts[index]),
+                    /// Apply sorting based on the selected option.
+                    switch (_selectedSortOption) {
+                      case 'Oldest':
+                        processedPosts.sort(
+                            (a, b) => a.createdAt.compareTo(b.createdAt));
+                        break;
+                      case 'Newest':
+                      default:
+                        processedPosts.sort(
+                            (a, b) => b.createdAt.compareTo(a.createdAt));
+                        break;
+                    }
+
+                    return SliverPadding(
+                      padding: const EdgeInsets.all(16.0),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) =>
+                              AnimationConfiguration.staggeredList(
+                            position: index,
+                            duration: const Duration(milliseconds: 375),
+                            child: SlideAnimation(
+                              verticalOffset: 50.0,
+                              child: FadeInAnimation(
+                                child: _ModernPostCard(
+                                    post: processedPosts[index]),
+                              ),
+                            ),
                           ),
+                          childCount: processedPosts.length,
                         ),
                       ),
-                      childCount: processedPosts.length,
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -525,10 +525,9 @@ class _ModernPostCardState extends State<_ModernPostCard>
                       ),
                       child: Center(
                         child: Text(
-                          widget.post.author.username
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: TextStyle(
+                          // TODO: Fetch author username from creatorId
+                          'U', // Placeholder for User
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -563,14 +562,12 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _getCategoryColor(
-                                    widget.post.category,
-                                    theme,
-                                  ),
+                                  color:
+                                      _getCategoryColor(widget.post.topic, theme),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  widget.post.category,
+                                  widget.post.topic,
                                   style: TextStyle(
                                     color: theme.colorScheme.onPrimary,
                                     fontSize: 12,
@@ -611,14 +608,11 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                 children: [
                                   CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: theme.colorScheme.primary
-                                        .withOpacity(0.1),
+                                    backgroundColor:
+                                        theme.colorScheme.primary.withOpacity(0.1),
                                     child: Text(
-                                      widget.post.author.username.substring(
-                                        0,
-                                        1,
-                                      ),
-                                      style: TextStyle(
+                                      'U', // Placeholder
+                                      style:  TextStyle(
                                         color: theme.colorScheme.primary,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -631,7 +625,7 @@ class _ModernPostCardState extends State<_ModernPostCard>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        widget.post.author.username,
+                                        'User', // Placeholder
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(
                                               fontWeight: FontWeight.w500,
@@ -656,13 +650,13 @@ class _ModernPostCardState extends State<_ModernPostCard>
 
                               /// Chips for displaying view and reply counts.
                               _StatChip(
-                                Icons.visibility,
-                                '${widget.post.viewCount} views',
+                                Icons.comment_outlined,
+                                'Replies', // Placeholder
                               ),
                               const SizedBox(width: 8),
                               _StatChip(
-                                Icons.reply,
-                                '${widget.post.replies.length} replies',
+                                Icons.thumb_up_alt_outlined,
+                                'Votes', // Placeholder
                               ),
                             ],
                           ),

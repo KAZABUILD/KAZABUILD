@@ -1,60 +1,71 @@
 /// This file defines the data model for a community-submitted PC build.
 ///
-/// The [CommunityBuild] class encapsulates all the information related to a
+/// The [Build] class encapsulates all the information related to a
 /// single PC build shared by a user. This model is used throughout the app,
 /// particularly on the "Explore Builds" page and the "Build Detail" page,
 /// to represent a complete, user-created computer setup.
 library;
 
-import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/auth_provider.dart';
 
-/// Represents a complete PC build created and shared by a user in the community.
-class CommunityBuild {
+/// Represents a PC build created by a user, mirroring the backend's Build entity.
+class Build {
   /// The unique identifier for this specific build.
   final String id;
 
+  /// The ID of the user who created the build.
+  final String userId;
+
   /// The user-provided title for the build.
-  final String title;
-
-  /// The average community rating for the build, typically on a scale of 1-5.
-  final double rating;
-
-  /// The URL for the main showcase image of the build.
-  final String imageUrl;
-
-  /// The [AppUser] who created and posted this build.
-  final AppUser author;
-
-  /// The date and time when the build was originally posted.
-  final DateTime postedDate;
-
-  /// The date and time of the last modification to the build's details.
-  final DateTime lastEditedDate;
+  final String name;
 
   /// A detailed description or story about the build, written by the author.
-  final String description;
+  final String? description;
 
-  /// A list of all the [BaseComponent] objects that make up this build.
-  final List<BaseComponent> components;
+  /// The current status of the build (e.g., DRAFT, PUBLISHED).
+  final String status;
 
-  CommunityBuild({
+  /// A placeholder for the build's main image URL.
+  /// TODO: This needs to be added to the backend response.
+  final String? imageUrl;
+
+  /// The user who created the build. This might be null if not included in the API response.
+  final AppUser? author;
+
+  /// The timestamp when this entry was created in the database.
+  final DateTime? databaseEntryAt;
+
+  /// The timestamp of the last modification to this entry.
+  final DateTime? lastEditedAt;
+
+  Build({
     required this.id,
-    required this.title,
-    required this.rating,
-    required this.imageUrl,
-    required this.author,
-    required this.postedDate,
-    required this.lastEditedDate,
-    required this.description,
-    required this.components,
+    required this.userId,
+    required this.name,
+    this.description,
+    required this.status,
+    this.imageUrl,
+    this.author,
+    this.databaseEntryAt,
+    this.lastEditedAt,
   });
 
-  /// A computed property that calculates the total price of the build in real-time.
-  ///
-  /// It iterates through all the [components] and sums up their `lowestPrice`.
-  /// If a component does not have a price, it is treated as 0 for the calculation.
-  double get totalPrice {
-    return components.fold(0.0, (sum, item) => sum + (item.lowestPrice ?? 0.0));
+  /// Creates a `Build` instance from a JSON map.
+  factory Build.fromJson(Map<String, dynamic> json) {
+    return Build(
+      id: json['id'],
+      userId: json['userId'],
+      name: json['name'],
+      description: json['description'],
+      status: json['status'],
+      author: json['user'] != null ? AppUser.fromJson(json['user']) : null,
+      imageUrl: json['imageUrl'], // Assuming backend now sends 'imageUrl'
+      databaseEntryAt: json['databaseEntryAt'] != null
+          ? DateTime.parse(json['databaseEntryAt'])
+          : null,
+      lastEditedAt: json['lastEditedAt'] != null
+          ? DateTime.parse(json['lastEditedAt'])
+          : null,
+    );
   }
 }

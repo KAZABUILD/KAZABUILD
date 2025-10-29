@@ -4,30 +4,26 @@
 /// users to see a preview and navigate to the build's detail page.
 library;
 
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/explore_build_model.dart';
-import '../explore_build/build_detail_page.dart';
-import 'package:carousel_slider/carousel_slider.dart'
-    show CarouselSlider, CarouselOptions, CarouselSliderController;
 
+import '../../models/build_provider.dart';
 /// A stateful widget that displays a carousel of featured PC builds.
-class FeaturedBuilds extends StatefulWidget {
+class FeaturedBuilds extends ConsumerStatefulWidget {
   const FeaturedBuilds({super.key});
 
   @override
-  State<FeaturedBuilds> createState() => _FeaturedBuildsState();
+  ConsumerState<FeaturedBuilds> createState() => _FeaturedBuildsState();
 }
 
 /// The state for the [FeaturedBuilds] widget.
 ///
 /// Manages the list of builds to display and the current state of the carousel.
-class _FeaturedBuildsState extends State<FeaturedBuilds> {
-  // TODO: This list should be populated by fetching data from a backend service,
-  // ideally using a Riverpod `FutureProvider` to handle loading and error states.
-  /// The list of [CommunityBuild] objects to be displayed in the carousel.
-  final List<CommunityBuild> buildItems = [];
-
+class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
   /// The index of the currently visible item in the carousel.
   int _current = 0;
 
@@ -37,75 +33,71 @@ class _FeaturedBuildsState extends State<FeaturedBuilds> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final buildsAsync = ref.watch(allBuildsProvider);
 
-    /// If there are no featured builds to display, show a placeholder message.
-    if (buildItems.isEmpty) {
-      return Container(
-        height: 380,
-        alignment: Alignment.center,
-        child: Text(
-          'Featured builds will be shown here soon!',
-          style: theme.textTheme.titleLarge,
-        ),
-      );
-    }
-
-    /// If there are builds, display the carousel slider and its page indicators.
-    return Column(
-      children: [
-        CarouselSlider.builder(
-          itemCount: buildItems.length,
-          carouselController: _controller,
-          itemBuilder: (context, index, realIndex) {
-            final item = buildItems[index];
-            return _BuildCard(communityBuild: item, theme: theme);
-          },
-          options: CarouselOptions(
+    return buildsAsync.when(
+      data: (builds) {
+        if (builds.isEmpty) {
+          return Container(
             height: 380,
-            autoPlay: true,
-            enlargeCenterPage: true,
-            viewportFraction: 0.75,
-            aspectRatio: 2.0,
-
-            /// Update the current page index when the user swipes or the carousel auto-plays.
-            onPageChanged: (index, reason) {
-              setState(() {
-                _current = index;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        /// The row of dots that indicate the current page of the carousel.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: buildItems.asMap().entries.map((entry) {
-            return GestureDetector(
-              // Allows users to tap on a dot to jump to the corresponding page.
-              onTap: () => _controller.animateToPage(entry.key),
-              child: Container(
-                width: 12.0,
-                height: 12.0,
-                margin: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 4.0,
-                ),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-
-                  /// The active dot is more opaque than the inactive ones for visual feedback.
-                  color:
-                      (Theme.of(context).brightness == Brightness.dark
+            alignment: Alignment.center,
+            child: Text(
+              'Featured builds will be shown here soon!',
+              style: theme.textTheme.titleLarge,
+            ),
+          );
+        }
+        return Column(
+          children: [
+            CarouselSlider.builder(
+              itemCount: builds.length,
+              carouselController: _controller,
+              itemBuilder: (context, index, realIndex) {
+                final item = builds[index];
+                return _BuildCard(buildData: item, theme: theme);
+              },
+              options: CarouselOptions(
+                height: 380,
+                autoPlay: true,
+                enlargeCenterPage: true,
+                viewportFraction: 0.75,
+                aspectRatio: 2.0,
+                onPageChanged: (index, reason) {
+                  setState(() {
+                    _current = index;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: builds.asMap().entries.map((entry) {
+                return GestureDetector(
+                  onTap: () => _controller.animateToPage(entry.key),
+                  child: Container(
+                    width: 12.0,
+                    height: 12.0,
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 4.0,
+                    ),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: (Theme.of(context).brightness == Brightness.dark
                               ? Colors.white
                               : Colors.black)
                           .withOpacity(_current == entry.key ? 0.9 : 0.4),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox(height: 380, child: Center(child: CircularProgressIndicator())),
+      error: (err, stack) => SizedBox(height: 380, child: Center(child: Text('Could not load featured builds: $err'))),
     );
   }
 }
@@ -116,30 +108,23 @@ class _FeaturedBuildsState extends State<FeaturedBuilds> {
 /// Tapping anywhere on the card also navigates to the detail page.
 class _BuildCard extends StatelessWidget {
   /// The build data to display in the card.
-  final CommunityBuild communityBuild;
+  final Build buildData;
 
   /// The current theme data, passed down to avoid repeated lookups.
   final ThemeData theme;
 
-  const _BuildCard({required this.communityBuild, required this.theme});
+  const _BuildCard({required this.buildData, required this.theme});
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    /// [InkWell] provides the tap effect and navigation functionality for the entire card.
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BuildDetailPage(build: communityBuild),
-          ),
-        );
+        context.go('/build/${buildData.id}');
       },
       borderRadius: BorderRadius.circular(16),
 
-      /// The main container for the card with styling.
       child: Container(
         width: MediaQuery.of(context).size.width,
         margin: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -151,8 +136,6 @@ class _BuildCard extends StatelessWidget {
           children: [
             Expanded(
               flex: 3,
-
-              /// Container for the build's image.
               child: Container(
                 margin: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -160,20 +143,16 @@ class _BuildCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 clipBehavior: Clip.antiAlias,
-
-                /// [Image.network] handles fetching and displaying the image from a URL, with an error fallback.
-                child: Image.network(
-                  communityBuild.imageUrl,
+                child: buildData.imageUrl != null ? Image.network(
+                  buildData.imageUrl!,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) =>
                       const Center(child: Icon(Icons.broken_image, size: 40)),
-                ),
+                ) : const Center(child: Icon(Icons.image_not_supported, size: 40)),
               ),
             ),
             Expanded(
               flex: 2,
-
-              /// The content section below the image, containing text and a button.
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -181,17 +160,15 @@ class _BuildCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      communityBuild.title,
+                      buildData.name,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      'Starts from \$${communityBuild.totalPrice.toStringAsFixed(2)}',
+                      'Price not available', // TODO: Add price when available
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-
-                        /// Use a specific neon color from the app's color constants for emphasis.
                         color: isDarkMode
                             ? AppColorsDark.textNeon
                             : AppColorsLight.textNeon,
@@ -199,14 +176,7 @@ class _BuildCard extends StatelessWidget {
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        /// Also navigate to the detail page when the button is pressed.
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                BuildDetailPage(build: communityBuild),
-                          ),
-                        );
+                        context.go('/build/${buildData.id}');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,

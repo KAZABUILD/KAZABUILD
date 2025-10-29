@@ -6,7 +6,7 @@
 /// - `CustomDrawer`: The slide-out navigation drawer for mobile.
 /// - Helper widgets for navigation buttons, dropdowns, and user profile areas.
 library;
-
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
@@ -70,7 +70,7 @@ class CustomNavigationBar extends ConsumerWidget {
     }
 
     /// For wider screens, show the full desktop navigation bar.
-    final user = ref.watch(authProvider);
+    final authState = ref.watch(authProvider);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -81,10 +81,8 @@ class CustomNavigationBar extends ConsumerWidget {
           /// The logo and app name, which navigates to the homepage on tap.
           InkWell(
             onTap: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const HomePage()),
-                (Route<dynamic> route) => false,
-              );
+              context.go('/home');
+              
             },
             borderRadius: BorderRadius.circular(8),
             child: Row(
@@ -103,12 +101,12 @@ class CustomNavigationBar extends ConsumerWidget {
           ),
 
           /// The main navigation buttons in the center of the bar.
-          Row(
-            children: const [
-              _NavButton(title: 'Build Now'),
-              _NavButton(title: 'Explore Builds'),
-              _NavButton(title: 'Guides'),
-              _NavButton(title: 'Forums'),
+          const Row(
+            children:  [
+              _NavButton(title: 'Build Now', route: '/build-now'),
+              _NavButton(title: 'Explore Builds', route: '/explore'),
+              _NavButton(title: 'Guides',route: '/guides'),
+              _NavButton(title: 'Forums', route: '/forums'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -116,10 +114,13 @@ class CustomNavigationBar extends ConsumerWidget {
           /// The right-hand side of the bar with user profile and other actions.
           Row(
             children: [
-              if (showProfileArea)
-                user == null
-                    ? const _SignInArea()
-                    : _LoggedInProfileArea(user: user),
+              if (showProfileArea) ...[
+                authState.when(
+                  data: (user) => user == null ? const _SignInArea() : const _LoggedInProfileArea(),
+                  loading: () => const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                  error: (err, stack) => const Icon(Icons.error),
+                ),
+              ],
               if (showProfileArea) const SizedBox(width: 20),
               const LanguageSelector(),
               const SizedBox(width: 15),
@@ -165,10 +166,7 @@ class _MobileAppBar extends ConsumerWidget {
           /// The app logo and name, centered.
           InkWell(
             onTap: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const HomePage()),
-                (Route<dynamic> route) => false,
-              );
+              context.go('/home');
             },
             borderRadius: BorderRadius.circular(8),
             child: Row(
@@ -180,7 +178,7 @@ class _MobileAppBar extends ConsumerWidget {
                 ),
                 const Text(
                   'AZABUILD',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color:Color.fromRGBO(143, 104, 255, 100)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color:Color.fromRGBO(143, 104, 255, 1)),
                 ),
               ],
             ),
@@ -237,29 +235,28 @@ class CustomDrawer extends ConsumerWidget {
           ),
 
           /// If a user is logged in, show their profile information.
-          if (showProfileArea && user != null) ...[
-            ListTile(
-              leading: CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
-                backgroundImage: user.photoURL != null
-                    ? NetworkImage(user.photoURL!)
-                    : null,
-                child: user.photoURL == null
-                    ? Text(user.username.substring(0, 1).toUpperCase())
-                    : null,
-              ),
-              title: Text(user.username),
-              subtitle: const Text('View Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfilePage()),
-                );
-              },
-            ),
-            const Divider(),
-          ],
+         // if (showProfileArea && user != null) ...[
+           // ListTile(
+             // leading: CircleAvatar(
+               // backgroundColor: theme.colorScheme.primaryContainer,
+               ///   ? NetworkImage(user.photoURL!)
+                   // : null,
+                //child: user.photoURL == null
+                    //? Text(user.username.substring(0, 1).toUpperCase())
+                    //: null,
+              //),
+              //title: Text(user.username),
+             // subtitle: const Text('View Profile'),
+              //onTap: () {
+              //  Navigator.pop(context);
+               // Navigator.push(
+                 // context,
+                 //MaterialPageRoute(builder: (_) => const ProfilePage()),
+               // );
+              //},
+           //),
+            //const Divider(),
+          //],
 
           /// If no user is logged in, show Sign In and Sign Up options.
           if (showProfileArea && user == null) ...[
@@ -268,10 +265,10 @@ class CustomDrawer extends ConsumerWidget {
               title: const Text('Sign In'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                context.go('/login');
+                //Navigator.push(
+                  //context,
+                  //MaterialPageRoute(builder: (_) => const LoginPage
               },
             ),
             ListTile(
@@ -279,10 +276,7 @@ class CustomDrawer extends ConsumerWidget {
               title: const Text('Sign Up'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SignUpPage()),
-                );
+                context.go('/signup');
               },
             ),
             const Divider(),
@@ -295,10 +289,7 @@ class CustomDrawer extends ConsumerWidget {
             title: const Text('Build Now'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const BuildNowPage()),
-              );
+              context.go('/build-now');
             },
           ),
           ListTile(
@@ -306,10 +297,7 @@ class CustomDrawer extends ConsumerWidget {
             title: const Text('Explore Builds'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ExploreBuildsPage()),
-              );
+              context.go('/explore');
             },
           ),
           ListTile(
@@ -317,10 +305,7 @@ class CustomDrawer extends ConsumerWidget {
             title: const Text('Guides'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GuidesPage()),
-              );
+              context.go('/guides');
             },
           ),
           ListTile(
@@ -328,16 +313,13 @@ class CustomDrawer extends ConsumerWidget {
             title: const Text('Forums'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ForumsPage()),
-              );
+              context.go('/forums');
             },
           ),
           const Divider(),
 
           /// An expandable tile for all the individual part categories.
-          ExpansionTile(
+         ExpansionTile(
             leading: const Icon(Icons.category),
             title: const Text('Parts'),
             children: _PartsDropdownMenu.parts.map((part) {
@@ -347,15 +329,7 @@ class CustomDrawer extends ConsumerWidget {
                 contentPadding: const EdgeInsets.only(left: 72, right: 16),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PartPickerPage(
-                        componentType: part.type,
-                        currentBuild: const [],
-                      ),
-                    ),
-                  );
+                  context.go('/parts/${part.type.name}');
                 },
               );
             }).toList(),
@@ -369,10 +343,7 @@ class CustomDrawer extends ConsumerWidget {
               title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
+                context.go('/settings');
               },
             ),
             ListTile(
@@ -403,7 +374,8 @@ class CustomDrawer extends ConsumerWidget {
 /// A reusable text button for the main desktop navigation bar.
 class _NavButton extends StatefulWidget {
   final String title;
-  const _NavButton({required this.title, Key? key}) : super(key: key);
+  final String route;
+  const _NavButton({required this.title, required this.route, Key? key}) : super(key: key);
 
   @override
   State<_NavButton> createState() => _NavButtonState();
@@ -427,30 +399,7 @@ class _NavButtonState extends State<_NavButton> {
           children: [
             TextButton(
               onPressed: () {
-                final title = widget.title;
-                if (title == 'Build Now') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const BuildNowPage()),
-                  );
-                } else if (title == 'Guides') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const GuidesPage()),
-                  );
-                } else if (title == 'Forums') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ForumsPage()),
-                  );
-                } else if (title == 'Explore Builds') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ExploreBuildsPage()),
-                  );
-                } else {
-                  print('$title clicked');
-                }
+                context.go(widget.route);
               },
               style: TextButton.styleFrom(
                 foregroundColor: _isHovering
@@ -489,19 +438,10 @@ class _SignInArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textButtonStyle = TextButton.styleFrom(
-      padding: EdgeInsets.zero,
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      alignment: Alignment.centerLeft,
-    );
-    final textStyle = theme.textTheme.bodyMedium?.copyWith(
-      fontWeight: FontWeight.bold,
-    );
+    final textStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
 
     return Row(
       children: [
-        /// A generic user icon.
         CircleAvatar(
           radius: 14,
           backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
@@ -511,28 +451,18 @@ class _SignInArea extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// "Sign In" and "Sign Up" links.
             Text('Welcome', style: theme.textTheme.bodySmall),
             Row(
               children: [
                 TextButton(
-                  style: textButtonStyle,
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                  ),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  onPressed: () => context.go('/login'),
                   child: Text('Sign In', style: textStyle),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Text('/', style: theme.textTheme.bodySmall),
-                ),
+                Text(' / ', style: theme.textTheme.bodySmall),
                 TextButton(
-                  style: textButtonStyle,
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignUpPage()),
-                  ),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  onPressed: () => context.go('/signup'),
                   child: Text('Sign Up', style: textStyle),
                 ),
               ],
@@ -549,73 +479,54 @@ class _SignInArea extends StatelessWidget {
 /// It shows the user's avatar and name and provides a dropdown menu with
 /// links to their profile, settings, and a log out option.
 class _LoggedInProfileArea extends ConsumerWidget {
-  final AppUser user;
-  const _LoggedInProfileArea({required this.user});
+  const _LoggedInProfileArea();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final authState = ref.watch(authProvider);
+
     return PopupMenuButton<String>(
       offset: const Offset(0, 40),
-
-      /// Handle navigation or actions based on the selected menu item.
       onSelected: (value) {
-        if (value == 'profile') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProfilePage()),
-          );
-        } else if (value == 'settings') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SettingsPage()),
-          );
-        } else if (value == 'logout') {
-          ref.read(authProvider.notifier).signOut();
-        }
+        if (value == 'profile') context.go('/profile');
+        if (value == 'settings') context.go('/settings');
+        if (value == 'logout') ref.read(authProvider.notifier).signOut();
       },
-
-      /// Define the items to be shown in the dropdown menu.
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(value: 'profile', child: Text('Profile')),
-        const PopupMenuItem<String>(value: 'settings', child: Text('Settings')),
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'profile', child: Text('Profile')),
+        const PopupMenuItem(value: 'settings', child: Text('Settings')),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(value: 'logout', child: Text('Log Out')),
+        const PopupMenuItem(value: 'logout', child: Text('Log Out')),
       ],
-
-      /// The child of the [PopupMenuButton] is the widget that is displayed on the AppBar.
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: theme.colorScheme.primaryContainer,
-            backgroundImage: user.photoURL != null
-                ? NetworkImage(user.photoURL!)
-                : null,
-            child: user.photoURL == null
-                ? Text(user.username.substring(0, 1).toUpperCase())
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: authState.when(
+        data: (user) {
+          if (user == null) return const _SignInArea(); // Should not happen, but as a fallback
+          return Row(
             children: [
-              Text(
-                user.username,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                child: user.photoURL == null ? Text(user.username[0].toUpperCase()) : null,
               ),
-              Text('View Profile', style: theme.textTheme.bodySmall),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.username, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('View Profile', style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+              const Icon(Icons.arrow_drop_down),
             ],
-          ),
-          const Icon(Icons.arrow_drop_down),
-        ],
+          );
+        },
+        loading: () => const SizedBox(width: 150, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+        error: (e, s) => const Icon(Icons.error),
       ),
     );
   }
 }
-
 /// A dropdown menu specifically for navigating to different PC part categories.
 class _PartsDropdownMenu extends StatefulWidget {
   const _PartsDropdownMenu();
@@ -625,23 +536,14 @@ class _PartsDropdownMenu extends StatefulWidget {
   static final List<PcPart> parts = [
     PcPart(name: 'CPU', icon: Icons.memory, type: ComponentType.cpu),
     PcPart(name: 'GPU', icon: Icons.developer_board, type: ComponentType.gpu),
-    PcPart(
-      name: 'Motherboard',
-      icon: Icons.dns,
-      type: ComponentType.motherboard,
-    ),
-    PcPart(
-      name: 'Case',
-      icon: Icons.desktop_windows_outlined,
-      type: ComponentType.pcCase,
-    ),
+    PcPart(name: 'Motherboard', icon: Icons.dns, type: ComponentType.motherboard),
+    PcPart(name: 'Case', icon: Icons.desktop_windows_outlined, type: ComponentType.pcCase),
     PcPart(name: 'Power Supply', icon: Icons.power, type: ComponentType.psu),
     PcPart(name: 'Memory', icon: Icons.sd_storage, type: ComponentType.ram),
     PcPart(name: 'Cooler', icon: Icons.air, type: ComponentType.cooler),
     PcPart(name: 'Fan', icon: Icons.wind_power, type: ComponentType.caseFan),
     PcPart(name: 'Monitor', icon: Icons.monitor, type: ComponentType.monitor),
   ];
-
   @override
   State<_PartsDropdownMenu> createState() => _PartsDropdownMenuState();
 }
@@ -659,30 +561,20 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 
   void _showDropdown() {
     if (_overlayEntry != null) return;
-
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
-    final Size size = renderBox.size;
+    final box = context.findRenderObject() as RenderBox;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
+      builder: (_) => Positioned(
         left: offset.dx,
         top: offset.dy + size.height,
         child: MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _isHoveringDropdown = true;
-            });
-          },
+          onEnter: (_) => setState(() => _isHoveringDropdown = true),
           onExit: (_) {
-            setState(() {
-              _isHoveringDropdown = false;
-            });
-            // Add a small delay before hiding to allow for clicking
+            setState(() => _isHoveringDropdown = false);
             Future.delayed(const Duration(milliseconds: 100), () {
-              if (!_isHoveringDropdown) {
-                _hideDropdown();
-              }
+              if (!_isHoveringDropdown) _hideDropdown();
             });
           },
           child: Material(
@@ -693,25 +585,18 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                ),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: _PartsDropdownMenu.parts.map((PcPart part) {
-                  return _DropdownItem(part: part, onTap: () {
-                    _hideDropdown();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PartPickerPage(
-                          componentType: part.type,
-                          currentBuild: const [],
-                        ),
-                      ),
-                    );
-                  });
+                children: _PartsDropdownMenu.parts.map((part) {
+                  return _DropdownItem(
+                    part: part,
+                    onTap: () {
+                      _hideDropdown();
+                      context.go('/parts/${part.type.name}');
+                    },
+                  );
                 }).toList(),
               ),
             ),
@@ -730,12 +615,6 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = TextStyle(
-      color: Theme.of(context).textTheme.bodyLarge?.color,
-      fontSize: 15,
-      fontWeight: FontWeight.w500,
-    );
-
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHoveringButton = true);
@@ -743,45 +622,22 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
       },
       onExit: (_) {
         setState(() => _isHoveringButton = false);
-        // Add a small delay before hiding to allow for clicking
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (!_isHoveringDropdown) {
-            _hideDropdown();
-          }
+          if (!_isHoveringDropdown) _hideDropdown();
         });
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          /// A "Parts" button that navigates to a default part picker page (CPU).
-          /// This is useful for users who just want to start browsing parts.
           TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PartPickerPage(
-                    componentType: ComponentType.cpu,
-                    currentBuild: [],
-                  ),
-                ),
-              );
-            },
+            onPressed: () => context.go('/parts/cpu'),
             style: TextButton.styleFrom(
-              foregroundColor: _isHoveringButton
-                  ? Theme.of(context).colorScheme.secondary
-                  : Theme.of(context).textTheme.bodyLarge?.color,
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
+              foregroundColor: _isHoveringButton ? Theme.of(context).colorScheme.secondary : null,
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            child: Text('Parts', style: textStyle),
+            child: const Text('Parts'),
           ),
-
-          /// Animated underline on hover
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             height: 2,

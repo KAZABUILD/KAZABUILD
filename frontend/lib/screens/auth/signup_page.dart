@@ -12,7 +12,10 @@ library;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/privacy_policy_dialog.dart';
@@ -20,23 +23,35 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:intl/intl.dart';
 
 /// The main widget for the sign-up page.
-class SignUpPage extends StatefulWidget {
+class SignUpPage extends ConsumerStatefulWidget {
   const SignUpPage({super.key});
 
   @override
-  State<SignUpPage> createState() => _SignUpPageState();
+  ConsumerState<SignUpPage> createState() => _SignUpPageState();
 }
 
 /// The state for the [SignUpPage].
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpPageState extends ConsumerState<SignUpPage> {
   /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers for all text input fields.
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _displayNameController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
   /// Controller for the birth date text field to programmatically set its value.
   final _birthDateController = TextEditingController();
+  // Adres alanları için yeni controller'lar
+  final _countryController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _streetNumberController = TextEditingController();
 
   /// The currently selected gender from the dropdown.
   String? _selectedGender;
@@ -52,6 +67,12 @@ class _SignUpPageState extends State<SignUpPage> {
     'Prefer not to say',
   ];
 
+  /// Tracks the loading state of the sign-up process.
+  bool _isLoading = false;
+
+  /// Tracks whether the user has accepted the terms and policy.
+  bool _termsAccepted = false;
+
   /// Displays a date picker dialog and updates the birth date text field.
   /// This is triggered when the user taps the 'Birth Date' text field.
   Future<void> _selectDate(BuildContext context) async {
@@ -64,7 +85,7 @@ class _SignUpPageState extends State<SignUpPage> {
     // If a date is selected, format it and set it as the text field's value.
     if (picked != null) {
       setState(() {
-        _birthDateController.text = DateFormat('dd/MM/yyyy').format(picked);
+        _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
     }
   }
@@ -72,7 +93,17 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   /// Cleans up the controller when the widget is removed from the widget tree.
   void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _displayNameController.dispose();
+    _phoneNumberController.dispose();
     _birthDateController.dispose();
+    _countryController.dispose();
+    _cityController.dispose();
+    _streetController.dispose();
+    _postalCodeController.dispose();
+    _streetNumberController.dispose();
     super.dispose();
   }
 
@@ -134,28 +165,40 @@ class _SignUpPageState extends State<SignUpPage> {
                                 const SizedBox(height: 32),
 
                                 /// Social sign-up buttons for quick registration.
-                                const SocialButton(
+                                SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
+                                  onPressed: () {
+                                    //ref.read(authProvider.notifier).signInWithGoogle();
+                                  },
                                 ),
-                                const SizedBox(height: 12),
-                                const SocialButton(
-                                  text: 'Continue with Apple',
-                                  iconPath: 'apple_icon.svg',
-                                ),
-                                const OrDivider(text: 'OR CONTINUE WITH EMAIL'),
+                                
 
                                 /// Form fields for collecting user details.
                                 CustomTextField(
+                                  controller: _usernameController,
                                   label: 'Username',
                                   icon: Icons.person_outline,
-                                  validator: (value) =>
-                                      (value == null || value.isEmpty)
-                                      ? 'Please enter a username'
-                                      : null,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'Please enter a username';
+                                    if (value.length < 8) return 'Username must be at least 8 characters long';
+                                    return null;
+                                  },
                                 ),
                                 const SizedBox(height: 16),
                                 CustomTextField(
+                                  controller: _displayNameController,
+                                  label: 'Display Name',
+                                  icon: Icons.badge_outlined,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'Please enter a display name';
+                                    if (value.length < 8) return 'Display Name must be at least 8 characters long';
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                CustomTextField(
+                                  controller: _emailController,
                                   label: 'Email address',
                                   icon: Icons.email_outlined,
                                   keyboardType: TextInputType.emailAddress,
@@ -172,6 +215,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                                 const SizedBox(height: 16),
                                 CustomTextField(
+                                  controller: _passwordController,
                                   label: 'Password',
                                   icon: Icons.lock_outline,
                                   isPassword: true,
@@ -179,6 +223,13 @@ class _SignUpPageState extends State<SignUpPage> {
                                       (value != null && value.length < 6)
                                       ? 'Password must be at least 6 characters'
                                       : null,
+                                ),
+                                const SizedBox(height: 16),
+                                CustomTextField(
+                                  controller: _phoneNumberController,
+                                  label: 'Phone Number (Optional)',
+                                  icon: Icons.phone_outlined,
+                                  keyboardType: TextInputType.phone,
                                 ),
                                 const SizedBox(height: 16),
 
@@ -216,33 +267,82 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
 
                                 const SizedBox(height: 16),
+                                // --- Detaylı Adres Alanları ---
                                 CustomTextField(
-                                  label: 'Address',
+                                  controller: _countryController,
+                                  label: 'Country (Optional)',
+                                  icon: Icons.public_outlined,
+                                ),
+                                const SizedBox(height: 16),
+                                CustomTextField(
+                                  controller: _cityController,
+                                  label: 'City (Optional)',
+                                  icon: Icons.location_city_outlined,
+                                ),
+                                const SizedBox(height: 16),
+                                CustomTextField(
+                                  controller: _streetController,
+                                  label: 'Street (Optional)',
                                   icon: Icons.home_outlined,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: CustomTextField(
+                                        controller: _postalCodeController,
+                                        label: 'Postal Code',
+                                        icon: Icons.local_post_office_outlined,
+                                        keyboardType: TextInputType.text,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: CustomTextField(
+                                        controller: _streetNumberController,
+                                        label: 'Street No.',
+                                        icon: Icons.signpost_outlined,
+                                        keyboardType:
+                                            TextInputType.numberWithOptions(
+                                                decimal: false),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+
+                                /// A row containing the checkbox and the tappable text for terms and policy.
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Checkbox(
+                                      value: _termsAccepted,
+                                      onChanged: (bool? value) {
+                                        setState(() {
+                                          _termsAccepted = value ?? false;
+                                        });
+                                      },
+                                    ),
+                                    const Expanded(
+                                      child: _TermsAndPolicyText(),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 24),
 
                                 /// The primary button to submit the form and create the account.
                                 PrimaryButton(
-                                  text: 'Create Account',
-                                  onPressed: () {
-                                    // Validates all form fields before proceeding.
-                                    if (_formKey.currentState!.validate()) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Creating account...'),
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  text: _isLoading ? 'Creating Account...' : 'Create Account',
+                                  onPressed: _isLoading || !_termsAccepted
+                                      ? null
+                                      : _createAccount,
                                 ),
                                 const SizedBox(height: 24),
 
-                                /// A text widget with a tappable link to the privacy policy.
-                                const _TermsAndPolicyText(),
-                                const SizedBox(height: 16),
+                                /// The `_TermsAndPolicyText` is now inside the Row with the Checkbox.
+                                /// This space is adjusted.
+                                // const _TermsAndPolicyText(),
+                                // const SizedBox(height: 16),
 
                                 /// A link to navigate to the login page for existing users.
                                 Row(
@@ -283,6 +383,88 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
+
+  /// Handles the account creation process.
+ void _createAccount() async {
+  
+  FocusScope.of(context).unfocus();
+
+  // Show a snackbar if terms are not accepted.
+  if (!_termsAccepted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You must accept the terms and privacy policy to continue.'),
+      ),
+    );
+    return;
+  }
+  if (!_formKey.currentState!.validate()) return;
+
+  setState(() => _isLoading = true);
+  try {
+    
+    final Map<String, dynamic> addressData = {
+      'country': _countryController.text,
+      'city': _cityController.text,
+      'street': _streetController.text,
+      'postalCode': _postalCodeController.text,
+      // Backend expects string for streetNumber and apartmentNumber
+      'streetNumber': _streetNumberController.text.isNotEmpty ? _streetNumberController.text : null,
+      'apartmentNumber': null, // This field is not in the UI, send null.
+    }..removeWhere((key, value) => value == null || (value is String && value.isEmpty));
+
+    
+    final Map<String, dynamic> payload = {
+      'login': _usernameController.text,
+      'displayName': _displayNameController.text,
+      'email': _emailController.text,
+      'password': _passwordController.text,
+      'phoneNumber': _phoneNumberController.text.isNotEmpty ? _phoneNumberController.text : null,
+      'description': '',
+      'gender': _selectedGender ?? 'Unknown',
+      'imageUrl': 'wwwroot/defaultuser.png', // Changed to camelCase to match Swagger example
+      'birth': _birthDateController.text.isNotEmpty
+          ? DateTime.parse(_birthDateController.text).toIso8601String()
+          : DateTime(2000, 1, 1).toIso8601String(),
+      'registeredAt': DateTime.now().toIso8601String(),
+      'profileAccessibility': 'PUBLIC',
+      'theme': 'DARK',
+      'language': 'ENGLISH',
+      'receiveEmailNotifications': true,
+      'enableDoubleFactorAuthentication': false,
+      'redirectUrl': '/login',
+      'location': '',
+      'address': addressData.isNotEmpty ? addressData : null, // Send null if address is empty
+    };
+
+   
+    final successMessage =
+        await ref.read(authProvider.notifier).signUp(payload);
+
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: Colors.green,
+        ),
+      );
+      GoRouter.of(context).go('/login');
+    }
+  } catch (error) {
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
 }
 
 /// A text widget that displays the terms of service and privacy policy agreement.

@@ -89,13 +89,17 @@ class SocialButton extends StatelessWidget {
   /// The asset path for the social media icon (can be SVG or other image formats).
   final String iconPath;
 
+  /// The callback function that is executed when the button is pressed.
+  final VoidCallback? onPressed;
+
   /// Creates a styled button for social media authentication.
-  const SocialButton({super.key, required this.text, required this.iconPath});
+  const SocialButton(
+      {super.key, required this.text, required this.iconPath, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.8),

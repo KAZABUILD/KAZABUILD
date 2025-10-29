@@ -5,6 +5,7 @@
 ///   details, metadata, and associated replies.
 /// - [PostReply]: Represents a single comment or reply within a [ForumPost].
 library;
+import 'package:frontend/models/explore_build_model.dart';
 
 import 'package:frontend/models/auth_provider.dart';
 
@@ -14,7 +15,7 @@ class PostReply {
   final String id;
 
   /// The user who wrote the reply.
-  final AppUser author;
+  final String authorId;
 
   /// The text content of the reply.
   final String content;
@@ -25,10 +26,21 @@ class PostReply {
   /// Creates an instance of a post reply.
   PostReply({
     required this.id,
-    required this.author,
+    required this.authorId,
     required this.content,
     required this.createdAt,
   });
+
+  /// Creates a `PostReply` instance from a JSON map.
+  /// This is used when parsing replies included with a ForumPost.
+  factory PostReply.fromJson(Map<String, dynamic> json) {
+    return PostReply(
+      id: json['id'],
+      authorId: json['userId'], // Backend UserComment model uses 'userId'
+      content: json['content'],
+      createdAt: DateTime.parse(json['postedAt']), // Assuming replies also have 'postedAt'
+    );
+  }
 }
 
 /// Represents a single forum post or discussion thread.
@@ -40,10 +52,10 @@ class ForumPost {
   final String title;
 
   /// The user who created the post.
-  final AppUser author;
+  final String creatorId;
 
   /// The category the post belongs to (e.g., "Troubleshooting", "Build Advice").
-  final String category;
+  final String topic;
 
   /// The main text content of the post.
   final String content;
@@ -51,11 +63,9 @@ class ForumPost {
   /// The date and time when the post was created.
   final DateTime createdAt;
 
-  /// The timestamp of the most recent activity (e.g., a new reply).
-  final DateTime lastActivity;
-
-  /// The number of times the post has been viewed.
-  final int viewCount;
+  // --- Fields from original model, can be added back if backend supports them ---
+  // final DateTime lastActivity;
+  // final int viewCount;
 
   /// A list of all replies to this post.
   final List<PostReply> replies;
@@ -66,24 +76,42 @@ class ForumPost {
   /// A list of tags associated with the post for easier searching.
   final List<String> tags;
 
-  /// The ID of a [CommunityBuild] that is attached to this post. Null if none.
-  final String? attachedBuildId;
+  /// The PC build associated with this forum post, if any.
+  final Build? build;
 
   /// Creates an instance of a forum post.
   ForumPost({
     required this.id,
     required this.title,
-    required this.author,
-    required this.category,
+    required this.creatorId,
+    required this.topic,
     required this.content,
     required this.createdAt,
-    required this.lastActivity,
-    // Defaults to 0 if not provided.
-    this.viewCount = 0,
     // Defaults to an empty list if not provided.
     this.replies = const [],
     this.acceptedReplyId,
     this.tags = const [],
-    this.attachedBuildId,
+    this.build,
   });
+
+  /// Creates a `ForumPost` instance from a JSON map returned by the backend.
+  factory ForumPost.fromJson(Map<String, dynamic> json) {
+    return ForumPost(
+      id: json['id'],
+      title: json['title'],
+      creatorId: json['creatorId'],
+      topic: json['topic'],
+      content: json['content'],
+      createdAt: DateTime.parse(json['postedAt']), // Backend uses 'postedAt'
+      // Handle replies if they are included in the JSON response.
+      // Backend's ForumPost has a 'comments' list which maps to 'replies'.
+      replies: (json['comments'] as List<dynamic>?)
+              ?.map((replyJson) => PostReply.fromJson(replyJson))
+              .toList() ??
+          const [],
+      tags: (json['tags'] as List<dynamic>?)?.map((tag) => tag.toString()).toList() ?? const [],
+      // Parse the nested build object if it exists.
+      build: json['build'] != null ? Build.fromJson(json['build']) : null,
+    );
+  }
 }

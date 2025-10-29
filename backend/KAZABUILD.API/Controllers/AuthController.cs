@@ -55,6 +55,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -285,6 +288,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -382,6 +388,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -499,6 +508,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -535,11 +547,12 @@ namespace KAZABUILD.API.Controllers
                 PhoneNumber = dto.PhoneNumber,
                 Description = dto.Description,
                 Gender = dto.Gender,
+                PasswordHash = _hasher.Hash(dto.Password),
                 UserRole = UserRole.UNVERIFIED,
                 ImageUrl = dto.ImageUrl,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
-                Address = dto.Address,
+                Address = dto.Address != null ? new Domain.ValueObjects.Address(dto.Address.Country, dto.Address.Province, dto.Address.City, dto.Address.Street, dto.Address.StreetNumber, dto.Address.PostalCode, dto.Address.ApartmentNumber) : null,
                 ProfileAccessibility = dto.ProfileAccessibility,
                 Theme = dto.Theme,
                 Language = dto.Language,
@@ -746,6 +759,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -870,6 +886,9 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Get user id from the request, or use Guid.Empty for anonymous users
+            var currentUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : Guid.Empty;
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();

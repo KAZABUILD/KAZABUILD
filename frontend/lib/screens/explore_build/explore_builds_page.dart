@@ -10,30 +10,20 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
-import 'package:frontend/screens/explore_build/build_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
 /// The main widget for the "Explore Builds" screen.
-class ExploreBuildsPage extends StatefulWidget {
+class ExploreBuildsPage extends ConsumerWidget {
   const ExploreBuildsPage({super.key});
 
   @override
-  State<ExploreBuildsPage> createState() => _ExploreBuildsPageState();
-}
-
-/// The state for the [ExploreBuildsPage].
-///
-/// This class manages the list of builds, search queries, and filter states.
-class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
-  // TODO: Replace this mock data with a list fetched from a backend service,
-  // ideally using a Riverpod FutureProvider to handle loading and error states.
-  final List<CommunityBuild> _builds = [];
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final scaffoldKey = GlobalKey<ScaffoldState>();
     final screenWidth = MediaQuery.of(context).size.width;
 
     /// Calculate the number of columns for the grid based on screen width,
@@ -41,7 +31,7 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
     final crossAxisCount = (screenWidth / 350).floor().clamp(1, 4);
 
     return Scaffold(
-      key: _scaffoldKey,
+      key: scaffoldKey,
       // The navigation drawer that slides in from the left on mobile.
       drawer: CustomDrawer(showProfileArea: true),
       // The main container with a gradient background.
@@ -80,26 +70,23 @@ class _ExploreBuildsPageState extends State<ExploreBuildsPage> {
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
                       children: [
-                        _Header(),
+                        const _Header(),
                         const SizedBox(height: 24),
-
-                        /// The main grid view that displays the build cards.
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 24,
-                                mainAxisSpacing: 24,
-                                childAspectRatio: 0.8,
+                        ref.watch(allBuildsProvider).when(
+                              data: (builds) => GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 24,
+                                  mainAxisSpacing: 24,
+                                  childAspectRatio: 0.8,
+                                ),
+                                itemCount: builds.length,
+                                itemBuilder: (context, index) => _BuildCard(buildData: builds[index]),
                               ),
-                          // TODO: This itemCount should be driven by the length of the list
-                          // of builds fetched from the backend.
-                          itemCount: _builds.length,
-                          itemBuilder: (context, index) {
-                            return _BuildCard(communityBuild: _builds[index]);
-                          },
+                              loading: () => const Center(child: CircularProgressIndicator()),
+                              error: (err, stack) => Center(child: Text('Error: $err')),
                         ),
                       ],
                     ),
@@ -146,6 +133,7 @@ class WavePainter extends CustomPainter {
 
 /// The header section of the page, containing search, filter, and sort controls.
 class _Header extends StatelessWidget {
+  const _Header();
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -293,26 +281,20 @@ class _StyledButton extends StatelessWidget {
 ///
 /// Tapping on the card navigates to the [BuildDetailPage] for that build.
 class _BuildCard extends StatelessWidget {
-  final CommunityBuild communityBuild;
+  final Build buildData;
 
-  const _BuildCard({required this.communityBuild});
+  const _BuildCard({required this.buildData});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      // Using a Card for consistent elevation and shape.
       elevation: 4,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BuildDetailPage(build: communityBuild),
-            ),
-          );
+          context.go('/build/${buildData.id}');
         },
         borderRadius: BorderRadius.circular(20),
         child: Column(
@@ -325,13 +307,11 @@ class _BuildCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-                  child: Image.network(
-                    communityBuild.imageUrl,
+                  child: buildData.imageUrl != null ? Image.network(
+                    buildData.imageUrl!,
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
-
-                    /// Shows a loading indicator while the image is being fetched.
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
@@ -340,14 +320,13 @@ class _BuildCard extends StatelessWidget {
                         child: const Center(child: CircularProgressIndicator()),
                       );
                     },
-
-                    /// Shows an error icon if the image fails to load.
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 200,
                       color: theme.colorScheme.error.withOpacity(0.1),
                       child: const Center(child: Icon(Icons.error)),
                     ),
-                  ),
+                  ) : Container(height: 200, color: theme.colorScheme.surface,
+                      child: const Center(child: Icon(Icons.image_not_supported))),
                 ),
               ],
             ),
@@ -359,83 +338,56 @@ class _BuildCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                    /// Build title and star rating.
                     children: [
                       Expanded(
                         child: Text(
-                          communityBuild.title,
+                          buildData.name,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            communityBuild.rating.toString(),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ],
-                      ),
+                      // TODO: Add rating when available
+                      const Icon(Icons.star_border, color: Colors.amber, size: 16),
                     ],
                   ),
-
-                  /// Total price of the build.
-                  Text(
-                    '\$${communityBuild.totalPrice.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                   const SizedBox(height: 8),
-                  for (var component in communityBuild.components.take(3))
-                    /// A preview of the first few components in the build.
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text(
-                        '• ${component.name}',
-                        style: theme.textTheme.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                  // TODO: Add price when available
+                  Text(
+                    'Price not available',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
-
-            /// Spacer to push the author info to the bottom of the card.
             const Spacer(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 8.0),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  if (buildData.author != null) ...[
+                    CircleAvatar(
                     radius: 12,
-                    backgroundColor: theme.colorScheme.primary,
-
-                    /// Author's initial as an avatar.
-                    child: Text(
-                      communityBuild.author.username.substring(0, 1),
+                    backgroundImage: buildData.author!.photoURL != null ? NetworkImage(buildData.author!.photoURL!) : null,
+                    child: buildData.author!.photoURL == null ? Text(
+                      buildData.author!.username.substring(0, 1).toUpperCase(),
                       style: TextStyle(
-                        color: theme.colorScheme.onPrimary,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontSize: 10,
+                        fontWeight: FontWeight.bold
                       ),
-                    ),
+                    ) : null,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      communityBuild.author.username,
-                      style: theme.textTheme.bodyMedium,
-                      overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Text(
+                        buildData.author!.username,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

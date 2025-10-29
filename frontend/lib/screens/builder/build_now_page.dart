@@ -6,11 +6,15 @@
 /// The state of the build is managed using Riverpod, with `BuildNotifier` holding
 /// the list of selected components. The page is responsive, adapting its layout
 /// for mobile and desktop screens.
+/// for mobile and desktop screens.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/auth_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/currency_provider.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
@@ -65,6 +69,54 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
       state = currentState;
     }
   }
+
+  /// Resets the build to its initial empty state.
+  void clearBuild() {
+    state = _initialState.map((c) => PcComponent(name: c.name, type: c.type)).toList();
+  }
+
+  /// Saves the current build to the backend.
+  Future<String> saveBuild(WidgetRef ref, String name, String description) async {
+    final buildService = ref.read(buildServiceProvider);
+    final userId = ref.read(authProvider).valueOrNull?.uid;
+
+    if (userId == null) {
+      throw Exception('You must be logged in to save a build.');
+    }
+
+    // 1. Create the main build entry.
+    final newBuildId = await buildService.createBuild({
+      'userId': userId,
+      'name': name,
+      'description': description,
+      'status': 'DRAFT', // Save as draft by default
+    });
+
+    // 2. Add each selected component to the newly created build.
+    for (final componentSlot in state) {
+      if (componentSlot.selectedProduct != null) {
+        await buildService.addComponentToBuild(
+          newBuildId,
+          componentSlot.selectedProduct!.id,
+          1, // Assuming quantity is always 1 for now
+        );
+      }
+    }
+    return newBuildId;
+  }
+
+  /// Publishes a build by updating its status.
+  Future<void> publishBuild(WidgetRef ref, String buildId) async {
+    final buildService = ref.read(buildServiceProvider);
+    try {
+      await buildService.updateBuild(buildId, {'status': 'PUBLISHED'});
+      // Invalidate the providers so the UI updates with the new status
+      ref.invalidate(allBuildsProvider);
+      ref.invalidate(userBuildsProvider(ref.read(authProvider).value!.uid));
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 /// The global Riverpod provider for accessing the [BuildNotifier].
@@ -117,38 +169,22 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   // TODO: This should be generated dynamically based on the build's state.
   final String buildLink = 'https://kazabuild.com/b/somerandom123';
 
-  // TODO: This local `_components` list is currently a duplicate of the state in `buildProvider`.
-  // For better state management, this should be removed and the UI should directly `ref.watch(buildProvider)`.
-  final List<PcComponent> _components = [
-    PcComponent(name: 'CPU', type: ComponentType.cpu),
-    PcComponent(name: 'Motherboard', type: ComponentType.motherboard),
-    PcComponent(name: 'CPU Cooler', type: ComponentType.cooler),
-    PcComponent(name: 'Memory (RAM)', type: ComponentType.ram),
-    PcComponent(name: 'Storage', type: ComponentType.storage),
-    PcComponent(name: 'Video Card', type: ComponentType.gpu),
-    PcComponent(name: 'Power Supply', type: ComponentType.psu),
-    PcComponent(name: 'Case', type: ComponentType.pcCase),
-    PcComponent(name: 'Monitor', type: ComponentType.monitor),
-  ];
-
   /// A computed property to check if any components have been selected in the build.
-  bool get _isBuildEmpty {
-    return _components.every((component) => component.selectedProduct == null);
+  bool _isBuildEmpty(List<PcComponent> components) {
+    return components.every((component) => component.selectedProduct == null);
   }
 
   /// A computed property to calculate the total price of all selected components.
-  double get _totalPrice {
-    return _components.fold(
+  double _totalPrice(List<PcComponent> components) {
+    return components.fold(
       0.0,
       (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
     );
   }
 
   /// A computed property to calculate the estimated power consumption in watts.
-  /// This is based on the Thermal Design Power (TDP) of the CPU and GPU.
-  // TODO: Make this calculation more comprehensive by including other components.
-  int get _estimatedWattage {
-    return _components.fold(0, (sum, item) {
+  int _estimatedWattage(List<PcComponent> components) {
+    return components.fold(0, (sum, item) {
       final product = item.selectedProduct;
       if (product is CPUComponent) {
         return sum + product.thermalDesignPower.toInt();
@@ -156,14 +192,30 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       if (product is GPUComponent) {
         return sum + product.thermalDesignPower.toInt();
       }
+      // Add wattage for other components if available
+      if (product is PowerSupplyComponent) {
+        // PSU itself doesn't add to wattage, but we could estimate other parts
+      }
+      if (product is MotherboardComponent) {
+        // Estimate ~30-50W for motherboard
+        return sum + 40;
+      }
+      if (product is MemoryComponent) {
+        // Estimate ~5W per stick
+        return sum + (5 * product.moduleQuantity);
+      }
+      if (product is StorageComponent) {
+        // Estimate ~10W for SSD/HDD
+        return sum + 10;
+      }
       return sum;
     });
   }
 
   /// A computed property to determine the overall compatibility status of the build.
   // TODO: Implement a real compatibility check engine instead of this placeholder logic.
-  String get _compatibilityStatus {
-    final selectedComponents = _components
+  String _compatibilityStatus(List<PcComponent> components) {
+    final selectedComponents = components
         .where((c) => c.selectedProduct != null)
         .toList();
     if (selectedComponents.isEmpty) {
@@ -175,15 +227,152 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         : 'Compatibility issues found!';
   }
 
+  /// Shows a dialog to get the build name and description, then saves it.
+  Future<String?> _showSaveBuildDialog() async {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final bool? shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Build'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Build Name'),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Please enter a name' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: 'Description (Optional)'),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave == true && mounted) {
+      try {
+        final newBuildId = await ref
+            .read(buildProvider.notifier)
+            .saveBuild(ref, nameController.text, descriptionController.text);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Build saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        return newBuildId;
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save build: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Clears the current build, with a confirmation dialog if it's not empty.
+  Future<void> _startNewBuild() async {
+    final components = ref.read(buildProvider);
+    if (_isBuildEmpty(components)) {
+      ref.read(buildProvider.notifier).clearBuild();
+      return;
+    }
+
+    final bool? shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start New Build?'),
+        content: const Text('You have unsaved changes. Are you sure you want to clear the current build?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear Build'),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldClear == true) {
+      ref.read(buildProvider.notifier).clearBuild();
+    }
+  }
+
+  /// Saves and then publishes the build to the Explore page.
+  void _publishBuild() async {
+    // Check if user is logged in
+    final user = ref.read(authProvider).valueOrNull;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to publish your build.')),
+      );
+      return;
+    }
+
+    // Prompt the user to save the build first, which returns the new ID.
+    final newBuildId = await _showSaveBuildDialog();
+
+    // If the build was saved, proceed to publish it.
+    if (newBuildId != null && mounted) {
+      try {
+        await ref.read(buildProvider.notifier).publishBuild(ref, newBuildId);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Build published successfully!'),
+          backgroundColor: Colors.green,
+        ));
+        // Navigate to the explore page to see the newly published build.
+        context.go('/explore');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish build: ${e.toString()}')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final components = ref.watch(buildProvider);
     final isMobile = MediaQuery.of(context).size.width < 700;
 
     /// Watches the selected currency and gets its details for price conversion.
     final selectedCurrency = ref.watch(currencyProvider);
     final currencyData = currencyDetails[selectedCurrency]!;
-    final convertedPrice = _totalPrice * currencyData.exchangeRate;
+    final totalPrice = _totalPrice(components);
+    final convertedPrice = totalPrice * currencyData.exchangeRate;
+    final estimatedWattage = _estimatedWattage(components);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -202,34 +391,33 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                   _TopBar(
                     theme: theme,
                     buildLink: buildLink,
-                    components: _components,
+                    components: components,
                     totalPrice: convertedPrice,
                     currencyData: currencyData,
-                    estimatedWattage: _estimatedWattage,
+                    estimatedWattage: estimatedWattage,
+                    onSave: _showSaveBuildDialog,
+                    onNew: _startNewBuild, // This remains the same
+                    onPost: _publishBuild, // Changed to publish function
                     isMobile: isMobile,
                   ),
                   // The compatibility and price bar is only shown if the build is not empty.
-                  if (!_isBuildEmpty) ...[
+                  if (!_isBuildEmpty(components)) ...[
                     const SizedBox(height: 16),
                     _CompatibilityAndPriceBar(
                       theme: theme,
                       totalPrice: convertedPrice,
                       currencyData: currencyData,
-                      statusMessage: _compatibilityStatus,
+                      statusMessage: _compatibilityStatus(components),
                       isMobile: isMobile,
                     ),
                   ],
                   const SizedBox(height: 24),
                   _ComponentTable(
                     theme: theme,
-                    components: _components,
-
-                    /// Callback to remove a component from the build.
-                    /// This updates the local state.
+                    components: components,
                     onRemove: (index) {
-                      setState(() {
-                        _components[index].selectedProduct = null;
-                      });
+                      final componentType = components[index].type;
+                      ref.read(buildProvider.notifier).removeComponent(componentType);
                     },
                     onAdd: (index) async {
                       /// Navigates to the PartPickerPage to let the user select a component.
@@ -239,18 +427,15 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => PartPickerPage(
-                                componentType: _components[index].type,
-                                currentBuild: _components,
+                                componentType: components[index].type,
+                                currentBuild: components,
                               ),
                             ),
                           );
 
                       /// If a component was selected and the widget is still mounted, update the state.
                       if (selectedComponent != null && mounted) {
-                        setState(() {
-                          _components[index].selectedProduct =
-                              selectedComponent;
-                        });
+                        ref.read(buildProvider.notifier).addComponent(selectedComponent);
                       }
                     },
                     isMobile: isMobile,
@@ -265,6 +450,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   }
 }
 
+
 /// The top bar of the builder page, containing the build link and action buttons.
 class _TopBar extends StatelessWidget {
   final ThemeData theme;
@@ -273,6 +459,9 @@ class _TopBar extends StatelessWidget {
   final double totalPrice;
   final CurrencyData currencyData;
   final int estimatedWattage;
+  final VoidCallback onSave;
+  final VoidCallback onNew;
+  final VoidCallback onPost;
   final bool isMobile; // Added isMobile
 
   const _TopBar({
@@ -282,6 +471,9 @@ class _TopBar extends StatelessWidget {
     required this.totalPrice,
     required this.currencyData,
     required this.estimatedWattage,
+    required this.onSave,
+    required this.onNew,
+    required this.onPost,
     required this.isMobile, // Added isMobile
   });
 
@@ -358,7 +550,7 @@ class _TopBar extends StatelessWidget {
                     ),
                     const Spacer(),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: onPost,
                       icon: const Icon(Icons.send, size: 18),
                       label: const Text('Post Build'),
                       style: ElevatedButton.styleFrom(
@@ -372,13 +564,22 @@ class _TopBar extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: onNew,
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('New Build'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primaryContainer,
                       foregroundColor: theme.colorScheme.onPrimaryContainer,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: onSave,
+                    icon: const Icon(Icons.save_outlined, size: 18),
+                    label: const Text('Save Build'),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -420,7 +621,7 @@ class _TopBar extends StatelessWidget {
                 ),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onPost,
                   icon: const Icon(Icons.send, size: 18),
                   label: const Text('Post Build'),
                   style: ElevatedButton.styleFrom(
@@ -430,12 +631,21 @@ class _TopBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onNew,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('New Build'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primaryContainer,
                     foregroundColor: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: onSave,
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Save Build'),
+                  style: ElevatedButton.styleFrom(
+                    // Standard elevated button style
                   ),
                 ),
                 const Spacer(),
