@@ -6,10 +6,15 @@ namespace KAZABUILD.Tests.ControllerServices;
 public class AuthControllerClient
 {
     private readonly HttpClient _client;
+    private readonly string? _ipAddress;
 
-    public AuthControllerClient(HttpClient client)
+    public AuthControllerClient(HttpClient client, string? ipAddress = null)
     {
         _client = client;
+        _ipAddress = ipAddress;
+
+        _client.DefaultRequestHeaders.Remove("X-Forwarded-For");
+        _client.DefaultRequestHeaders.Add("X-Forwarded-For", _ipAddress);
     }
 
     public async Task<HttpResponseMessage> Login(LoginDto dto)

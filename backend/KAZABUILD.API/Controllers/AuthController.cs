@@ -225,7 +225,7 @@ namespace KAZABUILD.API.Controllers
                     updatedBy = currentUserId
                 });
 
-                //Return a success response with 
+                //Return a success response with
                 return Ok(new { code = "2FA_REQUIRED", userId = user.Id });
             }
 
@@ -317,7 +317,7 @@ namespace KAZABUILD.API.Controllers
             //Get the user the token was for
             var user = await _db.Users.FirstAsync(u => u.Id == token.UserId);
 
-            //Update the token usage time 
+            //Update the token usage time
             token.UsedAt = DateTime.UtcNow;
             token.LastEditedAt = DateTime.UtcNow;
 
@@ -885,7 +885,7 @@ namespace KAZABUILD.API.Controllers
             //Update the user in the database
             _db.Users.Update(user);
 
-            //Update the token usage time 
+            //Update the token usage time
             token.UsedAt = DateTime.UtcNow;
             token.LastEditedAt = DateTime.UtcNow;
 
