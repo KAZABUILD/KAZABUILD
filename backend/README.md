@@ -11,7 +11,7 @@
 ## Migrations
  - `cd backend` to get into the main backend folder in terminal.
  - `dotnet ef migrations add InitialCreate --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to create the initial database migration. If there is one already create a different one or just apply it.
- - `dotnet ef database update` to apply all migrations.
+ - `dotnet ef database update --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to apply all migrations.
  - The app will automatically apply migrations when run.
  - Migrations can be reviewed in `backend/KAZABUILD.Infrastructure/Migrations`.
 
@@ -31,7 +31,7 @@
      - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`.
    - Replace the table_name and field_name with proper database context table name and fields used in search in the controller.
  - The migrations have to be deleted and remade in order for the application to run with full-text search.
-   - `Update-Database -Target:0` can be used to revert migrations to the start.
+   - `dotnet ef Update-Database -TargetMigration:$InitialDatabase --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` can be used to revert migrations to the start.
 
 ## NuGet Packages:
  - `MediatR`
@@ -239,7 +239,9 @@ All models have protections against adding invalid values but any call made shou
    - `Id` -> automatically assigned GUID
    - `SenderId` -> GUID storing the user's id that sent the message
    - `ReceiverId` -> GUID storing the user's id that received the message
-   - `Content` -> string storing the html text in the message
+   - `Content` -> string storing the html text in the message, this field is returned through DTOs but not stored in the model
+   - `CipherText` -> string storing the encrypted content
+   - `IV` -> string storing the initialization vector used for encryption
    - `Title` -> string storing the title of the message
    - `SentAt` -> date object storing when the message has been sent
    - `IsRead` -> boolean storing whether the message was read by the user
@@ -363,9 +365,9 @@ All models have protections against adding invalid values but any call made shou
  - CaseFanComponent (fan attached to the case for cooling)
    - `Size` -> decimal storing the size of the fan in mm
    - `Quantity` -> integer storing the number of fans included
-   - `MinAirflow` -> decimal storing the minimum airflow in CMM
+   - `MinAirflow` -> nullable decimal storing the minimum airflow in CMM
    - `MaxAirflow` -> nullable decimal storing the maximum airflow in CMM
-   - `MinNoiseLevel` -> decimal storing the minimum noise level in dBAsize of the fan in mm
+   - `MinNoiseLevel` -> nullable decimal storing the minimum noise level in dBAsize of the fan in mm
    - `MaxNoiseLevel` -> nullable decimal storing the maximum noise level in dBA
    - `PulseWidthModulation` -> boolean storing whether the fan supports Pulse Width Modulation for speed control
    - `LEDType` -> nullable string storing what type of LED type is in the fan

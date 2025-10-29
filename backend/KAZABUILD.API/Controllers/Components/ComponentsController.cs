@@ -523,7 +523,10 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             changedFields.Add("MinAirflow: " + ((CaseFanComponent)component).MinAirflow);
 
-                            ((CaseFanComponent)component).MinAirflow = (decimal)caseFanDto.MinAirflow;
+                            if (caseFanDto.MinAirflow == 0)
+                                ((CaseFanComponent)component).MinAirflow = null;
+                            else
+                                ((CaseFanComponent)component).MinAirflow = (decimal)caseFanDto.MinAirflow;
                         }
                         if (caseFanDto.MaxAirflow != null)
                         {
@@ -538,7 +541,10 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             changedFields.Add("MinNoiseLevel: " + ((CaseFanComponent)component).MinNoiseLevel);
 
-                            ((CaseFanComponent)component).MinNoiseLevel = (decimal)caseFanDto.MinNoiseLevel;
+                            if (caseFanDto.MinNoiseLevel == 0)
+                                ((CaseFanComponent)component).MinNoiseLevel = null;
+                            else
+                                ((CaseFanComponent)component).MinNoiseLevel = (decimal)caseFanDto.MinNoiseLevel;
                         }
                         if (caseFanDto.MaxNoiseLevel != null)
                         {
