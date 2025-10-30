@@ -1,0 +1,63 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace KAZABUILD.Application.DTOs.Users.UserActivity
+{
+    public class GetUserActivityDto
+    {
+        //Filter By fields
+        public List<Guid>? UserId { get; set; }
+
+        public List<string>? ActivityType { get; set; }
+
+        public List<Guid>? TargetId { get; set; }
+
+        public DateTime? TimestampStart { get; set; }
+
+        public DateTime? TimestampEnd { get; set; }
+
+        //Additional database information
+        [DataType(DataType.DateTime)]
+        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
+
+        [DataType(DataType.DateTime)]
+        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
+
+        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
+        public string? Note { get; set; }
+
+        //Paging related fields
+        /// <summary>
+        /// Whether the paging should be used.
+        /// </summary>
+        public bool Paging = false;
+
+        /// <summary>
+        /// Which page should be gotten if paging enabled.
+        /// </summary>
+        [MinLength(1, ErrorMessage = "Page number must be greater than 0")]
+        public int? Page { get; set; }
+
+        /// <summary>
+        /// How many objects should be in the response if paging enabled.
+        /// </summary>
+        [MinLength(1, ErrorMessage = "Page length must be greater than 0")]
+        public int? PageLength { get; set; }
+
+        //Query search string
+        /// <summary>
+        /// Query string with words to be looked for in the search.
+        /// </summary>
+        public string? Query { get; set; } = "";
+
+        //Sorting related fields
+        /// <summary>
+        /// By which should the return items be sorted by.
+        /// </summary>
+        public string? OrderBy { get; set; }
+
+        /// <summary>
+        /// Sort direction - either asc or desc.
+        /// </summary>
+        public string SortDirection { get; set; } = "asc";
+    }
+}

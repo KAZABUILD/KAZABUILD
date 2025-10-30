@@ -1,0 +1,35 @@
+using KAZABUILD.Application.DTOs.Components.SubComponents.BaseSubComponent;
+
+using System.ComponentModel.DataAnnotations;
+
+namespace KAZABUILD.Application.DTOs.Components.SubComponents.IntegratedGraphicsSubComponent
+{
+    public class UpdateIntegratedGraphicsSubComponentDto : UpdateBaseSubComponentDto
+    {
+        /// <summary>
+        /// The model of the Integrated Graphics Card.
+        /// If none leave as null.
+        /// </summary>
+        [StringLength(100, ErrorMessage = "Model cannot be longer than 100 characters!")]
+        public string? Model { get; set; }
+
+        /// <summary>
+        /// Base Clock Speed of Integrated Graphics Card in MHz.
+        /// </summary>
+        [Required]
+        [Range(100, 10000, ErrorMessage = "Base Clock Speed must be between 100 and 10000 MHz")]
+        public int? BaseClockSpeed { get; set; }
+
+        /// <summary>
+        /// Maximum Boosted Clock Speed of the Integrated Graphics Card in MHz.
+        /// </summary>
+        [Range(100, 10000, ErrorMessage = "Boost Clock Speed must be between 100 and 10000 MHz")]
+        public int? BoostClockSpeed { get; set; }
+
+        /// <summary>
+        /// Number of Cores/Shaders in an Integrated Graphics Card.
+        /// </summary>
+        [Range(1, 50000, ErrorMessage = "Core Count must be between 1 and 10000")]
+        public int? CoreCount { get; set; }
+    }
+}
