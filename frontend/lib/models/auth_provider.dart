@@ -20,6 +20,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/utils/google_id.dart';
+import 'package:frontend/services/cookie_storage_service.dart';
 
 /// A dedicated service for handling authentication-related API calls.
 /// This abstracts the networking logic away from the state notifier.
@@ -59,18 +61,31 @@ class AuthService {
     return _dio.post('$apiBaseUrl/Auth/register', data: userData);
   }
 
+  /// Sends a Google login request to the backend with the Google ID token.
+  Future<Response> googleLogin(String idToken) {
+    return _dio.post('$apiBaseUrl/Auth/google-login', data: {'idToken': idToken});
+  }
+
   /// Sends a password reset request to the backend.
-  Future<Response> resetPassword(String email) {
-    // The backend expects a redirectUrl. We'll provide a path for the frontend
-    // where the user can enter their new password.
-    // We construct the full URL to ensure it works in any environment.
-    const frontendBaseUrl = String.fromEnvironment('FRONTEND_BASE_URL', defaultValue: 'http://localhost:8080');
-    const redirectPath = '/confirm-reset-password';
-    final redirectUrl = '$frontendBaseUrl$redirectPath';
-    return _dio.post('$apiBaseUrl/Auth/reset-password', data: {
-      'email': email,
-      'redirectUrl': redirectUrl,
-    });
+  Future<Response> resetPassword(String email) async {
+    // Backend expects a relative path starting with '/'
+    const redirectUrl = '/confirm-reset-password';
+
+    final requestData = {
+      'email': email.trim(),
+      'RedirectUrl': redirectUrl,
+    };
+
+    print('Password reset request data: $requestData');
+
+    try {
+      final response = await _dio.post('/Auth/reset-password', data: requestData);
+      print('Password reset response: ${response.statusCode} - ${response.data}');
+      return response;
+    } catch (e) {
+      print('Password reset error: $e');
+      rethrow;
+    }
   }
 
   /// Sends a request to confirm the password reset with a new password.
@@ -84,19 +99,26 @@ class AuthService {
     return _dio.put('$apiBaseUrl/Users/$userId', data: data);
   }
 
+  /// Changes the user's password.
+  Future<Response> changePassword(String userId, String oldPassword, String newPassword) {
+    return _dio.put('$apiBaseUrl/Users/$userId/change-password', data: {
+      'OldPassword': oldPassword,
+      'NewPassword': newPassword,
+    });
+  }
+
   /// Sends a request to upload an image.
   Future<Response> uploadImage(String imagePath, String targetId, String locationType) async {
     final fileName = imagePath.split('/').last;
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(imagePath, filename: fileName),
-      'targetId': targetId,
-      'locationType': locationType,
-      // 'Name' alanı backend'de zorunlu olabilir, default bir değer gönderiyoruz.
-      'name': 'user_upload_$fileName',
+      'File': await MultipartFile.fromFile(imagePath, filename: fileName),
+      'TargetId': targetId,
+      'LocationType': locationType,
+      'Name': 'user_upload_$fileName',
     });
 
     // Makes a POST request to the /Images/add endpoint.
-    return _dio.post('$apiBaseUrl/Images/add', data: formData);
+    return _dio.post('/Images/add', data: formData);
   }
 }
 
@@ -238,19 +260,18 @@ class AppUser {
     }
 
     return AppUser(
-      uid: json['id'],
-      username: json['login'],
-      email: json['email'],
-      photoURL: json['imageUrl'],
-    
-      bio: json['description'],
-      phoneNumber: json['phoneNumber'],
-      gender: json['gender'],
-      birthDate: json['birth'],
-      themePreference: parseTheme(json['theme']),
-      languagePreference: json['language']?.toLowerCase() ?? 'en',
-      profileAccessibility: parseAccessibility(json['profileAccessibility']),
-      address: json['address'] != null ? Address.fromJson(json['address']) : null,
+      uid: json['id'] ?? json['Id'],
+      username: json['login'] ?? json['Login'],
+      email: json['email'] ?? json['Email'],
+      photoURL: json['imageUrl'] ?? json['ImageUrl'],
+      bio: json['description'] ?? json['Description'],
+      phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'],
+      gender: json['gender'] ?? json['Gender'],
+      birthDate: json['birth'] ?? json['Birth'],
+      themePreference: parseTheme(json['theme'] ?? json['Theme']),
+      languagePreference: (json['language'] ?? json['Language'])?.toLowerCase() ?? 'en',
+      profileAccessibility: parseAccessibility(json['profileAccessibility'] ?? json['ProfileAccessibility']),
+      address: (json['address'] ?? json['Address']) != null ? Address.fromJson(json['address'] ?? json['Address']) : null,
     );
   }
 }
@@ -262,48 +283,112 @@ class AppUser {
 class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   final AuthService _authService;
   final TokenStorageService _tokenStorage;
+  final CookieStorageService _cookieStorage;
 
   /// Initializes the notifier with a `null` state, indicating no user is logged in.
-  AuthStateNotifier(this._authService, this._tokenStorage) : super(const AsyncValue.data(null));
+  AuthStateNotifier(this._authService, this._tokenStorage, this._cookieStorage) : super(const AsyncValue.data(null));
 
   /// Signs in a user.
   ///
-  /// This method handles the authentication logic by:
   /// This method handles the authentication logic by:
   /// 1. Calling a repository or service to authenticate with a backend (e.g., Firebase, custom API).
   /// 2. On successful authentication, receiving user data.
   /// 3. Creating an `AppUser` instance with that data.
   /// 4. Updating the `state` with the new `AppUser` object, which will notify all listeners.
-  void signIn(String usernameOrEmail, String password) async {
-    // TODO: Implement actual authentication logic here.
-    // Example: final user = await authRepository.signIn(email, password);
+  /// 5. Saving login info for auto-fill and offline access.
+  Future<void> signIn(String usernameOrEmail, String password, {bool rememberMe = false}) async {
     state = const AsyncValue.loading();
     try {
       final response = await _authService.signIn(usernameOrEmail, password);
       final token = response.data['token'];
 
       // Store the token securely and set it in Dio headers for subsequent requests.
-      await _tokenStorage.saveToken(token);
+      try {
+        await _tokenStorage.saveToken(token);
+      } catch (e) {
+        // Fallback to cookie storage if secure storage fails
+        log('Secure storage failed, using cookie storage: $e');
+        await _cookieStorage.saveToken(token);
+      }
+      
       _authService._dio.options.headers['Authorization'] = 'Bearer $token';
 
       // Decode the JWT to get the user ID.
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final userId = decodedToken['nameid']; 
+      
+      // Try different possible claim names for user ID
+      final userId = decodedToken['nameid'] ?? 
+                    decodedToken['sub'] ?? 
+                    decodedToken['userId'] ?? 
+                    decodedToken['user_id'] ??
+                    decodedToken['id'];
 
       if (userId == null) {
-        throw Exception('User ID not found in token');
+        print('Available token claims: ${decodedToken.keys.toList()}');
+        throw Exception('User ID not found in token. Available claims: ${decodedToken.keys.join(', ')}');
       }
 
       // Fetch the full user profile using the user ID.
       final userResponse = await _authService.getUserById(userId);
       final userData = userResponse.data;
+      final user = AppUser.fromJson(userData);
 
-      state = AsyncValue.data(AppUser.fromJson(userData));
+      // Save user data and login info for offline access and auto-fill
+      await _cookieStorage.saveUserData(userData);
+      await _cookieStorage.saveLoginInfo(
+        email: usernameOrEmail,
+        username: user.username,
+        rememberMe: rememberMe,
+      );
+
+      state = AsyncValue.data(user);
     } on DioException catch (e, st) {
       // Handle API errors (e.g., wrong password, user not found).
       final errorMessage = e.response?.data['message'] ?? e.message;
       log('Sign-in failed: $errorMessage', error: e, stackTrace: st);
       state = AsyncValue.error(errorMessage ?? 'An unknown error occurred', st);
+    } catch (e, st) {
+      // Handle other errors (e.g., JWT parsing, storage issues).
+      log('Sign-in failed: $e', error: e, stackTrace: st);
+      state = AsyncValue.error('Sign-in failed: ${e.toString()}', st);
+    }
+  }
+
+  /// Signs in a user with Google OAuth (Web via Google Identity Services).
+  Future<void> signInWithGoogleWeb() async {
+    state = const AsyncValue.loading();
+    try {
+      if (googleWebClientId.isEmpty) {
+        throw Exception('Missing GOOGLE_WEB_CLIENT_ID. Start Flutter with --dart-define=GOOGLE_WEB_CLIENT_ID=your-client-id.apps.googleusercontent.com');
+      }
+
+      final idToken = await getGoogleIdToken(googleWebClientId);
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google sign-in was cancelled or blocked. Ensure your Google OAuth "Authorized JavaScript origins" include your frontend origin and the browser allows the Google prompt.');
+      }
+
+      final response = await _authService.googleLogin(idToken);
+      final token = response.data['token'];
+
+      await _tokenStorage.saveToken(token);
+      _authService._dio.options.headers['Authorization'] = 'Bearer $token';
+
+      final decoded = JwtDecoder.decode(token);
+      final userId = decoded['nameid'];
+      if (userId == null) {
+        throw Exception('User ID not found in token');
+      }
+
+      final userResponse = await _authService.getUserById(userId);
+      final userData = userResponse.data;
+      state = AsyncValue.data(AppUser.fromJson(userData));
+    } on DioException catch (e, st) {
+      final errorMessage = e.response?.data['message'] ?? e.message;
+      log('Google sign-in failed: $errorMessage', error: e, stackTrace: st);
+      state = AsyncValue.error(errorMessage ?? 'An unknown error occurred', st);
+    } catch (e, st) {
+      log('Google sign-in failed', error: e, stackTrace: st);
+      state = AsyncValue.error(e.toString(), st);
     }
   }
 
@@ -325,7 +410,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       return response.data['message'] ?? 'Registration successful! Please check your email to verify your account.';
     } on DioException catch (e) {
       final errorMessage = e.response?.data['message'] ?? 'An unknown registration error occurred.';
-      state = AsyncValue.error(errorMessage, e.stackTrace ?? StackTrace.current);
+      state = AsyncValue.error(errorMessage, e.stackTrace);
       // Re-throw the error message to be caught by the UI.
       throw errorMessage;
     }
@@ -341,8 +426,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       final response = await _authService.resetPassword(email);
       return response.data['message'] ?? 'Password reset link sent! Please check your email.';
     } on DioException catch (e) {
+      // Log the full error for debugging
+      print('Password reset error: ${e.response?.data}');
+      print('Status code: ${e.response?.statusCode}');
+      
       // Re-throw a user-friendly error message for the UI to catch and display.
-      final errorMessage = e.response?.data['message'] ?? 'An unknown error occurred.';
+      final errorMessage = e.response?.data['message'] ?? e.response?.data['title'] ?? 'An unknown error occurred.';
       throw errorMessage;
     }
   }
@@ -365,7 +454,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   /// Attempts to log in the user automatically by checking for a stored token.
   /// This should be called when the application starts.
   Future<void> tryAutoLogin() async {
-    final token = await _tokenStorage.readToken();
+    // Try secure storage first, then cookie storage as fallback
+    String? token = await _tokenStorage.readToken();
+    if (token == null) {
+      token = await _cookieStorage.getToken();
+    }
+    
     if (token == null) {
       state = const AsyncValue.data(null);
       return;
@@ -374,6 +468,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     // Check if the token is expired.
     if (JwtDecoder.isExpired(token)) {
       await _tokenStorage.deleteToken();
+      await _cookieStorage.clearAll();
       state = const AsyncValue.data(null);
       return;
     }
@@ -385,7 +480,11 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
 
       // Decode the token to get user ID.
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final userId = decodedToken['nameid'];
+      final userId = decodedToken['nameid'] ?? 
+                    decodedToken['sub'] ?? 
+                    decodedToken['userId'] ?? 
+                    decodedToken['user_id'] ??
+                    decodedToken['id'];
 
       if (userId == null) throw Exception('User ID not found in token');
 
@@ -405,6 +504,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   /// Signs the current user out by setting the state to `null`.
   Future<void> signOut() async {
     await _tokenStorage.deleteToken();
+    await _cookieStorage.clearAll();
     _authService._dio.options.headers.remove('Authorization');
     state = const AsyncValue.data(null);
   }
@@ -446,16 +546,35 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     }
 
     try {
-      
+      // Upload the image to the backend
       final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
       final imageId = imageResponse.data['id'];
 
-      
+      // Construct the image URL for the download endpoint
       final imageUrl = '$apiBaseUrl/Images/download/$imageId';
+      
+      // Update the user's profile with the new image URL
       await updateUserProfile({'imageUrl': imageUrl});
     } catch (e) {
       rethrow;
     }
+  }
+
+  /// Changes the user's password.
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final user = state.valueOrNull;
+    if (user == null) throw Exception('User not logged in');
+
+    try {
+      await _authService.changePassword(user.uid, oldPassword, newPassword);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Gets saved login information for auto-fill.
+  Future<Map<String, dynamic>?> getSavedLoginInfo() async {
+    return await _cookieStorage.getLoginInfo();
   }
 
   /// Exposes the internal Dio instance for other providers to use for authenticated requests.
@@ -465,7 +584,15 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
 /// A provider that creates and exposes the [AuthService] instance.
 final authServiceProvider = Provider<AuthService>((ref) {
   // This creates a single Dio instance that will be shared.
-  final dio = Dio();
+  final dio = Dio(BaseOptions(
+    baseUrl: apiBaseUrl,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+  ));
   return AuthService(dio);
 });
 
@@ -479,8 +606,16 @@ final authProvider =
   final authService = ref.watch(authServiceProvider);
   // Create the token storage service.
   final tokenStorageService = TokenStorageService();
+  // Create the cookie storage service.
+  final cookieStorageService = CookieStorageService();
 
-  // Create the notifier and immediately try to auto-login.
-  return AuthStateNotifier(authService, tokenStorageService)
-    ..tryAutoLogin();
+  // Create the notifier without immediately calling tryAutoLogin
+  return AuthStateNotifier(authService, tokenStorageService, cookieStorageService);
+});
+
+/// A provider that handles the initialization of auto-login
+/// This runs after the app is fully loaded to avoid blocking the UI
+final authInitializationProvider = FutureProvider<void>((ref) async {
+  final authNotifier = ref.read(authProvider.notifier);
+  await authNotifier.tryAutoLogin();
 });

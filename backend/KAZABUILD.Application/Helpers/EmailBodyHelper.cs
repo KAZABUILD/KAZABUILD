@@ -203,7 +203,7 @@ namespace KAZABUILD.Application.Helpers
                       </p>
       
                       <!-- Confirm Button -->
-                      <a class=""confirm-button"" href='{confirmUrl}'>Confirm</a>w                 
+                      <a class=""confirm-button"" href='{confirmUrl}'>Confirm</a>                 
 
                       <!-- Disclaimer -->
                       <p class=""disclaimer-text"">

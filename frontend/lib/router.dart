@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/screens/auth/change_password_page.dart';
 import 'package:frontend/screens/auth/confirm_reset_password_page.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/screens/auth/login_page.dart';
@@ -17,7 +18,6 @@ import 'package:frontend/screens/extra/spalsh_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
-
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
@@ -26,10 +26,40 @@ import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/models/component_models.dart';
 
+/// A ChangeNotifier that listens to authentication state changes for go_router refresh.
+class AuthRouterListener extends ChangeNotifier {
+  AuthRouterListener();
+
+  bool _loggedIn = false;
+
+  bool get loggedIn => _loggedIn;
+
+  void updateLoginState(AsyncValue<AppUser?> authState) {
+    final newLoggedIn = authState.maybeWhen(
+      data: (user) => user != null,
+      orElse: () => false,
+    );
+    if (newLoggedIn != _loggedIn) {
+      _loggedIn = newLoggedIn;
+      notifyListeners();
+    }
+  }
+}
+
+final authRouterListenerProvider = ChangeNotifierProvider<AuthRouterListener>((ref) {
+  final listener = AuthRouterListener();
+  // Listen to authProvider changes
+  ref.listen(authProvider, (previous, next) {
+    listener.updateLoginState(next);
+  });
+  // Initial state
+  listener.updateLoginState(ref.read(authProvider));
+  return listener;
+});
+
 /// A provider that creates and exposes the [GoRouter] instance to the app.
 final routerProvider = Provider<GoRouter>((ref) {
-  // Watch the authentication state to trigger redirects when it changes.
-  final authState = ref.watch(authProvider);
+  final authListener = ref.watch(authRouterListenerProvider);
 
   return GoRouter(
     initialLocation: '/', // Set initial location to splash screen
@@ -64,6 +94,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
+        path: '/change-password',
+        name: 'change-password',
+        builder: (context, state) => const ChangePasswordPage(),
+      ),
+      GoRoute(
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginPage(),
@@ -82,19 +117,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/auth/confirm-reset-password',
         name: 'confirm-reset-password',
         builder: (context, state) {
-          // Extract the 'token' from the query parameters.
-          // e.g., /confirm-reset-password?token=xyz123
+          // Extract the 'token' and 'userId' from the query parameters.
+          // e.g., /auth/confirm-reset-password?token=xyz123&userId=abc456
           final token = state.uri.queryParameters['token'];
+          final userId = state.uri.queryParameters['userId'];
           if (token == null || token.isEmpty) {
             // If no token is found, redirect to the login page.
             // This prevents direct access to the page without a token.
             return const LoginPage();
           }
-          return ConfirmResetPasswordPage(token: token);
+          return ConfirmResetPasswordPage(token: token, userId: userId);
         },
       ),
-
-      
       GoRoute(
         path: '/build-now',
         name: 'build-now',
@@ -175,15 +209,6 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       return null;
     },
-
-    refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
+    refreshListenable: authListener,
   );
 });
-
-/// A utility class to bridge a Riverpod stream with GoRouter's refresh mechanism.
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    stream.asBroadcastStream().listen((_) => notifyListeners());
-  }
-}

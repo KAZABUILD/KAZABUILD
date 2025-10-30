@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/router.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
 
@@ -29,6 +30,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize auth (auto-login) when the app starts
+    ref.watch(authInitializationProvider);
+    
     // Watches the `themeProvider` for changes. When the theme mode changes
     // (e.g., from light to dark), this widget will rebuild to apply the new theme.
     final router = ref.watch(routerProvider);

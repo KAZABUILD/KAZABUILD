@@ -16,7 +16,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/screens/auth/privacy_policy_dialog.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
@@ -59,12 +58,17 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   //String? _selectedCountry;
 
   /// A list of options for the gender selection dropdown.
-  final List<String> _genderOptions = [
+  static const List<String> _genderOptions = [
     'Female',
     'Male',
     'Other',
     'Prefer not to say',
   ];
+
+  /// Regular expression for validating email address format - moved outside build method
+  static final _emailRegex = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  );
 
   /// Tracks the loading state of the sign-up process.
   bool _isLoading = false;
@@ -82,7 +86,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       lastDate: DateTime.now(),
     );
     // If a date is selected, format it and set it as the text field's value.
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
@@ -110,11 +114,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    /// A regular expression for validating email address format.
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    );
-
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: false),
@@ -127,27 +126,17 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
             scaffoldKey: _scaffoldKey,
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                /// Ensures the content is scrollable to prevent overflow on smaller screens.
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 400),
-
-                          /// The main sign-up form, which handles input and validation.
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                                 // Page title and subtitle.
                                 Text(
                                   'Sign Up',
@@ -164,20 +153,19 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 const SizedBox(height: 32),
 
                                 /// Social sign-up buttons for quick registration.
-                                SocialButton(
+                                const SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
-                                  onPressed: () {
-                                    //ref.read(authProvider.notifier).signInWithGoogle();
-                                  },
+                                  onPressed: null,
                                 ),
-                                
+                                const SizedBox(height: 16),
 
                                 /// Form fields for collecting user details.
                                 CustomTextField(
                                   controller: _usernameController,
                                   label: 'Username',
                                   icon: Icons.person_outline,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) return 'Please enter a username';
                                     if (value.length < 8) return 'Username must be at least 8 characters long';
@@ -189,6 +177,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   controller: _displayNameController,
                                   label: 'Display Name',
                                   icon: Icons.badge_outlined,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) return 'Please enter a display name';
                                     if (value.length < 8) return 'Display Name must be at least 8 characters long';
@@ -201,13 +190,12 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   label: 'Email address',
                                   icon: Icons.email_outlined,
                                   keyboardType: TextInputType.emailAddress,
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) {
-                                    // Provides real-time validation for the email format.
+                                    // Provides validation for the email format.
                                     if (value == null || value.isEmpty)
                                       return 'Please enter your email address';
-                                    if (!emailRegex.hasMatch(value))
+                                    if (!_emailRegex.hasMatch(value))
                                       return 'Please enter a valid email address';
                                     return null;
                                   },
@@ -218,9 +206,10 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   label: 'Password',
                                   icon: Icons.lock_outline,
                                   isPassword: true,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) =>
-                                      (value != null && value.length < 6)
-                                      ? 'Password must be at least 6 characters'
+                                      (value != null && value.length < 8)
+                                      ? 'Password must be at least 8 characters'
                                       : null,
                                 ),
                                 const SizedBox(height: 16),
@@ -229,6 +218,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   label: 'Phone Number (Optional)',
                                   icon: Icons.phone_outlined,
                                   keyboardType: TextInputType.phone,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                 ),
                                 const SizedBox(height: 16),
 
@@ -238,6 +228,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   icon: Icons.cake_outlined,
                                   controller: _birthDateController,
                                   readOnly: true,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   onTap: () => _selectDate(context),
                                 ),
                                 const SizedBox(height: 16),
@@ -271,18 +262,21 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   controller: _countryController,
                                   label: 'Country (Optional)',
                                   icon: Icons.public_outlined,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                 ),
                                 const SizedBox(height: 16),
                                 CustomTextField(
                                   controller: _cityController,
                                   label: 'City (Optional)',
                                   icon: Icons.location_city_outlined,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                 ),
                                 const SizedBox(height: 16),
                                 CustomTextField(
                                   controller: _streetController,
                                   label: 'Street (Optional)',
                                   icon: Icons.home_outlined,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -293,6 +287,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                         label: 'Postal Code',
                                         icon: Icons.local_post_office_outlined,
                                         keyboardType: TextInputType.text,
+                                        autovalidateMode: AutovalidateMode.disabled,
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -304,6 +299,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                         keyboardType:
                                             TextInputType.numberWithOptions(
                                                 decimal: false),
+                                        autovalidateMode: AutovalidateMode.disabled,
                                       ),
                                     ),
                                   ],
@@ -349,33 +345,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                   children: [
                                     const Text("Already have an account?"),
                                     TextButton(
-                                      onPressed: () =>
-                                          Navigator.pushReplacement(
-                                            context,
-                                            PageRouteBuilder(
-                                              pageBuilder: (_, __, ___) =>
-                                                  const LoginPage(),
-                                              transitionsBuilder:
-                                                  (_, a, __, c) =>
-                                                      FadeTransition(
-                                                        opacity: a,
-                                                        child: c,
-                                                      ),
-                                            ),
-                                          ),
+                                      onPressed: () => GoRouter.of(context).go('/login'),
                                       child: const Text("Log in"),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],

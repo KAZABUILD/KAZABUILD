@@ -70,6 +70,26 @@ class BuildService {
       await _dio.post('$apiBaseUrl/BuildComponents/add', data: {'buildId': buildId, 'componentId': componentId, 'quantity': quantity});
     } catch (e) { rethrow; }
   }
+
+  /// Submits a rating for a build and returns the updated rating aggregate
+  Future<Map<String, dynamic>> rateBuild(String buildId, double rating, String userId) async {
+    try {
+      // Backend expects 0-100 scale; UI works with 0-5 stars
+      final scaled = (rating * 20).round();
+      final response = await _dio.post('$apiBaseUrl/BuildInteractions/add', data: {
+        'UserId': userId,
+        'BuildId': buildId,
+        'IsWishlisted': false,
+        'IsLiked': rating >= 3.0, // Consider 3+ stars as liked
+        'Rating': scaled,
+      });
+      return (response.data is Map<String, dynamic>)
+          ? response.data as Map<String, dynamic>
+          : <String, dynamic>{};
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 /// A provider that creates an instance of [BuildService] with an authenticated Dio client.

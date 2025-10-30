@@ -17,8 +17,10 @@ import 'package:frontend/screens/auth/auth_widgets.dart';
 class ConfirmResetPasswordPage extends ConsumerStatefulWidget {
   /// The password reset token from the URL.
   final String token;
+  /// The user ID from the URL (optional).
+  final String? userId;
 
-  const ConfirmResetPasswordPage({super.key, required this.token});
+  const ConfirmResetPasswordPage({super.key, required this.token, this.userId});
 
   @override
   ConsumerState<ConfirmResetPasswordPage> createState() =>
@@ -76,6 +78,41 @@ class _ConfirmResetPasswordPageState
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
+                  if (widget.userId != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Reset Information:',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'User ID: ${widget.userId}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          Text(
+                            'Token: ${widget.token.substring(0, 8)}...',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   CustomTextField(
                     controller: _passwordController,

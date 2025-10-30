@@ -7,10 +7,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/widgets/theme_provider.dart';
+import 'package:frontend/utils/user_image_utils.dart';
 
 /// A page where the authenticated user can manage their account settings.
 /// It's a `ConsumerStatefulWidget` to manage local state and interact with Riverpod.
@@ -45,26 +46,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _pickAndUploadImage(String userId) async {
-    final ImagePicker picker = ImagePicker();
-    
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      try {
-        
-        await ref.read(authProvider.notifier).uploadProfilePicture(userId, image.path);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile picture updated!'), backgroundColor: Colors.green),
-          );
-        }
-      } catch (e) {
-        
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,27 +89,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: 'Display Name',
                 child: _EditableTextRow(
                   value: user.username, // Using username as display name
-                  onSave: (newValue) => _updateProfile({'login': newValue}),
+                  onSave: (newValue) => _updateProfile({'Login': newValue}),
                 ),
               ),
               const Divider(height: 40),
               _buildSettingsSection(
                 theme,
                 title: 'Profile Picture',
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    CircleAvatar(
+                    UserImageUtils.buildUserAvatar(
+                      imageUrl: user.photoURL,
+                      username: user.username,
+                      userId: user.uid,
                       radius: 32,
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                      child: user.photoURL == null ? Text(user.username.substring(0, 1).toUpperCase()) : null,
                     ),
-                    OutlinedButton(
-                      onPressed: () {
-                        _pickAndUploadImage(user.uid);
-                      },
-                      child: const Text('Edit'),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Profile image upload is temporarily unavailable due to backend limitations. Please contact support for assistance.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -139,7 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: 'User Bio',
                 child: _EditableTextRow(
                   value: user.bio ?? 'Not set',
-                  onSave: (newValue) => _updateProfile({'description': newValue}),
+                  onSave: (newValue) => _updateProfile({'Description': newValue}),
                   isMultiLine: true,
                 ),
               ),
@@ -149,7 +152,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: 'Phone Number',
                 child: _EditableTextRow(
                   value: user.phoneNumber ?? 'Not set',
-                  onSave: (newValue) => _updateProfile({'phoneNumber': newValue}),
+                  onSave: (newValue) => _updateProfile({'PhoneNumber': newValue}),
                 ),
               ),
               const Divider(height: 40),
@@ -161,7 +164,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onSave: (newValue) {
                     // TODO: Implement a more complex dialog for the full address object.
                     // Backend 'location' nesnesi bekliyor.
-                    _updateProfile({'location': {'street': newValue}});
+                    _updateProfile({'Location': {'street': newValue}});
                   },
                 ),
               ),
@@ -176,7 +179,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   value: user.profileAccessibility == ProfileAccessibility.private,
                   onChanged: (bool value) {
                     final newAccessibility = value ? ProfileAccessibility.private : ProfileAccessibility.public;
-                    _updateProfile({'profileAccessibility': newAccessibility.name.toUpperCase()});
+                    _updateProfile({'ProfileAccessibility': newAccessibility.name.toUpperCase()});
+                  },
+                ),
+              ),
+              const Divider(height: 40),
+              _buildSettingsSection(
+                theme,
+                title: 'Security',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text('Change Password'),
+                  subtitle: const Text('Update your account password'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    context.go('/change-password');
                   },
                 ),
               ),
@@ -194,7 +212,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onSelectionChanged: (newSelection) {
                     final newTheme = newSelection.first;
                     ref.read(themeProvider.notifier).setTheme(newTheme);
-                    _updateProfile({'theme': newTheme.name.toUpperCase()});
+                    _updateProfile({'Theme': newTheme.name.toUpperCase()});
                   },
                 ),
               ),

@@ -17,10 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
-import 'package:frontend/screens/auth/forgot_password_page.dart';
-import 'package:frontend/screens/home/homepage.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
 /// The main widget for the login page.
@@ -44,6 +41,31 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Controllers to capture user input for email and password.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  
+  // Remember me checkbox state
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLoginInfo();
+  }
+
+  /// Loads saved login information for auto-fill.
+  Future<void> _loadSavedLoginInfo() async {
+    try {
+      final savedInfo = await ref.read(authProvider.notifier).getSavedLoginInfo();
+      if (savedInfo != null && mounted) {
+        setState(() {
+          _emailController.text = savedInfo['email'] ?? '';
+          _rememberMe = savedInfo['rememberMe'] ?? false;
+        });
+      }
+    } catch (e) {
+      // Ignore errors when loading saved login info
+      print('Failed to load saved login info: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -56,12 +78,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   /// Builds the UI for the login page.
   @override
   Widget build(BuildContext context) {
-    // Listen to the authProvider for state changes (e.g., errors, success).
-    // This is used for side effects like showing SnackBars or navigating.
-    ref.listen<AsyncValue<AppUser?>>(authProvider, _handleAuthStateChange);
-
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
+    
+    // Listen to the authProvider for state changes (e.g., errors, success).
+    // This is used for side effects like showing SnackBars or navigating.
+    ref.listen<AsyncValue<AppUser?>>(authProvider, (previous, next) {
+      if (next is AsyncError) {
+        // If an error occurs, show a SnackBar with the error message.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error.toString()),
+            backgroundColor: theme.colorScheme.error,
+          ),
+        );
+      }
+      // Success navigation is now handled automatically by GoRouter's redirect logic
+      // when the auth state changes. No need for manual navigation here.
+    });
 
     return Scaffold(
       key: _scaffoldKey,
@@ -78,28 +112,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             scaffoldKey: _scaffoldKey,
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                /// Wraps the content in a [SingleChildScrollView] to prevent overflow
-                /// on devices with smaller screens or when the keyboard is active.
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 400),
-
-                          /// The main login form, wrapped in a [Form] widget to enable validation.
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                                 /// Displays the application's logo and title.
                                 /// This is a reusable widget from `auth_widgets.dart`.
                                 const Header(),
@@ -139,6 +162,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   controller: _emailController,
                                   label: 'Username or Email',
                                   icon: Icons.person_outline,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) =>
                                       (value == null || value.isEmpty)
                                       ? 'This field cannot be empty'
@@ -153,6 +177,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   label: 'Password',
                                   icon: Icons.lock_outline,
                                   isPassword: true,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) =>
                                       (value == null || value.isEmpty)
                                       ? 'This field cannot be empty'
@@ -167,23 +192,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     Row(
                                       children: [
                                         Checkbox(
-                                          value: true,
-                                          onChanged: (v) {},
+                                          value: _rememberMe,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _rememberMe = value ?? false;
+                                            });
+                                          },
                                         ),
                                         const Text('Remember me'),
                                       ],
                                     ), // "Forgot password?" link.
                                     /// A [TextButton] to navigate to the [ForgotPasswordPage].
                                     TextButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const ForgotPasswordPage(),
-                                          ),
-                                        );
-                                      },
+                                      onPressed: () => GoRouter.of(context).go('/forgot-password'),
                                       child: const Text('Forgot password?'),
                                     ),
                                   ],
@@ -198,6 +219,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   emailController: _emailController,
                                   passwordController: _passwordController,
                                   isLoading: authState.isLoading,
+                                  rememberMe: _rememberMe,
                                 ),
 
                                 /// A visual separator with "OR" text, typically used between
@@ -208,9 +230,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
-                                  onPressed: () {
-                                    //ref.read(authProvider.notifier).signInWithGoogle();
-                                  },
+                                  onPressed: authState.isLoading
+                                      ? null
+                                      : () async {
+                                          await ref.read(authProvider.notifier).signInWithGoogleWeb();
+                                        },
                                 ),
                                 const SizedBox(height: 12),
 
@@ -226,15 +250,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   text: 'Continue with Discord',
                                   iconPath: 'discord_icon.svg',
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -242,22 +262,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  /// A listener function to handle changes in the authentication state.
-  void _handleAuthStateChange(AsyncValue<AppUser?>? previous, AsyncValue<AppUser?> next) {
-    if (next is AsyncError) {
-      // If an error occurs, show a SnackBar with the error message.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(next.error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      // Reset the state to allow for another login attempt.
-      ref.read(authProvider.notifier).state = const AsyncValue.data(null);
-    } 
-    // Success navigation is now handled automatically by GoRouter's redirect logic
-    // when the auth state changes. No need for manual navigation here.
-  }
 }
 
 /// A widget that displays "Sign In" and "Sign Up" toggle buttons.
@@ -277,18 +281,19 @@ class _AuthToggleButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     /// Defines the visual style for the currently selected (active) button.
     final selectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: theme.colorScheme.primary,
-      foregroundColor: theme.colorScheme.onPrimary,
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
     /// Defines the visual style for the unselected (inactive) button.
     final unselectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: theme.colorScheme.surface,
-      foregroundColor: theme.colorScheme.onSurface,
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.onSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
@@ -296,7 +301,7 @@ class _AuthToggleButtons extends StatelessWidget {
     /// background and rounded corners.
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -333,12 +338,14 @@ class _SignInButton extends ConsumerWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final bool isLoading;
+  final bool rememberMe;
 
   const _SignInButton({
     required this.formKey,
     required this.emailController,
     required this.passwordController,
     required this.isLoading,
+    required this.rememberMe,
   });
 
   @override
@@ -357,8 +364,9 @@ class _SignInButton extends ConsumerWidget {
               if (formKey.currentState!.validate()) {
                 // Call the signIn method from the auth provider with user credentials.
                 ref.read(authProvider.notifier).signIn(
-                      emailController.text,
+                      emailController.text.trim(),
                       passwordController.text,
+                      rememberMe: rememberMe,
                     );
               }
             },

@@ -38,6 +38,15 @@ class Build {
   /// The timestamp of the last modification to this entry.
   final DateTime? lastEditedAt;
 
+  /// Average star rating for this build (0.0 - 5.0)
+  final double averageRating;
+
+  /// Number of ratings submitted for this build
+  final int ratingsCount;
+
+  /// The current logged-in user's rating for this build, if any
+  final double? userRating;
+
   Build({
     required this.id,
     required this.userId,
@@ -48,24 +57,53 @@ class Build {
     this.author,
     this.databaseEntryAt,
     this.lastEditedAt,
+    this.averageRating = 0.0,
+    this.ratingsCount = 0,
+    this.userRating,
   });
 
   /// Creates a `Build` instance from a JSON map.
   factory Build.fromJson(Map<String, dynamic> json) {
+    double parseRatingToFive(dynamic value) {
+      if (value == null) return 0.0;
+      double v;
+      if (value is num) {
+        v = value.toDouble();
+      } else if (value is String) {
+        v = double.tryParse(value) ?? 0.0;
+      } else {
+        v = 0.0;
+      }
+      // Backend may return 0-100; normalize to 0-5 if needed
+      return v > 5.0 ? (v / 20.0) : v;
+    }
+
+    int parseCount(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
     return Build(
-      id: json['id'],
-      userId: json['userId'],
-      name: json['name'],
-      description: json['description'],
-      status: json['status'],
-      author: json['user'] != null ? AppUser.fromJson(json['user']) : null,
-      imageUrl: json['imageUrl'], // Assuming backend now sends 'imageUrl'
-      databaseEntryAt: json['databaseEntryAt'] != null
-          ? DateTime.parse(json['databaseEntryAt'])
+      id: json['id'] ?? json['Id'],
+      userId: json['userId'] ?? json['UserId'],
+      name: json['name'] ?? json['Name'],
+      description: json['description'] ?? json['Description'],
+      status: json['status'] ?? json['Status'],
+      author: (json['user'] ?? json['User']) != null ? AppUser.fromJson(json['user'] ?? json['User']) : null,
+      imageUrl: json['imageUrl'] ?? json['ImageUrl'],
+      databaseEntryAt: (json['databaseEntryAt'] ?? json['DatabaseEntryAt']) != null
+          ? DateTime.parse(json['databaseEntryAt'] ?? json['DatabaseEntryAt'])
           : null,
-      lastEditedAt: json['lastEditedAt'] != null
-          ? DateTime.parse(json['lastEditedAt'])
+      lastEditedAt: (json['lastEditedAt'] ?? json['LastEditedAt']) != null
+          ? DateTime.parse(json['lastEditedAt'] ?? json['LastEditedAt'])
           : null,
+      averageRating: parseRatingToFive(json['averageRating'] ?? json['AverageRating'] ?? json['ratingAverage'] ?? json['rating'] ?? 0),
+      ratingsCount: parseCount(json['ratingsCount'] ?? json['RatingsCount'] ?? json['ratingCount'] ?? json['votes'] ?? 0),
+      userRating: (json['userRating'] ?? json['UserRating'] ?? json['myRating']) == null
+          ? null
+          : parseRatingToFive(json['userRating'] ?? json['UserRating'] ?? json['myRating']),
     );
   }
 }

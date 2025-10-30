@@ -31,6 +31,12 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
   final CarouselSliderController _controller = CarouselSliderController();
 
   @override
+  void dispose() {
+    // CarouselSliderController doesn't have a dispose method
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final buildsAsync = ref.watch(allBuildsProvider);
@@ -63,9 +69,11 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
                 viewportFraction: 0.75,
                 aspectRatio: 2.0,
                 onPageChanged: (index, reason) {
-                  setState(() {
-                    _current = index;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _current = index;
+                    });
+                  }
                 },
               ),
             ),
@@ -74,7 +82,11 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: builds.asMap().entries.map((entry) {
                 return GestureDetector(
-                  onTap: () => _controller.animateToPage(entry.key),
+                  onTap: () {
+                    if (mounted) {
+                      _controller.animateToPage(entry.key);
+                    }
+                  },
                   child: Container(
                     width: 12.0,
                     height: 12.0,

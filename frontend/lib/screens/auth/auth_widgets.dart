@@ -246,6 +246,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iconColor = theme.iconTheme.color?.withOpacity(0.5);
+    
     return TextFormField(
       controller: widget.controller,
       obscureText: _isObscured,
@@ -258,7 +260,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         labelText: widget.label,
         prefixIcon: Icon(
           widget.icon,
-          color: theme.iconTheme.color?.withOpacity(0.5),
+          color: iconColor,
         ),
         // If it's a password field, show an icon button to toggle text visibility.
         suffixIcon: widget.isPassword
@@ -267,7 +269,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   _isObscured
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: theme.iconTheme.color?.withOpacity(0.5),
+                  color: iconColor,
                 ),
                 onPressed: () {
                   setState(() {
