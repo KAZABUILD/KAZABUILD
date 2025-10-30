@@ -3,12 +3,14 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -556,7 +558,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the build to delete
-            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
+            var build = await _db.Builds.Include(b => b.Images).Include(b => b.Comments).FirstOrDefaultAsync(b => b.Id == id);
             if (build == null)
             {
                 //Log failure
@@ -594,6 +596,26 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 //Return not found response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (build.Images.Count != 0)
+            {
+                foreach (var image in build.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(build.Images);
+            }
+
+            //Remove all related comments
+            if (build.Comments.Count != 0)
+            {
+                _db.UserComments.RemoveRange(build.Comments);
             }
 
             //Handle deleting build tags to avoid conflicts with cascade deletes

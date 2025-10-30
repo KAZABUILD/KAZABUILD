@@ -742,7 +742,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userComment to delete
-            var userComment = await _db.UserComments.FirstOrDefaultAsync(c => c.Id == id);
+            var userComment = await _db.UserComments.Include(c => c.Images).FirstOrDefaultAsync(c => c.Id == id);
             if (userComment == null)
             {
                 //Log failure
@@ -780,6 +780,20 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper unauthorized response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (userComment.Images.Count != 0)
+            {
+                foreach (var image in userComment.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(userComment.Images);
             }
 
             //Delete the userComment

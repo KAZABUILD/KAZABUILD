@@ -9,6 +9,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -516,7 +517,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the forumPost to delete
-            var forumPost = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == id);
+            var forumPost = await _db.ForumPosts.Include(p => p.Images).Include(p => p.Comments).FirstOrDefaultAsync(p => p.Id == id);
             if (forumPost == null)
             {
                 //Log failure
@@ -554,6 +555,26 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper unauthorized response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (forumPost.Images.Count != 0)
+            {
+                foreach (var image in forumPost.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(forumPost.Images);
+            }
+
+            //Remove all related comments
+            if (forumPost.Comments.Count != 0)
+            {
+                _db.UserComments.RemoveRange(forumPost.Comments);
             }
 
             //Delete the forumPost

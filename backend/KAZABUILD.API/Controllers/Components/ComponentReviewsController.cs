@@ -2,7 +2,9 @@ using KAZABUILD.Application.DTOs.Components.ComponentReview;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -513,7 +515,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the componentReview to delete
-            var componentReview = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == id);
+            var componentReview = await _db.ComponentReviews.Include(r => r.Comments).FirstOrDefaultAsync(r => r.Id == id);
             if (componentReview == null)
             {
                 //Log failure
@@ -529,6 +531,12 @@ namespace KAZABUILD.API.Controllers.Components
 
                 //Return not found response
                 return NotFound(new { componentReview = "ComponentReview not found!" });
+            }
+
+            //Remove all related comments
+            if (componentReview.Comments.Count != 0)
+            {
+                _db.UserComments.RemoveRange(componentReview.Comments);
             }
 
             //Delete the componentReview

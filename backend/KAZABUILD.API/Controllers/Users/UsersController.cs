@@ -909,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -943,6 +943,20 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return forbidden response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (user.Images.Count != 0)
+            {
+                foreach (var image in user.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(user.Images);
             }
 
             //Handle deleting followed user and followers to avoid conflicts with cascade deletes
