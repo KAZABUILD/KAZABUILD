@@ -639,6 +639,92 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
+        /// API endpoint for getting Comment Interactions' count with pagination and search.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<IEnumerable<UserCommentInteractionResponseDto>>> GetUserCommentInteractionsCount([FromBody] GetUserCommentInteractionDto dto)
+        {
+            //Get userCommentInteraction id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.UserCommentInteractions.Include(i => i.UserComment).AsNoTracking();
+
+            //Filter by the variables if included
+            if (dto.UserId != null)
+            {
+                query = query.Where(i => dto.UserId.Contains(i.UserId));
+            }
+            if (dto.UserCommentId != null)
+            {
+                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
+            }
+            if (dto.IsLiked != null)
+            {
+                query = query.Where(i => dto.IsLiked == i.IsLiked);
+            }
+            if (dto.IsDisliked != null)
+            {
+                query = query.Where(i => dto.IsDisliked == i.IsDisliked);
+            }
+
+            //Apply search based om credentials
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(i => i.User).Search(dto.Query, i => i.User!.DisplayName);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get userCommentInteractions with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of interactions to return
+            var interactionsAmount = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.UserComment != null && currentUserId == i.UserComment.UserId) || (i.UserComment != null && i.UserComment.Build != null && i.UserComment.Build.Status != BuildStatus.DRAFT && i.UserComment.Build.Status != BuildStatus.GENERATED)).CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "UserCommentInteraction",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - UserCommentInteraction Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("userCommentInteraction.gotUserCommentInteractionsCount", new
+            {
+                count = interactionsAmount,
+                gotBy = currentUserId
+            });
+
+            //Return the userCommentInteractions
+            return Ok(interactionsAmount);
+        }
+
+        /// <summary>
         /// API endpoint for deleting the selected UserCommentInteraction for staff.
         /// Used to remove marking that a user interacted with a userComment.
         /// Users can remove marking for their own interactions, while admins can remove them for all.

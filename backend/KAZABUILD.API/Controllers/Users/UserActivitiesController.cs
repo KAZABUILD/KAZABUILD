@@ -440,9 +440,9 @@ namespace KAZABUILD.API.Controllers.Users
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
-        [HttpPost("get-views")]
+        [HttpPost("get-count")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<int>> GetUserActivityViews([FromBody] GetUserActivityDto dto)
+        public async Task<ActionResult<int>> GetUserActivitiesCount([FromBody] GetUserActivityDto dto)
         {
             //Get userActivity id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -512,9 +512,9 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userActivity.gotUserActivities", new
+            await _publisher.PublishAsync("userActivity.gotUserActivitiesCount", new
             {
-                views = views,
+                count = views,
                 gotBy = currentUserId
             });
 

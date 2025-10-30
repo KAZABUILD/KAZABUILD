@@ -629,9 +629,6 @@ To see what fields should be provided in an API request check the swagger docume
    - staff can edit sensitive user related information;
    - admins can modify any object.
 
-### User specific API calls
- - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
-
 ### Auth specific API calls
  - `Auth/POST/login` allows anyone to login using their password and either Login or Email, sends confirmation email if enabled on user's account.
  - `Auth/POST/verify-2fa` redirect endpoint that verifies user login with 2fa, never call manually.
@@ -641,11 +638,20 @@ To see what fields should be provided in an API request check the swagger docume
  - `Auth/POST/reset-password` allows anyone to reset user's password, requires providing the old and new passwords, sends confirmation email.
  - `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend.
 
+### User specific API calls
+ - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
+
 ### UserComment specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
 
+### UserCommentInteraction specific API calls
+ - `UserCommentInteractions/POST/get-count` allows the user to view how many interactions a comment has
+
+### UserFollow specific API calls
+ - `UserFollows/POST/get-count` allows the user to view how many followers or follows a user has
+
 ### UserActivity specific API calls
- - `UserActivities/POST/get-views` allows the user to view how many times an activity has been performed
+ - `UserActivities/POST/get-count` allows the user to view how many times an activity has been performed
 
 ### Image specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
@@ -671,7 +677,10 @@ To see what fields should be provided in an API request check the swagger docume
    - the user has to provide specific fields correctly for each subclass.
 
 ### Build related API calls
-These calls work just like the basic ones but they have additional protections since users can interact with builds created by others.
+These calls work just like the basic ones but they have additional protections since users can interact with builds created by others, which can be private.
+
+### BuildInteractions specific API calls
+ - `UserCommentInteractions/POST/get-count` allows the user to view how many interactions a build has
 
 ### Admin specific API calls
  - `Admin/POST/reset` resets the system_admin user account using data provided in the appsettings.json file:
