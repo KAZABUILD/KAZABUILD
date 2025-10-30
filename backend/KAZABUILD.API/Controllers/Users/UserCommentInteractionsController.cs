@@ -108,6 +108,24 @@ namespace KAZABUILD.API.Controllers.Users
                 return BadRequest(new { message = "Interaction already exists!" });
             }
 
+            //Check if the dislike and like aren't being set at the same time
+            if (dto.IsDisliked && dto.IsLiked)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "UserCommentInteraction",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Interaction Incorrect"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "Interaction cannot be both positive and negative!" });
+            }
+
             //Check if current user has admin permissions, is interacting as themselves or if they are adding an interaction to their own userComment
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;
@@ -297,12 +315,24 @@ namespace KAZABUILD.API.Controllers.Users
                 changedFields.Add("IsLiked: " + userCommentInteraction.IsLiked);
 
                 userCommentInteraction.IsLiked = (bool)dto.IsLiked;
+
+                //Set the IsDisliked field to false if IsLiked set to true
+                if(dto.IsLiked == true)
+                {
+                    userCommentInteraction.IsDisliked = false;
+                }
             }
             if (dto.IsDisliked != null)
             {
                 changedFields.Add("IsDisliked: " + userCommentInteraction.IsDisliked);
 
                 userCommentInteraction.IsDisliked = (bool)dto.IsDisliked;
+
+                //Set the IsLiked field to false if IsDisliked set to true
+                if (dto.IsDisliked == true)
+                {
+                    userCommentInteraction.IsLiked = false;
+                }
             }
             if (isPrivileged)
             {

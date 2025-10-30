@@ -155,8 +155,10 @@ namespace KAZABUILD.API.Controllers
             await _seeder.SeedAsync<Message, Guid>(400, userIds);
             await _seeder.SeedAsync<Message, Guid>(400, userIds);
 
+            //Seed remaining user domain tables
             await _seeder.SeedAsync<UserFollow, Guid>(100, userIds);
             await _seeder.SeedAsync<UserPreference, Guid>(100, userIds);
+            await _seeder.SeedAsync<UserFeedback, Guid>(50, userIds);
 
             //Seed all component variants
             List<Guid> componentIds = await _seeder.SeedAsync<CaseComponent, Guid>(30);
@@ -184,8 +186,8 @@ namespace KAZABUILD.API.Controllers
             await _seeder.SeedAsync<ComponentCompatibility, Guid>(500, componentIds);
             await _seeder.SeedAsync<ComponentPrice, Guid>(300, componentIds);
             List<Guid> componentReviewIds = await _seeder.SeedAsync<ComponentReview, Guid>(300, componentIds);
-            await _seeder.SeedAsync<ComponentVariant, Guid>(500, componentIds);
-            await _seeder.SeedAsync<ColorVariant, Guid>(5000, componentIds, idsOptional: colorCodes);
+            List<Guid> colorVariantIds = await _seeder.SeedAsync<ComponentVariant, Guid>(500, componentIds);
+            await _seeder.SeedAsync<ColorVariant, Guid>(800, colorVariantIds, idsOptional: colorCodes);
 
             //Seed all build domain tables
             List<Guid> buildIds = await _seeder.SeedAsync<Build, Guid>(200, userIds);
@@ -193,6 +195,9 @@ namespace KAZABUILD.API.Controllers
             await _seeder.SeedAsync<BuildTag, Guid>(3000, buildIds, tagIds);
             await _seeder.SeedAsync<BuildComponent, Guid>(1200, buildIds, componentIds);
             await _seeder.SeedAsync<BuildInteraction, Guid>(2000, userIds, buildIds);
+
+            //Seed the user activity
+            await _seeder.SeedAsync<UserActivity, Guid>(10000, userIds, buildIds, forumIds);
 
             //Seed multiple times to test parent comments
             await _seeder.SeedAsync<UserComment, Guid>(500, userIds, forumIds, buildIds, componentIds, componentReviewIds);
