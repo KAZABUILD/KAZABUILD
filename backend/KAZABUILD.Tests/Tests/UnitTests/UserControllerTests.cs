@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KAZABUILD.Tests;
 
+[Collection("Sequential")]
 public class UserControllerTests : BaseIntegrationTest
 {
     private UsersControllerClient _api_user_client = null!;
@@ -23,7 +24,6 @@ public class UserControllerTests : BaseIntegrationTest
 
     public UserControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
-        // Configure JsonSerializerOptions to handle enums as strings
         _jsonSerializerOptions = new JsonSerializerOptions
         {
             Converters = { new JsonStringEnumConverter() },
@@ -34,7 +34,6 @@ public class UserControllerTests : BaseIntegrationTest
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-        await _dataSeeder.SeedAsync<User, Guid>(30, password: "password123!");
 
         admin = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.ADMINISTRATOR);
         user = await _context.Users.FirstOrDefaultAsync(u => u.Id != admin.Id && u.UserRole==UserRole.USER);
@@ -94,11 +93,11 @@ public class UserControllerTests : BaseIntegrationTest
         var updateUserDto = new UpdateUserDto { DisplayName = newDisplayName };
 
         // Act
-        await _api_user_client.UpdateUser(user.Id.ToString(), updateUserDto);
+        var updateResponse = await _api_user_client.UpdateUser(user.Id.ToString(), updateUserDto);
 
         // Assert
         var response = await _api_admin_client.GetUser(user.Id.ToString());
-        var data = JsonSerializer.Deserialize<User>(response.Content.ReadAsStringAsync().Result);
+        var data = JsonSerializer.Deserialize<UserResponseDto>(response.Content.ReadAsStringAsync().Result, _jsonSerializerOptions);
 
         Assert.Equal(newDisplayName, data.DisplayName);
     }
