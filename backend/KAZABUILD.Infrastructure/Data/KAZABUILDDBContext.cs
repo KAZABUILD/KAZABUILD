@@ -32,6 +32,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<Message> Messages { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
         public DbSet<UserActivity> UserActivities { get; set; } = default!;
+        public DbSet<UserFeedback> UserFeedback { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
@@ -266,10 +267,19 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== USER ACTIVITY ======================================//
 
-            //Register relationship with user
+            //Register relationship with user, disable cascade delete as view counts should be remembered even when the user who contributed is gone
             modelBuilder.Entity<UserActivity>()
                 .HasOne(a => a.User)
                 .WithMany(u => u.UserActivities)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            //====================================== USER FEEDBACK ======================================//
+
+            //Register relationship with user, disable cascade delete as feedback should be stored even when the user who left it is gone
+            modelBuilder.Entity<UserFeedback>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.UserFeedback)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
 

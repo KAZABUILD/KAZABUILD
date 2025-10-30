@@ -124,7 +124,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userActivity to edit
-            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(c => c.Id == id);
+            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(a => a.Id == id);
             //Check if the userActivity exists
             if (userActivity == null)
             {
@@ -210,7 +210,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userActivity to return
-            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(c => c.Id == id);
+            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(a => a.Id == id);
             if (userActivity == null)
             {
                 //Log failure
@@ -321,29 +321,29 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(c => dto.UserId.Contains(c.UserId));
+                query = query.Where(a => dto.UserId.Contains(a.UserId));
             }
             if (dto.ActivityType != null)
             {
-                query = query.Where(c => c.ActivityType != null && dto.ActivityType.Contains(c.ActivityType));
+                query = query.Where(a => a.ActivityType != null && dto.ActivityType.Contains(a.ActivityType));
             }
             if (dto.TargetId != null)
             {
-                query = query.Where(c => dto.TargetId.Contains(c.TargetId));
+                query = query.Where(a => dto.TargetId.Contains(a.TargetId));
             }
             if (dto.TimestampStart != null)
             {
-                query = query.Where(c => c.Timestamp >= dto.TimestampStart);
+                query = query.Where(a => a.Timestamp >= dto.TimestampStart);
             }
             if (dto.TimestampEnd != null)
             {
-                query = query.Where(c => c.Timestamp <= dto.TimestampEnd);
+                query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
             //Apply search based on credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.User).Search(dto.Query, c => c.ActivityType, c => c.User!.DisplayName);
+                query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -427,7 +427,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userActivity.gotUserActivities", new
             {
-                userActivityIds = userActivities.Select(c => c.Id),
+                userActivityIds = userActivities.Select(a => a.Id),
                 gotBy = currentUserId
             });
 
@@ -458,29 +458,29 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(c => dto.UserId.Contains(c.UserId));
+                query = query.Where(a => dto.UserId.Contains(a.UserId));
             }
             if (dto.ActivityType != null)
             {
-                query = query.Where(c => c.ActivityType != null && dto.ActivityType.Contains(c.ActivityType));
+                query = query.Where(a => a.ActivityType != null && dto.ActivityType.Contains(a.ActivityType));
             }
             if (dto.TargetId != null)
             {
-                query = query.Where(c => dto.TargetId.Contains(c.TargetId));
+                query = query.Where(a => dto.TargetId.Contains(a.TargetId));
             }
             if (dto.TimestampStart != null)
             {
-                query = query.Where(c => c.Timestamp >= dto.TimestampStart);
+                query = query.Where(a => a.Timestamp >= dto.TimestampStart);
             }
             if (dto.TimestampEnd != null)
             {
-                query = query.Where(c => c.Timestamp <= dto.TimestampEnd);
+                query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
             //Apply search based on credentials
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.User).Search(dto.Query, c => c.ActivityType, c => c.User!.DisplayName);
+                query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -541,7 +541,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userActivity to delete
-            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(c => c.Id == id);
+            var userActivity = await _db.UserActivities.FirstOrDefaultAsync(a => a.Id == id);
             if (userActivity == null)
             {
                 //Log failure

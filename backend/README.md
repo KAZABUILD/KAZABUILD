@@ -263,11 +263,11 @@ All models have protections against adding invalid values but any call made shou
  
  - ForumPost (forum post created by the user)
    - `Id` -> automatically assigned GUID
-   - `CreatorId` -> GUID storing the user's id that posted the ForumPost
-   - `Content` -> string storing the html text in the ForumPost
-   - `Title` -> string storing the title of the ForumPost
-   - `Topic` -> string storing the topic in which the ForumPost has been posted in
-   - `PostedAt` -> date object storing when the ForumPost has been posted
+   - `CreatorId` -> GUID storing the user's id who created the post
+   - `Content` -> string storing the html text in the post
+   - `Title` -> string storing the title of the post
+   - `Topic` -> string storing the topic where the entry has been posted in
+   - `PostedAt` -> date object storing when the entry has been posted
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
@@ -278,6 +278,14 @@ All models have protections against adding invalid values but any call made shou
    - `ActivityType` -> string storing the type of activity the user performed
    - `TargettId` -> nullable GUID storing the Id of the object the user performed the activity for
    - `Timestamp` -> date object storing when the user performed the activity
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserFeedback (feedback left by the user)
+   - `Id` -> automatically assigned GUID
+   - `CreatorId` -> GUID storing the user's id that left the feedback
+   - `Feedback` -> string storing the text of the feedback
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
