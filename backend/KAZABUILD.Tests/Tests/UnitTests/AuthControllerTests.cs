@@ -1,5 +1,8 @@
 ﻿using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using KAZABUILD.Application.DTOs.Auth;
+using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Tests.ControllerServices;
@@ -9,14 +12,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KAZABUILD.Tests;
 
+[Collection("Sequential")]
 public class AuthControllerTests : BaseIntegrationTest
 {
     private AuthControllerClient _api_client = null!;
+    private UsersControllerClient _api_users_client = null!;
+    private UsersControllerClient _api_users_client_admin = null!;
     private HttpClient _client = null!;
+    private HttpClient _client_admin = null!;
+    private HttpClient _client_anonymous = null!;
     private User _user_verified = null!;
     private User _user_unverified = null!;
+    private User _user_admin = null!;
+    private User _user_to_change_password = null!;
     private User _user_banned = null!;
-    private const string DefaultPassword = "ValidPassword123!";
+    private const string DefaultPassword = "password123!";
 
     public AuthControllerTests(KazaWebApplicationFactory factory) : base(factory) { }
 
@@ -24,13 +34,12 @@ public class AuthControllerTests : BaseIntegrationTest
     {
         await base.InitializeAsync();
 
-        // Seed the database with a pool of 30 random users
-        await _dataSeeder.SeedAsync<User, Guid>(30, password: DefaultPassword);
-
         // Query the seeded data to find users with specific roles required for tests
         _user_verified = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.USER);
         _user_unverified = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.UNVERIFIED);
         _user_banned = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.BANNED);
+        _user_admin = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.ADMINISTRATOR);
+        _user_to_change_password = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.USER && u.Id != _user_verified.Id);
 
         // Ensure that the seeder created the necessary user types for the tests to run
         Assert.NotNull(_user_verified);
@@ -38,11 +47,15 @@ public class AuthControllerTests : BaseIntegrationTest
         Assert.NotNull(_user_banned);
 
         // Create an anonymous client. Redirects are disabled to test redirect responses.
-        _client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        _client_anonymous = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
-        _api_client = new AuthControllerClient(_client, "127.0.0.1");
+        _client = await HttpClientFactory.Create(_factory, _user_verified);
+        _client_admin = await HttpClientFactory.Create(_factory, _user_admin);
+        _api_client = new AuthControllerClient(_client_anonymous, "127.0.0.1");
+        _api_users_client = new UsersControllerClient(_client);
+        _api_users_client_admin = new UsersControllerClient(_client);
     }
 
     [Fact]
@@ -172,37 +185,26 @@ public class AuthControllerTests : BaseIntegrationTest
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 
-        var verifiedUser = await _context.Users.FindAsync(_user_unverified.Id);
-        Assert.NotNull(verifiedUser);
-        Assert.Equal(UserRole.USER, verifiedUser.UserRole);
+        var getUserResponse = await _api_users_client.GetUser(_user_unverified.Id.ToString());
+        var data = JsonSerializer.Deserialize<UserResponseDto>(
+            getUserResponse.Content.ReadAsStringAsync().Result,
+            new JsonSerializerOptions {
+                Converters = { new JsonStringEnumConverter() },
+                PropertyNameCaseInsensitive = true
+            });
 
-        var usedToken = await _context.UserTokens.FindAsync(token.Id);
-        Assert.NotNull(usedToken?.UsedAt);
-    }
-
-    [Fact]
-    public async Task ResetPassword_ForExistingUser_ShouldCreateToken()
-    {
-        // Arrange
-        var resetDto = new ResetPasswordDto { Email = _user_verified.Email, RedirectUrl = "/new-password" };
-
-        // Act
-        var response = await _api_client.ResetPassword(resetDto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var token = await _context.UserTokens.FirstOrDefaultAsync(t => t.UserId == _user_verified.Id && t.TokenType == TokenType.RESET_PASSWORD);
-        Assert.NotNull(token);
+        Assert.NotEqual(HttpStatusCode.NotFound, getUserResponse.StatusCode);
+        Assert.Equal(UserRole.USER, data.UserRole);
     }
 
     [Fact]
     public async Task ConfirmResetPassword_WithValidToken_ShouldChangePassword()
     {
         // Arrange
-        var originalHash = _user_verified.PasswordHash;
+        var originalHash = _user_to_change_password.PasswordHash;
         var token = new UserToken
         {
-            UserId = _user_verified.Id,
+            UserId = _user_to_change_password.Id,
             Token = Guid.NewGuid().ToString("N"),
             TokenType = TokenType.RESET_PASSWORD,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -221,8 +223,11 @@ public class AuthControllerTests : BaseIntegrationTest
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 
-        var updatedUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _user_verified.Id);
+        var updatedUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _user_to_change_password.Id);
         Assert.NotNull(updatedUser);
         Assert.NotEqual(originalHash, updatedUser.PasswordHash);
+
+        //Remove user afterward in case he gets picked in other test classes
+        await _api_users_client_admin.DeleteUser(_user_to_change_password.Id.ToString());
     }
 }

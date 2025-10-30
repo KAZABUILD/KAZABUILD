@@ -9,7 +9,7 @@ public class AdminControllerClient(HttpClient _client)
         return await _client.PostAsJsonAsync("/Admin/reset", new {});
     }
 
-    public async Task<HttpResponseMessage> UpdateNotification(String password)
+    public async Task<HttpResponseMessage> Seed(String password)
     {
         return await _client.PostAsJsonAsync("/Admin/seed/"+password, new {});
     }

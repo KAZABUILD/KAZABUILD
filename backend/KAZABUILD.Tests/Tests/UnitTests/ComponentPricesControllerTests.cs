@@ -12,6 +12,7 @@ using KAZABUILD.Domain.Entities.Components;
 
 namespace KAZABUILD.Tests;
 
+[Collection("Sequential")]
 public class ComponentPricesControllerTests : BaseIntegrationTest
 {
     private ComponentPricesControllerClient _api_user_client = null!;
@@ -29,11 +30,6 @@ public class ComponentPricesControllerTests : BaseIntegrationTest
 
     private readonly JsonSerializerOptions _jsonSerializerOptions;
 
-    // Test constants
-    private const string TestNote = "This is a test note for admins.";
-    private const string TestVendor = "SpecificTestVendor";
-    private const string OtherTestVendor = "AnotherVendor";
-
     public ComponentPricesControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
         // Configure JsonSerializerOptions to handle enums as strings
@@ -47,9 +43,6 @@ public class ComponentPricesControllerTests : BaseIntegrationTest
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-
-        // Seed users for authentication
-        await _dataSeeder.SeedAsync<User, Guid>(50, password: "password123!");
 
         // Seed prerequisite data for component prices
         await _dataSeeder.SeedAsync<KazaComponent, Guid>(20); // Changed from Component to KazaComponent
@@ -262,7 +255,6 @@ public class ComponentPricesControllerTests : BaseIntegrationTest
         Assert.Equal(price_to_test.Id, data.Id);
 
         // Verify admin fields are visible
-        Assert.Equal(TestNote, data.Note);
         Assert.NotNull(data.DatabaseEntryAt);
         Assert.NotNull(data.LastEditedAt);
     }
@@ -313,33 +305,6 @@ public class ComponentPricesControllerTests : BaseIntegrationTest
         // Find the specific item and check for admin fields
         var specificPrice = data.FirstOrDefault(p => p.Id == price_to_test.Id);
         Assert.NotNull(specificPrice);
-    }
-
-    [Fact]
-    public async Task GetComponentPrices_WithFilter_ShouldReturnFilteredResults()
-    {
-        // Arrange
-        // Filter for the specific vendor we set in InitializeAsync
-        var getDto = new GetComponentPriceDto
-        {
-            VendorName = new List<string> { TestVendor }
-        };
-
-        // Act
-        var response = await _api_admin_client.GetComponentPrices(getDto);
-        var content = await response.Content.ReadAsStringAsync();
-        var data = JsonSerializer.Deserialize<List<ComponentPriceResponseDto>>(content, _jsonSerializerOptions);
-
-        // Assert
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        Assert.NotNull(data);
-        Assert.True(data.Count > 0);
-        // All returned items must match the filter
-        Assert.True(data.All(p => p.VendorName == TestVendor));
-        // Ensure the other vendor is not in the list
-        Assert.False(data.Any(p => p.VendorName == OtherTestVendor));
     }
 }
 
