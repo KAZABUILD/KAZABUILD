@@ -24,7 +24,7 @@ namespace KAZABUILD.Domain.Entities.Users
         /// The actual token string.
         /// </summary>
         [Required]
-        public string Token { get; set; } = default!;
+        public string TokenHash { get; set; } = default!;
 
         /// <summary>
         /// Type of the token used to distinguish what action is it created for.

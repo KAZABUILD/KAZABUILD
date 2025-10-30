@@ -68,9 +68,9 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper conflict response
                 if (dto.Email == isUserAvailable.Email)
-                    return Conflict(new { message = "Email Already In Use" });
+                    return Conflict(new { message = "Email already in use" });
                 else
-                    return Conflict(new { message = "Login Already In Use" });
+                    return Conflict(new { message = "Login already in use" });
             }
 
             //Check if the user has sufficient permissions
@@ -361,6 +361,13 @@ namespace KAZABUILD.API.Controllers.Users
                     changedFields.Add("Login: " + user.Login);
 
                     user.Login = dto.Login;
+                }
+                if (dto.BannedUntil != null)
+                {
+                    if (dto.BannedUntil == DateTime.MinValue)
+                        user.BannedUntil = null;
+                    else
+                        user.BannedUntil = dto.BannedUntil;
                 }
                 if (dto.Note != null)
                 {
@@ -749,6 +756,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
+            //Get all users
             List<User> users = await query.ToListAsync();
 
             //Declare response variable
@@ -901,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -935,6 +943,20 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return forbidden response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (user.Images.Count != 0)
+            {
+                foreach (var image in user.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(user.Images);
             }
 
             //Handle deleting followed user and followers to avoid conflicts with cascade deletes

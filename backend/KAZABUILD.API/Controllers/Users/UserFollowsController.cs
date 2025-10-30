@@ -1,4 +1,6 @@
+using KAZABUILD.Application.DTOs.Users.UserActivity;
 using KAZABUILD.Application.DTOs.Users.UserFollow;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
@@ -392,6 +394,12 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
+            //Apply search based om credentials
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
+            }
+
             //Order by specified field if provided
             if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
@@ -472,6 +480,92 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Return the userFollows
             return Ok(responses);
+        }
+
+        /// <summary>
+        /// API endpoint for getting User's follower or followed count with pagination.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<int>> GetUserFollowsCount([FromBody] GetUserFollowDto dto)
+        {
+            //Get userFollow id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has staff permissions
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.UserFollows.AsNoTracking();
+
+            //Filter by the variables if included
+            if (dto.FollowerId != null && dto.FollowedId == null)
+            {
+                query = query.Where(f => dto.FollowerId.Contains(f.FollowerId));
+            }
+            if (dto.FollowedId != null && dto.FollowerId == null)
+            {
+                query = query.Where(f => dto.FollowedId.Contains(f.FollowedId));
+            }
+            if (dto.FollowedAtStart != null)
+            {
+                query = query.Where(f => f.FollowedAt >= dto.FollowedAtStart);
+            }
+            if (dto.FollowedAtEnd != null)
+            {
+                query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
+            }
+
+            //Apply search based om credentials
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get userFollows with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of follows to return
+            var followsAmount = await query.CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "UserFollow",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - UserFollows Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("userFollow.gotUserFollowsCount", new
+            {
+                count = followsAmount,
+                gotBy = currentUserId
+            });
+
+            //Return the userFollows
+            return Ok(followsAmount);
         }
 
         /// <summary>

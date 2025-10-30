@@ -1010,6 +1010,7 @@ namespace KAZABUILD.API.Controllers
                 return Forbid();
             }
 
+            //Remove the file from the file system
             if (System.IO.File.Exists(image.Location))
                 System.IO.File.Delete(image.Location);
 

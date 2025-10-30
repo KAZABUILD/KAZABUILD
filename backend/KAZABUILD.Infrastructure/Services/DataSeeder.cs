@@ -9,6 +9,7 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -17,11 +18,13 @@ namespace KAZABUILD.Infrastructure.Services
     /// </summary>
     /// <param name="context"></param>
     /// <param name="hasher"></param>
-    public class DataSeeder(KAZABUILDDBContext context, IHashingService hasher) : IDataSeeder
+    /// <param name="aes"></param>
+    public class DataSeeder(KAZABUILDDBContext context, IHashingService hasher, IEncryptionService aes) : IDataSeeder
     {
         //Services used for data seeding
         private readonly KAZABUILDDBContext _context = context;
         private readonly IHashingService _hasher = hasher;
+        private readonly IEncryptionService _aes = aes;
 
         /// <summary>
         /// Function used to seed the database with fake data.
@@ -127,13 +130,21 @@ namespace KAZABUILD.Infrastructure.Services
 
                 var userIds = ids1 ?? [Guid.Empty];
                 var forumPostIds = ids2 ?? [Guid.Empty];
-                var buildId = ids3 ?? [Guid.Empty];
-                var componentId = ids4 ?? [Guid.Empty];
-                var componentReviewId = ids5 ?? [Guid.Empty];
+                var buildIds = ids3 ?? [Guid.Empty];
+                var componentIds = ids4 ?? [Guid.Empty];
+                var componentReviewIds = ids5 ?? [Guid.Empty];
 
+                //Get comments from the same generation batch
                 var commentIds = await _context.UserComments.Where(c => userIds.Contains(c.UserId)).Select(c => c.Id).ToListAsync();
 
-                return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildId, componentId, componentReviewId, commentTargetTypes, commentIds);
+                return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildIds, componentIds, componentReviewIds, commentTargetTypes, commentIds);
+            }
+            else if (typeof(T) == typeof(UserCommentInteraction))
+            {
+                var userIds = ids1 ?? [Guid.Empty];
+                var commentIds = ids2 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserCommentInteractionFaker(userIds, commentIds);
             }
             else if (typeof(T) == typeof(UserFollow))
             {
@@ -146,6 +157,20 @@ namespace KAZABUILD.Infrastructure.Services
                 var userIds = ids1 ?? [Guid.Empty];
 
                 return (Faker<T>)(object)GetUserPreferenceFaker(userIds);
+            }
+            else if (typeof(T) == typeof(UserActivity))
+            {
+                var userIds = ids1 ?? [Guid.Empty];
+                var buildIds = ids2 ?? [Guid.Empty];
+                var forumPostIds = ids3 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserActivityFaker(userIds, buildIds, forumPostIds);
+            }
+            else if (typeof(T) == typeof(UserFeedback))
+            {
+                var userIds = ids1 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserFeedbackFaker(userIds);
             }
             else if (typeof(T) == typeof(BaseComponent))
             {
@@ -252,8 +277,9 @@ namespace KAZABUILD.Infrastructure.Services
             {
                 var componentIds = ids1 ?? [Guid.Empty];
 
-                List<ComponentPrice> componentPrice = await _context.ComponentPrices.Where(p => componentIds.Contains(p.ComponentId)).OrderBy(p => p.Price).ToListAsync();
-                return (Faker<T>)(object)GetComponentVariantFaker(componentIds, componentPrice);
+                List<ComponentPrice> componentPriceIds = await _context.ComponentPrices.Where(p => componentIds.Contains(p.ComponentId)).OrderBy(p => p.Price).ToListAsync();
+
+                return (Faker<T>)(object)GetComponentVariantFaker(componentIds, componentPriceIds);
             }
             else if (typeof(T) == typeof(ColorVariant))
             {
@@ -330,6 +356,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(u => u.Birth, f => f.Date.Past(60, DateTime.UtcNow.AddYears(-18)))
             .RuleFor(u => u.RegisteredAt, f => f.Date.Past(2))
             .RuleFor(u => u.Address, f => null)
+            .RuleFor(u => u.BannedUntil, f => null)
             .RuleFor(u => u.ProfileAccessibility, f => f.PickRandom<ProfileAccessibility>())
             .RuleFor(u => u.Theme, f => f.PickRandom<Theme>())
             .RuleFor(u => u.Language, f => f.PickRandom<Language>())
@@ -379,7 +406,6 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(m => m.Id, f => Guid.NewGuid())
             .RuleFor(m => m.SenderId, f => f.PickRandom(userIds))
             .RuleFor(m => m.ReceiverId, f => f.PickRandom(userIds))
-            .RuleFor(m => m.Content, f => f.Lorem.Paragraphs(1))
             .RuleFor(m => m.Title, f =>
             {
                 var title = f.Lorem.Sentence(3);
@@ -397,7 +423,15 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(m => m.MessageType, f => f.PickRandom<MessageType>())
             .RuleFor(m => m.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(m => m.LastEditedAt, (f, m) => f.Date.Between(m.DatabaseEntryAt, DateTime.UtcNow))
-            .RuleFor(m => m.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+            .RuleFor(m => m.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null)
+            .FinishWith((f, m) =>
+            {
+                var plainText = f.Lorem.Paragraphs(1);
+
+                var (cipher, iv) = _aes.Encrypt(plainText);
+                m.CipherText = cipher;
+                m.IV = iv;
+            });
 
         private Faker<UserComment> GetUserCommentFaker(List<Guid> userIds, List<Guid> forumPostIds, List<Guid> buildIds, List<Guid> componentIds, List<Guid> componentReviewIds, List<CommentTargetType> commentTargetTypes, List<Guid> commentIds) => new Faker<UserComment>("en")
             .RuleFor(c => c.Id, f => Guid.NewGuid())
@@ -420,6 +454,15 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(c => c.LastEditedAt, (f, c) => f.Date.Between(c.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(c => c.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
+        private Faker<UserCommentInteraction> GetUserCommentInteractionFaker(List<Guid> userIds, List<Guid> commentIds) => new Faker<UserCommentInteraction>("en")
+            .RuleFor(i => i.Id, f => Guid.NewGuid())
+            .RuleFor(i => i.UserId, f => f.PickRandom(userIds))
+            .RuleFor(i => i.UserCommentId, f => f.PickRandom(commentIds))
+            .RuleFor(i => i.IsLiked, f => f.Random.Bool(0.6f))
+            .RuleFor(i => i.IsDisliked, (f, c) => !c.IsLiked && f.Random.Bool(0.8f))
+            .RuleFor(i => i.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(i => i.LastEditedAt, (f, i) => f.Date.Between(i.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(i => i.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
         private Faker<UserFollow> GetUserFollowFaker(List<Guid> userIds) => new Faker<UserFollow>("en")
             .RuleFor(f => f.Id, f => Guid.NewGuid())
             .RuleFor(f => f.FollowerId, f => f.PickRandom(userIds))
@@ -435,6 +478,34 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private static readonly string[] activity = ["ProfileView", "BuildView", "ForumPostView"];
+        private Faker<UserActivity> GetUserActivityFaker(List<Guid> userIds, List<Guid> buildIds, List<Guid> forumPostIds) => new Faker<UserActivity>("en")
+            .RuleFor(a => a.Id, f => Guid.NewGuid())
+            .RuleFor(a => a.UserId, f => f.PickRandom(userIds))
+            .RuleFor(a => a.ActivityType, f => f.PickRandom(activity))
+            .RuleFor(a => a.TargetId, (f, a) =>
+            {
+                return a.ActivityType switch
+                {
+                    "ProfileView" => f.PickRandom(userIds),
+                    "BuildView" => f.PickRandom(buildIds),
+                    "ForumPostView" => f.PickRandom(forumPostIds),
+                    _ => f.PickRandom(userIds)
+                };
+            })
+            .RuleFor(a => a.Timestamp, f => f.Date.Past(1, DateTime.UtcNow))
+            .RuleFor(a => a.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(a => a.LastEditedAt, (f, a) => f.Date.Between(a.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(a => a.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<UserFeedback> GetUserFeedbackFaker(List<Guid> userIds) => new Faker<UserFeedback>("en")
+            .RuleFor(fe => fe.Id, f => Guid.NewGuid())
+            .RuleFor(fe => fe.UserId, f => f.PickRandom(userIds))
+            .RuleFor(fe => fe.Feedback, f => f.Lorem.Paragraph())
+            .RuleFor(fe => fe.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(fe => fe.LastEditedAt, (f, fe) => f.Date.Between(fe.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(fe => fe.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
         private Faker<BaseComponent> GetBaseComponentFaker() => new Faker<BaseComponent>("en")
             .RuleFor(c => c.Id, f => Guid.NewGuid())
@@ -513,9 +584,9 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(c => c.Size, f => f.Random.Decimal(80, 200))
             .RuleFor(c => c.Quantity, f => f.Random.Int(1, 5))
             .RuleFor(c => c.MinAirflow, f => f.Random.Decimal(5m, 15m))
-            .RuleFor(c => c.MaxAirflow, (f, c) => f.Random.Bool(0.8f) ? f.Random.Decimal(c.MinAirflow, 25m) : null)
+            .RuleFor(c => c.MaxAirflow, (f, c) => f.Random.Bool(0.8f) ? f.Random.Decimal((decimal)c.MinAirflow!, 25m) : null)
             .RuleFor(c => c.MinNoiseLevel, f => f.Random.Decimal(10m, 25m))
-            .RuleFor(c => c.MaxNoiseLevel, (f, c) => f.Random.Bool(0.8f) ? f.Random.Decimal(c.MinNoiseLevel, 40m) : null)
+            .RuleFor(c => c.MaxNoiseLevel, (f, c) => f.Random.Bool(0.8f) ? f.Random.Decimal((decimal)c.MinNoiseLevel!, 40m) : null)
             .RuleFor(c => c.PulseWidthModulation, f => f.Random.Bool(0.7f))
             .RuleFor(c => c.LEDType, f => f.PickRandom(ledTypes))
             .RuleFor(c => c.ConnectorType, f => f.PickRandom(connectorTypes))
@@ -1129,7 +1200,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(bt => bt.BuildId, f => f.PickRandom(buildIds))
             .RuleFor(bt => bt.TagId, f => f.PickRandom(tagIds))
             .RuleFor(bt => bt.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
-            .RuleFor(bt => bt.LastEditedAt, (f, bt) => f.Date.Between(bt.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(bt => bt.LastEditedAt, (f, t) => f.Date.Between(t.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(bt => bt.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
         private Faker<BuildComponent> GetBuildComponentFaker(List<Guid> buildIds, List<Guid> componentIds) => new Faker<BuildComponent>("en")
@@ -1150,7 +1221,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(i => i.Rating, (f, i) => i.IsLiked ? f.Random.Int(60, 100) : f.Random.Int(0, 70))
             .RuleFor(i => i.UserNote, f => f.Random.Bool(0.25f) ? f.Lorem.Sentence() : null)
             .RuleFor(i => i.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
-            .RuleFor(i => i.LastEditedAt, (f, bi) => f.Date.Between(bi.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(i => i.LastEditedAt, (f, i) => f.Date.Between(i.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(i => i.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
     }
 }

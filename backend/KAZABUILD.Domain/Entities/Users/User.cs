@@ -98,6 +98,12 @@ namespace KAZABUILD.Domain.Entities.Users
         /// </summary>
         public Address? Address { get; set; }
 
+        /// <summary>
+        /// Date when the user ban expires.
+        /// Empty or outdated if user not banned.
+        /// </summary>
+        public DateTime? BannedUntil { get; set; }
+
         //User Settings fields
         /// <summary>
         /// Setting for who can see user's profile.
@@ -165,5 +171,8 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<Build> Builds { get; set; } = [];
         public ICollection<BuildInteraction> BuildInteractions { get; set; } = [];
         public ICollection<Image> Images { get; set; } = [];
+        public ICollection<UserActivity> UserActivities { get; set; } = [];
+        public ICollection<UserCommentInteraction> UserCommentInteractions { get; set; } = [];
+        public ICollection<UserFeedback> UserFeedback { get; set; } = [];
     }
 }
