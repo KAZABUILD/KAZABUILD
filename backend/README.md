@@ -35,85 +35,87 @@
 
 ## NuGet Packages:
  - `MediatR`
-   - Simple mediator implementation in for handling requests and notifications
+   - Simple mediator implementation in for handling requests and notifications.
  - `FluentValidation.DependencyInjectionExtensions`
-   - Adds support for dependency injection of FluentValidation validators
+   - Adds support for dependency injection of FluentValidation validators.
  - `Microsoft.AspNetCore.OpenApi`
-   - Provides OpenAPI specification support for ASP.NET Core applications
+   - Provides OpenAPI specification support for ASP.NET Core applications.
  - `Microsoft.EntityFrameworkCore`
-   -Core components of Entity Framework Core, an ORM for .NET
+   -Core components of Entity Framework Core, an ORM for .NET.
  - `Microsoft.EntityFrameworkCore.SqlServer`
-   - SQL Server database provider for Entity Framework Core
+   - SQL Server database provider for Entity Framework Core.
  - `Microsoft.EntityFrameworkCore.Tools`
-   - Tools for EF Core commands like migrations and scaffolding
+   - Tools for EF Core commands like migrations and scaffolding.
  - `Swashbuckle.AspNetCore`
-   - Generates Swagger API documentation for ASP.NET Core applications
+   - Generates Swagger API documentation for ASP.NET Core applications.
  - `RabbitMQ.Client`
-   - Client library for connecting and interacting with RabbitMQ message broker
+   - Client library for connecting and interacting with RabbitMQ message broker.
  - `Microsoft.AspNetCore.Authentication.JwtBearer`
-   - Enables JWT (JSON Web Token) authentication in ASP.NET Core
+   - Enables JWT (JSON Web Token) authentication in ASP.NET Core.
  - `Microsoft.Extensions.Options.ConfigurationExtensions`
-   - Supports binding configuration settings to strongly typed options classes
+   - Supports binding configuration settings to strongly typed options classes.
  - `BCrypt.Net-Next`
-   - Library for hashing and verifying passwords using the BCrypt algorithm
+   - Library for hashing and verifying passwords using the BCrypt algorithm.
  - `Serilog.AspNetCore`
-   - Logging framework integration for ASP.NET Core using Serilog
+   - Logging framework integration for ASP.NET Core using Serilog.
  - `FluentAssertions`
-   - Library for more readable and expressive unit test assertions
+   - Library for more readable and expressive unit test assertions.
  - `Microsoft.AspNetCore.Mvc.Testing`
-   - Simplifies integration and end-to-end testing of ASP.NET Core applications
+   - Simplifies integration and end-to-end testing of ASP.NET Core applications.
  - `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`
-   - Adds health check integration for Entity Framework Core contexts
+   - Adds health check integration for Entity Framework Core contexts.
  - `AspNetCoreRateLimit`
-   - Middleware for rate limiting API requests in ASP.NET Core
+   - Middleware for rate limiting API requests in ASP.NET Core.
  - `System.Linq.Dynamic.Core`
-   - Enables dynamic LINQ queries built from strings at runtime
+   - Enables dynamic LINQ queries built from strings at runtime.
  - `Microsoft.AspNetCore.Authentication.Google`
-   - Enables Google OAuth 2.0 authentication in ASP.NET Core
+   - Enables Google OAuth 2.0 authentication in ASP.NET Core.
  - `Google.Apis.Auth`
-   - Provides tools for authenticating and verifying Google accounts and tokens
+   - Provides tools for authenticating and verifying Google accounts and tokens.
  - `Swashbuckle.AspNetCore.Annotations`
-   - Adds annotation support to enhance Swagger documentation
+   - Adds annotation support to enhance Swagger documentation.
  - `MailKit`
-   - Cross-platform email client library for sending and receiving mail
+   - Cross-platform email client library for sending and receiving mail.
  - `Bogus`
-   - Library for generating fake data for testing and seeding databases
+   - Library for generating fake data for testing and seeding databases.
 
 ## Features
  - Swagger Documentation
    - Accessed through `https://localhost:<port_number>/swagger/index.html`
    - Allows the user to test all endpoints and read through description of DTOs and controllers
  - Authentication Middleware
-   - Allows the backend to check who the user is
-   - Adds authentication from external services
+   - Allows the backend to check who the user is.
+   - Adds authentication from external services.
  - Authorization Middleware
-   - Divides the backend space access among different groups of people
-   - Uses the UserRole enum
-   - The role field in the user model determines user's access level
+   - Divides the backend space access among different groups of people.
+   - Uses the UserRole enum.
+   - The role field in the user model determines user's access level.
  - Automatic Validation
-   - The backend automatically checks if user request are correctly formatted and if provided values are in line with the database
+   - The backend automatically checks if user request are correctly formatted and if provided values are in line with the database.
  - Rate Limiting
-   - User access to endpoints get restricted if the user sends too many requests
-   - Normal users and admins have different restrictions
+   - User access to endpoints get restricted if the user sends too many requests.
+   - Normal users and admins have different restrictions.
  - CORS Middleware
-   - Backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file
+   - Backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file.
  - RabbitMQ Queues
-   - Allows communication with any additional or external services
+   - Allows communication with any additional or external services.
  - Health Checks Endpoints
-   - Can be accessed to check if SMTP, Database and RabbitMQ are working
+   - Can be accessed to check if SMTP, Database and RabbitMQ are working.
  - SMTP Email Service
    - Allows the application to verify users emails as well as send users any emails.
  - Hashing Service
-   - Passwords, tokens and messages are stored as hashed in the database
+   - Passwords, tokens and messages are stored as hashed in the database.
  - Guest User Handling Middleware
-   - All users can access the website without an account with limited functionality 
+   - All users can access the website without an account with limited functionality .
  - Logging service
-   - The application produces logs that can be used for debugging
-   - They can be accessed through log files, console and the database
+   - The application produces logs that can be used for debugging.
+   - They can be accessed through log files, console and the database.
  - Cleanup Service
-   - Tokens and logs get deleted after a while as not to clog the memory
+   - Tokens and logs get deleted after a while as not to clog the memory.
  - Seeding Service
-   - Allows developers to generate fake data for testing purposes
+   - Allows developers to generate fake data for testing purposes.
+ - Cache Service
+   - Some endpoints with complicated SQL logic that don't have complicated permission restrictions get cached to speed up the program.
 
 ## Models
 All models have protections against adding invalid values but any call made should be double checked anyway
@@ -688,7 +690,7 @@ To see what fields should be provided in an API request check the swagger docume
 These calls work just like the basic ones but they have additional protections since users can interact with builds created by others, which can be private.
 
 ### BuildInteractions specific API calls
- - `UserCommentInteractions/POST/get-count` allows the user to view how many interactions a build has
+ - `BuildInteractions/POST/get-count` allows the user to view how many interactions a build has
 
 ### Admin specific API calls
  - `Admin/POST/reset` resets the system_admin user account using data provided in the appsettings.json file:
