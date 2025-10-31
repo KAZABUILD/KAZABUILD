@@ -291,6 +291,29 @@ All models have protections against adding invalid values but any call made shou
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
+ 
+ - UserComment (user report for different types of objects, only one foreign object id can be assigned to an object)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that wrote the comment
+   - `Reason` -> string storing the reason for the report
+   - `Details` -> string storing the explanation for the reason of report
+   - `TargetType` -> Enum storing what type of entity was reported
+   - `ForumPostId` -> nullable GUID storing which forum post is being reported
+   - `BuildId` -> nullable GUID storing which build is being reported
+   - `UserCommentId` -> nullable GUID storing which comment is being reported
+   - `MessageId` -> nullable GUID storing which message is being reported
+   - `ReportedUserId` -> nullable GUID storing which user is being reported
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserBlock (defines which user blocked which user)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id for the user that is blocking
+   - `BlockedUserId` -> GUID storing the user's id for the user that is being blocked
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
 
 ### Component Domain
 
@@ -730,11 +753,23 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - CPU_CORE
    - VIDEO_OUTPUT
    - CPU_CACHE
+ - ReportTargetType
+   - MESSAGE,
+   - USER,
+   - COMMENT,
+   - BUILD,
+   - FORUM
  
  - ProfileAccessibility
    - PUBLIC
    - PRIVATE
    - FOLLOWS
+ 
+ - PrivacyLevel
+   - INFORMATION
+   - WARNING
+   - ERROR
+   - CRITICAL
  
  - PortType
    - OTHER
@@ -742,12 +777,6 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - POWER
    - USB
    - PIN
- 
- - PrivacyLevel
-   - INFORMATION
-   - WARNING
-   - ERROR
-   - CRITICAL
  
  - NotificationType
    - NONE
@@ -766,6 +795,14 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - ENGLISH
    - POLISH
    - TURKISH
+
+ - ImageLocationType
+   - BUILD,
+   - COMPONENT,
+   - SUBCOMPONENT,
+   - USER,
+   - FORUM,
+   - COMMENT
  
  - ComponentType
    - CASE_FAN
