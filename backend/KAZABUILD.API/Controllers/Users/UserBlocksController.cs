@@ -1,4 +1,5 @@
-using KAZABUILD.Application.DTOs.Users.UserPreference;
+using KAZABUILD.Application.DTOs.Users.UserBlock;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
@@ -8,35 +9,39 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
 namespace KAZABUILD.API.Controllers.Users
 {
     /// <summary>
-    /// Controller for User Preference related endpoints.
-    /// Used to save user answered questionnaires.
+    /// Controller for User Block related endpoints.
+    /// Used to control blocking based interactions between users.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
+    /// <param name="cache"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserPreferencesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserBlocksController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IMemoryCache cache) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
+        private readonly IMemoryCache _cache = cache;
 
         /// <summary>
-        /// API Endpoint for creating a new UserPreference.
+        /// API Endpoint for creating a new UserBlock.
+        /// Allows Users to block other users.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
+        public async Task<IActionResult> AddUserBlock([FromBody] CreateUserBlockDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -46,27 +51,47 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the user exists
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
-            if (user == null)
+            //Check if the Blocked and Blocking User exist
+            var Blocked = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.BlockedUserId);
+            var Blocking = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            if (Blocked == null || Blocking == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "Message",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned User Doesn't Exist"
+                    "Operation Failed - Assigned Blocked Or Blocking User Doesn't Exist"
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "User not found!" });
+                return BadRequest(new { message = "Assigned Blocked or Blocking User not found!" });
             }
 
-            //Check if current user has staff permissions or if they are creating a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            //Check if the user isn't already blocked
+            var isUserBlockAvailable = await _db.UserBlocks.FirstOrDefaultAsync(f => f.BlockedUserId == dto.BlockedUserId && f.UserId == dto.UserId);
+            if (isUserBlockAvailable != null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "UserBlock",
+                    ip,
+                    isUserBlockAvailable.Id,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - The selected users are already present in the follows"
+                );
+
+                //Return proper conflict response
+                return Conflict(new { message = "User already followed!" });
+            }
+
+            //Check if current user has staff permissions or if they are creating a block for themselves
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;
 
             //Check if the user has correct permission
@@ -76,7 +101,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -87,15 +112,17 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Create a userPreference to add
-            UserPreference userPreference = new()
+            //Create a userBlock to add
+            UserBlock userBlock = new()
             {
+                BlockedUserId = dto.BlockedUserId,
+                UserId = dto.UserId,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the userPreference to the database
-            _db.UserPreferences.Add(userPreference);
+            //Add the userBlock to the database
+            _db.UserBlocks.Add(userBlock);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -104,34 +131,34 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "UserPreference",
+                "UserBlock",
                 ip,
-                userPreference.Id,
+                userBlock.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New UserPreference Created"
+                "Successful Operation - New UserBlock Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.created", new
+            await _publisher.PublishAsync("userBlock.created", new
             {
-                userPreferenceId = userPreference.Id,
-                createdBy = currentUserId
+                userBlockId = userBlock.Id,
+                craetedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference created successfully!", id = userPreference.Id });
+            return Ok(new { message = "User followed successfully!", id = userBlock.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected UserPreference.
-        /// User can modify only their own Preferences, while admins can modify all.
+        /// API endpoint for updating the selected UserBlock.
+        /// Only staff can modify them to add notes.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
-        [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateUserPreference(Guid id, [FromBody] UpdateUserPreferenceDto dto)
+        [Authorize(Policy = "Staff")]
+        public async Task<IActionResult> UpdateUserBlock(Guid id, [FromBody] UpdateUserBlockDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -141,23 +168,23 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to edit
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userBlock to edit
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            if (userBlock == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserBlock"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { message = "UserBlock not found!" });
             }
 
             //Track changes for logging
@@ -166,57 +193,57 @@ namespace KAZABUILD.API.Controllers.Users
             //Update allowed fields
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + userPreference.Note);
+                changedFields.Add("Note: " + userBlock.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    userPreference.Note = null;
+                    userBlock.Note = null;
                 else
-                    userPreference.Note = dto.Note;
+                    userBlock.Note = dto.Note;
             }
 
             //Update edit timestamp
-            userPreference.LastEditedAt = DateTime.UtcNow;
+            userBlock.LastEditedAt = DateTime.UtcNow;
 
-            //Update the userPreference
-            _db.UserPreferences.Update(userPreference);
+            //Update the userBlock
+            _db.UserBlocks.Update(userBlock);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
 
             //Logging description with all the changed fields
-            var description = changedFields.Count > 0 ? $"Updated Fields: {string.Join(", ", changedFields)}" : "No Fields Changed";
+            var description = changedFields.Count > 0 ? $"Updated {string.Join(", ", changedFields)}" : "No Fields Changed";
 
             //Log the update
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "UserPreference",
+                "UserBlock",
                 ip,
-                userPreference.Id,
+                userBlock.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.updated", new
+            await _publisher.PublishAsync("userBlock.updated", new
             {
-                userPreferenceId = id,
+                userBlockId = id,
                 updatedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference updated successfully!" });
+            return Ok(new { message = "User Follow note updated successfully!" });
         }
 
         /// <summary>
-        /// API endpoint for getting the UserPreference specified by id,
+        /// API endpoint for getting the UserBlock specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserPreferenceResponseDto>> GetUserPreference(Guid id)
+        public async Task<ActionResult<UserBlockResponseDto>> GetUserBlock(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -226,34 +253,34 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to return
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userBlock to return
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            if (userBlock == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserBlock"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "User Preference not found!" });
+                return NotFound(new { message = "User Follow not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            UserPreferenceResponseDto response;
+            UserBlockResponseDto response;
 
-            //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == userPreference.UserId;
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            //Check if current user is getting themselves or if they have staff permissions
+            var isSelf = currentUserId == userBlock.UserId;
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
             if (!isSelf && !isPrivileged)
@@ -262,7 +289,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
@@ -279,11 +306,12 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create userBlock response
+                response = new UserBlockResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId
+                    Id = userBlock.Id,
+                    BlockedUserId = userBlock.UserId,
+                    UserId = userBlock.Id
                 };
             }
             else
@@ -291,14 +319,15 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create userBlock response
+                response = new UserBlockResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note,
+                    Id = userBlock.Id,
+                    BlockedUserId = userBlock.UserId,
+                    UserId = userBlock.Id,
+                    DatabaseEntryAt = userBlock.DatabaseEntryAt,
+                    LastEditedAt = userBlock.LastEditedAt,
+                    Note = userBlock.Note,
                 };
             }
 
@@ -306,7 +335,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "UserBlock",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -314,27 +343,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.got", new
+            await _publisher.PublishAsync("userBlock.got", new
             {
-                userPreferenceId = id,
+                userBlockId = id,
                 gotBy = currentUserId
             });
 
-            //Return the userPreference
+            //Return the userBlock
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting UserPreferences with pagination and search,
+        /// API endpoint for getting UserBlocks with pagination,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserPreferenceResponseDto>>> GetUserPreferences([FromBody] GetUserPreferenceDto dto)
+        public async Task<ActionResult<IEnumerable<UserBlockResponseDto>>> GetUserBlocks([FromBody] GetUserBlockDto dto)
         {
-            //Get userPreference id and claims from the request
+            //Get userBlock id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -342,22 +371,26 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current user has admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            //Check if current user has staff permissions
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserPreferences.AsNoTracking();
+            var query = _db.UserBlocks.AsNoTracking();
 
             //Filter by the variables if included
+            if (dto.BlockedUserId != null)
+            {
+                query = query.Where(f => dto.BlockedUserId.Contains(f.BlockedUserId));
+            }
             if (dto.UserId != null)
             {
-                query = query.Where(p => dto.UserId.Contains(p.UserId));
+                query = query.Where(f => dto.UserId.Contains(f.UserId));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                //query = query.Search(dto.Query, );
+                query = query.Include(f => f.BlockedUser).Include(f => f.User).Search(dto.Query, i => i.BlockedUser!.DisplayName, i => i.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -366,7 +399,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get userPreferences with paging
+            //Get userBlocks with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -377,41 +410,43 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.Where(p => p.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<UserBlock> userBlocks = await query.Where(f => f.UserId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
-            List<UserPreferenceResponseDto> responses;
+            List<UserBlockResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - User Access, Multiple UserBlocks";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference =>
+                //Create a userBlock response list
+                responses = [.. userBlocks.Select(userBlock =>
                 {
                     //Return a follow response
-                    return new UserPreferenceResponseDto
+                    return new UserBlockResponseDto
                     {
-                        Id = userPreference.Id,
-                        UserId = userPreference.UserId
+                        Id = userBlock.Id,
+                        BlockedUserId = userBlock.UserId,
+                        UserId = userBlock.Id
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - Admin Access, Multiple UserBlocks";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference => new UserPreferenceResponseDto
+                //Create a userBlock response list
+                responses = [.. userBlocks.Select(userBlock => new UserBlockResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserId = userPreference.UserId,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note
+                    Id = userBlock.Id,
+                    BlockedUserId = userBlock.UserId,
+                    UserId = userBlock.Id,
+                    DatabaseEntryAt = userBlock.DatabaseEntryAt,
+                    LastEditedAt = userBlock.LastEditedAt,
+                    Note = userBlock.Note
                 })];
 
             }
@@ -420,7 +455,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "UserBlock",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -428,27 +463,26 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.gotUserPreferences", new
+            await _publisher.PublishAsync("userBlock.gotUserBlocks", new
             {
-                userPreferenceIds = userPreferences.Select(p => p.Id),
+                userBlockIds = userBlocks.Select(f => f.Id),
                 gotBy = currentUserId
             });
 
-            //Return the userPreferences
+            //Return the userBlocks
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected UserPreference.
-        /// Staff can delete all preferences, while users only their own.
+        /// API endpoint for deleting the selected UserBlock, i.e. unfollowing.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteUserPreference(Guid id)
+        public async Task<IActionResult> DeleteUserBlock(Guid id)
         {
-            //Get userPreference id and role from the request claims
+            //Get userBlock id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -456,28 +490,28 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userBlock to delete
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            if (userBlock == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserBlock"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserPreference not found!" });
+                return NotFound(new { message = "UserBlock not found!" });
             }
 
-            //Check if current user has staff permissions or if they are deleting their own preference
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userPreference.UserId;
+            //Check if current user has staff permissions or if they are unblocking a user they blocked
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isSelf = currentUserId == userBlock.UserId;
 
             //Check if the user has correct permission
             if (!isPrivileged && !isSelf)
@@ -486,7 +520,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserPreference",
+                    "UserBlock",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -497,8 +531,8 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Delete the userPreference
-            _db.UserPreferences.Remove(userPreference);
+            //Delete the userBlock
+            _db.UserBlocks.Remove(userBlock);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -507,22 +541,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "UserPreference",
+                "UserBlock",
                 ip,
-                userPreference.Id,
+                userBlock.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.deleted", new
+            await _publisher.PublishAsync("userBlock.deleted", new
             {
-                userPreferenceId = id,
+                userBlockId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "UserPreference deleted successfully!" });
+            return Ok(new { message = "User Unfollowed successfully!" });
         }
     }
 }

@@ -346,7 +346,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);
@@ -504,7 +504,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);

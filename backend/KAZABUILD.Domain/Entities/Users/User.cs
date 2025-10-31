@@ -174,5 +174,9 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<UserActivity> UserActivities { get; set; } = [];
         public ICollection<UserCommentInteraction> UserCommentInteractions { get; set; } = [];
         public ICollection<UserFeedback> UserFeedback { get; set; } = [];
+        public ICollection<UserReport> ReportingUsers { get; set; } = [];
+        public ICollection<UserReport> ReportedUsers { get; set; } = [];
+        public ICollection<UserBlock> BlockingUsers { get; set; } = [];
+        public ICollection<UserBlock> BlockedUsers { get; set; } = [];
     }
 }

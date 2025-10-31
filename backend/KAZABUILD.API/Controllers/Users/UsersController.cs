@@ -724,7 +724,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(u => dto.UserRole.Contains(u.UserRole));
             }
 
-            //Apply search based on credentials if query string included in request
+            //Apply search based on provided query string if query string included in request
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 //Apply the query based on user privilege

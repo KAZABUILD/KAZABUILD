@@ -324,7 +324,7 @@ namespace KAZABUILD.API.Controllers.Builds
             //Declare the query
             var query = _db.Tags.AsNoTracking();
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Search(dto.Query, t => t.Name, t => t.Description);

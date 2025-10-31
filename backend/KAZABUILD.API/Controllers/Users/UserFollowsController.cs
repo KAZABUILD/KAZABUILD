@@ -1,4 +1,3 @@
-using KAZABUILD.Application.DTOs.Users.UserActivity;
 using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
@@ -6,6 +5,7 @@ using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -50,7 +50,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Follower and Followed exists
+            //Check if the Follower and Followed exist
             var Follower = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowerId);
             var Followed = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowedId);
             if (Follower == null || Followed == null)
@@ -397,7 +397,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
@@ -544,7 +544,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
@@ -631,7 +631,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { message = "UserFollow not found!" });
             }
 
-            //Check if current user has staff permissions or if they are unfollowing a user
+            //Check if current user has staff permissions or if they are unfollowing a user they followed
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == userFollow.FollowerId;
 

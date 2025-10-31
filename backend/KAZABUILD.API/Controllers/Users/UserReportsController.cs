@@ -1,4 +1,4 @@
-using KAZABUILD.Application.DTOs.Users.UserComment;
+using KAZABUILD.Application.DTOs.Users.UserReport;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
@@ -15,15 +15,15 @@ using System.Security.Claims;
 namespace KAZABUILD.API.Controllers.Users
 {
     /// <summary>
-    /// Controller for UserComment related endpoints.
-    /// UserComments can be sent between all users, staff, system and bots.
+    /// Controller for UserReport related endpoints.
+    /// Allows users to report rule breaking behaviour to the administration for: ForumPosts, Users, Messages, Builds and UserComments.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserCommentsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserReportsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -31,14 +31,14 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for posting a new UserComment.
+        /// API Endpoint for posting a new UserReport.
         /// User can post their own comments, while staff can post for all.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> AddUserComment([FromBody] CreateUserCommentDto dto)
+        public async Task<IActionResult> AddUserReport([FromBody] CreateUserReportDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -56,7 +56,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -68,7 +68,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if current user has admin permissions or if they are posting a comment for themselves
-            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;
 
             //Check if the user has correct permission
@@ -78,7 +78,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -89,34 +89,33 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Create a userComment to add
-            UserComment userComment = new()
+            //Create a userReport to add
+            UserReport userReport = new()
             {
                 UserId = dto.UserId,
-                Content = dto.Content,
-                PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
-                ParentCommentId = dto.ParentCommentId,
-                CommentTargetType = dto.CommentTargetType,
+                Reason = dto.Reason,
+                Details = dto.Details,
+                TargetType = dto.TargetType,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
             //Add the target id depending on the CommentTargetType
-            switch (userComment.CommentTargetType)
+            switch (userReport.TargetType)
             {
-                case CommentTargetType.BUILD:
+                case ReportTargetType.BUILD:
                     //Set the target as build
-                    userComment.BuildId = dto.TargetId;
+                    userReport.BuildId = dto.TargetId;
 
                     //Check if the build exists
                     var build = await _db.Builds.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
-                    if (build == null || build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED)
+                    if (build == null)
                     {
                         //Log failure
                         await _logger.LogAsync(
                             currentUserId,
                             "POST",
-                            "UserComment",
+                            "UserReport",
                             ip,
                             Guid.Empty,
                             PrivacyLevel.WARNING,
@@ -128,57 +127,57 @@ namespace KAZABUILD.API.Controllers.Users
                     }
 
                     break;
-                case CommentTargetType.COMPONENT:
-                    //Set the target as component
-                    userComment.ComponentId = dto.TargetId;
+                case ReportTargetType.MESSAGE:
+                    //Set the target as message
+                    userReport.MessageId = dto.TargetId;
 
-                    //Check if the component exists
-                    var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
-                    if (component == null)
+                    //Check if the message exists
+                    var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    if (message == null)
                     {
                         //Log failure
                         await _logger.LogAsync(
                             currentUserId,
                             "POST",
-                            "UserComment",
+                            "UserReport",
                             ip,
                             Guid.Empty,
                             PrivacyLevel.WARNING,
-                            "Operation Failed - Component Doesn't Exist"
+                            "Operation Failed - Message Doesn't Exist"
                         );
 
                         //Return proper error response
-                        return BadRequest(new { message = "Component not found!" });
+                        return BadRequest(new { message = "Message not found!" });
                     }
 
                     break;
-                case CommentTargetType.REVIEW:
-                    //Set the target as review
-                    userComment.ComponentReviewId = dto.TargetId;
+                case ReportTargetType.COMMENT:
+                    //Set the target as comment
+                    userReport.UserCommentId = dto.TargetId;
 
-                    //Check if the review exists
-                    var review = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
-                    if (review == null)
+                    //Check if the comment exists
+                    var comment = await _db.UserComments.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    if (comment == null)
                     {
                         //Log failure
                         await _logger.LogAsync(
                             currentUserId,
                             "POST",
-                            "UserComment",
+                            "UserReport",
                             ip,
                             Guid.Empty,
                             PrivacyLevel.WARNING,
-                            "Operation Failed - Review Doesn't Exist"
+                            "Operation Failed - Comment Doesn't Exist"
                         );
 
                         //Return proper error response
-                        return BadRequest(new { message = "Review not found!" });
+                        return BadRequest(new { message = "Comment not found!" });
                     }
 
                     break;
-                case CommentTargetType.FORUM:
+                case ReportTargetType.FORUM:
                     //Set the target as post
-                    userComment.ForumPostId = dto.TargetId;
+                    userReport.ForumPostId = dto.TargetId;
 
                     //Check if the post exists
                     var post = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
@@ -188,7 +187,7 @@ namespace KAZABUILD.API.Controllers.Users
                         await _logger.LogAsync(
                             currentUserId,
                             "POST",
-                            "UserComment",
+                            "UserReport",
                             ip,
                             Guid.Empty,
                             PrivacyLevel.WARNING,
@@ -200,12 +199,36 @@ namespace KAZABUILD.API.Controllers.Users
                     }
 
                     break;
+                case ReportTargetType.USER:
+                    //Set the target as reported user
+                    userReport.ReportedUserId = dto.TargetId;
+
+                    //Check if the reported user exists
+                    var reportedUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    if (reportedUser == null)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "UserReport",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Reported User Doesn't Exist"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Reported user not found!" });
+                    }
+
+                    break;
                 default:
                     //Log failure
                     await _logger.LogAsync(
                         currentUserId,
                         "POST",
-                        "UserComment",
+                        "UserReport",
                         ip,
                         Guid.Empty,
                         PrivacyLevel.WARNING,
@@ -216,8 +239,8 @@ namespace KAZABUILD.API.Controllers.Users
                     return BadRequest(new { message = "Invalid Target Type!" });
             }
 
-            //Add the userComment to the database
-            _db.UserComments.Add(userComment);
+            //Add the userReport to the database
+            _db.UserReports.Add(userReport);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -226,34 +249,34 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "UserComment",
+                "UserReport",
                 ip,
-                userComment.Id,
+                userReport.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New UserComment Created"
+                "Successful Operation - New UserReport Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userComment.created", new
+            await _publisher.PublishAsync("userReport.created", new
             {
-                userCommentId = userComment.Id,
+                userReportId = userReport.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "Comment posted successfully!", id = userComment.Id });
+            return Ok(new { message = "Comment posted successfully!", id = userReport.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected UserComment.
-        /// User can modify only the contents, while staff can modify all.
+        /// API endpoint for updating the selected UserReport.
+        /// User can modify the reason and details for the Report.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> UpdateUserComment(Guid id, [FromBody] UpdateUserCommentDto dto)
+        public async Task<IActionResult> UpdateUserReport(Guid id, [FromBody] UpdateUserReportDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -263,29 +286,29 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userComment to edit
-            var userComment = await _db.UserComments.FirstOrDefaultAsync(c => c.Id == id);
-            //Check if the userComment exists
-            if (userComment == null)
+            //Get the userReport to edit
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            //Check if the userReport exists
+            if (userReport == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserComment"
+                    "Operation Failed - No Such UserReport"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserComment not found!" });
+                return NotFound(new { message = "UserReport not found!" });
             }
 
             //Check if current user has admin permissions or if they are modifying a follow for themselves
-            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userComment.UserId;
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isSelf = currentUserId == userReport.UserId;
 
             //Return unauthorized access exception if the user does not have the correct permissions
             if (!isSelf && !isPrivileged)
@@ -309,30 +332,36 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (!string.IsNullOrWhiteSpace(dto.Content))
+            if (!string.IsNullOrWhiteSpace(dto.Details))
             {
-                changedFields.Add("Content: " + userComment.Content);
+                changedFields.Add("Details: " + userReport.Details);
 
-                userComment.Content = dto.Content;
+                userReport.Details = dto.Details;
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Reason))
+            {
+                changedFields.Add("Reason: " + userReport.Reason);
+
+                userReport.Reason = dto.Reason;
             }
             if (isPrivileged)
             {
                 if (dto.Note != null)
                 {
-                    changedFields.Add("Note: " + userComment.Note);
+                    changedFields.Add("Note: " + userReport.Note);
 
                     if (string.IsNullOrWhiteSpace(dto.Note))
-                        userComment.Note = null;
+                        userReport.Note = null;
                     else
-                        userComment.Note = dto.Note;
+                        userReport.Note = dto.Note;
                 }
             }
 
             //Update edit timestamp
-            userComment.LastEditedAt = DateTime.UtcNow;
+            userReport.LastEditedAt = DateTime.UtcNow;
 
-            //Update the userComment
-            _db.UserComments.Update(userComment);
+            //Update the userReport
+            _db.UserReports.Update(userReport);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -344,17 +373,17 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "UserComment",
+                "UserReport",
                 ip,
-                userComment.Id,
+                userReport.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userComment.updated", new
+            await _publisher.PublishAsync("userReport.updated", new
             {
-                userCommentId = id,
+                userReportId = id,
                 updatedBy = currentUserId
             });
 
@@ -363,14 +392,14 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        /// API endpoint for getting the UserComment specified by id,
+        /// API endpoint for getting the UserReport specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserCommentResponseDto>> GetUserComment(Guid id)
+        public async Task<ActionResult<UserReportResponseDto>> GetUserReport(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -380,43 +409,76 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userComment to return
-            var userComment = await _db.UserComments.FirstOrDefaultAsync(c => c.Id == id);
-            if (userComment == null)
+            //Get the userReport to return
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            if (userReport == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserComment"
+                    "Operation Failed - No Such UserReport"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserComment not found!" });
+                return NotFound(new { message = "UserReport not found!" });
             }
 
             //Log Description string declaration
             string logDescription;
 
             //Declare response variable
-            UserCommentResponseDto response;
+            UserReportResponseDto response;
 
-            //Check if current user is getting themselves or if they have admin permissions
-            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userComment.UserId;
+            //Check if current user has admin permissions or if they are getting a comment for themselves
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isSelf = currentUserId == userReport.UserId;
 
-            //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isPrivileged && !isSelf && userComment.Build != null && !(userComment.Build.Status != BuildStatus.DRAFT && userComment.Build.Status != BuildStatus.GENERATED))
+            //Check if has admin privilege or is self
+            if(isPrivileged)
+            {
+                //Change log description
+                logDescription = "Successful Operation - Admin Access";
+
+                //Create userReport response
+                response = new UserReportResponseDto
+                {
+                    Id = userReport.Id,
+                    UserId = userReport.UserId,
+                    Reason = userReport.Reason,
+                    Details = userReport.Details,
+                    TargetType = userReport.TargetType,
+                    DatabaseEntryAt = userReport.DatabaseEntryAt,
+                    LastEditedAt = userReport.LastEditedAt,
+                    Note = userReport.Note,
+                };
+            }
+            else if (isSelf)
+            {
+                //Change log description
+                logDescription = "Successful Operation - User Access";
+
+                //Create userReport response
+                response = new UserReportResponseDto
+                {
+                    Id = userReport.Id,
+                    UserId = userReport.UserId,
+                    Reason = userReport.Reason,
+                    Details = userReport.Details,
+                    TargetType = userReport.TargetType
+                };
+            }
+            else
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
-                    "POST",
-                    "UserCommentComponent",
+                    "GET",
+                    "UserReport",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -427,64 +489,30 @@ namespace KAZABUILD.API.Controllers.Users
                 return Forbid();
             }
 
-            //Check if has admin privilege
-            if (!isPrivileged)
-            {
-                //Change log description
-                logDescription = "Successful Operation - User Access";
-
-                //Create userComment response
-                response = new UserCommentResponseDto
-                {
-                    Id = userComment.Id,
-                    UserId = userComment.UserId,
-                    Content = userComment.Content,
-                    PostedAt = userComment.PostedAt,
-                    ParentCommentId = userComment.ParentCommentId,
-                    CommentTargetType = userComment.CommentTargetType
-                };
-            }
-            else
-            {
-                //Change log description
-                logDescription = "Successful Operation - Admin Access";
-
-                //Create userComment response
-                response = new UserCommentResponseDto
-                {
-                    Id = userComment.Id,
-                    UserId = userComment.UserId,
-                    Content = userComment.Content,
-                    PostedAt = userComment.PostedAt,
-                    ParentCommentId = userComment.ParentCommentId,
-                    CommentTargetType = userComment.CommentTargetType,
-                    DatabaseEntryAt = userComment.DatabaseEntryAt,
-                    LastEditedAt = userComment.LastEditedAt,
-                    Note = userComment.Note,
-                };
-            }
-
             //Add the target id depending on the CommentTargetType
-            switch (userComment.CommentTargetType)
+            switch (userReport.TargetType)
             {
-                case CommentTargetType.BUILD:
-                    response.TargetId = userComment.BuildId;
+                case ReportTargetType.BUILD:
+                    response.TargetId = userReport.BuildId;
                     break;
-                case CommentTargetType.COMPONENT:
-                    response.TargetId = userComment.ComponentId;
+                case ReportTargetType.MESSAGE:
+                    response.TargetId = userReport.MessageId;
                     break;
-                case CommentTargetType.REVIEW:
-                    response.TargetId = userComment.ComponentReviewId;
+                case ReportTargetType.COMMENT:
+                    response.TargetId = userReport.UserCommentId;
                     break;
-                case CommentTargetType.FORUM:
-                    response.TargetId = userComment.ForumPostId;
+                case ReportTargetType.FORUM:
+                    response.TargetId = userReport.ForumPostId;
+                    break;
+                case ReportTargetType.USER:
+                    response.TargetId = userReport.ForumPostId;
                     break;
                 default:
                     //Log failure
                     await _logger.LogAsync(
                         currentUserId,
                         "POST",
-                        "UserComment",
+                        "UserReport",
                         ip,
                         Guid.Empty,
                         PrivacyLevel.WARNING,
@@ -499,7 +527,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserComment",
+                "UserReport",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -507,27 +535,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userComment.got", new
+            await _publisher.PublishAsync("userReport.got", new
             {
-                userCommentId = id,
+                userReportId = id,
                 gotBy = currentUserId
             });
 
-            //Return the userComment
+            //Return the userReport
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting UserComments with pagination and search,
+        /// API endpoint for getting UserReports with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserCommentResponseDto>>> GetUserComments([FromBody] GetUserCommentDto dto)
+        public async Task<ActionResult<IEnumerable<UserReportResponseDto>>> GetUserReports([FromBody] GetUserReportDto dto)
         {
-            //Get userComment id and claims from the request
+            //Get userReport id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -539,28 +567,20 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserComments.AsNoTracking();
+            var query = _db.UserReports.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.UserId != null)
             {
                 query = query.Where(c => dto.UserId.Contains(c.UserId));
             }
-            if (dto.PostedAtStart != null)
+            if (dto.Reason != null)
             {
-                query = query.Where(c => c.PostedAt >= dto.PostedAtStart);
+                query = query.Where(c => dto.Reason.Contains(c.Reason));
             }
-            if (dto.PostedAtEnd != null)
+            if (dto.TargetType != null)
             {
-                query = query.Where(c => c.PostedAt <= dto.PostedAtEnd);
-            }
-            if (dto.ParentCommentId != null)
-            {
-                query = query.Where(c => c.ParentCommentId != null && dto.ParentCommentId.Contains((Guid)c.ParentCommentId));
-            }
-            if (dto.CommentTargetType != null)
-            {
-                query = query.Where(c => dto.CommentTargetType.Contains(c.CommentTargetType));
+                query = query.Where(c => dto.TargetType.Contains(c.TargetType));
             }
             if (dto.ForumPostId != null)
             {
@@ -570,19 +590,23 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 query = query.Where(c => c.BuildId != null && dto.BuildId.Contains((Guid)c.BuildId));
             }
-            if (dto.ComponentId != null)
+            if (dto.UserCommentId != null)
             {
-                query = query.Where(c => c.ComponentId != null && dto.ComponentId.Contains((Guid)c.ComponentId));
+                query = query.Where(c => c.UserCommentId != null && dto.UserCommentId.Contains((Guid)c.UserCommentId));
             }
-            if (dto.ComponentReviewId != null)
+            if (dto.MessageId != null)
             {
-                query = query.Where(c => c.ComponentReviewId != null && dto.ComponentReviewId.Contains((Guid)c.ComponentReviewId));
+                query = query.Where(c => c.MessageId != null && dto.MessageId.Contains((Guid)c.MessageId));
+            }
+            if (dto.ReportedUserId != null)
+            {
+                query = query.Where(c => c.ReportedUserId != null && dto.ReportedUserId.Contains((Guid)c.ReportedUserId));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.User).Search(dto.Query, c => c.PostedAt, c => c.Content, c => c.User!.DisplayName);
+                query = query.Include(c => c.User).Search(dto.Query, c => c.Reason, c => c.Details, c => c.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -591,7 +615,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get userComments with paging
+            //Get userReports with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -602,49 +626,51 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            //Get all queried userComments as a list
-            List<UserComment> userComments = await query.Include(c => c.Build).Where(c => currentUserId == c.UserId || isPrivileged || c.Build == null || ( c.Build != null && c.Build.Status != BuildStatus.DRAFT && c.Build.Status != BuildStatus.GENERATED)).ToListAsync();
+            //Get all queried userReports as a list
+            List<UserReport> userReports = await query.Where(r => r.UserId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare the failure check boolean
             bool failure = false;
 
             //Declare response variable
-            List<UserCommentResponseDto> responses;
+            List<UserReportResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple UserComments";
+                logDescription = "Successful Operation - User Access, Multiple UserReports";
 
-                //Create a userComment response list
-                responses = [.. userComments.Select(userComment =>
+                //Create a userReport response list
+                responses = [.. userReports.Select(userReport =>
                 {
                     //Create a response
-                    var response = new UserCommentResponseDto
+                    var response = new UserReportResponseDto
                     {
-                        Id = userComment.Id,
-                        UserId = userComment.UserId,
-                        Content = userComment.Content,
-                        PostedAt = userComment.PostedAt,
-                        ParentCommentId = userComment.ParentCommentId,
-                        CommentTargetType = userComment.CommentTargetType
+                        Id = userReport.Id,
+                        UserId = userReport.UserId,
+                        Reason = userReport.Reason,
+                        Details = userReport.Details,
+                        TargetType = userReport.TargetType
                     };
 
                     //Add the target id depending on the CommentTargetType
-                    switch (userComment.CommentTargetType)
+                    switch (userReport.TargetType)
                     {
-                        case CommentTargetType.BUILD:
-                            response.TargetId = userComment.BuildId;
+                        case ReportTargetType.BUILD:
+                            response.TargetId = userReport.BuildId;
                             break;
-                        case CommentTargetType.COMPONENT:
-                            response.TargetId = userComment.ComponentId;
+                        case ReportTargetType.MESSAGE:
+                            response.TargetId = userReport.MessageId;
                             break;
-                        case CommentTargetType.REVIEW:
-                            response.TargetId = userComment.ComponentReviewId;
+                        case ReportTargetType.COMMENT:
+                            response.TargetId = userReport.UserCommentId;
                             break;
-                        case CommentTargetType.FORUM:
-                            response.TargetId = userComment.ForumPostId;
+                        case ReportTargetType.FORUM:
+                            response.TargetId = userReport.ForumPostId;
+                            break;
+                        case ReportTargetType.USER:
+                            response.TargetId = userReport.ForumPostId;
                             break;
                         default:
                             failure = true;
@@ -659,38 +685,41 @@ namespace KAZABUILD.API.Controllers.Users
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple UserComments";
+                logDescription = "Successful Operation - Admin Access, Multiple UserReports";
 
-                //Create a userComment response list
-                responses = [.. userComments.Select(userComment =>
+                //Create a userReport response list
+                responses = [.. userReports.Select(userReport =>
                 {
                     //Create a response
-                    var response = new UserCommentResponseDto
+                    var response = new UserReportResponseDto
                     {
-                        Id = userComment.Id,
-                        UserId = userComment.UserId,
-                        Content = userComment.Content,
-                        PostedAt = userComment.PostedAt,
-                        ParentCommentId = userComment.ParentCommentId,
-                        DatabaseEntryAt = userComment.DatabaseEntryAt,
-                        LastEditedAt = userComment.LastEditedAt,
-                        Note = userComment.Note
+                        Id = userReport.Id,
+                        UserId = userReport.UserId,
+                        Reason = userReport.Reason,
+                        Details = userReport.Details,
+                        TargetType = userReport.TargetType,
+                        DatabaseEntryAt = userReport.DatabaseEntryAt,
+                        LastEditedAt = userReport.LastEditedAt,
+                        Note = userReport.Note
                     };
 
                     //Add the target id depending on the CommentTargetType
-                    switch (userComment.CommentTargetType)
+                    switch (userReport.TargetType)
                     {
-                        case CommentTargetType.BUILD:
-                            response.TargetId = userComment.BuildId;
+                        case ReportTargetType.BUILD:
+                            response.TargetId = userReport.BuildId;
                             break;
-                        case CommentTargetType.COMPONENT:
-                            response.TargetId = userComment.ComponentId;
+                        case ReportTargetType.MESSAGE:
+                            response.TargetId = userReport.MessageId;
                             break;
-                        case CommentTargetType.REVIEW:
-                            response.TargetId = userComment.ComponentReviewId;
+                        case ReportTargetType.COMMENT:
+                            response.TargetId = userReport.UserCommentId;
                             break;
-                        case CommentTargetType.FORUM:
-                            response.TargetId = userComment.ForumPostId;
+                        case ReportTargetType.FORUM:
+                            response.TargetId = userReport.ForumPostId;
+                            break;
+                        case ReportTargetType.USER:
+                            response.TargetId = userReport.ForumPostId;
                             break;
                         default:
                             failure = true;
@@ -709,7 +738,7 @@ namespace KAZABUILD.API.Controllers.Users
                 await _logger.LogAsync(
                     currentUserId,
                     "POST",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
@@ -724,7 +753,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserComment",
+                "UserReport",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -732,27 +761,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userComment.gotUserComments", new
+            await _publisher.PublishAsync("userReport.gotUserReports", new
             {
-                userCommentIds = userComments.Select(c => c.Id),
+                userReportIds = userReports.Select(c => c.Id),
                 gotBy = currentUserId
             });
 
-            //Return the userComments
+            //Return the userReports
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected UserComment.
-        /// Users can delete userComments they sent and staff can delete all.
+        /// API endpoint for deleting the selected UserReport.
+        /// Only staff can delete userReports.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "AllUsers")]
-        public async Task<IActionResult> DeleteUserComment(Guid id)
+        [Authorize(Policy = "Staff")]
+        public async Task<IActionResult> DeleteUserReport(Guid id)
         {
-            //Get userComment id and role from the request claims
+            //Get userReport id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -760,63 +789,27 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userComment to delete
-            var userComment = await _db.UserComments.Include(c => c.Images).FirstOrDefaultAsync(c => c.Id == id);
-            if (userComment == null)
+            //Get the userReport to delete
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            if (userReport == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "UserComment",
+                    "UserReport",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserComment"
+                    "Operation Failed - No Such UserReport"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserComment not found!" });
+                return NotFound(new { message = "UserReport not found!" });
             }
 
-            //Check if current user has admin permissions or if they are deleting their own comment
-            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userComment.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserFollow",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
-            }
-
-            //Remove all related images
-            if (userComment.Images.Count != 0)
-            {
-                foreach (var image in userComment.Images)
-                {
-                    //Remove the file from the file system
-                    if (System.IO.File.Exists(image.Location))
-                        System.IO.File.Delete(image.Location);
-                }
-
-                //Delete all related images
-                _db.Images.RemoveRange(userComment.Images);
-            }
-
-            //Delete the userComment
-            _db.UserComments.Remove(userComment);
+            //Delete the userReport
+            _db.UserReports.Remove(userReport);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -825,22 +818,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "UserComment",
+                "UserReport",
                 ip,
-                userComment.Id,
+                userReport.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userComment.deleted", new
+            await _publisher.PublishAsync("userReport.deleted", new
             {
-                userCommentId = id,
+                userReportId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "UserComment deleted successfully!" });
+            return Ok(new { message = "UserReport deleted successfully!" });
         }
     }
 }

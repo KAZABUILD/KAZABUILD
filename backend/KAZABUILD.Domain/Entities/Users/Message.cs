@@ -85,5 +85,6 @@ namespace KAZABUILD.Domain.Entities.Users
         public User? Receiver { get; set; } = default!;
         public Message? ParentMessage { get; set; } = default!;
         public ICollection<Message> ChildMessages { get; set; } = [];
+        public ICollection<UserReport> UserReports { get; set; } = [];
     }
 }

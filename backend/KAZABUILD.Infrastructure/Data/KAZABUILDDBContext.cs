@@ -33,6 +33,8 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<Notification> Notifications { get; set; } = default!;
         public DbSet<UserActivity> UserActivities { get; set; } = default!;
         public DbSet<UserFeedback> UserFeedback { get; set; } = default!;
+        public DbSet<UserReport> UserReports { get; set; } = default!;
+        public DbSet<UserBlock> UserBlocks { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
@@ -166,7 +168,7 @@ namespace KAZABUILD.Infrastructure.Data
             //Configure CommentTargetType enum as string
             modelBuilder
                 .Entity<UserComment>()
-                .Property(u => u.CommentTargetType)
+                .Property(c => c.CommentTargetType)
                 .HasConversion<string>();
 
             //Register relationships, restrict cascade delete as comments should remain on the website until removed manually
@@ -289,6 +291,66 @@ namespace KAZABUILD.Infrastructure.Data
                 .WithMany(u => u.UserFeedback)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            //====================================== USER REPORT ======================================//
+
+            //Configure ReportTargetType enum as string
+            modelBuilder
+                .Entity<UserReport>()
+                .Property(r => r.TargetType)
+                .HasConversion<string>();
+
+            //Register relationships, restrict cascade delete as reports should remain on the website until removed manually
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.ReportedUsers)
+                .HasForeignKey(c => c.ReportedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.ReportingUsers)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.ForumPost)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.ForumPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.UserComment)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.Build)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.BuildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.Message)
+                .WithMany(pc => pc.UserReports)
+                .HasForeignKey(c => c.MessageId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== USER BLOCK ======================================//
+
+            //Register relationships, restrict cascade delete for blocked users
+            modelBuilder.Entity<UserBlock>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.BlockedUsers)
+                .HasForeignKey(c => c.BlockedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserBlock>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.BlockingUsers)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== COMPONENT ======================================//
 
