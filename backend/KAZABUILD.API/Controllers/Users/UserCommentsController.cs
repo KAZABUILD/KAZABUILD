@@ -109,7 +109,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.BuildId = dto.TargetId;
 
                     //Check if the build exists
-                    var build = await _db.Builds.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == dto.TargetId);
                     if (build == null || build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED)
                     {
                         //Log failure
@@ -133,7 +133,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ComponentId = dto.TargetId;
 
                     //Check if the component exists
-                    var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var component = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.TargetId);
                     if (component == null)
                     {
                         //Log failure
@@ -157,7 +157,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ComponentReviewId = dto.TargetId;
 
                     //Check if the review exists
-                    var review = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var review = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == dto.TargetId);
                     if (review == null)
                     {
                         //Log failure
@@ -181,7 +181,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ForumPostId = dto.TargetId;
 
                     //Check if the post exists
-                    var post = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == dto.TargetId);
                     if (post == null)
                     {
                         //Log failure

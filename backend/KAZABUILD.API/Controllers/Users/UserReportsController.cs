@@ -108,7 +108,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userReport.BuildId = dto.TargetId;
 
                     //Check if the build exists
-                    var build = await _db.Builds.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == dto.TargetId);
                     if (build == null)
                     {
                         //Log failure
@@ -132,7 +132,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userReport.MessageId = dto.TargetId;
 
                     //Check if the message exists
-                    var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == dto.TargetId);
                     if (message == null)
                     {
                         //Log failure
@@ -156,7 +156,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userReport.UserCommentId = dto.TargetId;
 
                     //Check if the comment exists
-                    var comment = await _db.UserComments.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var comment = await _db.UserComments.FirstOrDefaultAsync(c => c.Id == dto.TargetId);
                     if (comment == null)
                     {
                         //Log failure
@@ -180,7 +180,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userReport.ForumPostId = dto.TargetId;
 
                     //Check if the post exists
-                    var post = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == dto.TargetId);
                     if (post == null)
                     {
                         //Log failure
@@ -287,7 +287,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userReport to edit
-            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(r => r.Id == id);
             //Check if the userReport exists
             if (userReport == null)
             {
@@ -410,7 +410,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userReport to return
-            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(r => r.Id == id);
             if (userReport == null)
             {
                 //Log failure
@@ -584,29 +584,29 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.ForumPostId != null)
             {
-                query = query.Where(c => c.ForumPostId != null && dto.ForumPostId.Contains((Guid)c.ForumPostId));
+                query = query.Where(r => r.ForumPostId != null && dto.ForumPostId.Contains((Guid)r.ForumPostId));
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(c => c.BuildId != null && dto.BuildId.Contains((Guid)c.BuildId));
+                query = query.Where(r => r.BuildId != null && dto.BuildId.Contains((Guid)r.BuildId));
             }
             if (dto.UserCommentId != null)
             {
-                query = query.Where(c => c.UserCommentId != null && dto.UserCommentId.Contains((Guid)c.UserCommentId));
+                query = query.Where(r => r.UserCommentId != null && dto.UserCommentId.Contains((Guid)r.UserCommentId));
             }
             if (dto.MessageId != null)
             {
-                query = query.Where(c => c.MessageId != null && dto.MessageId.Contains((Guid)c.MessageId));
+                query = query.Where(r => r.MessageId != null && dto.MessageId.Contains((Guid)r.MessageId));
             }
             if (dto.ReportedUserId != null)
             {
-                query = query.Where(c => c.ReportedUserId != null && dto.ReportedUserId.Contains((Guid)c.ReportedUserId));
+                query = query.Where(r => r.ReportedUserId != null && dto.ReportedUserId.Contains((Guid)r.ReportedUserId));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(c => c.User).Search(dto.Query, c => c.Reason, c => c.Details, c => c.User!.DisplayName);
+                query = query.Include(r => r.User).Search(dto.Query, r => r.Reason, r => r.Details, r => r.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -763,7 +763,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userReport.gotUserReports", new
             {
-                userReportIds = userReports.Select(c => c.Id),
+                userReportIds = userReports.Select(r => r.Id),
                 gotBy = currentUserId
             });
 
@@ -790,7 +790,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userReport to delete
-            var userReport = await _db.UserReports.FirstOrDefaultAsync(c => c.Id == id);
+            var userReport = await _db.UserReports.FirstOrDefaultAsync(r => r.Id == id);
             if (userReport == null)
             {
                 //Log failure

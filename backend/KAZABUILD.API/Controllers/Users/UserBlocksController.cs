@@ -72,7 +72,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if the user isn't already blocked
-            var isUserBlockAvailable = await _db.UserBlocks.FirstOrDefaultAsync(f => f.BlockedUserId == dto.BlockedUserId && f.UserId == dto.UserId);
+            var isUserBlockAvailable = await _db.UserBlocks.FirstOrDefaultAsync(b => b.BlockedUserId == dto.BlockedUserId && b.UserId == dto.UserId);
             if (isUserBlockAvailable != null)
             {
                 //Log failure
@@ -169,7 +169,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userBlock to edit
-            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(b => b.Id == id);
             if (userBlock == null)
             {
                 //Log failure
@@ -254,7 +254,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userBlock to return
-            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(b => b.Id == id);
             if (userBlock == null)
             {
                 //Log failure
@@ -390,7 +390,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Include(f => f.BlockedUser).Include(f => f.User).Search(dto.Query, i => i.BlockedUser!.DisplayName, i => i.User!.DisplayName);
+                query = query.Include(b => b.BlockedUser).Include(b => b.User).Search(dto.Query, i => i.BlockedUser!.DisplayName, i => i.User!.DisplayName);
             }
 
             //Order by specified field if provided
@@ -410,7 +410,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserBlock> userBlocks = await query.Where(f => f.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<UserBlock> userBlocks = await query.Where(b => b.UserId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
             List<UserBlockResponseDto> responses;
@@ -465,7 +465,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userBlock.gotUserBlocks", new
             {
-                userBlockIds = userBlocks.Select(f => f.Id),
+                userBlockIds = userBlocks.Select(b => b.Id),
                 gotBy = currentUserId
             });
 
@@ -491,7 +491,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userBlock to delete
-            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(f => f.Id == id);
+            var userBlock = await _db.UserBlocks.FirstOrDefaultAsync(b => b.Id == id);
             if (userBlock == null)
             {
                 //Log failure

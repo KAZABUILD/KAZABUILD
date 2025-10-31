@@ -302,7 +302,7 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register relationships, restrict cascade delete as reports should remain on the website until removed manually
             modelBuilder.Entity<UserReport>()
-                .HasOne(c => c.User)
+                .HasOne(c => c.ReportedUser)
                 .WithMany(u => u.ReportedUsers)
                 .HasForeignKey(c => c.ReportedUserId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -341,7 +341,7 @@ namespace KAZABUILD.Infrastructure.Data
 
             //Register relationships, restrict cascade delete for blocked users
             modelBuilder.Entity<UserBlock>()
-                .HasOne(c => c.User)
+                .HasOne(c => c.BlockedUser)
                 .WithMany(u => u.BlockedUsers)
                 .HasForeignKey(c => c.BlockedUserId)
                 .OnDelete(DeleteBehavior.Restrict);
