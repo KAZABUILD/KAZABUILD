@@ -39,12 +39,20 @@ namespace KAZABUILD.Infrastructure.Services
 
                     //Get used tokens (older than 7 days)
                     var oldTokens = await db.UserTokens
+                        .Include(t => t.User)
                         .Where(t => t.UsedAt != null && t.UsedAt < tokenCutoff)
                         .ToListAsync(stoppingToken);
 
                     //Check if any logs were cleaned
                     if (oldTokens.Count != 0)
                     {
+                        //Remove any users which haven't been verified after a week
+                        var users = oldTokens.Where(t => t.TokenType == TokenType.CONFIRM_REGISTER).Select(t => t.User).Where(u => u != null && u.UserRole == UserRole.UNVERIFIED).ToList();
+                        if(users.Count != 0)
+                        {
+                            db.Users.RemoveRange(users!);
+                        }
+
                         //Remove old used token
                         db.UserTokens.RemoveRange(oldTokens);
 

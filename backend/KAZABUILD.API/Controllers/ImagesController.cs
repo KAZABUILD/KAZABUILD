@@ -1130,6 +1130,7 @@ namespace KAZABUILD.API.Controllers
                 deletedBy = currentUserId
             });
 
+            //Return the actual media file
             return File(fileBytes, contentType);
         }
     }

@@ -73,11 +73,10 @@ namespace KAZABUILD.Domain.Entities.Users
         public UserRole UserRole { get; set; } = UserRole.GUEST;
 
         /// <summary>
-        /// Url address of user's profile picture stored on the internal application server.
+        /// Id of the images storing the user's profile picture.
+        /// If null the frontend should use a default one.
         /// </summary>
-        [Required]
-        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
+        public Guid? ImageId { get; set; }
 
         /// <summary>
         /// User's date of birth.
@@ -159,6 +158,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public string? Note { get; set; }
 
         //Database relationships
+        public Image? Image { get; set; } = default!;
         public ICollection<UserFollow> Followers { get; set; } = [];
         public ICollection<UserFollow> Followed { get; set; } = [];
         public ICollection<UserToken> UserTokens { get; set; } = [];

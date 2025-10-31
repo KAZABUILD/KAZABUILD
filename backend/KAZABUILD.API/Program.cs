@@ -192,7 +192,7 @@ namespace KAZABUILD.API
                     Description = "System Admin account. Beware!",
                     Gender = "None",
                     UserRole = UserRole.SYSTEM,
-                    ImageUrl = "",
+                    ImageId = null,
                     Birth = DateTime.UtcNow,
                     RegisteredAt = DateTime.UtcNow,
                     ProfileAccessibility = ProfileAccessibility.PUBLIC,

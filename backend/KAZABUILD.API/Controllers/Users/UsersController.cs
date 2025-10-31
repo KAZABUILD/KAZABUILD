@@ -101,7 +101,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = dto.UserRole,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,
@@ -238,11 +238,11 @@ namespace KAZABUILD.API.Controllers.Users
 
                 user.Gender = dto.Gender;
             }
-            if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+            if (dto.ImageId != null)
             {
-                changedFields.Add("ImageUrl: " + user.ImageUrl);
+                changedFields.Add("ImageId: " + user.ImageId);
 
-                user.ImageUrl = dto.ImageUrl;
+                user.ImageId = dto.ImageId;
             }
             if (dto.Birth != null)
             {
@@ -604,7 +604,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Id = user.Id,
                     DisplayName = user.DisplayName,
                     Description = user.Description,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     UserRole = user.UserRole
                 };
             }
@@ -624,7 +624,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -652,7 +652,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -802,7 +802,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Id = user.Id,
                             DisplayName = user.DisplayName,
                             Description = user.Description,
-                            ImageUrl = user.ImageUrl,
+                            ImageId = user.ImageId,
                             UserRole = user.UserRole
                         };
                     }
@@ -819,7 +819,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Description = user.Description,
                             Gender = user.Gender,
                             UserRole = user.UserRole,
-                            ImageUrl = user.ImageUrl,
+                            ImageId = user.ImageId,
                             RegisteredAt = user.RegisteredAt,
                             Birth = user.Birth,
                             Address = user.Address,
@@ -852,7 +852,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
