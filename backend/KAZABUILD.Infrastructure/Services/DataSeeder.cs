@@ -326,7 +326,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(u => u.Description, f => f.Random.Bool() ? $"<p>{f.Lorem.Paragraph()}</p>" : null)
             .RuleFor(u => u.Gender, f => f.PickRandom(genders))
             .RuleFor(u => u.UserRole, f => f.PickRandom(roles))
-            .RuleFor(u => u.ImageUrl, f => "wwwroot/defaultuser.png")
+            .RuleFor(u => u.ImageId, f => null)
             .RuleFor(u => u.Birth, f => f.Date.Past(60, DateTime.UtcNow.AddYears(-18)))
             .RuleFor(u => u.RegisteredAt, f => f.Date.Past(2))
             .RuleFor(u => u.Address, f => null)

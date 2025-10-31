@@ -111,6 +111,13 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<User>()
                 .OwnsOne(u => u.Address);
 
+            //Register relationship with image
+            modelBuilder.Entity<User>()
+                .HasOne(f => f.Image)
+                .WithMany(u => u.Users)
+                .HasForeignKey(f => f.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             //====================================== USER FOLLOW ======================================//
 
             //Register relationships, disable cascade delete, must be handled in API calls

@@ -154,7 +154,7 @@ All models have protections against adding invalid values but any call made shou
    - `Description` -> string storing user's profile description
    - `Gender` -> string storing user's gender (Write full names like "Male")
    - `UserRole` -> Enum storing the assigned user role, can be used with a number or the full role string
-   - `ImageURL` -> string storing user's saved profile picture's URL in the backend
+   - `ImageId` ->  GUID storing the image's id storing the user's profile picture
    - `Birth` -> date object storing user's birth date
    - `RegisteredAt` -> date object storing the date the user registered their account
    - `Address` -> an object storing user's address with 7 strings:

@@ -1,5 +1,6 @@
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
+using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Users.User
 {
@@ -23,7 +24,7 @@ namespace KAZABUILD.Application.DTOs.Users.User
 
         public UserRole? UserRole { get; set; }
 
-        public string? ImageUrl { get; set; }
+        public Guid? ImageId { get; set; }
 
         public DateTime? Birth { get; set; }
 
