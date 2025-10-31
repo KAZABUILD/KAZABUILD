@@ -97,7 +97,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Body = dto.Body,
                 Title = dto.Title,
                 LinkUrl = dto.LinkUrl,
-                SentAt = dto.SentAt,
+                SentAt = isPrivileged ? dto.SentAt : DateTime.UtcNow,
                 IsRead = dto.IsRead,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow

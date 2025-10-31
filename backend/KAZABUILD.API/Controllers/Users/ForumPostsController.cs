@@ -95,7 +95,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Content = dto.Content,
                 Title = dto.Title,
                 Topic = dto.Topic,
-                PostedAt = dto.PostedAt,
+                PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };

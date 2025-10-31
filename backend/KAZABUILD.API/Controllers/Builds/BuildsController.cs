@@ -3,14 +3,12 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -100,6 +98,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 Name = dto.Name,
                 Description = dto.Description,
                 Status = isPrivileged ? dto.Status : BuildStatus.DRAFT,
+                PublishedAt = isPrivileged && dto.Status != BuildStatus.DRAFT ? dto.PublishedAt : null,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -233,11 +232,18 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 build.Name = dto.Name;
             }
-            if (dto.Status != null)
+            if (dto.Status != null && dto.Status != build.Status && (dto.Status == BuildStatus.DRAFT || dto.Status == BuildStatus.PUBLISHED || isPrivileged))
             {
                 changedFields.Add("Status: " + build.Status);
 
                 build.Status = (BuildStatus)dto.Status;
+
+                if(dto.Status == BuildStatus.PUBLISHED)
+                {
+                    changedFields.Add("PublishedAt: " + build.PublishedAt);
+
+                    build.PublishedAt = isPrivileged && dto.PublishedAt != null ? dto.PublishedAt : DateTime.UtcNow;
+                }
             }
             if (isPrivileged)
             {
@@ -364,7 +370,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     UserId = build.UserId,
                     Name = build.Name,
                     Description = build.Description,
-                    Status = build.Status
+                    Status = build.Status,
+                    PublishedAt = build.PublishedAt
                 };
             }
             else
@@ -380,9 +387,10 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
+                    PublishedAt = build.PublishedAt,
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
-                    Note = build.Note,
+                    Note = build.Note
                 };
             }
 
@@ -494,7 +502,8 @@ namespace KAZABUILD.API.Controllers.Builds
                         UserId = build.UserId,
                         Name = build.Name,
                         Description = build.Description,
-                        Status = build.Status
+                        Status = build.Status,
+                        PublishedAt = build.PublishedAt
                     };
                 })];
             }
@@ -511,6 +520,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
+                    PublishedAt = build.PublishedAt,
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
                     Note = build.Note

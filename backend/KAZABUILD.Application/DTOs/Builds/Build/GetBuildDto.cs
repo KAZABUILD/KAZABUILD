@@ -14,6 +14,12 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
 
         public List<string>? Tag { get; set; }
 
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAtStart { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAtEnd { get; set; }
+
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.

@@ -34,5 +34,11 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
         [Required]
         [EnumDataType(typeof(BuildStatus))]
         public BuildStatus Status { get; set; } = BuildStatus.DRAFT;
+
+        /// <summary>
+        /// Date when the user Published the Build.
+        /// </summary>
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAt { get; set; }
     }
 }

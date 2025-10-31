@@ -69,13 +69,16 @@ namespace KAZABUILD.API.Controllers.Users
                 return BadRequest(new { message = "User not found!" });
             }
 
+            //Check if current user has admin permissions for date assignment
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
             //Create a userActivity to add
             UserActivity userActivity = new()
             {
                 UserId = currentUserId,
                 ActivityType = dto.ActivityType,
                 TargetId = dto.TargetId,
-                Timestamp = dto.Timestamp,
+                Timestamp = isPrivileged ? dto.Timestamp : DateTime.UtcNow,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };

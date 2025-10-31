@@ -44,6 +44,12 @@ namespace KAZABUILD.Domain.Entities.Builds
         [EnumDataType(typeof(BuildStatus))]
         public BuildStatus Status { get; set; } = BuildStatus.DRAFT;
 
+        /// <summary>
+        /// Date when the user Published the Build.
+        /// </summary>
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAt { get; set; }
+
         //Additional database information
         [DataType(DataType.DateTime)]
         public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;

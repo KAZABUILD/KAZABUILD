@@ -102,7 +102,7 @@ namespace KAZABUILD.API.Controllers.Users
                 CipherText = cipher,
                 IV = iv,
                 Title = dto.Title,
-                SentAt = dto.SentAt,
+                SentAt = isPrivileged ? dto.SentAt : DateTime.UtcNow,
                 IsRead = dto.IsRead,
                 ParentMessageId = dto.ParentMessageId,
                 MessageType = dto.MessageType,

@@ -116,7 +116,7 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 FollowerId = dto.FollowerId,
                 FollowedId = dto.FollowedId,
-                FollowedAt = dto.FollowedAt,
+                FollowedAt = isPrivileged ? dto.FollowedAt : DateTime.UtcNow,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };

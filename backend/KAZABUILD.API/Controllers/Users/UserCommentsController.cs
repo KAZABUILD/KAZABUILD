@@ -94,7 +94,7 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 UserId = dto.UserId,
                 Content = dto.Content,
-                PostedAt = dto.PostedAt,
+                PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
                 ParentCommentId = dto.ParentCommentId,
                 CommentTargetType = dto.CommentTargetType,
                 DatabaseEntryAt = DateTime.UtcNow,
