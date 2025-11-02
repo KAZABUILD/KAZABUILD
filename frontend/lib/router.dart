@@ -23,6 +23,7 @@ import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 import 'package:frontend/screens/forum/forums_page.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
+import 'package:frontend/screens/quiz/quiz_page.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/models/component_models.dart';
 
@@ -172,6 +173,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             currentBuild: const [],
           );
         },
+      ),
+      GoRoute(
+        path: '/quiz',
+        name: 'quiz',
+        builder: (context, state) => const QuizPage(),
       ),
     ],
 

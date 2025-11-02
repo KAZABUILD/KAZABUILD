@@ -590,8 +590,8 @@ final authServiceProvider = Provider<AuthService>((ref) {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
+    connectTimeout: const Duration(minutes: 2),
+    receiveTimeout: const Duration(minutes: 2),
   ));
   return AuthService(dio);
 });

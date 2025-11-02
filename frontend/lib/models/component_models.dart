@@ -594,6 +594,41 @@ class CaseComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.pcCase);
+
+  /// Creates a `CaseComponent` instance from a JSON map.
+  factory CaseComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return CaseComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      formFactor: json['formFactor'],
+      powerSupplyShrouded: json['powerSupplyShrouded'],
+      powerSupplyAmount: (json['powerSupplyAmount'] as num?)?.toDouble(),
+      hasTransparentSidePanel: json['hasTransparentSidePanel'],
+      sidePanelType: json['sidePanelType'],
+      maxVideoCardLength: (json['maxVideoCardLength'] as num).toDouble(),
+      maxCPUCoolerHeight: json['maxCPUCoolerHeight'],
+      internal35BayAmount: json['internal35BayAmount'],
+      internal25BayAmount: json['internal25BayAmount'],
+      external35BayAmount: json['external35BayAmount'],
+      external525BayAmount: json['external525BayAmount'],
+      expansionSlotAmount: json['expansionSlotAmount'],
+      width: (json['dimensions']?['width'] as num? ?? 0.0).toDouble(),
+      height: (json['dimensions']?['height'] as num? ?? 0.0).toDouble(),
+      depth: (json['dimensions']?['depth'] as num? ?? 0.0).toDouble(),
+      volume: (json['volume'] as num).toDouble(),
+      weight: (json['weight'] as num).toDouble(),
+      supportsRearConnectingMotherboard: json['supportsRearConnectingMotherboard'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a Case Fan component with its performance and physical characteristics.
@@ -661,6 +696,35 @@ class CaseFanComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.caseFan);
+
+  /// Creates a `CaseFanComponent` instance from a JSON map.
+  factory CaseFanComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return CaseFanComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      size: (json['size'] as num).toDouble(),
+      quantity: json['quantity'],
+      minAirflow: (json['minAirflow'] as num).toDouble(),
+      maxAirflow: (json['maxAirflow'] as num?)?.toDouble(),
+      minNoiseLevel: (json['minNoiseLevel'] as num).toDouble(),
+      maxNoiseLevel: (json['maxNoiseLevel'] as num?)?.toDouble(),
+      pulseWidthModulation: json['pulseWidthModulation'],
+      ledType: json['ledType'],
+      connectorType: json['connectorType'],
+      controllerType: json['controllerType'],
+      staticPressureAmount: (json['staticPressureAmount'] as num).toDouble(),
+      flowDirection: json['flowDirection'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a CPU Cooler, which can be air or water-cooled.
@@ -720,6 +784,33 @@ class CoolerComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.cooler);
+
+  /// Creates a `CoolerComponent` instance from a JSON map.
+  factory CoolerComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return CoolerComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      minFanRotationSpeed: (json['minFanRotationSpeed'] as num?)?.toDouble(),
+      maxFanRotationSpeed: (json['maxFanRotationSpeed'] as num?)?.toDouble(),
+      minNoiseLevel: (json['minNoiseLevel'] as num?)?.toDouble(),
+      maxNoiseLevel: (json['maxNoiseLevel'] as num?)?.toDouble(),
+      height: (json['height'] as num).toDouble(),
+      isWaterCooled: json['isWaterCooled'],
+      radiatorSize: (json['radiatorSize'] as num?)?.toDouble(),
+      canOperateFanless: json['canOperateFanless'],
+      fanSize: (json['fanSize'] as num?)?.toDouble(),
+      fanQuantity: json['fanQuantity'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a Central Processing Unit (CPU) component.
@@ -788,6 +879,8 @@ class CPUComponent extends BaseComponent {
   /// The name of the integrated graphics, if any.
   final String graphics;
 
+  // TODO: Add basePerformanceSpeed and boostPerformanceSpeed to the UI.
+
   const CPUComponent({
     required super.id,
     required super.name,
@@ -826,6 +919,56 @@ class CPUComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.cpu);
+
+  /// Creates a `CPUComponent` instance from a JSON map.
+  factory CPUComponent.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse DateTime from string.
+    DateTime? parseDate(String? dateStr) {
+      return dateStr != null ? DateTime.tryParse(dateStr) : null;
+    }
+
+    return CPUComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      series: json['series'],
+      microarchitecture: json['microarchitecture'],
+      coreFamily: json['coreFamily'],
+      socketType: json['socketType'],
+      coreTotal: json['coreTotal'],
+      threadsAmount: json['threadsAmount'],
+      includesCooler: json['includesCooler'],
+      lithography: json['lithography'],
+      supportsSimultaneousMultithreading:
+          json['supportsSimultaneousMultithreading'],
+      memoryType: json['memoryType'],
+      packagingType: json['packagingType'],
+      supportsECC: json['supportsECC'],
+      thermalDesignPower: (json['thermalDesignPower'] as num).toDouble(),
+      graphics: json['graphics'] ?? 'N/A',
+      performanceAmount: json['performanceAmount'],
+      efficiencyAmount: json['efficiencyAmount'],
+      basePerformanceSpeed: (json['basePerformanceSpeed'] as num?)?.toDouble(),
+      boostPerformanceSpeed:
+          (json['boostPerformanceSpeed'] as num?)?.toDouble(),
+      baseEfficiencySpeed: (json['baseEfficiencySpeed'] as num?)?.toDouble(),
+      boostEfficiencySpeed: (json['boostEfficiencySpeed'] as num?)?.toDouble(),
+      l1: (json['l1'] as num?)?.toDouble(),
+      l2: (json['l2'] as num?)?.toDouble(),
+      l3: (json['l3'] as num?)?.toDouble(),
+      l4: (json['l4'] as num?)?.toDouble(),
+      release: parseDate(json['release']),
+      note: json['note'],
+      // TODO: Parse prices, variants, reviews, and parts from JSON if they are included in the response.
+      prices: const [],
+      variants: const [],
+      reviews: const [],
+      parts: const [],
+    );
+  }
 }
 
 /// Represents a Graphics Processing Unit (GPU) or Video Card.
@@ -901,6 +1044,38 @@ class GPUComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.gpu);
+
+  /// Creates a `GPUComponent` instance from a JSON map.
+  factory GPUComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return GPUComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      chipset: json['chipset'],
+      videoMemoryAmount: (json['videoMemoryAmount'] as num).toDouble(),
+      videoMemoryType: json['videoMemoryType'],
+      coreBaseClockSpeed: (json['coreBaseClockSpeed'] as num).toDouble(),
+      coreBoostClockSpeed: (json['coreBoostClockSpeed'] as num).toDouble(),
+      coreCount: json['coreCount'],
+      effectiveMemoryClockSpeed:
+          (json['effectiveMemoryClockSpeed'] as num).toDouble(),
+      memoryBusWidth: json['memoryBusWidth'],
+      frameSync: json['frameSync'],
+      length: (json['length'] as num).toDouble(),
+      thermalDesignPower: (json['thermalDesignPower'] as num).toDouble(),
+      caseExpansionSlotWidth: json['caseExpansionSlotWidth'],
+      totalSlotAmount: json['totalSlotAmount'],
+      coolingType: json['coolingType'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a Memory (RAM) module.
@@ -976,6 +1151,37 @@ class MemoryComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.ram);
+
+  /// Creates a `MemoryComponent` instance from a JSON map.
+  factory MemoryComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return MemoryComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      speed: (json['speed'] as num).toDouble(),
+      ramType: json['ramType'],
+      formFactor: json['formFactor'],
+      capacity: (json['capacity'] as num).toDouble(),
+      casLatency: (json['casLatency'] as num).toDouble(),
+      timings: json['timings'],
+      moduleQuantity: json['moduleQuantity'],
+      moduleCapacity: (json['moduleCapacity'] as num).toDouble(),
+      ecc: json['ecc'],
+      registeredType: json['registeredType'],
+      haveHeatSpreader: json['haveHeatSpreader'],
+      haveRGB: json['haveRGB'],
+      height: (json['height'] as num).toDouble(),
+      voltage: (json['voltage'] as num).toDouble(),
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a computer Monitor.
@@ -1039,6 +1245,34 @@ class MonitorComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.monitor);
+
+  /// Creates a `MonitorComponent` instance from a JSON map.
+  factory MonitorComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return MonitorComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      screenSize: (json['screenSize'] as num).toDouble(),
+      horizontalResolution: json['horizontalResolution'],
+      verticalResolution: json['verticalResolution'],
+      maxRefreshRate: (json['maxRefreshRate'] as num).toDouble(),
+      panelType: json['panelType'],
+      responseTime: (json['responseTime'] as num).toDouble(),
+      viewingAngle: json['viewingAngle'],
+      aspectRatio: json['aspectRatio'],
+      maxBrightness: (json['maxBrightness'] as num?)?.toDouble(),
+      highDynamicRangeType: json['highDynamicRangeType'],
+      adaptiveSyncType: json['adaptiveSyncType'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a Motherboard component.
@@ -1178,6 +1412,53 @@ class MotherboardComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.motherboard);
+
+  /// Creates a `MotherboardComponent` instance from a JSON map.
+  factory MotherboardComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return MotherboardComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      socketType: json['socketType'],
+      formFactor: json['formFactor'],
+      chipsetType: json['chipsetType'],
+      ramType: json['ramType'],
+      ramSlotsAmount: json['ramSlotsAmount'],
+      maxRAMAmount: json['maxRAMAmount'],
+      sata6GBsAmount: json['sata6GBsAmount'],
+      sata3GBsAmount: json['sata3GBsAmount'],
+      u2PortAmount: json['u2PortAmount'],
+      wirelessNetworkingStandard: json['wirelessNetworkingStandard'],
+      cpuFanHeaderAmount: json['cpuFanHeaderAmount'],
+      caseFanHeaderAmount: json['caseFanHeaderAmount'],
+      pumpHeaderAmount: json['pumpHeaderAmount'],
+      cpuOptionalFanHeaderAmount: json['cpuOptionalFanHeaderAmount'],
+      argb5vHeaderAmount: json['argb5vHeaderAmount'],
+      rgb12vHeaderAmount: json['rgb12vHeaderAmount'],
+      hasPowerButtonHeader: json['hasPowerButtonHeader'],
+      hasResetButtonHeader: json['hasResetButtonHeader'],
+      hasPowerLEDHeader: json['hasPowerLEDHeader'],
+      hasHDDLEDHeader: json['hasHDDLEDHeader'],
+      temperatureSensorHeaderAmount: json['temperatureSensorHeaderAmount'],
+      thunderboltHeaderAmount: json['thunderboltHeaderAmount'],
+      comPortHeaderAmount: json['comPortHeaderAmount'],
+      mainPowerType: json['mainPowerType'],
+      hasECCSupport: json['hasECCSupport'],
+      hasRAIDSupport: json['hasRAIDSupport'],
+      hasFlashback: json['hasFlashback'],
+      hasCMOS: json['hasCMOS'],
+      audioChipset: json['audioChipset'],
+      maxAudioChannels: (json['maxAudioChannels'] as num).toDouble(),
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a Power Supply Unit (PSU).
@@ -1221,6 +1502,29 @@ class PowerSupplyComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.psu);
+
+  /// Creates a `PowerSupplyComponent` instance from a JSON map.
+  factory PowerSupplyComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return PowerSupplyComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      powerOutput: (json['powerOutput'] as num).toDouble(),
+      formFactor: json['formFactor'],
+      efficiencyRating: json['efficiencyRating'],
+      modularityType: json['modularityType'],
+      length: (json['length'] as num).toDouble(),
+      isFanless: json['isFanless'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }
 
 /// Represents a storage device, such as an SSD or HDD.
@@ -1264,4 +1568,27 @@ class StorageComponent extends BaseComponent {
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.storage);
+
+  /// Creates a `StorageComponent` instance from a JSON map.
+  factory StorageComponent.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return StorageComponent(
+      id: json['id'],
+      name: json['name'],
+      manufacturer: json['manufacturer'],
+      databaseEntryAt: parseDate(json['databaseEntryAt'])!,
+      lastEditedAt: parseDate(json['lastEditedAt'])!,
+      imageUrl: json['imageUrl'] ?? '',
+      series: json['series'],
+      capacity: (json['capacity'] as num).toDouble(),
+      driveType: json['driveType'],
+      formFactor: json['formFactor'],
+      interface: json['interface'],
+      hasNVMe: json['hasNVMe'],
+      release: parseDate(json['release']),
+      note: json['note'],
+    );
+  }
 }

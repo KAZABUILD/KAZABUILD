@@ -83,7 +83,8 @@ class ExploreBuildsPage extends ConsumerWidget {
                                   childAspectRatio: 0.8,
                                 ),
                                 itemCount: builds.length,
-                                itemBuilder: (context, index) => _BuildCard(buildData: builds[index]),
+                                itemBuilder: (context, index) =>
+                                    _BuildCard(buildData: builds[index]),
                               ),
                               loading: () => const Center(child: CircularProgressIndicator()),
                               error: (err, stack) => Center(child: Text('Error: $err')),

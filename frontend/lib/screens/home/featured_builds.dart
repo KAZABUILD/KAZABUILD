@@ -43,7 +43,13 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
 
     return buildsAsync.when(
       data: (builds) {
-        if (builds.isEmpty) {
+        // Filter for builds created by the site's official account and take the first 3.
+        final siteBuilds = builds
+            .where((build) => build.author?.username == 'KazaBuild')
+            .take(3)
+            .toList();
+
+        if (siteBuilds.isEmpty) {
           return Container(
             height: 380,
             alignment: Alignment.center,
@@ -56,15 +62,15 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
         return Column(
           children: [
             CarouselSlider.builder(
-              itemCount: builds.length,
+              itemCount: siteBuilds.length,
               carouselController: _controller,
               itemBuilder: (context, index, realIndex) {
-                final item = builds[index];
+                final item = siteBuilds[index];
                 return _BuildCard(buildData: item, theme: theme);
               },
               options: CarouselOptions(
                 height: 380,
-                autoPlay: true,
+                autoPlay: siteBuilds.length > 1, // Only autoplay if there's more than one item
                 enlargeCenterPage: true,
                 viewportFraction: 0.75,
                 aspectRatio: 2.0,
@@ -80,7 +86,7 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: builds.asMap().entries.map((entry) {
+              children: siteBuilds.asMap().entries.map((entry) {
                 return GestureDetector(
                   onTap: () {
                     if (mounted) {

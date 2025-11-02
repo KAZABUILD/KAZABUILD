@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
 
 /// The main content widget for the homepage.
@@ -111,9 +112,15 @@ class _HomeBodyState extends State<HomeBody> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const _CustomStartButton(label: "Take Quiz"),
+                _CustomStartButton(
+                  label: "Take Quiz",
+                  onPressed: () => context.go('/quiz'),
+                ),
                 const SizedBox(width: 20),
-                const _CustomStartButton(label: "Start Build"),
+                _CustomStartButton(
+                  label: "Start Build",
+                  onPressed: () => context.go('/build-now'),
+                ),
               ],
             ),
           ],
@@ -128,14 +135,15 @@ class _HomeBodyState extends State<HomeBody> {
 class _CustomStartButton extends StatelessWidget {
   /// The text to display on the button.
   final String label;
-  const _CustomStartButton({required this.label});
+  final VoidCallback onPressed;
+  const _CustomStartButton({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       // TODO: Implement the navigation logic for this button.
       // For example, navigate to the QuizPage or the BuildNowPage.
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey.shade700,
         foregroundColor: Colors.white,

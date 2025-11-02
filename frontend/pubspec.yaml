@@ -30,6 +30,8 @@ dependencies:
   google_sign_in: ^7.2.0
   image_picker: ^1.1.2
   shared_preferences: ^2.2.2
+
+  equatable: ^2.0.5 
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -37,6 +39,7 @@ dev_dependencies:
   build_runner: ^2.4.13  # Stable version compatible with Dart 3.9.2
   json_serializable: ^6.8.0
    # Compatible with build_runner 2.4.13
+  
 
 dependency_overrides:
   analyzer: ^6.0.0  # Aligns with build_runner, json_serializable, and intl_utils
