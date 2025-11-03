@@ -36,7 +36,7 @@ class ProfilePage extends ConsumerWidget {
                 return CustomScrollView(
                   slivers: [
                     SliverAppBar(
-                      title: Text(user.username), // Using username as display name for now
+                      title: Text(user.displayName),
                       backgroundColor: theme.colorScheme.surface,
                       floating: true,
                       snap: true,
@@ -84,15 +84,15 @@ class ProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Display Name
+                // Display Name (main name)
                 Text(
-                  user.username, // TODO: Use DisplayName from user model
+                  user.displayName,
                   style: theme.textTheme.headlineMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
 
-                // Username (Login)
+                // Username (login name)
                 Text(
                   '@${user.username}',
                   style: theme.textTheme.titleMedium?.copyWith(

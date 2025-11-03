@@ -15,8 +15,8 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
-import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 /// The main widget for the forums page.
@@ -497,12 +497,8 @@ class _ModernPostCardState extends State<_ModernPostCard>
                   // After the forward animation completes...
                   (_) => _animationController.reverse(),
                 );
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PostDetailPage(post: widget.post),
-                  ),
-                );
+                // Navigate using go_router so the URL updates
+                context.push('/forums/${widget.post.id}');
               },
               borderRadius: BorderRadius.circular(20),
               child: Padding(
@@ -652,11 +648,6 @@ class _ModernPostCardState extends State<_ModernPostCard>
                               _StatChip(
                                 Icons.comment_outlined,
                                 'Replies', // Placeholder
-                              ),
-                              const SizedBox(width: 8),
-                              _StatChip(
-                                Icons.thumb_up_alt_outlined,
-                                'Votes', // Placeholder
                               ),
                             ],
                           ),

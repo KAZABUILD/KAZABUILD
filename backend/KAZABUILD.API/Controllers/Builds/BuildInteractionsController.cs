@@ -112,7 +112,7 @@ namespace KAZABUILD.API.Controllers.Builds
             var ownBuild = currentUserId == build.UserId;
 
             //Check if the user has correct permission
-            if (!isPrivileged && isSelf)
+            if (!isPrivileged && !isSelf)
             {
                 //Log failure
                 await _logger.LogAsync(

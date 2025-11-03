@@ -17,17 +17,28 @@ import 'package:intl/intl.dart';
 
 /// A provider that fetches the details of a single forum post by its ID.
 ///
-/// This will eventually fetch the post and its replies.
+/// Fetches the post and then separately fetches its comments/replies.
 final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId) async {
   final forumService = ref.read(forumServiceProvider); // Use read for initial fetch
-  // The backend's GET /ForumPosts/{id} endpoint is needed for this.
-  // As a workaround, we use the list endpoint and filter by ID.
-  final posts = await forumService.getPosts({'id': postId, 'paging': false}); // Backend expects single ID for filter
-  if (posts.isNotEmpty) {
-    return posts.first;
-  } else {
-    throw Exception('Post not found');
-  }
+  // Fetch the post first
+  final post = await forumService.getPostById(postId);
+  
+  // Then fetch the comments/replies separately (backend doesn't include them in the post response)
+  final comments = await forumService.getPostComments(postId);
+  
+  // Return the post with the fetched comments
+  return ForumPost(
+    id: post.id,
+    title: post.title,
+    creatorId: post.creatorId,
+    topic: post.topic,
+    content: post.content,
+    createdAt: post.createdAt,
+    replies: comments,
+    acceptedReplyId: post.acceptedReplyId,
+    tags: post.tags,
+    build: post.build,
+  );
 });
 
 /// A provider to fetch the author's details based on their ID.
@@ -40,9 +51,18 @@ final userProvider = FutureProvider.family<AppUser, String>((ref, userId) async 
 
 /// A page that displays the full details of a single [ForumPost] and its replies.
 class PostDetailPage extends ConsumerStatefulWidget {
-  /// The [ForumPost] object containing the data to be displayed.
-  final ForumPost post; // Initial post data, replies will be fetched/added
-  const PostDetailPage({super.key, required this.post});
+  /// The ID of the forum post to display. If provided, the post will be fetched.
+  final String? postId;
+  
+  /// The [ForumPost] object containing the data to be displayed (for backward compatibility).
+  /// If postId is provided, this will be ignored and the post will be fetched instead.
+  final ForumPost? post;
+  
+  const PostDetailPage({
+    super.key, 
+    this.postId,
+    this.post,
+  }) : assert(postId != null || post != null, 'Either postId or post must be provided');
 
   @override
   ConsumerState<PostDetailPage> createState() => _PostDetailPageState();
@@ -53,19 +73,12 @@ class PostDetailPage extends ConsumerStatefulWidget {
 /// Manages the list of replies and the animations for the page elements.
 class _PostDetailPageState extends ConsumerState<PostDetailPage>
     with TickerProviderStateMixin {
-  /// A local list of replies, initialized from the post object.
-  /// This allows for adding new replies in real-time without refetching.
-  late List<PostReply> _replies;
-
   /// The main animation controller for staggering the appearance of the page elements.
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-
-    /// Initialize the replies list and start the animation controller.
-    _replies = List.from(widget.post.replies);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -80,105 +93,126 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
     super.dispose();
   }
 
-  /// Adds a new reply to the local list and triggers a UI update to show it instantly.
-  void _addReply(PostReply newReply) {
-    setState(() {
-      _replies.add(newReply);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Determine the post ID to use
+    final postId = widget.postId ?? widget.post?.id;
+    if (postId == null) {
+      return Scaffold(
+        backgroundColor: theme.colorScheme.background,
+        appBar: AppBar(
+          title: const Text('Forum Post'),
+          elevation: 0,
+        ),
+        body: const Center(child: Text('Post ID is required')),
+      );
+    }
+    
+    // Fetch the latest post data with replies from the provider
+    final postAsync = ref.watch(postDetailProvider(postId));
+    
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: Text(widget.post.topic),
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
         foregroundColor: theme.colorScheme.onSurface,
+        title: postAsync.when(
+          loading: () => const Text('Loading...'),
+          error: (_, __) => const Text('Forum Post'),
+          data: (post) => Text(post.topic),
+        ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            /// [CustomScrollView] is used to combine different types of scrollable content.
-            child: CustomScrollView(
-              slivers: [
-                /// The header containing the original post content.
-                SliverToBoxAdapter(
-                  child: _PostHeader(
-                    post: widget.post,
-                    animationController: _controller,
-                  ),
-                ),
-
-                /// A header to show the number of replies.
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 8,
+      body: postAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error loading post: $err')),
+        data: (post) => Column(
+          children: [
+            Expanded(
+              /// [CustomScrollView] is used to combine different types of scrollable content.
+              child: CustomScrollView(
+                slivers: [
+                  /// The header containing the original post content.
+                  SliverToBoxAdapter(
+                    child: _PostHeader(
+                      post: post,
+                      animationController: _controller,
                     ),
-                    child: Text(
-                      '${_replies.length} Replies',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
+                  ),
+
+                  /// A header to show the number of replies.
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        '${post.replies.length} Replies',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                /// If there are no replies, show a placeholder message.
-                if (_replies.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(48.0),
-                        child: Text(
-                          "Be the first to reply!",
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                  /// If there are no replies, show a placeholder message.
+                  if (post.replies.isEmpty)
+                    const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(48.0),
+                          child: Text(
+                            "Be the first to reply!",
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                else
-                  /// Otherwise, build a list of reply cards with staggered animations.
-                  SliverList.builder(
-                    itemCount: _replies.length,
-                    itemBuilder: (context, index) {
-                      final animation = CurvedAnimation(
-                        parent: _controller,
+                    )
+                  else
+                    /// Otherwise, build a list of reply cards with staggered animations.
+                    SliverList.builder(
+                      itemCount: post.replies.length,
+                      itemBuilder: (context, index) {
+                        final animation = CurvedAnimation(
+                          parent: _controller,
 
-                        /// Each reply card animates in slightly after the previous one.
-                        curve: Interval(
-                          0.3 + (0.6 * index / _replies.length),
-                          1.0,
-                          curve: Curves.easeOut,
-                        ),
-                      );
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, 0.1),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: _ReplyCard(reply: _replies[index]),
-                        ),
-                      );
-                    },
-                  ),
-              ],
+                          /// Each reply card animates in slightly after the previous one.
+                          curve: Interval(
+                            0.3 + (0.6 * index / post.replies.length),
+                            1.0,
+                            curve: Curves.easeOut,
+                          ),
+                        );
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.1),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: _ReplyCard(reply: post.replies[index]),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
-          ),
 
-          /// The input section at the bottom for submitting a new reply.
-          _ReplyInputSection(
-            post: widget.post,
-            onReplySubmitted: _addReply,
-          ),
-        ],
+            /// The input section at the bottom for submitting a new reply.
+            _ReplyInputSection(
+              post: post,
+              onReplySubmitted: () {
+                // Invalidate the provider to refetch the post with new replies
+                // This will be called after a successful reply submission
+                ref.invalidate(postDetailProvider(postId));
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -248,29 +282,29 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
 
               /// Author information and post date.
               Row(
-                children: authorAsync.when(
-                  data: (author) => [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: theme.colorScheme.primary,
-                      child: Text(
-                        author.username.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: Colors.white),
+                children: [
+                  ...authorAsync.when<List<Widget>>(
+                    data: (author) => [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: theme.colorScheme.primary,
+                        child: Text(
+                          (author.displayName.isNotEmpty ? author.displayName : author.username).substring(0, 1).toUpperCase(),
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'by ${author.username}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      const SizedBox(width: 8),
+                      Text(
+                        'by ${author.displayName.isNotEmpty ? author.displayName : author.username}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                  ],
-                  loading: () => [const CircularProgressIndicator()],
-                  error: (e, s) => [const Text('Unknown Author')],
-                ) +
-                    [
+                      const Spacer(),
+                    ],
+                    loading: () => [const CircularProgressIndicator()],
+                    error: (e, s) => [const Text('Unknown Author')],
+                  ),
                   Text(
                     DateFormat.yMMMMd().format(post.createdAt),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -400,7 +434,7 @@ class _ReplyCard extends ConsumerWidget {
             data: (author) => CircleAvatar(
               backgroundColor: theme.colorScheme.secondaryContainer,
               child: Text(
-                author.username.substring(0, 1).toUpperCase(),
+                (author.displayName.isNotEmpty ? author.displayName : author.username).substring(0, 1).toUpperCase(),
                 style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
               ),
             ),
@@ -413,13 +447,13 @@ class _ReplyCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// Author's username and the time of the reply.
+                /// Author's display name and the time of the reply.
                 authorAsync.when(
                   data: (author) => Row(
                     children: [
                       Expanded(
                         child: Text(
-                          author.username,
+                          author.displayName.isNotEmpty ? author.displayName : author.username,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -462,7 +496,7 @@ class _ReplyCard extends ConsumerWidget {
 /// It handles both authenticated users and guests.
 class _ReplyInputSection extends ConsumerStatefulWidget {
   final ForumPost post;
-  final Function(PostReply) onReplySubmitted;
+  final VoidCallback onReplySubmitted;
   const _ReplyInputSection({required this.post, required this.onReplySubmitted});
 
   @override
@@ -474,25 +508,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   /// Controller for the main reply text field.
   final _replyController = TextEditingController();
 
-  /// Controller for the guest name field, shown only if the user is not logged in.
-  final _guestNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    // Listen to the guest name controller to rebuild the avatar on text change.
-    _guestNameController.addListener(() {
-      setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _replyController.dispose();
-    _guestNameController.dispose();
-    super.dispose();
-  }
 
   /// Validates the form and submits the new reply.
   void _submitReply() async {
@@ -503,11 +519,14 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
       /// If no user is logged in, create a temporary "guest" user object.
       final authorId = currentUser?.uid;
       final replyContent = _replyController.text.trim();
-      final guestName = _guestNameController.text.trim();
 
-      if (authorId == null && guestName.isEmpty) {
+      // Guest users are not supported by the backend for comments
+      if (authorId == null || authorId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter your name or log in to reply.')),
+          const SnackBar(
+            content: Text('You must be logged in to post a comment.'),
+            backgroundColor: Colors.orange,
+          ),
         );
         return;
       }
@@ -517,9 +536,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
 
       try {
         // Call the API to create the reply
-        // For guest users, we pass null for userId. Backend will handle it.
-        // The backend's UserComment model has UserId, Content, CommentTargetType, ForumPostId.
-        // We assume the backend will return the created comment's ID and details.
+        // Backend requires a valid user ID (guest comments not supported)
         final responseMessage = await ref.read(forumProvider.notifier).createForumReply(
           widget.post.id,
           replyContent,
@@ -530,12 +547,12 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
           SnackBar(content: Text(responseMessage), backgroundColor: Colors.green),
         );
 
-        // Invalidate the provider to refetch the post and its replies.
-        ref.invalidate(postDetailProvider(widget.post.id));
-
+        // Clear the reply input
         _replyController.clear();
-        _guestNameController.clear();
         FocusScope.of(context).unfocus();
+        
+        // Call the callback to invalidate and refetch
+        widget.onReplySubmitted();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
@@ -550,9 +567,6 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentUser = ref.watch(authProvider);
-
-    /// Determine if the current user is a guest.
-    final isGuest = currentUser.value == null;
 
     /// Use [Material] widget to provide elevation and a consistent background.
     return Material(
@@ -571,23 +585,35 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              /// If the user is a guest, show an additional field for their name.
+              /// If the user is a guest, show a message that they need to log in.
               if (currentUser.value == null) ...[
-                TextFormField(
-                  controller: _guestNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Your Name',
-                    prefixIcon: Icon(
-                      Icons.person,
-                      color: theme.colorScheme.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.error.withOpacity(0.3),
                     ),
                   ),
-                  validator: (value) => (value == null || value.isEmpty)
-                      ? 'Please enter your name.'
-                      : null,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: theme.colorScheme.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You must be logged in to post a comment.',
+                          style: TextStyle(
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -596,15 +622,23 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                 children: [
                   /// The avatar of the user who is replying.
                   CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary,
-                    child: Text(
-                      currentUser.value != null
-                          ? (currentUser.value!.username.isNotEmpty
-                            ? currentUser.value!.username[0].toUpperCase()
-                            : '?')
-                          : (_guestNameController.text.isNotEmpty ? _guestNameController.text[0].toUpperCase() : 'G'),
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                    backgroundColor: currentUser.value != null 
+                        ? theme.colorScheme.primary 
+                        : theme.colorScheme.surfaceVariant,
+                    child: currentUser.value != null
+                        ? Text(
+                            () {
+                              final name = currentUser.value!.displayName.isNotEmpty 
+                                  ? currentUser.value!.displayName 
+                                  : currentUser.value!.username;
+                              return name.isNotEmpty ? name[0].toUpperCase() : '?';
+                            }(),
+                            style: const TextStyle(color: Colors.white),
+                          )
+                        : Icon(
+                            Icons.person,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

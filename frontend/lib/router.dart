@@ -16,12 +16,14 @@ import 'package:frontend/screens/explore_build/build_detail_page.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/extra/spalsh_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
+import 'package:frontend/screens/profile/profile_page.dart';
 import 'package:frontend/screens/home/homepage.dart';
 
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 import 'package:frontend/screens/forum/forums_page.dart';
+import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/screens/quiz/quiz_page.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
@@ -88,6 +90,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return BuildDetailPage(buildId: buildId);
         },
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(
         path: '/settings',
@@ -157,6 +164,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Extract optional buildId from query parameters
           final buildId = state.uri.queryParameters['buildId'];
           return NewPostPage(buildId: buildId);
+        },
+      ),
+      GoRoute(
+        path: '/forums/:id',
+        name: 'forum-post-detail',
+        builder: (context, state) {
+          final postId = state.pathParameters['id'];
+          if (postId == null) {
+            return const ForumsPage(); // Redirect to forums if no ID
+          }
+          return PostDetailPage(postId: postId);
         },
       ),
       GoRoute(

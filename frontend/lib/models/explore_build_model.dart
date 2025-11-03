@@ -101,9 +101,17 @@ class Build {
           : null,
       averageRating: parseRatingToFive(json['averageRating'] ?? json['AverageRating'] ?? json['ratingAverage'] ?? json['rating'] ?? 0),
       ratingsCount: parseCount(json['ratingsCount'] ?? json['RatingsCount'] ?? json['ratingCount'] ?? json['votes'] ?? 0),
-      userRating: (json['userRating'] ?? json['UserRating'] ?? json['myRating']) == null
-          ? null
-          : parseRatingToFive(json['userRating'] ?? json['UserRating'] ?? json['myRating']),
+      userRating: () {
+        final rawValue = json['userRating'] ?? json['UserRating'] ?? json['myRating'];
+        // If value is null, 0, or missing, return null (no rating)
+        if (rawValue == null || rawValue == 0) return null;
+        
+        // Parse the rating value
+        final parsed = parseRatingToFive(rawValue);
+        // Only return if parsed value is greater than 0 (valid rating)
+        // Also check the raw value directly to catch edge cases
+        return (parsed > 0 && rawValue != 0) ? parsed : null;
+      }(),
     );
   }
 }

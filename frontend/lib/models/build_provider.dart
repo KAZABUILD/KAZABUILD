@@ -71,7 +71,46 @@ class BuildService {
     } catch (e) { rethrow; }
   }
 
+  /// Gets a BuildInteraction by userId and buildId
+  Future<String?> getBuildInteractionId(String buildId, String userId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get', data: {
+        'UserId': [userId],
+        'BuildId': [buildId],
+        'Paging': false,
+      });
+      if (response.data is List && (response.data as List).isNotEmpty) {
+        final interaction = (response.data as List).first;
+        if (interaction is Map<String, dynamic> && interaction.containsKey('id')) {
+          return interaction['id'];
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Updates an existing BuildInteraction rating
+  Future<Map<String, dynamic>> updateBuildInteractionRating(String interactionId, double rating) async {
+    try {
+      // Backend expects 0-100 scale; UI works with 0-5 stars
+      final scaled = (rating * 20).round();
+      final response = await _dio.put('$apiBaseUrl/BuildInteractions/$interactionId', data: {
+        'IsWishlisted': null,
+        'IsLiked': rating >= 3.0, // Consider 3+ stars as liked
+        'Rating': scaled,
+      });
+      return (response.data is Map<String, dynamic>)
+          ? response.data as Map<String, dynamic>
+          : <String, dynamic>{};
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Submits a rating for a build and returns the updated rating aggregate
+  /// Handles both creating new interactions and updating existing ones
   Future<Map<String, dynamic>> rateBuild(String buildId, double rating, String userId) async {
     try {
       // Backend expects 0-100 scale; UI works with 0-5 stars
@@ -87,6 +126,51 @@ class BuildService {
           ? response.data as Map<String, dynamic>
           : <String, dynamic>{};
     } catch (e) {
+      // Check if it's an "already exists" error (400 Bad Request)
+      bool isAlreadyExistsError = false;
+      
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 400) {
+          // Try to extract error message from response
+          final responseData = e.response?.data;
+          String errorMessage = '';
+          
+          // Try different ways to extract the error message
+          if (responseData is Map) {
+            errorMessage = (responseData['message'] ?? 
+                           responseData['Message'] ?? 
+                           responseData['error'] ?? 
+                           responseData['Error'] ??
+                           '').toString().toLowerCase();
+          } else if (responseData is String) {
+            errorMessage = responseData.toLowerCase();
+          }
+          
+          // Also check the exception message
+          if (errorMessage.isEmpty) {
+            errorMessage = (e.message ?? '').toLowerCase();
+          }
+          
+          // Check if it's the "already exists" error
+          isAlreadyExistsError = errorMessage.contains('already exists') || 
+                                errorMessage.contains('interaction already') ||
+                                errorMessage.contains('build already interacted');
+        }
+      }
+      
+      if (isAlreadyExistsError) {
+        // Get the existing interaction ID and update it instead
+        try {
+          final interactionId = await getBuildInteractionId(buildId, userId);
+          if (interactionId != null) {
+            return await updateBuildInteractionRating(interactionId, rating);
+          }
+        } catch (updateError) {
+          // If update also fails, rethrow the original error
+          rethrow;
+        }
+      }
       rethrow;
     }
   }

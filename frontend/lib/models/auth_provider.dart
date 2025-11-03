@@ -190,8 +190,11 @@ class AppUser {
   /// The unique identifier for the user, typically from the auth provider (e.g., Firebase Auth).
   final String uid;
 
-  /// The user's chosen display name.
+  /// The user's login username (used for authentication).
   final String username;
+
+  /// The user's display name (shown to other users).
+  final String displayName;
 
   /// The user's registered email address.
   final String email;
@@ -228,6 +231,7 @@ class AppUser {
   const AppUser({
     required this.uid,
     required this.username,
+    required this.displayName,
     required this.email,
     this.photoURL,
     this.bio,
@@ -262,6 +266,7 @@ class AppUser {
     return AppUser(
       uid: json['id'] ?? json['Id'],
       username: json['login'] ?? json['Login'],
+      displayName: json['displayName'] ?? json['DisplayName'] ?? json['login'] ?? json['Login'],
       email: json['email'] ?? json['Email'],
       photoURL: json['imageUrl'] ?? json['ImageUrl'],
       bio: json['description'] ?? json['Description'],

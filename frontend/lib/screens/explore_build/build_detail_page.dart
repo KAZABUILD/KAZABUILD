@@ -176,7 +176,28 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     super.initState();
     _average = widget.build.averageRating;
     _count = widget.build.ratingsCount;
-    _userRating = widget.build.userRating;
+    // Only set userRating if it's a valid rating (not null and > 0)
+    _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
+        ? widget.build.userRating 
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(_RatingBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update state when build data changes (e.g., after refetch)
+    if (oldWidget.build.averageRating != widget.build.averageRating ||
+        oldWidget.build.ratingsCount != widget.build.ratingsCount ||
+        oldWidget.build.userRating != widget.build.userRating) {
+      setState(() {
+        _average = widget.build.averageRating;
+        _count = widget.build.ratingsCount;
+        // Only set userRating if it's a valid rating (not null and > 0)
+        _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
+            ? widget.build.userRating 
+            : null;
+      });
+    }
   }
 
   Future<void> _submit(double rating) async {
@@ -191,16 +212,27 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     }
 
     if (_submitting) return;
+    
+    // Store previous values in case we need to revert
+    final previousAverage = _average;
+    final previousCount = _count;
+    final previousUserRating = _userRating;
+    
     setState(() {
       _submitting = true;
       // Optimistic update: if user had no rating, bump count and recompute avg
       final hadPrevious = _userRating != null;
       if (!hadPrevious) {
-        _average = ((_average * _count) + rating) / (_count + 1);
+        // Calculate new average: (oldAvg * oldCount + newRating) / (oldCount + 1)
+        _average = _count == 0 
+            ? rating 
+            : ((_average * _count) + rating) / (_count + 1);
         _count = _count + 1;
       } else {
-        // Replace previous vote
-        _average = ((_average * _count) - _userRating! + rating) / (_count == 0 ? 1 : _count);
+        // Replace previous vote: subtract old, add new
+        final total = (_average * _count) - _userRating! + rating;
+        _average = _count == 0 ? rating : (total / _count);
+        // Count stays the same when updating existing rating
       }
       _userRating = rating;
     });
@@ -208,15 +240,26 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     try {
       final user = ref.read(authProvider).valueOrNull;
       if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to rate builds')),
-        );
+        // Revert optimistic update if user check fails
+        if (mounted) {
+          setState(() {
+            _average = previousAverage;
+            _count = previousCount;
+            _userRating = previousUserRating;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please sign in to rate builds')),
+          );
+        }
         return;
       }
       final service = ref.read(buildServiceProvider);
       final result = await service.rateBuild(widget.build.id, rating, user.uid);
+      
+      // Check if backend returned rating statistics
       final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
       final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
+      
       if (mounted && newAvg != null && newCount != null) {
         setState(() {
           // Backend returns 0-100; normalize to 0-5
@@ -224,12 +267,32 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
           _average = avgDouble > 5.0 ? (avgDouble / 20.0) : avgDouble;
           _count = (newCount as num).toInt();
         });
+      } else {
+        // Backend didn't return stats, but request succeeded
+        // Keep the optimistic update and refresh the build data
+        if (mounted) {
+          // Invalidate the build detail provider to refetch fresh data
+          ref.invalidate(buildDetailProvider(widget.build.id));
+        }
       }
     } catch (e) {
+      // On error, revert optimistic update
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit rating: $e')),
-        );
+        setState(() {
+          _average = previousAverage;
+          _count = previousCount;
+          _userRating = previousUserRating;
+        });
+        // Check if it's the "already exists" error - treat as success
+        final errorMsg = e.toString().toLowerCase();
+        if (errorMsg.contains('already exists') || errorMsg.contains('interaction already')) {
+          // Rating was already saved, refresh to get latest data
+          ref.invalidate(buildDetailProvider(widget.build.id));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit rating: $e')),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -239,7 +302,12 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayValue = _userRating ?? _average;
+    // Stars only show user's rating, not the average
+    // Only show filled stars if userRating exists and is greater than 0
+    // If userRating is null or 0, all stars should be empty (border only)
+    final hasUserRating = _userRating != null && _userRating! > 0;
+    final userRatingValue = hasUserRating ? _userRating : null;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: <Widget>[
@@ -247,7 +315,8 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
           mainAxisSize: MainAxisSize.min,
           children: List.generate(5, (index) {
             final starIndex = index + 1;
-            final isFilled = displayValue >= starIndex - 0.5;
+            // Only fill stars if user has a valid rating AND it's >= this star index
+            final isFilled = hasUserRating && userRatingValue! >= starIndex - 0.5;
             return IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),

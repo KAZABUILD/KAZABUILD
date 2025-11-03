@@ -349,6 +349,22 @@ namespace KAZABUILD.API.Controllers.Builds
                 return Forbid();
             }
 
+            //Calculate rating statistics for the build
+            var ratingsForBuild = await _db.BuildInteractions
+                .Where(i => i.BuildId == id && i.Rating > 0)
+                .Select(i => i.Rating)
+                .ToListAsync();
+
+            var averageRating = ratingsForBuild.Any() 
+                ? ratingsForBuild.Average() 
+                : 0.0;
+            var ratingsCount = ratingsForBuild.Count;
+
+            //Get current user's rating if they have one
+            var userInteraction = await _db.BuildInteractions
+                .FirstOrDefaultAsync(i => i.BuildId == id && i.UserId == currentUserId && i.Rating > 0);
+            int? userRating = userInteraction?.Rating;
+
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -362,7 +378,10 @@ namespace KAZABUILD.API.Controllers.Builds
                     UserId = build.UserId,
                     Name = build.Name,
                     Description = build.Description,
-                    Status = build.Status
+                    Status = build.Status,
+                    AverageRating = averageRating,
+                    RatingsCount = ratingsCount,
+                    UserRating = userRating
                 };
             }
             else
@@ -381,6 +400,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
                     Note = build.Note,
+                    AverageRating = averageRating,
+                    RatingsCount = ratingsCount,
+                    UserRating = userRating
                 };
             }
 
