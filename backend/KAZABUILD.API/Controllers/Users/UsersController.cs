@@ -577,6 +577,9 @@ namespace KAZABUILD.API.Controllers.Users
             //Check if the calling user is followed
             var isFollowed = await _db.UserFollows.AnyAsync(f => f.FollowerId == id && f.FollowedId == currentUserId);
 
+            //Check if the user is blocked
+            var isBlocked = await _db.UserBlocks.AnyAsync(f => f.BlockedUserId == id && f.UserId == currentUserId);
+
             //Check what permissions user has and return respective information
             if (!isSelf && !isPrivileged
                 && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE
@@ -605,7 +608,8 @@ namespace KAZABUILD.API.Controllers.Users
                     DisplayName = user.DisplayName,
                     Description = user.Description,
                     ImageId = user.ImageId,
-                    UserRole = user.UserRole
+                    UserRole = user.UserRole,
+                    IsBlocked = isBlocked
                 };
             }
             else if (isSelf && !isPrivileged) //Return full knowledge if is user
@@ -633,7 +637,8 @@ namespace KAZABUILD.API.Controllers.Users
                     Language = user.Language,
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
-                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked
                 };
             }
             else //Return admin knowledge if has privileges
@@ -662,6 +667,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                     EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked,
                     DatabaseEntryAt = user.DatabaseEntryAt,
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
@@ -774,13 +780,22 @@ namespace KAZABUILD.API.Controllers.Users
                     .Select(f => f.FollowerId)
                     .ToListAsync();
 
+                //Get all blocks for the current user
+                var blocks = await _db.UserBlocks
+                    .Where(f => f.UserId == currentUserId)
+                    .Select(f => f.BlockedUserId)
+                    .ToListAsync();
+
                 //Create a user response list
                 responses = [.. users.Select(user =>
                 {
-                    //Check if the calling user is followed
+                    //Check if the user is followed
                     var isFollowed = followers.Contains(user.Id);
 
-                    //Check if current user is getting themselves
+                    //Check if the user is followed
+                    var isBlocked = blocks.Contains(user.Id);
+
+                    //Check if user is getting themselves
                     var isSelf = currentUserId == user.Id;
 
                     //Return limited or restricted information based on user profile settings
@@ -791,7 +806,8 @@ namespace KAZABUILD.API.Controllers.Users
                         {
                             Id = user.Id,
                             DisplayName = user.DisplayName,
-                            UserRole = user.UserRole
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else if(!isSelf)
@@ -803,7 +819,8 @@ namespace KAZABUILD.API.Controllers.Users
                             DisplayName = user.DisplayName,
                             Description = user.Description,
                             ImageId = user.ImageId,
-                            UserRole = user.UserRole
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else
@@ -829,9 +846,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Location = user.Location,
                             ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                             EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
-                            DatabaseEntryAt = user.DatabaseEntryAt,
-                            LastEditedAt = user.LastEditedAt,
-                            Note = user.Note
+                            IsBlocked = isBlocked
                         };
                     }
                 })];
