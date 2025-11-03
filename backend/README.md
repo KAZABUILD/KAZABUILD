@@ -6,10 +6,10 @@
  - Create and fill in the `appsettings.json` file with correct information based on the example file.
  - Use visual studio to run or use `dotnet watch run` in the command line.
  - Access automatic swagger documentation using `<ip_address>/swagger`.
- - The application creates a system user automatically which uses the credentials set in `appsettings.json`. The user can be accessed or testing purposes.
+ - The application creates a system user automatically which uses the credentials set in `appsettings.json`. The user can be accessed for testing purposes.
 
 ## Migrations
- - `cd backend` to get into the main backend folder in terminal.
+ - Migrations should be run from the main backend folder in the terminal.
  - `dotnet ef migrations add InitialCreate --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to create the initial database migration. If there is one already create a different one or just apply it.
  - `dotnet ef database update --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to apply all migrations.
  - The app will automatically apply migrations when run.
