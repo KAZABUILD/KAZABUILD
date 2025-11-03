@@ -771,7 +771,7 @@ namespace KAZABUILD.API.Controllers
                 query = query.Where(i => i.UserId != null && dto.UserId.Contains((Guid)i.UserId));
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.User).Search(dto.Query, i => i.Name);

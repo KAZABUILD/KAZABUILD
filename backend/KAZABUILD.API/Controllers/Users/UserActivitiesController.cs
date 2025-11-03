@@ -9,6 +9,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -21,14 +22,16 @@ namespace KAZABUILD.API.Controllers.Users
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
+    /// <param name="cache"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserActivitiesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserActivitiesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IMemoryCache cache) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
+        private readonly IMemoryCache _cache = cache;
 
         /// <summary>
         /// API Endpoint for logging new User Activity.
@@ -66,13 +69,16 @@ namespace KAZABUILD.API.Controllers.Users
                 return BadRequest(new { message = "User not found!" });
             }
 
+            //Check if current user has admin permissions for date assignment
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
             //Create a userActivity to add
             UserActivity userActivity = new()
             {
                 UserId = currentUserId,
                 ActivityType = dto.ActivityType,
                 TargetId = dto.TargetId,
-                Timestamp = dto.Timestamp,
+                Timestamp = isPrivileged ? dto.Timestamp : DateTime.UtcNow,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -340,7 +346,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);
@@ -452,6 +458,27 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
+            //Generate a cache key
+            var cacheKey = CacheHelper.GetUserActivityCountCacheKey(dto);
+
+            //Try to get the views from cache first
+            if (_cache.TryGetValue(cacheKey, out int cachedViews))
+            {
+                //Log success
+                await _logger.LogAsync(
+                    currentUserId,
+                    "GET",
+                    "UserActivity",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Successful - UserActivity Count Got From Cache"
+                );
+
+                //Return the views amount
+                return Ok(cachedViews);
+            }
+
             //Declare the query
             var query = _db.UserActivities.AsNoTracking();
 
@@ -477,7 +504,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(a => a.Timestamp <= dto.TimestampEnd);
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(a => a.User).Search(dto.Query, a => a.ActivityType, a => a.User!.DisplayName);
@@ -500,6 +527,12 @@ namespace KAZABUILD.API.Controllers.Users
             //Count the amount of activities to return as views
             var views = await query.CountAsync();
 
+            //Cache the query result
+            _cache.Set(cacheKey, views, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            });
+
             //Log success
             await _logger.LogAsync(
                 currentUserId,
@@ -518,7 +551,7 @@ namespace KAZABUILD.API.Controllers.Users
                 gotBy = currentUserId
             });
 
-            //Return the userActivities
+            //Return the views amount
             return Ok(views);
         }
 

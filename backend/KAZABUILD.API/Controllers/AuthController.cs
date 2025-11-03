@@ -539,7 +539,7 @@ namespace KAZABUILD.API.Controllers
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = UserRole.UNVERIFIED,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,

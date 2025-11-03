@@ -46,6 +46,8 @@ namespace KAZABUILD.Application.DTOs.Users.User
 
         public bool? EnableDoubleFactorAuthentication { get; set; }
 
+        public bool? IsBlocked { get; set; }
+
         public DateTime? DatabaseEntryAt { get; set; }
 
         public DateTime? LastEditedAt { get; set; }

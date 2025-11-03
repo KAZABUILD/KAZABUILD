@@ -559,7 +559,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Where(i => i.Rating <= dto.RatingEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
@@ -690,7 +690,7 @@ namespace KAZABUILD.API.Controllers.Builds
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.BuildInteractions.Include(i => i.Build).AsNoTracking();
+            var query = _db.BuildInteractions.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.UserId != null)
@@ -718,7 +718,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Where(i => i.Rating <= dto.RatingEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
@@ -739,7 +739,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Count the amount of interactions to return
-            var interactionsAmount = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).CountAsync();
+            var interactionsAmount = await query.Include(i => i.Build).Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).CountAsync();
 
             //Log success
             await _logger.LogAsync(

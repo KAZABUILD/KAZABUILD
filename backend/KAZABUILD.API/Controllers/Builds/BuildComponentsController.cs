@@ -481,7 +481,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Where(c => c.Quantity <= dto.QuantityEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(c => c.Build).Include(c => c.Component).Search(dto.Query, c => c.Build!.Name, c => c.Component!.Name);

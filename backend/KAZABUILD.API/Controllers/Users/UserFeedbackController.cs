@@ -396,7 +396,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => dto.UserId.Contains(f.UserId));
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.User).Search(dto.Query, f => f.Feedback, f => f.User!.DisplayName);

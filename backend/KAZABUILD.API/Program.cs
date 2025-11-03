@@ -7,7 +7,6 @@ using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
 using Prometheus
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text.Json.Serialization;
@@ -219,8 +218,8 @@ namespace KAZABUILD.API
                 //Log the validation error
                 await logger.LogAsync(
                     Guid.Empty,
-                    "validate",
-                    "Application",
+                    "Validation",
+                    "Database",
                     "",
                     Guid.Empty,
                     PrivacyLevel.CRITICAL,
@@ -246,7 +245,7 @@ namespace KAZABUILD.API
                 //Log the validation error
                 await logger.LogAsync(
                     Guid.Empty,
-                    "start",
+                    "Start",
                     "Application",
                     "",
                     Guid.Empty,

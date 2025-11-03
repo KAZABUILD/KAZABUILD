@@ -61,11 +61,10 @@ namespace KAZABUILD.Application.DTOs.Auth
         public string Gender { get; set; } = "Unknown";
 
         /// <summary>
-        /// Url address of user's profile picture stored on the internal application server.
+        /// Id of the images storing the user's profile picture.
+        /// If null the frontend should use a default one.
         /// </summary>
-        [Required]
-        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
+        public Guid? ImageId { get; set; }
 
         /// <summary>
         /// User's date of birth.

@@ -51,6 +51,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add the cleanup service
             services.AddScoped<IDataSeeder, DataSeeder>();
 
+            //Add cache, can be replaced with an eternal distribution later
+            services.AddMemoryCache();
+
             //Return the services with all the custom services added
             return services;
         }

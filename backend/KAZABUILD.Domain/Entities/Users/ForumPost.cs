@@ -61,5 +61,6 @@ namespace KAZABUILD.Domain.Entities.Users
 
         public ICollection<UserComment> Comments { get; set; } = [];
         public ICollection<Image> Images { get; set; } = [];
+        public ICollection<UserReport> UserReports { get; set; } = [];
     }
 }
