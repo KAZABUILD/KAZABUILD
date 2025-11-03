@@ -5,7 +5,7 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
-
+using Prometheus
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Options;
@@ -173,6 +173,9 @@ namespace KAZABUILD.API
 
             //Map controllers' endpoints
             app.MapControllers();
+
+            //Enable Prometheus value monitoring
+            app.UseMetricServer();
 
             //Get the hasher and admin user settings
             var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();
