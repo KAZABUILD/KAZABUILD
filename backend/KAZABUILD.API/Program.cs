@@ -5,7 +5,8 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
-using Prometheus
+
+using Prometheus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
