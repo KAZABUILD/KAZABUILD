@@ -8,7 +8,7 @@ using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace KAZABUILD.Tests.Controllers.Users;
+namespace KAZABUILD.Tests;
 
 [Collection("Sequential")]
 public class ForumPostsControllerTests : BaseIntegrationTest
@@ -421,7 +421,6 @@ public class ForumPostsControllerTests : BaseIntegrationTest
         });
     }
 
-
     [Fact]
     public async Task GetForumPosts_WithSearchQuery_ReturnsMatchingResults()
     {
@@ -440,7 +439,6 @@ public class ForumPostsControllerTests : BaseIntegrationTest
         Assert.NotNull(content);
         Assert.NotEmpty(content);
     }
-
 
     [Fact]
     public async Task GetForumPosts_AsStaff_ReturnsFullDetails()

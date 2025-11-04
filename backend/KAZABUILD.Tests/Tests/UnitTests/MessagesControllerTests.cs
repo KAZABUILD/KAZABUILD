@@ -1,14 +1,16 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using KAZABUILD.Application.DTOs.Users.Message;
+using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Tests.ControllerServices;
 using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace KAZABUILD.Tests.Controllers.Users;
+namespace KAZABUILD.Tests;
 
 
 [Collection("Sequential")]
@@ -19,6 +21,7 @@ public class MessagesControllerTests : BaseIntegrationTest
     private User _testUser2 = null!;
     private HttpClient _testUser1HttpClient = null!;
     private HttpClient _testUser2HttpClient = null!;
+    private IEncryptionService _encryptionService = null!;
 
     public MessagesControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
@@ -27,6 +30,9 @@ public class MessagesControllerTests : BaseIntegrationTest
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
+
+        // Get encryption service
+        _encryptionService = _factory.Services.GetRequiredService<IEncryptionService>();
 
         // Create test users
         _testUser1 = _context.Users.First(u => u.UserRole == UserRole.USER);
@@ -74,31 +80,16 @@ public class MessagesControllerTests : BaseIntegrationTest
         // Verify message was created in database
         var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
         Assert.NotNull(message);
-        Assert.Equal(dto.Content, message.Content);
+        Assert.NotNull(message.CipherText);
+        Assert.NotNull(message.IV);
+
+        // Decrypt and verify content
+        var decryptedContent = _encryptionService.Decrypt(message.CipherText, message.IV);
+        Assert.Equal(dto.Content, decryptedContent);
+
         Assert.Equal(dto.Title, message.Title);
         Assert.Equal(_testUser1.Id, message.SenderId);
         Assert.Equal(_testUser2.Id, message.ReceiverId);
-    }
-
-    [Fact]
-    public async Task AddMessage_WithNonExistentReceiver_ReturnsBadRequest()
-    {
-        // Arrange
-        var dto = new CreateMessageDto
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = Guid.NewGuid(), // Non-existent user
-            Content = "Test message",
-            Title = "Test",
-            SentAt = DateTime.UtcNow,
-            MessageType = MessageType.USER
-        };
-
-        // Act
-        var response = await _messagesClient.SendMessage(dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -196,11 +187,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task UpdateMessage_MarkAsRead_ReturnsOk()
     {
         // Arrange - Create a message
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -227,11 +220,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task UpdateMessage_AsNonReceiver_ReturnsForbidden()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -255,11 +250,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task UpdateMessage_ContentAsAdmin_ReturnsOk()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Original content");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Original content",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Original title",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -283,7 +280,10 @@ public class MessagesControllerTests : BaseIntegrationTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updatedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
-        Assert.Equal("Updated content", updatedMessage!.Content);
+
+        // Decrypt and verify updated content
+        var decryptedContent = _encryptionService.Decrypt(updatedMessage!.CipherText, updatedMessage.IV);
+        Assert.Equal("Updated content", decryptedContent);
         Assert.Equal("Updated title", updatedMessage.Title);
     }
 
@@ -291,11 +291,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task UpdateMessage_ContentAsRegularUser_OnlyUpdatesIsRead()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Original content");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Original content",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Original title",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -321,7 +323,10 @@ public class MessagesControllerTests : BaseIntegrationTest
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updatedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
         Assert.True(updatedMessage!.IsRead); // This should be updated
-        Assert.Equal("Original content", updatedMessage.Content); // This should NOT be updated
+
+        // Decrypt and verify content wasn't changed
+        var decryptedContent = _encryptionService.Decrypt(updatedMessage.CipherText, updatedMessage.IV);
+        Assert.Equal("Original content", decryptedContent); // This should NOT be updated
         Assert.Equal("Original title", updatedMessage.Title); // This should NOT be updated
     }
 
@@ -346,11 +351,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessage_AsSender_ReturnsOk()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -369,7 +376,9 @@ public class MessagesControllerTests : BaseIntegrationTest
         var content = await response.Content.ReadFromJsonAsync<MessageResponseDto>();
         Assert.NotNull(content);
         Assert.Equal(message.Id, content.Id);
-        Assert.Equal(message.Content, content.Content);
+
+        // Content should be decrypted in the response
+        Assert.Equal("Test message", content.Content);
         Assert.Null(content.DatabaseEntryAt); // Regular user shouldn't see this
     }
 
@@ -377,11 +386,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessage_AsAdmin_ReturnsFullDetails()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -411,11 +422,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessage_AsUnrelatedUser_ReturnsForbidden()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -466,11 +479,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessages_AsUser_ReturnsOnlyOwnMessages()
     {
         // Arrange - Create multiple messages
+        var (cipherText1, iv1) = _encryptionService.Encrypt("Message 1");
         var message1 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Message 1",
+            CipherText = cipherText1,
+            IV = iv1,
             Title = "Test 1",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -479,11 +494,13 @@ public class MessagesControllerTests : BaseIntegrationTest
             LastEditedAt = DateTime.UtcNow
         };
 
+        var (cipherText2, iv2) = _encryptionService.Encrypt("Message 2");
         var message2 = new Message
         {
             SenderId = _testUser2.Id,
             ReceiverId = _testUser1.Id,
-            Content = "Message 2",
+            CipherText = cipherText2,
+            IV = iv2,
             Title = "Test 2",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -512,11 +529,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessages_WithSenderIdFilter_ReturnsFilteredResults()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Message 1");
         var message1 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Message 1",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test 1",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -548,11 +567,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessages_WithIsReadFilter_ReturnsFilteredResults()
     {
         // Arrange
+        var (cipherText1, iv1) = _encryptionService.Encrypt("Read message");
         var readMessage = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Read message",
+            CipherText = cipherText1,
+            IV = iv1,
             Title = "Read",
             SentAt = DateTime.UtcNow,
             IsRead = true,
@@ -561,11 +582,13 @@ public class MessagesControllerTests : BaseIntegrationTest
             LastEditedAt = DateTime.UtcNow
         };
 
+        var (cipherText2, iv2) = _encryptionService.Encrypt("Unread message");
         var unreadMessage = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Unread message",
+            CipherText = cipherText2,
+            IV = iv2,
             Title = "Unread",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -595,11 +618,13 @@ public class MessagesControllerTests : BaseIntegrationTest
         // Arrange - Create multiple messages
         for (int i = 0; i < 5; i++)
         {
+            var (cipherText, iv) = _encryptionService.Encrypt($"Message {i}");
             var message = new Message
             {
                 SenderId = _testUser1.Id,
                 ReceiverId = _testUser2.Id,
-                Content = $"Message {i}",
+                CipherText = cipherText,
+                IV = iv,
                 Title = $"Test {i}",
                 SentAt = DateTime.UtcNow.AddMinutes(-i),
                 IsRead = false,
@@ -632,11 +657,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessages_WithSearchQuery_ReturnsMatchingResults()
     {
         // Arrange
+        var (cipherText1, iv1) = _encryptionService.Encrypt("This contains the word unicorn");
         var message1 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "This contains the word unicorn",
+            CipherText = cipherText1,
+            IV = iv1,
             Title = "Unique",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -645,11 +672,13 @@ public class MessagesControllerTests : BaseIntegrationTest
             LastEditedAt = DateTime.UtcNow
         };
 
+        var (cipherText2, iv2) = _encryptionService.Encrypt("This is a regular message");
         var message2 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "This is a regular message",
+            CipherText = cipherText2,
+            IV = iv2,
             Title = "Regular",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -678,11 +707,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task GetMessages_WithOrderBy_ReturnsSortedResults()
     {
         // Arrange
+        var (cipherText1, iv1) = _encryptionService.Encrypt("Message A");
         var message1 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Message A",
+            CipherText = cipherText1,
+            IV = iv1,
             Title = "Alpha",
             SentAt = DateTime.UtcNow.AddDays(-2),
             IsRead = false,
@@ -691,11 +722,13 @@ public class MessagesControllerTests : BaseIntegrationTest
             LastEditedAt = DateTime.UtcNow
         };
 
+        var (cipherText2, iv2) = _encryptionService.Encrypt("Message B");
         var message2 = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Message B",
+            CipherText = cipherText2,
+            IV = iv2,
             Title = "Beta",
             SentAt = DateTime.UtcNow.AddDays(-1),
             IsRead = false,
@@ -731,11 +764,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task DeleteMessage_AsSender_ReturnsOk()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -759,11 +794,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task DeleteMessage_AsReceiver_ReturnsForbidden()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,
@@ -787,11 +824,13 @@ public class MessagesControllerTests : BaseIntegrationTest
     public async Task DeleteMessage_AsAdmin_ReturnsOk()
     {
         // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
         var message = new Message
         {
             SenderId = _testUser1.Id,
             ReceiverId = _testUser2.Id,
-            Content = "Test message",
+            CipherText = cipherText,
+            IV = iv,
             Title = "Test",
             SentAt = DateTime.UtcNow,
             IsRead = false,

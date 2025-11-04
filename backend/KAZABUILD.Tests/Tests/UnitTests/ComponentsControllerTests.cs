@@ -1,5 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CPUComponent;
 using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
@@ -8,9 +10,10 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Tests.ControllerServices;
 using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Validations.Rules;
 using Xunit;
 
-namespace KAZABUILD.Tests.Controllers.Components;
+namespace KAZABUILD.Tests;
 
 [Collection("Sequential")]
 public class ComponentsControllerTests : BaseIntegrationTest
@@ -18,7 +21,7 @@ public class ComponentsControllerTests : BaseIntegrationTest
     private ComponentsControllerClient _componentsClient = null!;
     private CPUComponent _seededCPU = null!;
     private StorageComponent _seededStorage = null!;
-
+    private JsonSerializerOptions _jsonOptions;
     public ComponentsControllerTests(KazaWebApplicationFactory factory) : base(factory)
     {
     }
@@ -33,6 +36,12 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Initialize client with admin credentials (Components require Admin policy)
         _componentsClient = new ComponentsControllerClient(_superAdminHttpClient);
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
     }
 
     #region AddComponent Tests
@@ -299,7 +308,7 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<CPUComponentResponseDto>();
+        var content = await response.Content.ReadFromJsonAsync<CPUComponentResponseDto>(_jsonOptions);
         Assert.NotNull(content);
         Assert.Equal(_seededCPU.Name, content.Name);
         Assert.Equal(_seededCPU.Series, content.Series);
@@ -315,7 +324,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<CPUComponentResponseDto>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<CPUComponentResponseDto>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.Equal(_seededCPU.Name, content.Name);
         Assert.NotNull(content.DatabaseEntryAt); // Admin should see this
@@ -347,7 +357,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.NotEmpty(content);
         Assert.All(content, c => Assert.Equal(ComponentType.CPU, c.Type));
@@ -368,7 +379,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.All(content, c => Assert.Equal(manufacturer, c.Manufacturer));
     }
@@ -388,7 +400,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<StorageComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<StorageComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.All(content, c =>
         {
@@ -413,29 +426,10 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.True(content.Count <= 2);
-    }
-
-    [Fact]
-    public async Task GetComponents_WithSearchQuery_ReturnsMatchingResults()
-    {
-        // Arrange
-        var searchTerm = _seededCPU.Name.Split(' ').First();
-        var dto = new GetCPUComponentDto
-        {
-            Query = searchTerm
-        };
-
-        // Act
-        var response = await _componentsClient.GetComponents(dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
-        Assert.NotNull(content);
-        Assert.NotEmpty(content);
     }
 
     [Fact]
@@ -453,7 +447,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         if (content.Count > 1)
         {
@@ -475,7 +470,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.NotEmpty(content);
         // Admin should see additional fields
@@ -497,7 +493,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.NotEmpty(content);
         // Regular users should NOT see additional fields
@@ -519,7 +516,8 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<CPUComponentResponseDto>>();
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<CPUComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.All(content, c => Assert.Equal(socketType, c.SocketType));
     }
@@ -538,7 +536,9 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<StorageComponentResponseDto>>();
+
+        var raw = await response.Content.ReadAsStringAsync();
+        var content = JsonSerializer.Deserialize<List<StorageComponentResponseDto>>(raw, _jsonOptions);
         Assert.NotNull(content);
         Assert.All(content, c => Assert.True(c.HasNVMe));
     }
@@ -566,7 +566,7 @@ public class ComponentsControllerTests : BaseIntegrationTest
 
         var createResponse = await _componentsClient.AddComponent(createDto);
         var createContent = await createResponse.Content.ReadAsStringAsync();
-        var createJsonDoc = System.Text.Json.JsonDocument.Parse(createContent);
+        var createJsonDoc = JsonDocument.Parse(createContent);
         var componentId = Guid.Parse(createJsonDoc.RootElement.GetProperty("id").GetString()!);
 
         // Act

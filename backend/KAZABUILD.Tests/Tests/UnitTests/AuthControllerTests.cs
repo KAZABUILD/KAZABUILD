@@ -28,7 +28,9 @@ public class AuthControllerTests : BaseIntegrationTest
     private User _user_banned = null!;
     private const string DefaultPassword = "password123!";
 
-    public AuthControllerTests(KazaWebApplicationFactory factory) : base(factory) { }
+    public AuthControllerTests(KazaWebApplicationFactory factory) : base(factory)
+    {
+    }
 
     public override async Task InitializeAsync()
     {
@@ -122,7 +124,7 @@ public class AuthControllerTests : BaseIntegrationTest
             DisplayName = "NewUseraa",
             Password = DefaultPassword,
             RedirectUrl = "/test.com",
-            Birth = DateTime.Today.Subtract(TimeSpan.FromDays(365*20)),
+            Birth = DateTime.Today.Subtract(TimeSpan.FromDays(365 * 20)),
             RegisteredAt = DateTime.Now,
         };
 
@@ -136,7 +138,8 @@ public class AuthControllerTests : BaseIntegrationTest
         Assert.NotNull(newUser);
         Assert.Equal(UserRole.UNVERIFIED, newUser.UserRole);
 
-        var token = await _context.UserTokens.FirstOrDefaultAsync(t => t.UserId == newUser.Id && t.TokenType == TokenType.CONFIRM_REGISTER);
+        var token = await _context.UserTokens.FirstOrDefaultAsync(t =>
+            t.UserId == newUser.Id && t.TokenType == TokenType.CONFIRM_REGISTER);
         Assert.NotNull(token);
     }
 
@@ -151,7 +154,7 @@ public class AuthControllerTests : BaseIntegrationTest
             DisplayName = "Another User",
             Password = DefaultPassword,
             RedirectUrl = "/test.com",
-            Birth = DateTime.Today.Subtract(TimeSpan.FromDays(365*20)),
+            Birth = DateTime.Today.Subtract(TimeSpan.FromDays(365 * 20)),
             RegisteredAt = DateTime.Now,
         };
 
@@ -166,18 +169,25 @@ public class AuthControllerTests : BaseIntegrationTest
     public async Task ConfirmRegister_WithValidToken_ShouldVerifyUserAndRedirect()
     {
         // Arrange
+        var plainToken = Guid.NewGuid().ToString("N");
+        var tokenHash = _hashingService.Hash(plainToken);
+
         var token = new UserToken
         {
             UserId = _user_unverified.Id,
-            Token = Guid.NewGuid().ToString("N"),
+            TokenHash = tokenHash,
             TokenType = TokenType.CONFIRM_REGISTER,
+            CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
             RedirectUrl = "/welcome",
-            IpAddress = "127.0.0.1"
+            IpAddress = "127.0.0.1",
+            LastEditedAt = DateTime.UtcNow
         };
         await _context.UserTokens.AddAsync(token);
         await _context.SaveChangesAsync();
-        var confirmDto = new ConfirmRegisterDto { Token = token.Token };
+
+        // Use the plain token in the DTO (as the user would receive it)
+        var confirmDto = new ConfirmRegisterDto { Token = plainToken };
 
         // Act
         var response = await _api_client.ConfirmRegister(confirmDto);
@@ -188,7 +198,8 @@ public class AuthControllerTests : BaseIntegrationTest
         var getUserResponse = await _api_users_client.GetUser(_user_unverified.Id.ToString());
         var data = JsonSerializer.Deserialize<UserResponseDto>(
             getUserResponse.Content.ReadAsStringAsync().Result,
-            new JsonSerializerOptions {
+            new JsonSerializerOptions
+            {
                 Converters = { new JsonStringEnumConverter() },
                 PropertyNameCaseInsensitive = true
             });
@@ -202,20 +213,27 @@ public class AuthControllerTests : BaseIntegrationTest
     {
         // Arrange
         var originalHash = _user_to_change_password.PasswordHash;
+        var plainToken = Guid.NewGuid().ToString("N");
+        var tokenHash = _hashingService.Hash(plainToken);
+
         var token = new UserToken
         {
             UserId = _user_to_change_password.Id,
-            Token = Guid.NewGuid().ToString("N"),
+            TokenHash = tokenHash,
             TokenType = TokenType.RESET_PASSWORD,
+            CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
             RedirectUrl = "/login",
-            IpAddress = "127.0.0.1"
+            IpAddress = "127.0.0.1",
+            LastEditedAt = DateTime.UtcNow
         };
         await _context.UserTokens.AddAsync(token);
         await _context.SaveChangesAsync();
 
         var newPassword = "aDifferentStrongPassword123!";
-        var confirmDto = new ConfirmPasswordResetDto { Token = token.Token, NewPassword = newPassword };
+
+        // Use the plain token in the DTO (as the user would receive it)
+        var confirmDto = new ConfirmPasswordResetDto { Token = plainToken, NewPassword = newPassword };
 
         // Act
         var response = await _api_client.ConfirmResetPassword(confirmDto);
@@ -223,11 +241,13 @@ public class AuthControllerTests : BaseIntegrationTest
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 
-        var updatedUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == _user_to_change_password.Id);
+        var updatedUser = await _context.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == _user_to_change_password.Id);
         Assert.NotNull(updatedUser);
         Assert.NotEqual(originalHash, updatedUser.PasswordHash);
 
         //Remove user afterward in case he gets picked in other test classes
         await _api_users_client_admin.DeleteUser(_user_to_change_password.Id.ToString());
+        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
     }
 }
