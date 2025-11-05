@@ -93,5 +93,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public ComponentReview? ComponentReview { get; set; } = default!;
         public Build? Build { get; set; } = default!;
         public ICollection<Image> Images { get; set; } = [];
+        public ICollection<UserCommentInteraction> UserCommentInteractions { get; set; } = [];
+        public ICollection<UserReport> UserReports { get; set; } = [];
     }
 }

@@ -5,6 +5,7 @@ using KAZABUILD.Infrastructure.Data;
 
 using Microsoft.Extensions.Logging;
 using Serilog.Core;
+using System.Text.Json;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -18,6 +19,10 @@ namespace KAZABUILD.Infrastructure.Services
     {
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILogger<Logger> _serilogLogger = serilogLogger;
+
+        //Filepath for stashing logs and a serializer for json
+        private readonly string _stashFilepath = Path.Combine(AppContext.BaseDirectory, "failed_logs.json");
+        private readonly JsonSerializerOptions jsonSerializerOptions = new() { WriteIndented = true };
 
         /// <summary>
         /// Logs an event to the database.
@@ -46,9 +51,19 @@ namespace KAZABUILD.Infrastructure.Services
                 SeverityLevel = severityLevel
             };
 
-            //Add the log to the database and save changes
-            _db.Logs.Add(log);
-            await _db.SaveChangesAsync();
+            try
+            {
+                //Add the log to the database and save changes
+                _db.Logs.Add(log);
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log locally to Serilog so at least we know it failed
+                _serilogLogger.LogError(ex, "Failed to write log to database. Stashing locally.");
+
+                await StashLogAsync(log);
+            }
 
             //Check if there is an IP address and format it correctly
             var ip = string.IsNullOrWhiteSpace(ipAddress) ? "" : $" ({ipAddress})";
@@ -80,6 +95,76 @@ namespace KAZABUILD.Infrastructure.Services
                 default:
                     _serilogLogger.LogInformation(message);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Stashes logs which are impossible to be logged at the moment.
+        /// </summary>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        public async Task StashLogAsync(Log log)
+        {
+            //Declare a list of stashed logs
+            List<Log> stashed = [];
+
+            //Get the file with already stashed logs
+            if (File.Exists(_stashFilepath))
+            {
+                //Read the contents of the file
+                var json = await File.ReadAllTextAsync(_stashFilepath);
+
+                //Deserialize the json into the list
+                stashed = JsonSerializer.Deserialize<List<Log>>(json) ?? [];
+            }
+
+            //add a log to the list
+            stashed.Add(log);
+
+            //Serialize the list into json again
+            var newJson = JsonSerializer.Serialize(stashed, jsonSerializerOptions);
+
+            //Write the logs into a file
+            await File.WriteAllTextAsync(_stashFilepath, newJson);
+        }
+
+        /// <summary>
+        /// Adds all stashed logs to the database.
+        /// </summary>
+        /// <returns></returns>
+        public async Task FlushStashedLogsAsync()
+        {
+            //Check if the stashed file exists
+            if (!File.Exists(_stashFilepath))
+                return;
+
+            //Read the contents of the file
+            var json = await File.ReadAllTextAsync(_stashFilepath);
+
+            //Deserialize the json into a list
+            var stashedLogs = JsonSerializer.Deserialize<List<Log>>(json);
+
+            //Exit function if there are no stashed logs
+            if (stashedLogs == null || stashedLogs.Count == 0)
+                return;
+
+            try
+            {
+                //Add all stashed logs to the database
+                _db.Logs.AddRange(stashedLogs);
+
+                //Save changes to the database
+                await _db.SaveChangesAsync();
+
+                //Delete the stashed file
+                File.Delete(_stashFilepath);
+
+                //Log the flush
+                _serilogLogger.LogInformation("Successfully flushed {Count} stashed logs to the database.", stashedLogs.Count);
+            }
+            catch (Exception ex)
+            {
+                _serilogLogger.LogError(ex, "Failed to flush stashed logs.");
             }
         }
     }

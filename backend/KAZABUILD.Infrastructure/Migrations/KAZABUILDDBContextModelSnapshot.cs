@@ -37,6 +37,32 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("BuildTag");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.BlockedIp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BlockedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BlockedIps");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Build", b =>
                 {
                     b.Property<Guid>("Id")
@@ -62,6 +88,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<string>("Note")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -731,13 +760,17 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Content")
+                    b.Property<string>("CipherText")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime>("DatabaseEntryAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("IV")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
@@ -837,6 +870,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("BannedUntil")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("Birth")
                         .HasColumnType("datetime2");
 
@@ -870,10 +906,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<string>("GoogleProfilePicture")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                    b.Property<Guid?>("ImageId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Language")
                         .IsRequired()
@@ -924,10 +958,80 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("ImageId");
+
                     b.HasIndex("Login")
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserActivities");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BlockedUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedUserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserBlocks");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
@@ -993,6 +1097,74 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserComments");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserCommentInteraction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDisliked")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLiked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserCommentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserCommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserCommentInteractions");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Feedback")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserFeedback");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFollow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1053,6 +1225,71 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserPreferences");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BuildId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ForumPostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("ReportedUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("UserCommentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuildId");
+
+                    b.HasIndex("ForumPostId");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("ReportedUserId");
+
+                    b.HasIndex("UserCommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserReports");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1078,7 +1315,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1283,11 +1520,11 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasPrecision(6, 3)
                         .HasColumnType("decimal(6,3)");
 
-                    b.Property<decimal>("MinAirflow")
+                    b.Property<decimal?>("MinAirflow")
                         .HasPrecision(4, 2)
                         .HasColumnType("decimal(4,2)");
 
-                    b.Property<decimal>("MinNoiseLevel")
+                    b.Property<decimal?>("MinNoiseLevel")
                         .HasPrecision(6, 3)
                         .HasColumnType("decimal(6,3)");
 
@@ -2096,6 +2333,11 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
+                    b.HasOne("KAZABUILD.Domain.Entities.Image", "Image")
+                        .WithMany("Users")
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.OwnsOne("KAZABUILD.Domain.ValueObjects.Address", "Address", b1 =>
                         {
                             b1.Property<Guid>("UserId")
@@ -2143,6 +2385,38 @@ namespace KAZABUILD.Infrastructure.Migrations
                         });
 
                     b.Navigation("Address");
+
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserActivity", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("UserActivities")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserBlock", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "BlockedUser")
+                        .WithMany("BlockedUsers")
+                        .HasForeignKey("BlockedUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("BlockingUsers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BlockedUser");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserComment", b =>
@@ -2191,6 +2465,36 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserCommentInteraction", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "UserComment")
+                        .WithMany("UserCommentInteractions")
+                        .HasForeignKey("UserCommentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("UserCommentInteractions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserComment");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFeedback", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("UserFeedback")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserFollow", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Followed")
@@ -2219,6 +2523,53 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserReport", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
+                        .WithMany("UserReports")
+                        .HasForeignKey("BuildId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
+                        .WithMany("UserReports")
+                        .HasForeignKey("ForumPostId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.Message", "Message")
+                        .WithMany("UserReports")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "ReportedUser")
+                        .WithMany("ReportedUsers")
+                        .HasForeignKey("ReportedUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "UserComment")
+                        .WithMany("UserReports")
+                        .HasForeignKey("UserCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("ReportingUsers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Build");
+
+                    b.Navigation("ForumPost");
+
+                    b.Navigation("Message");
+
+                    b.Navigation("ReportedUser");
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserComment");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserToken", b =>
@@ -2415,6 +2766,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("Interactions");
+
+                    b.Navigation("UserReports");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Builds.Tag", b =>
@@ -2469,20 +2822,33 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("SubComponents");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Image", b =>
+                {
+                    b.Navigation("Users");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
                 {
                     b.Navigation("Comments");
 
                     b.Navigation("Images");
+
+                    b.Navigation("UserReports");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.Message", b =>
                 {
                     b.Navigation("ChildMessages");
+
+                    b.Navigation("UserReports");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.User", b =>
                 {
+                    b.Navigation("BlockedUsers");
+
+                    b.Navigation("BlockingUsers");
+
                     b.Navigation("BuildInteractions");
 
                     b.Navigation("Builds");
@@ -2499,9 +2865,19 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("ReceivedMessages");
 
+                    b.Navigation("ReportedUsers");
+
+                    b.Navigation("ReportingUsers");
+
                     b.Navigation("SentMessages");
 
+                    b.Navigation("UserActivities");
+
+                    b.Navigation("UserCommentInteractions");
+
                     b.Navigation("UserComments");
+
+                    b.Navigation("UserFeedback");
 
                     b.Navigation("UserPreferences");
 
@@ -2513,6 +2889,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("ChildComments");
 
                     b.Navigation("Images");
+
+                    b.Navigation("UserCommentInteractions");
+
+                    b.Navigation("UserReports");
                 });
 #pragma warning restore 612, 618
         }

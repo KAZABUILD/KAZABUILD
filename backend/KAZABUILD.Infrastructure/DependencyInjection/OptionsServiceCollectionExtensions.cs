@@ -68,6 +68,12 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            //Get the Encryption settings from appsettings
+            services.AddOptions<EncryptionSettings>()
+                .Bind(config.GetSection("Encryption"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             //Return the services with all the options added
             return services;
         }

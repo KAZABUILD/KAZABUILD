@@ -96,5 +96,6 @@ namespace KAZABUILD.Domain.Entities
         public BaseSubComponent? SubComponent { get; set; } = default!;
         public UserComment? UserComment { get; set; } = default!;
         public Build? Build { get; set; } = default!;
+        public List<User>? Users { get; set; } = default!;
     }
 }

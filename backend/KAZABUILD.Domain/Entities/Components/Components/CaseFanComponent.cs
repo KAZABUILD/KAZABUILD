@@ -26,10 +26,9 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Minimum airflow in CMM (Cubic Meters per Minute).
         /// </summary>
-        [Required]
         [Range(0, 30, ErrorMessage = "Minimum airflow must be between 0 and 30 CMM")]
         [Precision(4, 2)]
-        public decimal MinAirflow { get; set; } = default!;
+        public decimal? MinAirflow { get; set; }
 
         /// <summary>
         /// Maximum airflow in CMM (Cubic Meters per Minute).
@@ -42,10 +41,9 @@ namespace KAZABUILD.Domain.Entities.Components.Components
         /// <summary>
         /// Minimum noise level in dBA.
         /// </summary>
-        [Required]
         [Range(0, 100, ErrorMessage = "Minimum noise level must be between 0 and 100 dB")]
         [Precision(6, 3)]
-        public decimal MinNoiseLevel { get; set; } = default!;
+        public decimal? MinNoiseLevel { get; set; }
 
         /// <summary>
         /// Maximum noise level in dBA.

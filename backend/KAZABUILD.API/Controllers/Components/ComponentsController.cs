@@ -12,7 +12,9 @@ using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -21,7 +23,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
-using Linq = System.Linq;
 
 namespace KAZABUILD.API.Controllers.Components
 {
@@ -523,7 +524,10 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             changedFields.Add("MinAirflow: " + ((CaseFanComponent)component).MinAirflow);
 
-                            ((CaseFanComponent)component).MinAirflow = (decimal)caseFanDto.MinAirflow;
+                            if (caseFanDto.MinAirflow == 0)
+                                ((CaseFanComponent)component).MinAirflow = null;
+                            else
+                                ((CaseFanComponent)component).MinAirflow = (decimal)caseFanDto.MinAirflow;
                         }
                         if (caseFanDto.MaxAirflow != null)
                         {
@@ -538,7 +542,10 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             changedFields.Add("MinNoiseLevel: " + ((CaseFanComponent)component).MinNoiseLevel);
 
-                            ((CaseFanComponent)component).MinNoiseLevel = (decimal)caseFanDto.MinNoiseLevel;
+                            if (caseFanDto.MinNoiseLevel == 0)
+                                ((CaseFanComponent)component).MinNoiseLevel = null;
+                            else
+                                ((CaseFanComponent)component).MinNoiseLevel = (decimal)caseFanDto.MinNoiseLevel;
                         }
                         if (caseFanDto.MaxNoiseLevel != null)
                         {
@@ -2853,7 +2860,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the component to delete
-            var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == id);
+            var component = await _db.Components.Include(c => c.Images).Include(c => c.Comments).FirstOrDefaultAsync(u => u.Id == id);
             if (component == null)
             {
                 //Log failure
@@ -2869,6 +2876,26 @@ namespace KAZABUILD.API.Controllers.Components
 
                 //Return not found response
                 return NotFound(new { component = "Component not found!" });
+            }
+
+            //Remove all related images
+            if (component.Images.Count != 0)
+            {
+                foreach (var image in component.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(component.Images);
+            }
+
+            //Remove all related comments
+            if (component.Comments.Count != 0)
+            {
+                _db.UserComments.RemoveRange(component.Comments);
             }
 
             //Handle deleting compatible components to avoid conflicts with cascade deletes

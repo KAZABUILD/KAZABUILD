@@ -6,19 +6,19 @@
  - Create and fill in the `appsettings.json` file with correct information based on the example file.
  - Use visual studio to run or use `dotnet watch run` in the command line.
  - Access automatic swagger documentation using `<ip_address>/swagger`.
- - The application creates a system user automatically which uses the credentials set in `appsettings.json`. The user can be accessed or testing purposes.
+ - The application creates a system user automatically which uses the credentials set in `appsettings.json`. The user can be accessed for testing purposes.
 
 ## Migrations
- - `cd backend` to get into the main backend folder in terminal.
+ - Migrations should be run from the main backend folder in the terminal.
  - `dotnet ef migrations add InitialCreate --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to create the initial database migration. If there is one already create a different one or just apply it.
- - `dotnet ef database update` to apply all migrations.
+ - `dotnet ef database update --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` to apply all migrations.
  - The app will automatically apply migrations when run.
  - Migrations can be reviewed in `backend/KAZABUILD.Infrastructure/Migrations`.
 
 ## Search function
- - Enable full-text search on the SQL server in order to use the search functionality in get API calls
-   - Follow this guide to install - `https://www.mssqltips.com/sqlservertip/6841/add-full-text-search-sql-server`
- - Whenever a new model is added to the database the user has to manually add the search index for it as well:
+ - Enable full-text search on the SQL server in order to use the search functionality in get API calls.
+   - Follow this guide to install - `https://www.mssqltips.com/sqlservertip/6841/add-full-text-search-sql-server`.
+ - Whenever a new model is added to the database the user has to manually add the search index for it as well:.
    - Create a new migration.
    - Add this to the up function:
      - `migrationBuilder.Sql(@"
@@ -26,93 +26,96 @@
             (SELECT * FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID('dbo.[table_name]'))
                 CREATE FULLTEXT INDEX ON [table_name]([field_name1] LANGUAGE 0, [field_name2] LANGUAGE 0, ...)
                 KEY INDEX PK_[table_name];
-        ", suppressTransaction: true);`
+        ", suppressTransaction: true);`.
    - Add this to the down function:
-     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`
-   - Replace the table_name and field_name with proper database context table name and fields used in search in the controller
- - The migrations have to be deleted and remade in order for the application to run with full-text search
+     - `migrationBuilder.Sql("DROP FULLTEXT INDEX ON [table_name];", suppressTransaction: true);`.
+   - Replace the table_name and field_name with proper database context table name and fields used in search in the controller.
+ - The migrations have to be deleted and remade in order for the application to run with full-text search.
+   - `dotnet ef Update-Database -TargetMigration:$InitialDatabase --project KAZABUILD.Infrastructure --startup-project KAZABUILD.API` can be used to revert migrations to the start.
 
 ## NuGet Packages:
  - `MediatR`
-   - Simple mediator implementation in for handling requests and notifications
+   - Simple mediator implementation in for handling requests and notifications.
  - `FluentValidation.DependencyInjectionExtensions`
-   - Adds support for dependency injection of FluentValidation validators
+   - Adds support for dependency injection of FluentValidation validators.
  - `Microsoft.AspNetCore.OpenApi`
-   - Provides OpenAPI specification support for ASP.NET Core applications
+   - Provides OpenAPI specification support for ASP.NET Core applications.
  - `Microsoft.EntityFrameworkCore`
-   -Core components of Entity Framework Core, an ORM for .NET
+   -Core components of Entity Framework Core, an ORM for .NET.
  - `Microsoft.EntityFrameworkCore.SqlServer`
-   - SQL Server database provider for Entity Framework Core
+   - SQL Server database provider for Entity Framework Core.
  - `Microsoft.EntityFrameworkCore.Tools`
-   - Tools for EF Core commands like migrations and scaffolding
+   - Tools for EF Core commands like migrations and scaffolding.
  - `Swashbuckle.AspNetCore`
-   - Generates Swagger API documentation for ASP.NET Core applications
+   - Generates Swagger API documentation for ASP.NET Core applications.
  - `RabbitMQ.Client`
-   - Client library for connecting and interacting with RabbitMQ message broker
+   - Client library for connecting and interacting with RabbitMQ message broker.
  - `Microsoft.AspNetCore.Authentication.JwtBearer`
-   - Enables JWT (JSON Web Token) authentication in ASP.NET Core
+   - Enables JWT (JSON Web Token) authentication in ASP.NET Core.
  - `Microsoft.Extensions.Options.ConfigurationExtensions`
-   - Supports binding configuration settings to strongly typed options classes
+   - Supports binding configuration settings to strongly typed options classes.
  - `BCrypt.Net-Next`
-   - Library for hashing and verifying passwords using the BCrypt algorithm
+   - Library for hashing and verifying passwords using the BCrypt algorithm.
  - `Serilog.AspNetCore`
-   - Logging framework integration for ASP.NET Core using Serilog
+   - Logging framework integration for ASP.NET Core using Serilog.
  - `FluentAssertions`
-   - Library for more readable and expressive unit test assertions
+   - Library for more readable and expressive unit test assertions.
  - `Microsoft.AspNetCore.Mvc.Testing`
-   - Simplifies integration and end-to-end testing of ASP.NET Core applications
+   - Simplifies integration and end-to-end testing of ASP.NET Core applications.
  - `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`
-   - Adds health check integration for Entity Framework Core contexts
+   - Adds health check integration for Entity Framework Core contexts.
  - `AspNetCoreRateLimit`
-   - Middleware for rate limiting API requests in ASP.NET Core
+   - Middleware for rate limiting API requests in ASP.NET Core.
  - `System.Linq.Dynamic.Core`
-   - Enables dynamic LINQ queries built from strings at runtime
+   - Enables dynamic LINQ queries built from strings at runtime.
  - `Microsoft.AspNetCore.Authentication.Google`
-   - Enables Google OAuth 2.0 authentication in ASP.NET Core
+   - Enables Google OAuth 2.0 authentication in ASP.NET Core.
  - `Google.Apis.Auth`
-   - Provides tools for authenticating and verifying Google accounts and tokens
+   - Provides tools for authenticating and verifying Google accounts and tokens.
  - `Swashbuckle.AspNetCore.Annotations`
-   - Adds annotation support to enhance Swagger documentation
+   - Adds annotation support to enhance Swagger documentation.
  - `MailKit`
-   - Cross-platform email client library for sending and receiving mail
+   - Cross-platform email client library for sending and receiving mail.
  - `Bogus`
-   - Library for generating fake data for testing and seeding databases
+   - Library for generating fake data for testing and seeding databases.
 
 ## Features
  - Swagger Documentation
    - Accessed through `https://localhost:<port_number>/swagger/index.html`
    - Allows the user to test all endpoints and read through description of DTOs and controllers
  - Authentication Middleware
-   - Allows the backend to check who the user is
-   - Adds authentication from external services
+   - Allows the backend to check who the user is.
+   - Adds authentication from external services.
  - Authorization Middleware
-   - Divides the backend space access among different groups of people
-   - Uses the UserRole enum
-   - The role field in the user model determines user's access level
+   - Divides the backend space access among different groups of people.
+   - Uses the UserRole enum.
+   - The role field in the user model determines user's access level.
  - Automatic Validation
-   - The backend automatically checks if user request are correctly formatted and if provided values are in line with the database
+   - The backend automatically checks if user request are correctly formatted and if provided values are in line with the database.
  - Rate Limiting
-   - User access to endpoints get restricted if the user sends too many requests
-   - Normal users and admins have different restrictions
+   - User access to endpoints get restricted if the user sends too many requests.
+   - Normal users and admins have different restrictions.
  - CORS Middleware
-   - Backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file
+   - Backend verifies incoming IPs and only allows in ones described in the `appsetting.json` file.
  - RabbitMQ Queues
-   - Allows communication with any additional or external services
+   - Allows communication with any additional or external services.
  - Health Checks Endpoints
-   - Can be accessed to check if SMTP, Database and RabbitMQ are working
+   - Can be accessed to check if SMTP, Database and RabbitMQ are working.
  - SMTP Email Service
    - Allows the application to verify users emails as well as send users any emails.
  - Hashing Service
-   - Passwords, tokens and messages are stored as hashed in the database
+   - Passwords, tokens and messages are stored as hashed in the database.
  - Guest User Handling Middleware
-   - All users can access the website without an account with limited functionality 
+   - All users can access the website without an account with limited functionality .
  - Logging service
-   - The application produces logs that can be used for debugging
-   - They can be accessed through log files, console and the database
+   - The application produces logs that can be used for debugging.
+   - They can be accessed through log files, console and the database.
  - Cleanup Service
-   - Tokens and logs get deleted after a while as not to clog the memory
+   - Tokens and logs get deleted after a while as not to clog the memory.
  - Seeding Service
-   - Allows developers to generate fake data for testing purposes
+   - Allows developers to generate fake data for testing purposes.
+ - Cache Service
+   - Some endpoints with complicated SQL logic that don't have complicated permission restrictions get cached to speed up the program.
 
 ## Models
 All models have protections against adding invalid values but any call made should be double checked anyway
@@ -154,7 +157,7 @@ All models have protections against adding invalid values but any call made shou
    - `Description` -> string storing user's profile description
    - `Gender` -> string storing user's gender (Write full names like "Male")
    - `UserRole` -> Enum storing the assigned user role, can be used with a number or the full role string
-   - `ImageURL` -> string storing user's saved profile picture's URL in the backend
+   - `ImageId` ->  GUID storing the image's id storing the user's profile picture
    - `Birth` -> date object storing user's birth date
    - `RegisteredAt` -> date object storing the date the user registered their account
    - `Address` -> an object storing user's address with 7 strings:
@@ -221,6 +224,16 @@ All models have protections against adding invalid values but any call made shou
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
  
+ - UserCommentInteraction (represents interactions that a user can have with a comment)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that interacted with the comment
+   - `UserCommentId` -> GUID storing the comment's id that the user interacted with
+   - `IsLiked` -> boolean storing whether the user liked the comment
+   - `IsDisliked` -> boolean storing whether the user disliked the comment
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+   - 
  - Notification (notification about events, promo, or important notices)
    - `Id` -> automatically assigned GUID
    - `UserId` -> GUID storing the user's id that received the notification
@@ -238,7 +251,9 @@ All models have protections against adding invalid values but any call made shou
    - `Id` -> automatically assigned GUID
    - `SenderId` -> GUID storing the user's id that sent the message
    - `ReceiverId` -> GUID storing the user's id that received the message
-   - `Content` -> string storing the html text in the message
+   - `Content` -> string storing the html text in the message, this field is returned through DTOs but not stored in the model
+   - `CipherText` -> string storing the encrypted content
+   - `IV` -> string storing the initialization vector used for encryption
    - `Title` -> string storing the title of the message
    - `SentAt` -> date object storing when the message has been sent
    - `IsRead` -> boolean storing whether the message was read by the user
@@ -250,11 +265,52 @@ All models have protections against adding invalid values but any call made shou
  
  - ForumPost (forum post created by the user)
    - `Id` -> automatically assigned GUID
-   - `CreatorId` -> GUID storing the user's id that posted the ForumPost
-   - `Content` -> string storing the html text in the ForumPost
-   - `Title` -> string storing the title of the ForumPost
-   - `Topic` -> string storing the topic in which the ForumPost has been posted in
-   - `PostedAt` -> date object storing when the ForumPost has been posted
+   - `CreatorId` -> GUID storing the user's id who created the post
+   - `Content` -> string storing the html text in the post
+   - `Title` -> string storing the title of the post
+   - `Topic` -> string storing the topic where the entry has been posted in
+   - `PostedAt` -> date object storing when the entry has been posted
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserActivity (log of an activity user performed on the website)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that performed the activity
+   - `ActivityType` -> string storing the type of activity the user performed
+   - `TargettId` -> nullable GUID storing the Id of the object the user performed the activity for
+   - `Timestamp` -> date object storing when the user performed the activity
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserFeedback (feedback left by the user)
+   - `Id` -> automatically assigned GUID
+   - `CreatorId` -> GUID storing the user's id that left the feedback
+   - `Feedback` -> string storing the text of the feedback
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserComment (user report for different types of objects, only one foreign object id can be assigned to an object)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id that wrote the comment
+   - `Reason` -> string storing the reason for the report
+   - `Details` -> string storing the explanation for the reason of report
+   - `TargetType` -> Enum storing what type of entity was reported
+   - `ForumPostId` -> nullable GUID storing which forum post is being reported
+   - `BuildId` -> nullable GUID storing which build is being reported
+   - `UserCommentId` -> nullable GUID storing which comment is being reported
+   - `MessageId` -> nullable GUID storing which message is being reported
+   - `ReportedUserId` -> nullable GUID storing which user is being reported
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserBlock (defines which user blocked which user)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the user's id for the user that is blocking
+   - `BlockedUserId` -> GUID storing the user's id for the user that is being blocked
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
@@ -362,9 +418,9 @@ All models have protections against adding invalid values but any call made shou
  - CaseFanComponent (fan attached to the case for cooling)
    - `Size` -> decimal storing the size of the fan in mm
    - `Quantity` -> integer storing the number of fans included
-   - `MinAirflow` -> decimal storing the minimum airflow in CMM
+   - `MinAirflow` -> nullable decimal storing the minimum airflow in CMM
    - `MaxAirflow` -> nullable decimal storing the maximum airflow in CMM
-   - `MinNoiseLevel` -> decimal storing the minimum noise level in dBAsize of the fan in mm
+   - `MinNoiseLevel` -> nullable decimal storing the minimum noise level in dBAsize of the fan in mm
    - `MaxNoiseLevel` -> nullable decimal storing the maximum noise level in dBA
    - `PulseWidthModulation` -> boolean storing whether the fan supports Pulse Width Modulation for speed control
    - `LEDType` -> nullable string storing what type of LED type is in the fan
@@ -606,9 +662,6 @@ To see what fields should be provided in an API request check the swagger docume
    - staff can edit sensitive user related information;
    - admins can modify any object.
 
-### User specific API calls
- - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
-
 ### Auth specific API calls
  - `Auth/POST/login` allows anyone to login using their password and either Login or Email, sends confirmation email if enabled on user's account.
  - `Auth/POST/verify-2fa` redirect endpoint that verifies user login with 2fa, never call manually.
@@ -618,8 +671,20 @@ To see what fields should be provided in an API request check the swagger docume
  - `Auth/POST/reset-password` allows anyone to reset user's password, requires providing the old and new passwords, sends confirmation email.
  - `Auth/POST/confirm-reset-password` redirect endpoint that verifies password reset, never call manually, redirects to frontend.
 
+### User specific API calls
+ - `Users/POST/change-password` allows the user to change their own password, requires the old and new password in the body
+
 ### UserComment specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
+
+### UserCommentInteraction specific API calls
+ - `UserCommentInteractions/POST/get-count` allows the user to view how many interactions a comment has
+
+### UserFollow specific API calls
+ - `UserFollows/POST/get-count` allows the user to view how many followers or follows a user has
+
+### UserActivity specific API calls
+ - `UserActivities/POST/get-count` allows the user to view how many times an activity has been performed
 
 ### Image specific API calls
  - all calls take only the target id which is then assigned to the correct foreign key id by the type specified.
@@ -645,7 +710,10 @@ To see what fields should be provided in an API request check the swagger docume
    - the user has to provide specific fields correctly for each subclass.
 
 ### Build related API calls
-These calls work just like the basic ones but they have additional protections since users can interact with builds created by others.
+These calls work just like the basic ones but they have additional protections since users can interact with builds created by others, which can be private.
+
+### BuildInteractions specific API calls
+ - `BuildInteractions/POST/get-count` allows the user to view how many interactions a build has
 
 ### Admin specific API calls
  - `Admin/POST/reset` resets the system_admin user account using data provided in the appsettings.json file:
@@ -685,11 +753,23 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - CPU_CORE
    - VIDEO_OUTPUT
    - CPU_CACHE
+ - ReportTargetType
+   - MESSAGE,
+   - USER,
+   - COMMENT,
+   - BUILD,
+   - FORUM
  
  - ProfileAccessibility
    - PUBLIC
    - PRIVATE
    - FOLLOWS
+ 
+ - PrivacyLevel
+   - INFORMATION
+   - WARNING
+   - ERROR
+   - CRITICAL
  
  - PortType
    - OTHER
@@ -697,12 +777,6 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - POWER
    - USB
    - PIN
- 
- - PrivacyLevel
-   - INFORMATION
-   - WARNING
-   - ERROR
-   - CRITICAL
  
  - NotificationType
    - NONE
@@ -721,6 +795,14 @@ All enums are accepted as either strings or integers in the controllers endpoint
    - ENGLISH
    - POLISH
    - TURKISH
+
+ - ImageLocationType
+   - BUILD,
+   - COMPONENT,
+   - SUBCOMPONENT,
+   - USER,
+   - FORUM,
+   - COMMENT
  
  - ComponentType
    - CASE_FAN

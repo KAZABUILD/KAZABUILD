@@ -1,5 +1,6 @@
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
+using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Users.User
 {
@@ -23,13 +24,15 @@ namespace KAZABUILD.Application.DTOs.Users.User
 
         public UserRole? UserRole { get; set; }
 
-        public string? ImageUrl { get; set; }
+        public Guid? ImageId { get; set; }
 
         public DateTime? Birth { get; set; }
 
         public DateTime? RegisteredAt { get; set; }
 
         public Address? Address { get; set; }
+
+        public DateTime? BannedUntil { get; set; }
 
         public ProfileAccessibility? ProfileAccessibility { get; set; }
 
@@ -42,6 +45,8 @@ namespace KAZABUILD.Application.DTOs.Users.User
         public bool? ReceiveEmailNotifications { get; set; }
 
         public bool? EnableDoubleFactorAuthentication { get; set; }
+
+        public bool? IsBlocked { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

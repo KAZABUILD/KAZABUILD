@@ -6,6 +6,7 @@ using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
 using KAZABUILD.Infrastructure.Middleware;
 
+using Prometheus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -68,10 +69,33 @@ namespace KAZABUILD.API
             var dbContext = scope.ServiceProvider.GetRequiredService<KAZABUILDDBContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerService>();
 
-            //Check if the connection to the database can be established
-            try
+            //Enter a loop that will go on until a connection to the database can be established
+            while (true)
             {
-                if (!dbContext.Database.CanConnect())
+                try
+                {
+                    //Check if the connection to the database can be established
+                    if (!await dbContext.Database.CanConnectAsync())
+                    {
+                        await logger.LogAsync(
+                            Guid.Empty,
+                            "Connect",
+                            "Database",
+                            "",
+                            Guid.Empty,
+                            PrivacyLevel.CRITICAL,
+                            $"Database connection failed."
+                        );
+
+                        continue;
+                    }
+
+                    //Flush any stashed logs
+                    await logger.FlushStashedLogsAsync();
+
+                    break;
+                }
+                catch (Exception ex)
                 {
                     await logger.LogAsync(
                         Guid.Empty,
@@ -80,21 +104,12 @@ namespace KAZABUILD.API
                         "",
                         Guid.Empty,
                         PrivacyLevel.CRITICAL,
-                        $"Database connection failed."
+                        $"Database connection could not be established. Error message: {ex.Message}"
                     );
                 }
-            }
-            catch (Exception ex)
-            {
-                await logger.LogAsync(
-                    Guid.Empty,
-                    "Connect",
-                    "Database",
-                    "",
-                    Guid.Empty,
-                    PrivacyLevel.CRITICAL,
-                    $"Database connection could not be established. Error message: {ex.Message}"
-                );
+
+                //Wait for a while before trying to reconnect again
+                await Task.Delay(TimeSpan.FromSeconds(30));
             }
 
             //Apply migrations automatically
@@ -147,6 +162,9 @@ namespace KAZABUILD.API
             //Enable middleware for handling guest user claims
             app.UseMiddleware<GuestClaimsMiddleware>();
 
+            //Enable middleware for handling ip blocks
+            app.UseMiddleware<BannedClaimsMiddleware>();
+
             //Enables rate limiting
             app.UseRateLimiter();
 
@@ -155,6 +173,9 @@ namespace KAZABUILD.API
 
             //Map controllers' endpoints
             app.MapControllers();
+
+            //Enable Prometheus value monitoring
+            app.UseMetricServer();
 
             //Get the hasher and admin user settings
             var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();
@@ -174,7 +195,7 @@ namespace KAZABUILD.API
                     Description = "System Admin account. Beware!",
                     Gender = "None",
                     UserRole = UserRole.SYSTEM,
-                    ImageUrl = "",
+                    ImageId = null,
                     Birth = DateTime.UtcNow,
                     RegisteredAt = DateTime.UtcNow,
                     ProfileAccessibility = ProfileAccessibility.PUBLIC,
@@ -198,8 +219,8 @@ namespace KAZABUILD.API
                 //Log the validation error
                 await logger.LogAsync(
                     Guid.Empty,
-                    "validate",
-                    "Application",
+                    "Validation",
+                    "Database",
                     "",
                     Guid.Empty,
                     PrivacyLevel.CRITICAL,
@@ -225,7 +246,7 @@ namespace KAZABUILD.API
                 //Log the validation error
                 await logger.LogAsync(
                     Guid.Empty,
-                    "start",
+                    "Start",
                     "Application",
                     "",
                     Guid.Empty,

@@ -1,4 +1,5 @@
 using KAZABUILD.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Builds.Build
 {
@@ -12,7 +13,9 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
 
         public string? Description { get; set; }
 
-        public BuildStatus? Status { get; set; } = BuildStatus.DRAFT;
+        public BuildStatus? Status { get; set; }
+
+        public DateTime? PublishedAt { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

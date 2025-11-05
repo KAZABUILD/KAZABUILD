@@ -24,6 +24,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add hashing for passwords, tokens, etc.
             services.AddScoped<IHashingService, HashingService>();
 
+            //Add encryption for messages
+            services.AddScoped<IEncryptionService, EncryptionService>();
+
             //Add email smtp service
             services.AddScoped<IEmailService, SmtpEmailService>();
 
@@ -36,6 +39,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add logs and token cleanup service
             services.AddHostedService<CleanupService>();
 
+            //Add Ip blocklist automatic unban service
+            services.AddHostedService<UnbanUserService>();
+
             //Add the RabbitMQ queue service
             services.Configure<RabbitMQSettings>(config.GetSection("RabbitMq"));
             services.AddSingleton<IRabbitMqConnection, RabbitMQConnection>();
@@ -44,6 +50,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
 
             //Add the cleanup service
             services.AddScoped<IDataSeeder, DataSeeder>();
+
+            //Add cache, can be replaced with an eternal distribution later
+            services.AddMemoryCache();
 
             //Return the services with all the custom services added
             return services;

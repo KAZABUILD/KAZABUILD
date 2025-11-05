@@ -68,9 +68,9 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper conflict response
                 if (dto.Email == isUserAvailable.Email)
-                    return Conflict(new { message = "Email Already In Use" });
+                    return Conflict(new { message = "Email already in use" });
                 else
-                    return Conflict(new { message = "Login Already In Use" });
+                    return Conflict(new { message = "Login already in use" });
             }
 
             //Check if the user has sufficient permissions
@@ -101,7 +101,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = dto.UserRole,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,
@@ -238,11 +238,11 @@ namespace KAZABUILD.API.Controllers.Users
 
                 user.Gender = dto.Gender;
             }
-            if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+            if (dto.ImageId != null)
             {
-                changedFields.Add("ImageUrl: " + user.ImageUrl);
+                changedFields.Add("ImageId: " + user.ImageId);
 
-                user.ImageUrl = dto.ImageUrl;
+                user.ImageId = dto.ImageId;
             }
             if (dto.Birth != null)
             {
@@ -361,6 +361,13 @@ namespace KAZABUILD.API.Controllers.Users
                     changedFields.Add("Login: " + user.Login);
 
                     user.Login = dto.Login;
+                }
+                if (dto.BannedUntil != null)
+                {
+                    if (dto.BannedUntil == DateTime.MinValue)
+                        user.BannedUntil = null;
+                    else
+                        user.BannedUntil = dto.BannedUntil;
                 }
                 if (dto.Note != null)
                 {
@@ -570,6 +577,9 @@ namespace KAZABUILD.API.Controllers.Users
             //Check if the calling user is followed
             var isFollowed = await _db.UserFollows.AnyAsync(f => f.FollowerId == id && f.FollowedId == currentUserId);
 
+            //Check if the user is blocked
+            var isBlocked = await _db.UserBlocks.AnyAsync(f => f.BlockedUserId == id && f.UserId == currentUserId);
+
             //Check what permissions user has and return respective information
             if (!isSelf && !isPrivileged
                 && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE
@@ -597,8 +607,9 @@ namespace KAZABUILD.API.Controllers.Users
                     Id = user.Id,
                     DisplayName = user.DisplayName,
                     Description = user.Description,
-                    ImageUrl = user.ImageUrl,
-                    UserRole = user.UserRole
+                    ImageId = user.ImageId,
+                    UserRole = user.UserRole,
+                    IsBlocked = isBlocked
                 };
             }
             else if (isSelf && !isPrivileged) //Return full knowledge if is user
@@ -617,7 +628,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -626,7 +637,8 @@ namespace KAZABUILD.API.Controllers.Users
                     Language = user.Language,
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
-                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked
                 };
             }
             else //Return admin knowledge if has privileges
@@ -645,7 +657,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -655,6 +667,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                     EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked,
                     DatabaseEntryAt = user.DatabaseEntryAt,
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
@@ -717,7 +730,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(u => dto.UserRole.Contains(u.UserRole));
             }
 
-            //Apply search based on credentials if query string included in request
+            //Apply search based on provided query string if query string included in request
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 //Apply the query based on user privilege
@@ -749,6 +762,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
+            //Get all users
             List<User> users = await query.ToListAsync();
 
             //Declare response variable
@@ -766,13 +780,22 @@ namespace KAZABUILD.API.Controllers.Users
                     .Select(f => f.FollowerId)
                     .ToListAsync();
 
+                //Get all blocks for the current user
+                var blocks = await _db.UserBlocks
+                    .Where(f => f.UserId == currentUserId)
+                    .Select(f => f.BlockedUserId)
+                    .ToListAsync();
+
                 //Create a user response list
                 responses = [.. users.Select(user =>
                 {
-                    //Check if the calling user is followed
+                    //Check if the user is followed
                     var isFollowed = followers.Contains(user.Id);
 
-                    //Check if current user is getting themselves
+                    //Check if the user is followed
+                    var isBlocked = blocks.Contains(user.Id);
+
+                    //Check if user is getting themselves
                     var isSelf = currentUserId == user.Id;
 
                     //Return limited or restricted information based on user profile settings
@@ -783,7 +806,8 @@ namespace KAZABUILD.API.Controllers.Users
                         {
                             Id = user.Id,
                             DisplayName = user.DisplayName,
-                            UserRole = user.UserRole
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else if(!isSelf)
@@ -794,8 +818,9 @@ namespace KAZABUILD.API.Controllers.Users
                             Id = user.Id,
                             DisplayName = user.DisplayName,
                             Description = user.Description,
-                            ImageUrl = user.ImageUrl,
-                            UserRole = user.UserRole
+                            ImageId = user.ImageId,
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else
@@ -811,7 +836,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Description = user.Description,
                             Gender = user.Gender,
                             UserRole = user.UserRole,
-                            ImageUrl = user.ImageUrl,
+                            ImageId = user.ImageId,
                             RegisteredAt = user.RegisteredAt,
                             Birth = user.Birth,
                             Address = user.Address,
@@ -821,9 +846,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Location = user.Location,
                             ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                             EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
-                            DatabaseEntryAt = user.DatabaseEntryAt,
-                            LastEditedAt = user.LastEditedAt,
-                            Note = user.Note
+                            IsBlocked = isBlocked
                         };
                     }
                 })];
@@ -844,7 +867,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -901,7 +924,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -935,6 +958,20 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return forbidden response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (user.Images.Count != 0)
+            {
+                foreach (var image in user.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(user.Images);
             }
 
             //Handle deleting followed user and followers to avoid conflicts with cascade deletes

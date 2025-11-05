@@ -73,11 +73,10 @@ namespace KAZABUILD.Domain.Entities.Users
         public UserRole UserRole { get; set; } = UserRole.GUEST;
 
         /// <summary>
-        /// Url address of user's profile picture stored on the internal application server.
+        /// Id of the images storing the user's profile picture.
+        /// If null the frontend should use a default one.
         /// </summary>
-        [Required]
-        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
+        public Guid? ImageId { get; set; }
 
         /// <summary>
         /// User's date of birth.
@@ -97,6 +96,12 @@ namespace KAZABUILD.Domain.Entities.Users
         /// User's address. Can be null.
         /// </summary>
         public Address? Address { get; set; }
+
+        /// <summary>
+        /// Date when the user ban expires.
+        /// Empty or outdated if user not banned.
+        /// </summary>
+        public DateTime? BannedUntil { get; set; }
 
         //User Settings fields
         /// <summary>
@@ -153,6 +158,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public string? Note { get; set; }
 
         //Database relationships
+        public Image? Image { get; set; } = default!;
         public ICollection<UserFollow> Followers { get; set; } = [];
         public ICollection<UserFollow> Followed { get; set; } = [];
         public ICollection<UserToken> UserTokens { get; set; } = [];
@@ -165,5 +171,12 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<Build> Builds { get; set; } = [];
         public ICollection<BuildInteraction> BuildInteractions { get; set; } = [];
         public ICollection<Image> Images { get; set; } = [];
+        public ICollection<UserActivity> UserActivities { get; set; } = [];
+        public ICollection<UserCommentInteraction> UserCommentInteractions { get; set; } = [];
+        public ICollection<UserFeedback> UserFeedback { get; set; } = [];
+        public ICollection<UserReport> ReportingUsers { get; set; } = [];
+        public ICollection<UserReport> ReportedUsers { get; set; } = [];
+        public ICollection<UserBlock> BlockingUsers { get; set; } = [];
+        public ICollection<UserBlock> BlockedUsers { get; set; } = [];
     }
 }

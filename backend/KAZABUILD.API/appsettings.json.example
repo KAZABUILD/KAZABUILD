@@ -65,11 +65,14 @@
     }
   },
   "backend": { //Which backend address should be used for email redirect links
-    "Host": "BACKEND_ORIGIN" //ex. https://localhost:5100
+    "Host": "BACKEND_ORIGIN", //ex. https://localhost:5100
   },
   "Media": { //Settings for image and other uploads
     "StorageRootPath": "wwwroot/media", //Where the files are uploaded to and can later be accessed from
     "MaxFileSizeMB": 25,
     "AllowedFileTypes": [ ".IMAGE_FORMAT", ".IMAGE_FORMAT", ".GIF_FORMAT", ".VIDEO_FORMAT" ] //Allowed media formats
+  },
+  "Encryption": {
+    "Key": "YOUR_ENCRYPTION_KEY"
   }
 }

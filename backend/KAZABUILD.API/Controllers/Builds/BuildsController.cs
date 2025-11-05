@@ -98,6 +98,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 Name = dto.Name,
                 Description = dto.Description,
                 Status = isPrivileged ? dto.Status : BuildStatus.DRAFT,
+                PublishedAt = isPrivileged && dto.Status != BuildStatus.DRAFT ? dto.PublishedAt : null,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -231,11 +232,18 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 build.Name = dto.Name;
             }
-            if (dto.Status != null)
+            if (dto.Status != null && dto.Status != build.Status && (dto.Status == BuildStatus.DRAFT || dto.Status == BuildStatus.PUBLISHED || isPrivileged))
             {
                 changedFields.Add("Status: " + build.Status);
 
                 build.Status = (BuildStatus)dto.Status;
+
+                if(dto.Status == BuildStatus.PUBLISHED)
+                {
+                    changedFields.Add("PublishedAt: " + build.PublishedAt);
+
+                    build.PublishedAt = isPrivileged && dto.PublishedAt != null ? dto.PublishedAt : DateTime.UtcNow;
+                }
             }
             if (isPrivileged)
             {
@@ -348,23 +356,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Return not found response
                 return Forbid();
             }
-
-            //Calculate rating statistics for the build
-            var ratingsForBuild = await _db.BuildInteractions
-                .Where(i => i.BuildId == id && i.Rating > 0)
-                .Select(i => i.Rating)
-                .ToListAsync();
-
-            var averageRating = ratingsForBuild.Any() 
-                ? ratingsForBuild.Average() 
-                : 0.0;
-            var ratingsCount = ratingsForBuild.Count;
-
-            //Get current user's rating if they have one
-            var userInteraction = await _db.BuildInteractions
-                .FirstOrDefaultAsync(i => i.BuildId == id && i.UserId == currentUserId && i.Rating > 0);
-            int? userRating = userInteraction?.Rating;
-
+            
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -379,9 +371,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
-                    AverageRating = averageRating,
-                    RatingsCount = ratingsCount,
-                    UserRating = userRating
+                    PublishedAt = build.PublishedAt
                 };
             }
             else
@@ -397,12 +387,10 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
+                    PublishedAt = build.PublishedAt,
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
-                    Note = build.Note,
-                    AverageRating = averageRating,
-                    RatingsCount = ratingsCount,
-                    UserRating = userRating
+                    Note = build.Note
                 };
             }
 
@@ -470,7 +458,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(b => b.User).Search(dto.Query, b => b.Name, b => b.Status, b => b.Description, b => b.User!.DisplayName);
@@ -514,7 +502,8 @@ namespace KAZABUILD.API.Controllers.Builds
                         UserId = build.UserId,
                         Name = build.Name,
                         Description = build.Description,
-                        Status = build.Status
+                        Status = build.Status,
+                        PublishedAt = build.PublishedAt
                     };
                 })];
             }
@@ -531,6 +520,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
+                    PublishedAt = build.PublishedAt,
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
                     Note = build.Note
@@ -578,7 +568,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the build to delete
-            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
+            var build = await _db.Builds.Include(b => b.Images).Include(b => b.Comments).FirstOrDefaultAsync(b => b.Id == id);
             if (build == null)
             {
                 //Log failure
@@ -616,6 +606,26 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 //Return not found response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (build.Images.Count != 0)
+            {
+                foreach (var image in build.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(build.Images);
+            }
+
+            //Remove all related comments
+            if (build.Comments.Count != 0)
+            {
+                _db.UserComments.RemoveRange(build.Comments);
             }
 
             //Handle deleting build tags to avoid conflicts with cascade deletes

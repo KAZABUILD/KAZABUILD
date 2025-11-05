@@ -23,9 +23,8 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent
         /// <summary>
         /// Minimum airflow in CMM (Cubic Meters per Minute).
         /// </summary>
-        [Required]
         [Range(0, 30, ErrorMessage = "Minimum airflow must be between 0 and 30 CMM")]
-        public decimal MinAirflow { get; set; } = default!;
+        public decimal? MinAirflow { get; set; }
 
         /// <summary>
         /// Maximum airflow in CMM (Cubic Meters per Minute).
@@ -37,9 +36,8 @@ namespace KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent
         /// <summary>
         /// Minimum noise level in dBA.
         /// </summary>
-        [Required]
         [Range(0, 100, ErrorMessage = "Minimum noise level must be between 0 and 100 dB")]
-        public decimal MinNoiseLevel { get; set; } = default!;
+        public decimal? MinNoiseLevel { get; set; }
 
         /// <summary>
         /// Maximum noise level in dBA.

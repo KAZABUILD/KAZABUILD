@@ -948,7 +948,7 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the subComponent to delete
-            var subComponent = await _db.SubComponents.FirstOrDefaultAsync(s => s.Id == id);
+            var subComponent = await _db.SubComponents.Include(c => c.Images).FirstOrDefaultAsync(s => s.Id == id);
             if (subComponent == null)
             {
                 //Log failure
@@ -964,6 +964,20 @@ namespace KAZABUILD.API.Controllers.Components
 
                 //Return not found response
                 return NotFound(new { subComponent = "SubComponent not found!" });
+            }
+
+            //Remove all related images
+            if(subComponent.Images.Count != 0)
+            {
+                foreach (var image in subComponent.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(subComponent.Images);
             }
 
             //Delete the subComponent

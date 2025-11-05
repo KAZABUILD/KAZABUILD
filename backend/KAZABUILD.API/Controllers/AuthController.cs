@@ -182,7 +182,7 @@ namespace KAZABUILD.API.Controllers
                 var token = new UserToken
                 {
                     UserId = user.Id,
-                    Token = _hasher.Hash(tokenString),
+                    TokenHash = _hasher.Hash(tokenString),
                     TokenType = TokenType.LOGIN_2FA,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(10),
@@ -209,11 +209,10 @@ namespace KAZABUILD.API.Controllers
                         ip,
                         user.Id,
                         PrivacyLevel.ERROR,
-                        $"Operation Failed - Sending Email Failed: {ex}"
+                        $"Operation Failed - Failed To Send A Verification Email: {ex}"
                     );
 
-                    //Return an internal error response
-                    return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send a verification email. Please try again later." });
                 }
 
                 //Add the token to the database
@@ -540,7 +539,7 @@ namespace KAZABUILD.API.Controllers
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = UserRole.UNVERIFIED,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,
@@ -594,7 +593,7 @@ namespace KAZABUILD.API.Controllers
             try
             {
                 //Create the confirmation backend call link
-                var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={token.Token}&userId={user.Id}";
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={tokenString}&userId={user.Id}";
                 //Create the email message body with html
                 var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
 
@@ -816,7 +815,7 @@ namespace KAZABUILD.API.Controllers
             try
             {
                 //Create the confirmation backend call link
-                var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={token.Token}&userId={user.Id}";
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={tokenString}&userId={user.Id}";
 
                 //Create the email message body with html
                 var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
