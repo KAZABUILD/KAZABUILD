@@ -8,7 +8,7 @@ using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Users;
 
 [Collection("Sequential")]
 public class ForumPostsControllerTests : BaseIntegrationTest

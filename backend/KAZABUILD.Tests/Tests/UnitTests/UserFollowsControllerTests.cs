@@ -6,7 +6,7 @@ using KAZABUILD.Tests.ControllerServices;
 using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Users;
 
 [Collection("Sequential")]
 public class UserFollowsControllerTests : BaseIntegrationTest

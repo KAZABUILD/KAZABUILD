@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Users;
 
 
 [Collection("Sequential")]

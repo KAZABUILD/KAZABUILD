@@ -10,7 +10,7 @@ using KAZABUILD.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Others;
 
 [Collection("Sequential")]
 public class AuthControllerTests : BaseIntegrationTest

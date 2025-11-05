@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Validations.Rules;
 using Xunit;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Components;
 
 [Collection("Sequential")]
 public class ComponentsControllerTests : BaseIntegrationTest

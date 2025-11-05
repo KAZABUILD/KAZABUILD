@@ -10,7 +10,7 @@ using KAZABUILD.Tests.Utils;
 using Microsoft.EntityFrameworkCore;
 using KAZABUILD.Domain.Entities.Components;
 
-namespace KAZABUILD.Tests;
+namespace KAZABUILD.Tests.Components;
 
 [Collection("Sequential")]
 public class ComponentPricesControllerTests : BaseIntegrationTest
