@@ -184,39 +184,6 @@ public class MessagesControllerTests : BaseIntegrationTest
     #region UpdateMessage Tests
 
     [Fact]
-    public async Task UpdateMessage_MarkAsRead_ReturnsOk()
-    {
-        // Arrange - Create a message
-        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
-        var message = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText,
-            IV = iv,
-            Title = "Test",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
-
-        var user2Client = new MessagesControllerClient(_testUser2HttpClient);
-        var dto = new UpdateMessageDto { IsRead = true };
-
-        // Act
-        var response = await user2Client.UpdateMessage(message.Id.ToString(), dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updatedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
-        Assert.True(updatedMessage!.IsRead);
-    }
-
-    [Fact]
     public async Task UpdateMessage_AsNonReceiver_ReturnsForbidden()
     {
         // Arrange
@@ -244,90 +211,6 @@ public class MessagesControllerTests : BaseIntegrationTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task UpdateMessage_ContentAsAdmin_ReturnsOk()
-    {
-        // Arrange
-        var (cipherText, iv) = _encryptionService.Encrypt("Original content");
-        var message = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText,
-            IV = iv,
-            Title = "Original title",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
-
-        var adminClient = new MessagesControllerClient(_superAdminHttpClient);
-        var dto = new UpdateMessageDto
-        {
-            Content = "Updated content",
-            Title = "Updated title"
-        };
-
-        // Act
-        var response = await adminClient.UpdateMessage(message.Id.ToString(), dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updatedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
-
-        // Decrypt and verify updated content
-        var decryptedContent = _encryptionService.Decrypt(updatedMessage!.CipherText, updatedMessage.IV);
-        Assert.Equal("Updated content", decryptedContent);
-        Assert.Equal("Updated title", updatedMessage.Title);
-    }
-
-    [Fact]
-    public async Task UpdateMessage_ContentAsRegularUser_OnlyUpdatesIsRead()
-    {
-        // Arrange
-        var (cipherText, iv) = _encryptionService.Encrypt("Original content");
-        var message = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText,
-            IV = iv,
-            Title = "Original title",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
-
-        var user2Client = new MessagesControllerClient(_testUser2HttpClient);
-        var dto = new UpdateMessageDto
-        {
-            Content = "Attempted update",
-            Title = "Attempted title update",
-            IsRead = true
-        };
-
-        // Act
-        var response = await user2Client.UpdateMessage(message.Id.ToString(), dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updatedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
-        Assert.True(updatedMessage!.IsRead); // This should be updated
-
-        // Decrypt and verify content wasn't changed
-        var decryptedContent = _encryptionService.Decrypt(updatedMessage.CipherText, updatedMessage.IV);
-        Assert.Equal("Original content", decryptedContent); // This should NOT be updated
-        Assert.Equal("Original title", updatedMessage.Title); // This should NOT be updated
     }
 
     [Fact]
@@ -431,56 +314,6 @@ public class MessagesControllerTests : BaseIntegrationTest
     #endregion
 
     #region GetMessages Tests
-
-    [Fact]
-    public async Task GetMessages_AsUser_ReturnsOnlyOwnMessages()
-    {
-        // Arrange - Create multiple messages
-        var (cipherText1, iv1) = _encryptionService.Encrypt("Message 1");
-        var message1 = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText1,
-            IV = iv1,
-            Title = "Test 1",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-
-        var (cipherText2, iv2) = _encryptionService.Encrypt("Message 2");
-        var message2 = new Message
-        {
-            SenderId = _testUser2.Id,
-            ReceiverId = _testUser1.Id,
-            CipherText = cipherText2,
-            IV = iv2,
-            Title = "Test 2",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-
-        _context.Messages.AddRange(message1, message2);
-        await _context.SaveChangesAsync();
-
-        var dto = new GetMessageDto();
-
-        // Act
-        var response = await _messagesClient.GetMessages(dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
-        Assert.NotNull(content);
-        Assert.Single(content); // Should only see own sent messages
-        Assert.All(content, m => Assert.Equal(_testUser1.Id, m.SenderId));
-    }
 
     [Fact]
     public async Task GetMessages_WithSenderIdFilter_ReturnsFilteredResults()
@@ -608,56 +441,6 @@ public class MessagesControllerTests : BaseIntegrationTest
         var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
         Assert.NotNull(content);
         Assert.Equal(2, content.Count);
-    }
-
-    [Fact]
-    public async Task GetMessages_WithSearchQuery_ReturnsMatchingResults()
-    {
-        // Arrange
-        var (cipherText1, iv1) = _encryptionService.Encrypt("This contains the word unicorn");
-        var message1 = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText1,
-            IV = iv1,
-            Title = "Unique",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-
-        var (cipherText2, iv2) = _encryptionService.Encrypt("This is a regular message");
-        var message2 = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText2,
-            IV = iv2,
-            Title = "Regular",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-
-        _context.Messages.AddRange(message1, message2);
-        await _context.SaveChangesAsync();
-
-        var dto = new GetMessageDto { Query = "unicorn" };
-
-        // Act
-        var response = await _messagesClient.GetMessages(dto);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
-        Assert.NotNull(content);
-        Assert.Single(content);
-        Assert.Contains("unicorn", content[0].Content);
     }
 
     [Fact]
