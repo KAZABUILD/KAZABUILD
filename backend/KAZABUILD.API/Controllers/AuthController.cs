@@ -175,11 +175,14 @@ namespace KAZABUILD.API.Controllers
                     return BadRequest(new { message = "Unable to determine the IP address" });
                 }
 
+                //Generate a new token
+                var tokenString = Guid.NewGuid().ToString("N");
+
                 //Generate an authentication token
                 var token = new UserToken
                 {
                     UserId = user.Id,
-                    Token = Guid.NewGuid().ToString("N").Substring(0, 6),
+                    Token = _hasher.Hash(tokenString),
                     TokenType = TokenType.LOGIN_2FA,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(10),
@@ -191,7 +194,7 @@ namespace KAZABUILD.API.Controllers
                 try
                 {
                     //Create the email message body with html
-                    var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, token.Token);
+                    var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, tokenString);
 
                     //Send the confirmation email
                     await _smtp.SendEmailAsync(user.Email, "KAZABUILD login verification code", body);
@@ -290,7 +293,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && t.Token == dto.Token && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -381,7 +384,7 @@ namespace KAZABUILD.API.Controllers
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            
+
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -499,8 +502,6 @@ namespace KAZABUILD.API.Controllers
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            
-            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -534,10 +535,10 @@ namespace KAZABUILD.API.Controllers
                 Login = dto.Login,
                 Email = dto.Email,
                 DisplayName = dto.DisplayName,
+                PasswordHash = _hasher.Hash(dto.Password),
                 PhoneNumber = dto.PhoneNumber,
                 Description = dto.Description,
                 Gender = dto.Gender,
-                PasswordHash = _hasher.Hash(dto.Password),
                 UserRole = UserRole.UNVERIFIED,
                 ImageUrl = dto.ImageUrl,
                 Birth = dto.Birth,
@@ -573,11 +574,14 @@ namespace KAZABUILD.API.Controllers
             //Add the user to the database
             _db.Users.Add(user);
 
+            //Generate a new token
+            var tokenString = Guid.NewGuid().ToString("N");
+
             //Create the registration token
             var token = new UserToken
             {
                 UserId = user.Id,
-                Token = Guid.NewGuid().ToString("N"),
+                TokenHash = _hasher.Hash(tokenString),
                 TokenType = TokenType.CONFIRM_REGISTER,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
@@ -659,7 +663,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -792,10 +796,14 @@ namespace KAZABUILD.API.Controllers
                 return BadRequest(new { message = "Unable to determine the IP address" });
             }
 
+            //Generate a new token
+            var tokenString = Guid.NewGuid().ToString("N");
+
+            //Create the reset password token
             var token = new UserToken
             {
                 UserId = user.Id,
-                Token = Guid.NewGuid().ToString("N"),
+                TokenHash = _hasher.Hash(tokenString),
                 TokenType = TokenType.RESET_PASSWORD,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(2),
@@ -878,7 +886,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.Token == dto.Token && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
+            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
 
             //Check if the token isn't invalid or expired
             if (token == null)
