@@ -61,6 +61,9 @@ namespace KAZABUILD.API
             builder.Host.UseSerilog((ctx, config) =>
                 config.ReadFrom.Configuration(ctx.Configuration));
 
+            //Add Prometheus HTTP metrics before building the app
+            builder.Services.AddHealthChecks();
+
             //Build the app using the declared configuration
             var app = builder.Build();
 
@@ -172,11 +175,13 @@ namespace KAZABUILD.API
             //Enable authorization
             app.UseAuthorization();
 
-            //Map controllers' endpoints
-            app.MapControllers();
+            //Enable Prometheus HTTP request metrics middleware
+            app.UseHttpMetrics();
 
-            //Enable Prometheus value monitoring
+            //Expose the /metrics endpoint for Prometheus to scrape
             app.UseMetricServer();
+
+            app.MapControllers();
 
             //Get the hasher and admin user settings
             var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();

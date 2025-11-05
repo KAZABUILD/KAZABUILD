@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MailKit.Net.Smtp;
+using Prometheus;
 using KAZABUILD.Infrastructure.SMTP;
 
 namespace KAZABUILD.Infrastructure.Services
@@ -19,6 +20,14 @@ namespace KAZABUILD.Infrastructure.Services
     {
         private readonly SmtpSettings _settings = settings.Value;
         private readonly IServiceProvider _serviceProvider = serviceProvider;
+
+        private static readonly Counter EmailsSent = Metrics.CreateCounter(
+            "app_emails_sent_total",
+            "Number of emails successfully sent");
+
+        private static readonly Counter EmailSendFailures = Metrics.CreateCounter(
+            "app_email_send_failures_total",
+            "Number of email send failures");
 
         /// <summary>
         /// Sends emails asynchronously.
@@ -37,7 +46,7 @@ namespace KAZABUILD.Infrastructure.Services
                 message.To.Add(MailboxAddress.Parse(to));
                 message.Subject = subject;
 
-                //Create a builder that allows embedding in a message 
+                //Create a builder that allows embedding in a message
                 var builder = new BodyBuilder
                 {
                     HtmlBody = content.HtmlBody
@@ -64,6 +73,8 @@ namespace KAZABUILD.Infrastructure.Services
 
                 //Disconnect the client
                 await client.DisconnectAsync(true);
+
+                EmailsSent.Inc();
             }
             catch (Exception ex)
             {
@@ -82,6 +93,7 @@ namespace KAZABUILD.Infrastructure.Services
                     $"SMTP Service Error. Skipping sending mail. Error message: {ex.Message}"
                 );
 
+                EmailSendFailures.Inc();
                 throw;
             }
         }
