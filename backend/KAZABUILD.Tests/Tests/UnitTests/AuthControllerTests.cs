@@ -170,7 +170,7 @@ public class AuthControllerTests : BaseIntegrationTest
     {
         // Arrange
         var plainToken = Guid.NewGuid().ToString("N");
-        var tokenHash = _hashingService.Hash(plainToken);
+        var tokenHash = _hasher.Hash(plainToken);
 
         var token = new UserToken
         {
@@ -214,7 +214,7 @@ public class AuthControllerTests : BaseIntegrationTest
         // Arrange
         var originalHash = _user_to_change_password.PasswordHash;
         var plainToken = Guid.NewGuid().ToString("N");
-        var tokenHash = _hashingService.Hash(plainToken);
+        var tokenHash = _hasher.Hash(plainToken);
 
         var token = new UserToken
         {

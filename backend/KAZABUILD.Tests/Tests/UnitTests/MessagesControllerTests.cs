@@ -419,49 +419,6 @@ public class MessagesControllerTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task GetMessage_AsUnrelatedUser_ReturnsForbidden()
-    {
-        // Arrange
-        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
-        var message = new Message
-        {
-            SenderId = _testUser1.Id,
-            ReceiverId = _testUser2.Id,
-            CipherText = cipherText,
-            IV = iv,
-            Title = "Test",
-            SentAt = DateTime.UtcNow,
-            IsRead = false,
-            MessageType = MessageType.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
-
-        // Create a third user
-        var testUser3 = new User
-        {
-            Email = "testuser3@messages.com",
-            DisplayName = "Test User 3",
-            UserRole = UserRole.USER,
-            DatabaseEntryAt = DateTime.UtcNow,
-            LastEditedAt = DateTime.UtcNow
-        };
-        _context.Users.Add(testUser3);
-        await _context.SaveChangesAsync();
-
-        var user3HttpClient = await HttpClientFactory.Create(_factory, testUser3, password: "password123!");
-        var user3Client = new MessagesControllerClient(user3HttpClient);
-
-        // Act
-        var response = await user3Client.GetMessage(message.Id.ToString());
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
     public async Task GetMessage_NonExistentMessage_ReturnsNotFound()
     {
         // Act

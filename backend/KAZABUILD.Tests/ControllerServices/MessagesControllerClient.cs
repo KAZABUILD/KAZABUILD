@@ -27,6 +27,6 @@ public class MessagesControllerClient(HttpClient _client)
 
     public async Task<HttpResponseMessage> GetMessages(GetMessageDto dto)
     {
-        return await _client.PostAsJsonAsync("/Messages/", dto);
+        return await _client.PostAsJsonAsync("/Messages/get", dto);
     }
 }

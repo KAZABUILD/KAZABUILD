@@ -17,7 +17,7 @@ public abstract class BaseIntegrationTest : IClassFixture<KazaWebApplicationFact
     protected HttpClient _superAdminHttpClient;
     protected AdminControllerClient _adminControllerClient;
     protected IConfiguration _configuration = null!;
-    protected IHashingService _hashingService;
+    protected IHashingService _hasher;
     private static bool _isSeeded = false;
     private static readonly object _seedLock = new();
 
@@ -32,7 +32,7 @@ public abstract class BaseIntegrationTest : IClassFixture<KazaWebApplicationFact
         _context = _scope.ServiceProvider.GetRequiredService<KAZABUILDDBContext>();
         _dataSeeder = _scope.ServiceProvider.GetRequiredService<IDataSeeder>();
         _configuration = _scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        _hashingService = _scope.ServiceProvider.GetRequiredService<IHashingService>();
+        _hasher = _scope.ServiceProvider.GetRequiredService<IHashingService>();
 
         _superAdmin = _context.Users.FirstOrDefault(u => u.UserRole == UserRole.SYSTEM);
         var superAdminPassword = _configuration["SYSTEM_ADMIN:Password"];
