@@ -356,7 +356,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Return not found response
                 return Forbid();
             }
-
+            
             //Check if has admin privilege
             if (!isPrivileged)
             {

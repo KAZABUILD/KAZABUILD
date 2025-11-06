@@ -64,10 +64,8 @@ class PrivacyPolicyDialog extends StatelessWidget {
         TextButton(
           child: const Text('Reject'),
           onPressed: () {
-            /// Closes the dialog.
-            /// TODO: Implement logic for when the user rejects the terms.
-            /// This might prevent them from signing up or show a message.
-            Navigator.of(context).pop();
+            // Closes the dialog and returns `false`.
+            Navigator.of(context).pop(false);
           },
         ),
 
@@ -75,10 +73,8 @@ class PrivacyPolicyDialog extends StatelessWidget {
         ElevatedButton(
           child: const Text('Accept'),
           onPressed: () {
-            /// Closes the dialog.
-            /// TODO: Implement logic for when the user accepts the terms.
-            /// This could set a flag allowing the sign-up process to continue.
-            Navigator.of(context).pop();
+            // Closes the dialog and returns `true`.
+            Navigator.of(context).pop(true);
           },
         ),
       ],

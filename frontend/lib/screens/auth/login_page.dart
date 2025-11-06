@@ -7,17 +7,17 @@
 /// (Google, GitHub, Discord) to enhance user experience and flexibility.
 ///
 /// The page leverages Riverpod for efficient state management, particularly
+/// for listening to authentication state changes and interacting with the `authProvider`.
 /// for handling authentication processes and interacting with the `authProvider`.
 /// It reuses common authentication widgets defined in `auth_widgets.dart`
 /// to ensure a consistent look and feel across all authentication flows.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
-import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
 /// The main widget for the login page.
@@ -38,10 +38,64 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   /// validation and saving form fields.
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers to capture user input for email and password.
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  
+  // Remember me checkbox state
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLoginInfo();
+  }
+
+  /// Loads saved login information for auto-fill.
+  Future<void> _loadSavedLoginInfo() async {
+    try {
+      final savedInfo = await ref.read(authProvider.notifier).getSavedLoginInfo();
+      if (savedInfo != null && mounted) {
+        setState(() {
+          _emailController.text = savedInfo['email'] ?? '';
+          _rememberMe = savedInfo['rememberMe'] ?? false;
+        });
+      }
+    } catch (e) {
+      // Ignore errors when loading saved login info
+      print('Failed to load saved login info: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers to free up resources when the widget is removed.
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   /// Builds the UI for the login page.
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
+    
+    // Listen to the authProvider for state changes (e.g., errors, success).
+    // This is used for side effects like showing SnackBars or navigating.
+    ref.listen<AsyncValue<AppUser?>>(authProvider, (previous, next) {
+      if (next is AsyncError) {
+        // If an error occurs, show a SnackBar with the error message.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error.toString()),
+            backgroundColor: theme.colorScheme.error,
+          ),
+        );
+      }
+      // Success navigation is now handled automatically by GoRouter's redirect logic
+      // when the auth state changes. No need for manual navigation here.
+    });
 
     return Scaffold(
       key: _scaffoldKey,
@@ -58,28 +112,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             scaffoldKey: _scaffoldKey,
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                /// Wraps the content in a [SingleChildScrollView] to prevent overflow
-                /// on devices with smaller screens or when the keyboard is active.
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 400),
-
-                          /// The main login form, wrapped in a [Form] widget to enable validation.
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                                 /// Displays the application's logo and title.
                                 /// This is a reusable widget from `auth_widgets.dart`.
                                 const Header(),
@@ -91,19 +134,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 _AuthToggleButtons(
                                   isSignIn: true,
                                   onSignUpTap: () {
-                                    /// Navigates to the SignUpPage with a fade transition, replacing the current page.
-                                    Navigator.pushReplacement(
-                                      context,
-                                      PageRouteBuilder(
-                                        pageBuilder: (_, __, ___) =>
-                                            const SignUpPage(),
-                                        transitionsBuilder: (_, a, __, c) =>
-                                            FadeTransition(
-                                              opacity: a,
-                                              child: c,
-                                            ),
-                                      ),
-                                    );
+                                    // Use go_router for consistent navigation.
+                                    context.go('/signup');
                                   },
                                 ),
                                 const SizedBox(height: 24),
@@ -127,8 +159,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 /// Custom text field for entering the user's username or email.
                                 /// Includes validation to ensure the field is not empty.
                                 CustomTextField(
+                                  controller: _emailController,
                                   label: 'Username or Email',
                                   icon: Icons.person_outline,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) =>
                                       (value == null || value.isEmpty)
                                       ? 'This field cannot be empty'
@@ -139,9 +173,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 /// Custom text field for entering the user's password.
                                 /// It's configured as a password field with a visibility toggle and validation.
                                 CustomTextField(
+                                  controller: _passwordController,
                                   label: 'Password',
                                   icon: Icons.lock_outline,
                                   isPassword: true,
+                                  autovalidateMode: AutovalidateMode.disabled,
                                   validator: (value) =>
                                       (value == null || value.isEmpty)
                                       ? 'This field cannot be empty'
@@ -156,23 +192,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     Row(
                                       children: [
                                         Checkbox(
-                                          value: true,
-                                          onChanged: (v) {},
+                                          value: _rememberMe,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _rememberMe = value ?? false;
+                                            });
+                                          },
                                         ),
                                         const Text('Remember me'),
                                       ],
                                     ), // "Forgot password?" link.
                                     /// A [TextButton] to navigate to the [ForgotPasswordPage].
                                     TextButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const ForgotPasswordPage(),
-                                          ),
-                                        );
-                                      },
+                                      onPressed: () => GoRouter.of(context).go('/forgot-password'),
                                       child: const Text('Forgot password?'),
                                     ),
                                   ],
@@ -182,21 +214,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 /// The primary button to initiate the sign-in process.
                                 /// It triggers form validation and, upon success,
                                 /// would typically call an authentication service.
-                                PrimaryButton(
-                                  text: 'Sign In',
-                                  icon: Icons.arrow_forward,
-                                  onPressed: () {
-                                    /// Validates the form before proceeding.
-                                    if (_formKey.currentState!.validate()) {
-                                      /// TODO: Implement actual sign-in logic here.
-                                      /// For now, it just reads the provider and navigates home.
-                                      ref.read(authProvider.notifier);
-
-                                      Navigator.of(
-                                        context,
-                                      ).popUntil((route) => route.isFirst);
-                                    }
-                                  },
+                                _SignInButton(
+                                  formKey: _formKey,
+                                  emailController: _emailController,
+                                  passwordController: _passwordController,
+                                  isLoading: authState.isLoading,
+                                  rememberMe: _rememberMe,
                                 ),
 
                                 /// A visual separator with "OR" text, typically used between
@@ -204,9 +227,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 const OrDivider(),
 
                                 /// Button for signing in with Google.
-                                const SocialButton(
+                                SocialButton(
                                   text: 'Continue with Google',
                                   iconPath: 'google_icon.svg.webp',
+                                  onPressed: authState.isLoading
+                                      ? null
+                                      : () async {
+                                          await ref.read(authProvider.notifier).signInWithGoogleWeb();
+                                        },
                                 ),
                                 const SizedBox(height: 12),
 
@@ -222,21 +250,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   text: 'Continue with Discord',
                                   iconPath: 'discord_icon.svg',
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
 }
 
 /// A widget that displays "Sign In" and "Sign Up" toggle buttons.
@@ -256,18 +281,19 @@ class _AuthToggleButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     /// Defines the visual style for the currently selected (active) button.
     final selectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: theme.colorScheme.primary,
-      foregroundColor: theme.colorScheme.onPrimary,
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
     /// Defines the visual style for the unselected (inactive) button.
     final unselectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: theme.colorScheme.surface,
-      foregroundColor: theme.colorScheme.onSurface,
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.onSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
@@ -275,7 +301,7 @@ class _AuthToggleButtons extends StatelessWidget {
     /// background and rounded corners.
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -301,6 +327,49 @@ class _AuthToggleButtons extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A dedicated widget for the Sign In button to encapsulate its logic.
+/// It handles form validation and interacts with the [authProvider].
+class _SignInButton extends ConsumerWidget {
+  final GlobalKey<FormState> formKey;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool isLoading;
+  final bool rememberMe;
+
+  const _SignInButton({
+    required this.formKey,
+    required this.emailController,
+    required this.passwordController,
+    required this.isLoading,
+    required this.rememberMe,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PrimaryButton(
+      // Show a loading indicator text and disable the button during sign-in.
+      text: isLoading ? 'Signing In...' : 'Sign In',
+      icon: isLoading ? null : Icons.arrow_forward,
+      onPressed: isLoading
+          ? null
+          : () {
+              // Hide the keyboard.
+              FocusScope.of(context).unfocus();
+
+              // Validate the form before proceeding.
+              if (formKey.currentState!.validate()) {
+                // Call the signIn method from the auth provider with user credentials.
+                ref.read(authProvider.notifier).signIn(
+                      emailController.text.trim(),
+                      passwordController.text,
+                      rememberMe: rememberMe,
+                    );
+              }
+            },
     );
   }
 }

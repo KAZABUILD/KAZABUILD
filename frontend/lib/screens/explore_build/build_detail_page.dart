@@ -7,90 +7,39 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:frontend/models/component_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/comments_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
 
 /// A page that displays the full details of a specific [CommunityBuild].
-class BuildDetailPage extends StatefulWidget {
-  /// The [CommunityBuild] object containing all the data for the page.
-  final CommunityBuild build;
-  const BuildDetailPage({super.key, required this.build});
+class BuildDetailPage extends ConsumerWidget {
+  /// The ID of the build to display.
+  final String buildId;
+  const BuildDetailPage({super.key, required this.buildId});
 
   @override
-  State<BuildDetailPage> createState() => _BuildDetailPageState();
-}
-
-/// The state for the [BuildDetailPage].
-class _BuildDetailPageState extends State<BuildDetailPage> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final buildAsyncValue = ref.watch(buildDetailProvider(buildId));
+
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
 
       /// The main layout is a column with the navigation bar at the top
       /// and the scrollable content below.
       body: Column(
-        children: [
+        children: <Widget>[
           const CustomNavigationBar(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32.0),
-              child: Center(
-                child: ConstrainedBox(
-                  // Constrains the maximum width for better readability on large screens.
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// The main image for the build, with rounded corners.
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.network(
-                          widget.build.imageUrl,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      /// Meta information like author and post date.
-                      _buildMetaInfo(theme),
-                      const SizedBox(height: 16),
-
-                      /// The title of the build and its star rating.
-                      _buildTitleAndRating(theme),
-                      const SizedBox(height: 24),
-
-                      /// The user-written description of the build, displayed in a styled container.
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          widget.build.description,
-                          style: theme.textTheme.bodyLarge,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      /// Header for the component list section.
-                      Text(
-                        'Specifications:',
-                        style: theme.textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 16),
-                      // A list of all components in the build, each rendered as a tile.
-                      ...widget.build.components.map(
-                        (component) => _ComponentTile(component: component),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            child: buildAsyncValue.when(
+              data: (build) => _buildContentView(context, build),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
             ),
           ),
         ],
@@ -98,34 +47,76 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
     );
   }
 
+  Widget _buildContentView(BuildContext context, Build build) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              if (build.imageUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    build.imageUrl!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 400,
+                  ),
+                ),
+              const SizedBox(height: 24),
+              _buildMetaInfo(context, theme, build),
+              const SizedBox(height: 16),
+              _buildTitleAndRating(theme, build),
+              const SizedBox(height: 24),
+              if (build.description != null && build.description!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    build.description!,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
+              const SizedBox(height: 32),
+              Text(
+                'Comments:',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              _CommentsSection(buildId: build.id),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Builds the row containing metadata about the build, such as the author and post date.
-  Widget _buildMetaInfo(ThemeData theme) {
+  Widget _buildMetaInfo(BuildContext context, ThemeData theme, Build build) {
     return Row(
-      children: [
-        // Author's avatar.
-        CircleAvatar(
-          radius: 12,
-          backgroundImage: widget.build.author.photoURL != null
-              ? NetworkImage(widget.build.author.photoURL!)
-              : null,
-          child: widget.build.author.photoURL == null
-              ? Text(
-                  widget.build.author.username.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(fontSize: 10),
-                )
-              : null,
-        ),
-        const SizedBox(width: 8),
-        // Author's username.
-        Text(widget.build.author.username, style: theme.textTheme.bodyMedium),
-        const SizedBox(width: 8),
-        Text('•', style: theme.textTheme.bodySmall),
-        const SizedBox(width: 8),
-        // Date the build was posted.
-        Text(
-          'Posted on: ${DateFormat.yMMMMd().format(widget.build.postedDate)}',
-          style: theme.textTheme.bodySmall,
-        ),
+      children: <Widget>[
+        if (build.author != null) ...[
+          UserImageUtils.buildUserAvatar(
+            imageUrl: build.author!.photoURL,
+            username: build.author!.username,
+            userId: build.author!.uid,
+            radius: 12,
+          ),
+          const SizedBox(width: 8),
+          Text(build.author!.username, style: theme.textTheme.bodyMedium),
+          const SizedBox(width: 8),
+          Text('•', style: theme.textTheme.bodySmall),
+          const SizedBox(width: 8),
+        ],
+        // TODO: Add 'Posted on' date when available from backend
+        Text('Posted on: ${DateFormat.yMMMMd().format(DateTime.now())}', style: theme.textTheme.bodySmall),
         const Spacer(),
         // TODO: Implement "Wishlist" functionality.
         OutlinedButton(onPressed: () {}, child: const Text('Wishlist Build')),
@@ -137,112 +128,382 @@ class _BuildDetailPageState extends State<BuildDetailPage> {
   }
 
   /// Builds the row containing the build's title and its star rating.
-  Widget _buildTitleAndRating(ThemeData theme) {
+  Widget _buildTitleAndRating(ThemeData theme, Build build) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // The main title of the build.
-        Text(
-          widget.build.title,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            build.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-        const Spacer(),
-
-        /// Generates the star rating display based on the build's rating value.
-        Row(
-          children: List.generate(5, (index) {
-            return Icon(
-              index < widget.build.rating.floor()
-                  ? Icons.star
-                  : (index < widget.build.rating
-                        ? Icons.star_half
-                        : Icons.star_border),
-              color: Colors.amber,
-            );
-          }),
-        ),
+        const SizedBox(width: 12),
+        _RatingBar(build: build),
       ],
     );
   }
 }
 
-/// A tile widget that displays information about a single component in the build list.
-class _ComponentTile extends StatelessWidget {
-  final BaseComponent component;
-  const _ComponentTile({required this.component});
+class _CommentsSection extends ConsumerStatefulWidget {
+  final String buildId;
+  const _CommentsSection({required this.buildId});
 
-  /// A helper method that returns an appropriate icon for a given [ComponentType].
-  IconData _getIconForType(ComponentType type) {
-    switch (type) {
-      case ComponentType.cpu:
-        return Icons.memory;
-      case ComponentType.gpu:
-        return Icons.developer_board;
-      case ComponentType.motherboard:
-        return Icons.dns;
-      case ComponentType.ram:
-        return Icons.sd_storage;
-      case ComponentType.storage:
-        return Icons.save;
-      case ComponentType.psu:
-        return Icons.power;
-      default:
-        return Icons.settings_input_component;
+  @override
+  ConsumerState<_CommentsSection> createState() => _CommentsSectionState();
+}
+
+class _RatingBar extends ConsumerStatefulWidget {
+  final Build build;
+  const _RatingBar({required this.build});
+
+  @override
+  ConsumerState<_RatingBar> createState() => _RatingBarState();
+}
+
+class _RatingBarState extends ConsumerState<_RatingBar> {
+  late double _average;
+  late int _count;
+  double? _userRating;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _average = widget.build.averageRating;
+    _count = widget.build.ratingsCount;
+    // Only set userRating if it's a valid rating (not null and > 0)
+    _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
+        ? widget.build.userRating 
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(_RatingBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update state when build data changes (e.g., after refetch)
+    if (oldWidget.build.averageRating != widget.build.averageRating ||
+        oldWidget.build.ratingsCount != widget.build.ratingsCount ||
+        oldWidget.build.userRating != widget.build.userRating) {
+      setState(() {
+        _average = widget.build.averageRating;
+        _count = widget.build.ratingsCount;
+        // Only set userRating if it's a valid rating (not null and > 0)
+        _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
+            ? widget.build.userRating 
+            : null;
+      });
+    }
+  }
+
+  Future<void> _submit(double rating) async {
+    final currentUser = ref.read(authProvider).valueOrNull;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to rate this build.')),
+        );
+      }
+      return;
+    }
+
+    if (_submitting) return;
+    
+    // Store previous values in case we need to revert
+    final previousAverage = _average;
+    final previousCount = _count;
+    final previousUserRating = _userRating;
+    
+    setState(() {
+      _submitting = true;
+      // Optimistic update: if user had no rating, bump count and recompute avg
+      final hadPrevious = _userRating != null;
+      if (!hadPrevious) {
+        // Calculate new average: (oldAvg * oldCount + newRating) / (oldCount + 1)
+        _average = _count == 0 
+            ? rating 
+            : ((_average * _count) + rating) / (_count + 1);
+        _count = _count + 1;
+      } else {
+        // Replace previous vote: subtract old, add new
+        final total = (_average * _count) - _userRating! + rating;
+        _average = _count == 0 ? rating : (total / _count);
+        // Count stays the same when updating existing rating
+      }
+      _userRating = rating;
+    });
+
+    try {
+      final user = ref.read(authProvider).valueOrNull;
+      if (user == null) {
+        // Revert optimistic update if user check fails
+        if (mounted) {
+          setState(() {
+            _average = previousAverage;
+            _count = previousCount;
+            _userRating = previousUserRating;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please sign in to rate builds')),
+          );
+        }
+        return;
+      }
+      final service = ref.read(buildServiceProvider);
+      final result = await service.rateBuild(widget.build.id, rating, user.uid);
+      
+      // Check if backend returned rating statistics
+      final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
+      final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
+      
+      if (mounted && newAvg != null && newCount != null) {
+        setState(() {
+          // Backend returns 0-100; normalize to 0-5
+          final avgDouble = (newAvg as num).toDouble();
+          _average = avgDouble > 5.0 ? (avgDouble / 20.0) : avgDouble;
+          _count = (newCount as num).toInt();
+        });
+      } else {
+        // Backend didn't return stats, but request succeeded
+        // Keep the optimistic update and refresh the build data
+        if (mounted) {
+          // Invalidate the build detail provider to refetch fresh data
+          ref.invalidate(buildDetailProvider(widget.build.id));
+        }
+      }
+    } catch (e) {
+      // On error, revert optimistic update
+      if (mounted) {
+        setState(() {
+          _average = previousAverage;
+          _count = previousCount;
+          _userRating = previousUserRating;
+        });
+        // Check if it's the "already exists" error - treat as success
+        final errorMsg = e.toString().toLowerCase();
+        if (errorMsg.contains('already exists') || errorMsg.contains('interaction already')) {
+          // Rating was already saved, refresh to get latest data
+          ref.invalidate(buildDetailProvider(widget.build.id));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit rating: $e')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            /// Dynamically sets the icon based on the component type.
-            Icon(_getIconForType(component.type), size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(component.name, style: theme.textTheme.titleMedium),
-            ),
-
-            /// Displays the lowest price found for the component.
-            Text(
-              '\$${component.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
+    // Stars only show user's rating, not the average
+    // Only show filled stars if userRating exists and is greater than 0
+    // If userRating is null or 0, all stars should be empty (border only)
+    final hasUserRating = _userRating != null && _userRating! > 0;
+    final userRatingValue = hasUserRating ? _userRating : null;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(5, (index) {
+            final starIndex = index + 1;
+            // Only fill stars if user has a valid rating AND it's >= this star index
+            final isFilled = hasUserRating && userRatingValue! >= starIndex - 0.5;
+            return IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(
+                isFilled ? Icons.star : Icons.star_border,
+                color: Colors.amber,
               ),
+              onPressed: _submitting ? null : () => _submit(starIndex.toDouble()),
+              tooltip: 'Rate $starIndex',
+            );
+          }),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${_average.toStringAsFixed(1)} ($_count)',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _CommentsSectionState extends ConsumerState<_CommentsSection> {
+  final TextEditingController _controller = TextEditingController();
+  bool _posting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final commentsAsync = ref.watch(buildCommentsProvider(widget.buildId));
+    final userAsync = ref.watch(authProvider);
+    final isLoggedIn = userAsync.valueOrNull != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: commentsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Text('Failed to load comments', style: theme.textTheme.bodyMedium),
             ),
-            const SizedBox(width: 24),
-            // TODO: This should be dynamic, showing the vendor with the lowest price, not hardcoded.
-            InkWell(
-              onTap: () {},
-              child: const Text(
-                'allegro',
-                style: TextStyle(
-                  color: Colors.orange,
-                  decoration: TextDecoration.underline,
+            data: (comments) {
+              if (comments.isEmpty) {
+                return Center(
+                  child: Text('No comments yet. Be the first to comment!', style: theme.textTheme.bodyMedium),
+                );
+              }
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: comments.length,
+                separatorBuilder: (_, __) => const Divider(height: 24),
+                itemBuilder: (context, index) {
+                  final c = comments[index];
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      UserImageUtils.buildUserAvatar(
+                        username: c.authorName,
+                        radius: 16,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                Text(DateFormat.yMMMd().add_jm().format(c.createdAt), style: theme.textTheme.bodySmall),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(c.text, style: theme.textTheme.bodyMedium),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (!isLoggedIn)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(Icons.lock_outline, color: theme.colorScheme.outline),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Sign in to comment on this build',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Show a message directing user to sign in
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please sign in to comment. Use the navigation to go to login.'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  child: const Text('Sign In'),
+                ),
+              ],
+            ),
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              UserImageUtils.buildUserAvatar(
+                username: userAsync.valueOrNull?.username,
+                userId: userAsync.valueOrNull?.uid,
+                radius: 16,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Write a comment...',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 24),
-            // TODO: Implement "Add to build" functionality.
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add to build'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.secondary,
-                foregroundColor: theme.colorScheme.onSecondary,
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _posting
+                    ? null
+                    : () async {
+                        final text = _controller.text.trim();
+                        if (text.isEmpty) return;
+                        setState(() => _posting = true);
+                      try {
+                        final user = userAsync.valueOrNull;
+                        if (user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please sign in to comment')),
+                          );
+                          return;
+                        }
+                        final authorName = user.username;
+                        await ref.read(buildCommentsProvider(widget.buildId).notifier).add(authorName, text, user.uid);
+                        _controller.clear();
+                      } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to post comment: $e')),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _posting = false);
+                        }
+                      },
+                child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Post'),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        ],
     );
   }
 }

@@ -8,10 +8,41 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/gestures.dart';
 
 /// The main content widget for the homepage.
-class HomeBody extends StatelessWidget {
+class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
+
+  @override
+  State<HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<HomeBody> {
+  late Flutter3DController _controller;
+  bool _isRotating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Flutter3DController();
+
+    // Listen for when the model is fully loaded, then start slow rotation.
+    _controller.onModelLoaded.addListener(() {
+      if (_controller.onModelLoaded.value == true) {
+        debugPrint('3D model loaded, starting slow rotation...');
+        _controller.startRotation(rotationSpeed: 30);
+        _isRotating = true;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.stopRotation();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +57,44 @@ class HomeBody extends StatelessWidget {
           children: [
             /// A 3D model viewer that displays an interactive model of a PC.
             /// The `flutter_3d_controller` package is used to render the `.glb` asset.
-            SizedBox(height: 800, child: Flutter3DViewer(src: 'assets/pc.glb')),
+            SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Listener(
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) {
+                  // Block scroll events to prevent zoom
+                  
+                }
+              },
+              child: GestureDetector(
+                onPanStart: (_) {
+                  if (_isRotating) {
+                    _controller.pauseRotation();
+                  }
+                },
+                onPanEnd: (_) {
+                  if (_isRotating) {
+                    _controller.startRotation(rotationSpeed: 30);
+                  }
+                },
+                onPanCancel: () {
+                  if (_isRotating) {
+                    _controller.startRotation(rotationSpeed: 30);
+                  }
+                },
+                child: Container(
+                  height: 700,
+                  width: 700,
+                  padding: const EdgeInsets.all(40), 
+                  child: Flutter3DViewer(
+                    src: 'assets/3d_models/pc.glb',
+                    controller: _controller, 
+                    enableTouch: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
             /// A placeholder container for a future text box.
             // TODO: Replace this with a dynamic text box displaying a slogan, a short description, or user-specific information.
@@ -44,9 +112,15 @@ class HomeBody extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const _CustomStartButton(label: "Take Quiz"),
+                _CustomStartButton(
+                  label: "Take Quiz",
+                  onPressed: () => context.go('/quiz'),
+                ),
                 const SizedBox(width: 20),
-                const _CustomStartButton(label: "Start Build"),
+                _CustomStartButton(
+                  label: "Start Build",
+                  onPressed: () => context.go('/build-now'),
+                ),
               ],
             ),
           ],
@@ -61,14 +135,15 @@ class HomeBody extends StatelessWidget {
 class _CustomStartButton extends StatelessWidget {
   /// The text to display on the button.
   final String label;
-  const _CustomStartButton({required this.label});
+  final VoidCallback onPressed;
+  const _CustomStartButton({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       // TODO: Implement the navigation logic for this button.
       // For example, navigate to the QuizPage or the BuildNowPage.
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey.shade700,
         foregroundColor: Colors.white,

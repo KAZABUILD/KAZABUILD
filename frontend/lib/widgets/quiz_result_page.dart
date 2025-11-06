@@ -21,14 +21,11 @@ class QuizResultsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    /// Read the quiz notifier to access its methods for getting recommendations.
-    final quizNotifier = ref.read(quizProvider.notifier);
-
     // TODO: This currently calls a synchronous method. This should be updated
     // to watch a FutureProvider that fetches recommendations from the backend
     // based on the quiz answers.
-    final List<CommunityBuild> recommendedBuilds = quizNotifier
-        .getRecommendedBuilds(null);
+    // For now, we use an empty list to avoid compile errors.
+    final List<Build> recommendedBuilds = [];
 
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
@@ -90,24 +87,7 @@ class QuizResultsPage extends ConsumerWidget {
                               itemCount: recommendedBuilds.length,
                               itemBuilder: (context, index) {
                                 final build = recommendedBuilds[index];
-
-                                /// A helper function to safely find a component of a specific type in the build.
-                                BaseComponent? getComponent(
-                                  ComponentType type,
-                                ) {
-                                  try {
-                                    return build.components.firstWhere(
-                                      (c) => c.type == type,
-                                    );
-                                  } catch (e) {
-                                    return null;
-                                  }
-                                }
-
-                                /// Get key components to display in the summary.
-                                final cpu = getComponent(ComponentType.cpu);
-                                final gpu = getComponent(ComponentType.gpu);
-                                final ram = getComponent(ComponentType.ram);
+                                // Since components are not part of the Build model anymore, this part needs to be re-thought.
 
                                 return Card(
                                   color: theme.colorScheme.surface.withOpacity(
@@ -124,7 +104,7 @@ class QuizResultsPage extends ConsumerWidget {
                                       children: [
                                         /// The main image for the build.
                                         Image.network(
-                                          build.imageUrl,
+                                          build.imageUrl ?? '',
                                           height: 100,
                                           width: 100,
                                           fit: BoxFit.cover,
@@ -144,7 +124,7 @@ class QuizResultsPage extends ConsumerWidget {
 
                                         /// The title of the build.
                                         Text(
-                                          build.title,
+                                          build.name,
                                           style: theme.textTheme.titleLarge
                                               ?.copyWith(
                                                 fontWeight: FontWeight.bold,
@@ -157,7 +137,7 @@ class QuizResultsPage extends ConsumerWidget {
 
                                         /// A short description of the build.
                                         Text(
-                                          build.description,
+                                          build.description ?? '',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                                 color: theme
@@ -171,7 +151,7 @@ class QuizResultsPage extends ConsumerWidget {
 
                                         /// The total price of the build.
                                         Text(
-                                          '\$${build.totalPrice.toStringAsFixed(2)}',
+                                          'Price not available', // TODO: Add price when available
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
                                                 color:
@@ -184,16 +164,10 @@ class QuizResultsPage extends ConsumerWidget {
                                           /// A summary of the key components.
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '• CPU: ${cpu?.name ?? 'N/A'}',
-                                            ),
-                                            Text(
-                                              '• GPU: ${gpu?.name ?? 'N/A'}',
-                                            ),
-                                            Text(
-                                              '• RAM: ${ram?.name ?? 'N/A'}',
-                                            ),
+                                          children: const [
+                                            Text('• CPU: N/A'),
+                                            Text('• GPU: N/A'),
+                                            Text('• RAM: N/A'),
                                           ],
                                         ),
                                         const SizedBox(height: 16),
