@@ -67,7 +67,7 @@ namespace KAZABUILD.Domain.Entities.Users
         [Required]
         [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
         [Url(ErrorMessage = "Invalid redirect URL!")]
-        public string? RedirectUrl { get; set; } = default!;
+        public string RedirectUrl { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
