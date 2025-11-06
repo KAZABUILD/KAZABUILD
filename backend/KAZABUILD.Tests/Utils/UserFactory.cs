@@ -38,7 +38,7 @@ namespace KAZABUILD.Tests.Utils
                 Description = "This is a test user description.",
                 Gender = gender ?? "Unknown",
                 UserRole = role ?? UserRole.GUEST,
-                ImageUrl = imageUrl ?? DbTestUtils.RandomUrl(),
+                ImageId = Guid.NewGuid(),
                 Birth = birth ?? DateTime.UtcNow.AddYears(-_random.Next(18, 50)),
                 RegisteredAt = DateTime.UtcNow,
                 Address = address,

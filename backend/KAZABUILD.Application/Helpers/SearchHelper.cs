@@ -7,6 +7,9 @@ namespace KAZABUILD.Application.Helpers
     //Handles Search functionality in controllers
     public static partial class SearchHelper
     {
+        // Configuration flag - set this in your test factory
+        public static bool UseInMemorySearch { get; set; } = false;
+
         //Helper for searching in queries, takes in the search string and all the fields used for search;
         //Split search string into tokens and apply them one by one.
         //Tokens with ":" are treated as field-specific (field:value),
@@ -134,14 +137,21 @@ namespace KAZABUILD.Application.Helpers
             if (body.Type != typeof(string))
                 return null!;
 
-            //Call the contains function imported from SQL
-            var method = typeof(FullTextDbFunction).GetMethod(nameof(FullTextDbFunction.Contains))!;
+            Expression containsCall;
 
-            //Build the contains expression
-            var containsCall = Expression.Call(method, body, Expression.Constant(value));
-
-            //Build the expression into a lambda to test the amount of results
-            var containsLambda = Expression.Lambda<Func<T, bool>>(containsCall, field.Parameters);
+            //Use different search methods based on environment
+            if (UseInMemorySearch)
+            {
+                //For InMemory database: use simple string.Contains
+                var containsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) })!;
+                containsCall = Expression.Call(body, containsMethod, Expression.Constant(value));
+            }
+            else
+            {
+                //For production SQL: use full-text search
+                var method = typeof(FullTextDbFunction).GetMethod(nameof(FullTextDbFunction.Contains))!;
+                containsCall = Expression.Call(method, body, Expression.Constant(value));
+            }
 
             //Wrap the expression into a lambda and return it
             return Expression.Lambda<Func<T, bool>>(containsCall, param);

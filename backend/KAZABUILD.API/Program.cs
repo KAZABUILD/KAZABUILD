@@ -238,7 +238,11 @@ namespace KAZABUILD.API
 
                 //Close the app upon a button press
                 Console.WriteLine("Press any button to close...");
-                Console.ReadKey();
+                if (!app.Environment.IsEnvironment("Testing"))
+                {
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadKey();
+                }
                 return;
             }
             catch (Exception ex)

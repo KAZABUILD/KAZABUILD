@@ -49,7 +49,7 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// Date when the token was used.
-        /// Nullable at first so that this value can be used to determine whether the token was used or not. 
+        /// Nullable at first so that this value can be used to determine whether the token was used or not.
         /// </summary>
         [DataType(DataType.DateTime)]
         public DateTime? UsedAt { get; set; }
