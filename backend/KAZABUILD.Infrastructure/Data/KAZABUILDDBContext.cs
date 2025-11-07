@@ -24,6 +24,8 @@ namespace KAZABUILD.Infrastructure.Data
         //User related tables
         public DbSet<User> Users { get; set; } = default!;
         public DbSet<UserPreference> UserPreferences { get; set; } = default!;
+        public DbSet<UserPreferenceAnswer> UserPreferenceAnswers { get; set; } = default!;
+        public DbSet<UserAnswer> UserAnswers { get; set; } = default!;
         public DbSet<UserFollow> UserFollows { get; set; } = default!;
         public DbSet<UserToken> UserTokens { get; set; } = default!;
         public DbSet<UserComment> UserComments { get; set; } = default!;
