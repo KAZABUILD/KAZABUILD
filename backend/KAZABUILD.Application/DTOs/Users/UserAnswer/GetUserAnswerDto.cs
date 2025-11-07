@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Users.UserPreference
+namespace KAZABUILD.Application.DTOs.Users.UserAnswer
 {
-    public class GetUserPreferenceDto
+    public class GetUserAnswerDto
     {
         //Filter By fields
         public List<Guid>? UserId { get; set; }
+
+        public List<Guid>? UserPreferenceAnswerId { get; set; }
 
         //Paging related fields
         /// <summary>
