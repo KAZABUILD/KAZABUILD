@@ -28,9 +28,6 @@ namespace KAZABUILD.Application.DTOs.Image
 
         /// <summary>
         /// Which page should be gotten if paging enabled.
-
-        /// <summary>
-        /// Which page should be gotten if paging enabled.
         /// </summary>
         public int? Page { get; set; }
 

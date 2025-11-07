@@ -156,11 +156,36 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== USER PREFERENCE ======================================//
 
-            //Register relationship with user
+            //Register relationship with the optional preference answer
             modelBuilder.Entity<UserPreference>()
-                .HasOne(p => p.User)
-                .WithMany(u => u.UserPreferences)
-                .HasForeignKey(p => p.UserId)
+                .HasOne(p => p.UserPreferenceAnswer)
+                .WithOne(a => a.SubUserPreference)
+                .HasForeignKey<UserPreference>(p => p.UserPreferenceAnswerId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER PREFERENCE ANSWER ======================================//
+
+            //Register relationship with user preference
+            modelBuilder.Entity<UserPreferenceAnswer>()
+                .HasOne(t => t.UserPreference)
+                .WithMany(p => p.UserPreferenceAnswers)
+                .HasForeignKey(t => t.UserPreferenceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER ANSWER ======================================//
+
+            //Register relationships, restrict cascade delete as the answers should only get deleted when the user is 
+            modelBuilder.Entity<UserAnswer>()
+                .HasOne(t => t.UserPreferenceAnswer)
+                .WithMany(p => p.UserAnswers)
+                .HasForeignKey(t => t.UserPreferenceAnswerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserAnswer>()
+                .HasOne(t => t.User)
+                .WithMany(p => p.UserAnswers)
+                .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== USER COMMENT ======================================//

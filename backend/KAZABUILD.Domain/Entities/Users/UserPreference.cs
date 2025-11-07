@@ -11,7 +11,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Id of the answer the question relates to.
+        /// Id of the answer the question is subject to.
         /// Nullable if it's one of the main questions.
         /// </summary>
         public Guid? UserPreferenceAnswerId { get; set; }
