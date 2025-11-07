@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/comments_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
@@ -85,6 +86,18 @@ class BuildDetailPage extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(height: 32),
+              // Components section
+              if (build.components.isNotEmpty) ...[
+                Text(
+                  'Components',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _ComponentsSection(components: build.components),
+                const SizedBox(height: 32),
+              ],
               Text(
                 'Comments:',
                 style: theme.textTheme.headlineSmall,
@@ -145,6 +158,194 @@ class BuildDetailPage extends ConsumerWidget {
         const SizedBox(width: 12),
         _RatingBar(build: build),
       ],
+    );
+  }
+}
+
+/// Widget that displays the list of components in a build
+class _ComponentsSection extends StatelessWidget {
+  final List<BaseComponent> components;
+  
+  const _ComponentsSection({required this.components});
+
+  String _getComponentTypeName(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return 'CPU';
+      case ComponentType.gpu:
+        return 'GPU';
+      case ComponentType.motherboard:
+        return 'Motherboard';
+      case ComponentType.ram:
+        return 'RAM';
+      case ComponentType.storage:
+        return 'Storage';
+      case ComponentType.psu:
+        return 'Power Supply';
+      case ComponentType.cooler:
+        return 'Cooler';
+      case ComponentType.caseFan:
+        return 'Case Fan';
+      case ComponentType.pcCase:
+        return 'PC Case';
+      case ComponentType.monitor:
+        return 'Monitor';
+    }
+  }
+
+  IconData _getComponentTypeIcon(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return Icons.memory;
+      case ComponentType.gpu:
+        return Icons.videocam;
+      case ComponentType.motherboard:
+        return Icons.dashboard;
+      case ComponentType.ram:
+        return Icons.view_module;
+      case ComponentType.storage:
+        return Icons.storage;
+      case ComponentType.psu:
+        return Icons.power;
+      case ComponentType.cooler:
+        return Icons.ac_unit;
+      case ComponentType.caseFan:
+        return Icons.toys;
+      case ComponentType.pcCase:
+        return Icons.computer;
+      case ComponentType.monitor:
+        return Icons.monitor;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (components.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: Text(
+                  'No components listed',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...components.whereType<BaseComponent>().map((component) {
+              final lowestPrice = component.prices.isNotEmpty
+                  ? component.prices
+                      .map((p) => p.price)
+                      .reduce((a, b) => a < b ? a : b)
+                  : null;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _getComponentTypeIcon(component.type),
+                        size: 24,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _getComponentTypeName(component.type),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            component.name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            component.manufacturer,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (lowestPrice != null && component.prices.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '\$${lowestPrice.toStringAsFixed(2)}',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            Text(
+                              'from ${component.prices.length} vendor${component.prices.length != 1 ? 's' : ''}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 10,
+                                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+        ],
+      ),
     );
   }
 }

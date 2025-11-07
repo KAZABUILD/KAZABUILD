@@ -45,14 +45,48 @@ class GuideDetailPage extends StatelessWidget {
                 /// The tag must match the tag on the source page (`_GuideCard`)
                 /// to enable the hero (shared element) transition animation.
                 tag: 'guide_image_${guide.id}',
-                child: Image.network(
-                  guide.imageUrl,
-                  fit: BoxFit.cover,
-
-                  /// Apply a dark overlay to the image to make the title text more readable
-                  /// when the app bar is expanded.
-                  color: Colors.black.withOpacity(0.4),
-                  colorBlendMode: BlendMode.darken,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      guide.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                theme.colorScheme.primary.withOpacity(0.3),
+                                theme.colorScheme.secondary.withOpacity(0.2),
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.article_outlined,
+                              size: 64,
+                              color: theme.colorScheme.onSurface.withOpacity(0.3),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    /// Apply a dark overlay to the image to make the title text more readable
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.6),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -69,17 +103,60 @@ class GuideDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// Metadata row for author and publication date.
+                    /// Category badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        guide.category,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    /// Metadata row for author, read time, and publication date.
                     Row(
                       children: [
-                        Text(
-                          'By ${guide.author}',
-                          style: theme.textTheme.titleMedium,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'By ${guide.author}',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    guide.readTime,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        const Spacer(),
                         Text(
                           DateFormat.yMMMMd().format(guide.publishedDate),
-                          style: theme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
                       ],
                     ),

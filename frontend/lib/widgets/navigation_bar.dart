@@ -630,7 +630,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextButton(
-            onPressed: () => context.go('/parts/cpu'),
+            onPressed: () => context.go('/parts'),
             style: TextButton.styleFrom(
               foregroundColor: _isHoveringButton ? Theme.of(context).colorScheme.secondary : null,
               textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),

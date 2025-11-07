@@ -5,10 +5,8 @@
 /// server-side filtering and pagination through the `ComponentFilter` class.
 library;
 
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -24,89 +22,166 @@ class ComponentService {
   Future<List<BaseComponent>> getComponents(ComponentType componentType) async {
     final url = '$apiBaseUrl/Components/get';
 
-    // Helper to map the frontend enum to backend DTO type name.
-    String _mapTypeToBackendDtoName(ComponentType type) {
-      const baseNs = 'KAZABUILD.Application.DTOs.Components.Components';
-      const asm = 'KAZABUILD.Application';
+    // Helper to map the frontend enum to backend DTO discriminator value.
+    // The discriminator values match the JsonDerivedType attributes in GetBaseComponentDto.
+    // System.Text.Json uses these simple string values for polymorphic deserialization.
+    String _mapTypeToDiscriminator(ComponentType type) {
       switch (type) {
         case ComponentType.cpu:
-          return '$baseNs.CPUComponent.GetCPUComponentDto, $asm';
+          return 'CPU';
         case ComponentType.gpu:
-          return '$baseNs.GPUComponent.GetGPUComponentDto, $asm';
+          return 'GPU';
         case ComponentType.motherboard:
-          return '$baseNs.MotherboardComponent.GetMotherboardComponentDto, $asm';
+          return 'Motherboard';
         case ComponentType.ram:
-          return '$baseNs.MemoryComponent.GetMemoryComponentDto, $asm';
+          return 'Memory';
         case ComponentType.storage:
-          return '$baseNs.StorageComponent.GetStorageComponentDto, $asm';
+          return 'Storage';
         case ComponentType.psu:
-          return '$baseNs.PowerSupplyComponent.GetPowerSupplyComponentDto, $asm';
+          return 'PowerSupply';
         case ComponentType.cooler:
-          return '$baseNs.CoolerComponent.GetCoolerComponentDto, $asm';
+          return 'Cooler';
         case ComponentType.pcCase:
-          return '$baseNs.CaseComponent.GetCaseComponentDto, $asm';
+          return 'Case';
         case ComponentType.caseFan:
-          return '$baseNs.CaseFanComponent.GetCaseFanComponentDto, $asm';
+          return 'CaseFan';
         case ComponentType.monitor:
-          return '$baseNs.MonitorComponent.GetMonitorComponentDto, $asm';
-        default:
-          throw Exception('Unsupported component type: $type');
+          return 'Monitor';
       }
     }
 
     // Prepare the request body for backend polymorphic deserializer.
+    // Property names must be PascalCase to match .NET's default JSON naming policy.
+    // We enable pagination with a very large pageLength to ensure we get all results.
+    // This is safer than relying on the Paging field default value.
     final body = {
-      r'$type': _mapTypeToBackendDtoName(componentType),
-      'paging': true,
-      'page': 1,
-      'pageLength': 50,
+      r'$type': _mapTypeToDiscriminator(componentType),
+      'Paging': true,
+      'Page': 1,
+      'PageLength': 10000,  // Large number to get all results
     };
+
+    if (kDebugMode) {
+      print('Sending request to $url');
+      print('Request body: $body');
+    }
 
     try {
       final response = await _dio.post(url, data: body);
 
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> data = response.data;
+        
+        if (kDebugMode) {
+          print('Received ${data.length} components for type: $componentType');
+        }
 
-        return data.map((json) {
-          final typeString = (json['type'] as String?)?.toUpperCase();
-          switch (typeString) {
-            case 'CPU':
-              return CPUComponent.fromJson(json);
-            case 'GPU':
-              return GPUComponent.fromJson(json);
-            case 'MOTHERBOARD':
-              return MotherboardComponent.fromJson(json);
-            case 'MEMORY':
-            case 'RAM':
-              return MemoryComponent.fromJson(json);
-            case 'STORAGE':
-              return StorageComponent.fromJson(json);
-            case 'POWERSUPPLY':
-            case 'PSU':
-              return PowerSupplyComponent.fromJson(json);
-            case 'CASE':
-            case 'PCCASE':
-              return CaseComponent.fromJson(json);
-            case 'COOLER':
-              return CoolerComponent.fromJson(json);
-            case 'CASEFAN':
-              return CaseFanComponent.fromJson(json);
-            case 'MONITOR':
-              return MonitorComponent.fromJson(json);
-            default:
-              if (kDebugMode) {
-                print('Unsupported component type received: $typeString');
-              }
-              return null;
+        final parsedComponents = data.map((json) {
+          try {
+            final typeString = (json['type'] ?? json['Type'])?.toString().toUpperCase();
+            if (kDebugMode && typeString == null) {
+              print('Warning: Component missing type field: ${json.keys}');
+            }
+            switch (typeString) {
+              case 'CPU':
+                return CPUComponent.fromJson(json);
+              case 'GPU':
+                return GPUComponent.fromJson(json);
+              case 'MOTHERBOARD':
+                return MotherboardComponent.fromJson(json);
+              case 'MEMORY':
+              case 'RAM':
+                return MemoryComponent.fromJson(json);
+              case 'STORAGE':
+                return StorageComponent.fromJson(json);
+              case 'POWERSUPPLY':
+              case 'PSU':
+              case 'POWER_SUPPLY':  // Backend enum format
+                return PowerSupplyComponent.fromJson(json);
+              case 'CASE':
+              case 'PCCASE':
+                return CaseComponent.fromJson(json);
+              case 'COOLER':
+                return CoolerComponent.fromJson(json);
+              case 'CASEFAN':
+              case 'CASE_FAN':  // Backend enum format
+                return CaseFanComponent.fromJson(json);
+              case 'MONITOR':
+                return MonitorComponent.fromJson(json);
+              default:
+                if (kDebugMode) {
+                  print('Unsupported component type received: $typeString');
+                  print('Component data: ${json['name'] ?? json['Name']}');
+                }
+                return null;
+            }
+          } catch (e, stackTrace) {
+            if (kDebugMode) {
+              print('Error parsing component: $e');
+              print('Component JSON: $json');
+              print('Stack trace: $stackTrace');
+            }
+            return null;
           }
         }).whereType<BaseComponent>().toList();
+        
+        if (kDebugMode) {
+          print('Successfully parsed ${parsedComponents.length} out of ${data.length} components for type: $componentType');
+        }
+        
+        return parsedComponents;
       } else {
+        if (kDebugMode) {
+          print('Failed to load components: Status code ${response.statusCode}');
+          print('Response data: ${response.data}');
+        }
         throw Exception('Failed to load components: Status code ${response.statusCode}');
       }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException when fetching components: ${e.message}');
+        if (e.response != null) {
+          print('Response status: ${e.response?.statusCode}');
+          print('Response data: ${e.response?.data}');
+          // Try to extract validation errors
+          try {
+            final responseData = e.response?.data;
+            if (responseData is Map<String, dynamic>) {
+              print('Validation errors:');
+              responseData.forEach((key, value) {
+                print('  $key: $value');
+              });
+            }
+          } catch (_) {}
+        }
+      }
+      rethrow;
     } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching components: $e');
+      }
       rethrow;
     }
+  }
+
+  /// Fetches all components of all types from the backend.
+  Future<List<BaseComponent>> getAllComponents() async {
+    // Fetch all component types in parallel
+    final results = await Future.wait([
+      getComponents(ComponentType.cpu),
+      getComponents(ComponentType.gpu),
+      getComponents(ComponentType.motherboard),
+      getComponents(ComponentType.ram),
+      getComponents(ComponentType.storage),
+      getComponents(ComponentType.psu),
+      getComponents(ComponentType.cooler),
+      getComponents(ComponentType.caseFan),
+      getComponents(ComponentType.pcCase),
+      getComponents(ComponentType.monitor),
+    ]);
+    
+    // Flatten the list of lists into a single list
+    return results.expand((list) => list).toList();
   }
 }
 
@@ -120,4 +195,214 @@ final componentServiceProvider = Provider<ComponentService>((ref) {
 final componentsProvider = FutureProvider.family<List<BaseComponent>, ComponentType>((ref, type) {
   final componentService = ref.watch(componentServiceProvider);
   return componentService.getComponents(type);
+});
+
+/// Provider that fetches all components (all types combined).
+final allComponentsProvider = FutureProvider<List<BaseComponent>>((ref) {
+  final componentService = ref.watch(componentServiceProvider);
+  return componentService.getAllComponents();
+});
+
+/// Service for fetching component compatibility information.
+class ComponentCompatibilityService {
+  final Dio _dio;
+
+  ComponentCompatibilityService(this._dio);
+
+  /// Fetches compatible component IDs for a given component ID.
+  /// Returns a set of component IDs that are compatible with the given component.
+  Future<Set<String>> getCompatibleComponentIds(String componentId) async {
+    try {
+      // Validate GUID format before making request
+      if (componentId.isEmpty || componentId.trim().isEmpty) {
+        if (kDebugMode) {
+          print('Empty componentId provided');
+        }
+        return {};
+      }
+
+      // Validate GUID format
+      final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      );
+      if (!guidPattern.hasMatch(componentId)) {
+        if (kDebugMode) {
+          print('Invalid GUID format for componentId: $componentId');
+        }
+        return {};
+      }
+
+      final url = '$apiBaseUrl/ComponentCompatibilities/get';
+      // Backend expects List<Guid>?, so we send the GUID as a string in an array
+      // JSON serialization will handle the conversion
+      final body = {
+        'ComponentId': [componentId], // Backend will parse this as List<Guid>
+        'Paging': false,
+      };
+
+      if (kDebugMode) {
+        print('Fetching compatible components for: $componentId');
+      }
+
+      final response = await _dio.post(url, data: body);
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> compatibilities = response.data;
+        final compatibleIds = compatibilities
+            .map((c) => (c['compatibleComponentId'] ?? c['CompatibleComponentId'])?.toString())
+            .whereType<String>()
+            .toSet();
+
+        if (kDebugMode) {
+          print('Found ${compatibleIds.length} compatible components for $componentId');
+        }
+
+        return compatibleIds;
+      }
+
+      if (kDebugMode) {
+        print('Unexpected response status or format: ${response.statusCode}, data type: ${response.data.runtimeType}');
+      }
+
+      return {};
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching compatible components for $componentId: $e');
+        if (e is DioException) {
+          print('Status code: ${e.response?.statusCode}');
+          print('Response data: ${e.response?.data}');
+        }
+      }
+      return {};
+    }
+  }
+
+  /// Fetches compatible component IDs for multiple components.
+  /// Returns a map of componentId -> Set of compatible component IDs.
+  Future<Map<String, Set<String>>> getCompatibleComponentIdsBatch(List<String> componentIds) async {
+    if (componentIds.isEmpty) return {};
+
+    final Map<String, Set<String>> result = {};
+
+    // Fetch compatibilities for each component
+    for (final componentId in componentIds) {
+      try {
+        final compatibleIds = await getCompatibleComponentIds(componentId);
+        result[componentId] = compatibleIds;
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error fetching compatibilities for $componentId: $e');
+        }
+        result[componentId] = {};
+      }
+    }
+
+    return result;
+  }
+
+  /// Checks if a component is compatible with any of the selected components in the build.
+  /// Returns true if the component is compatible with at least one selected component.
+  Future<bool> isCompatibleWithBuild(String componentId, List<String> selectedComponentIds) async {
+    if (selectedComponentIds.isEmpty) return true; // No selection means all are compatible
+
+    // Get all compatible IDs for this component
+    final compatibleIds = await getCompatibleComponentIds(componentId);
+
+    // Check if any selected component is in the compatible list
+    return selectedComponentIds.any((selectedId) => compatibleIds.contains(selectedId));
+  }
+
+  /// Batch checks compatibility for multiple components with selected components.
+  /// Returns a map of componentId -> isCompatible.
+  /// This is more efficient than checking each component individually.
+  Future<Map<String, bool>> batchCheckCompatibilityWithBuild(
+    List<String> componentIds,
+    List<String> selectedComponentIds,
+  ) async {
+    if (selectedComponentIds.isEmpty) {
+      // If no selection, all components are compatible
+      return {for (var id in componentIds) id: true};
+    }
+
+    if (componentIds.isEmpty) return {};
+
+    // Filter out invalid/empty component IDs
+    final validComponentIds = componentIds
+        .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
+        .toList();
+
+    if (validComponentIds.isEmpty) return {};
+
+    final Map<String, bool> result = {};
+    
+    // Fetch compatibilities sequentially to avoid rate limiting
+    // Process one at a time with delays to be respectful to the server
+    for (final componentId in validComponentIds) {
+      try {
+        // Validate GUID format before making request
+        if (!_isValidGuid(componentId)) {
+          if (kDebugMode) {
+            print('Invalid GUID format for componentId: $componentId');
+          }
+          result[componentId] = false;
+          continue;
+        }
+
+        final compatibleIds = await getCompatibleComponentIds(componentId);
+        final isCompatible = selectedComponentIds.any((selectedId) => compatibleIds.contains(selectedId));
+        result[componentId] = isCompatible;
+        
+        // Add delay between requests to avoid rate limiting
+        await Future.delayed(const Duration(milliseconds: 100));
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error checking compatibility for $componentId: $e');
+        }
+        result[componentId] = false;
+        // Continue with next component even if one fails
+      }
+    }
+
+    return result;
+  }
+
+  /// Validates if a string is a valid GUID format
+  bool _isValidGuid(String guid) {
+    final guidPattern = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return guidPattern.hasMatch(guid);
+  }
+}
+
+/// Provider for ComponentCompatibilityService using authenticated Dio.
+final componentCompatibilityServiceProvider = Provider<ComponentCompatibilityService>((ref) {
+  final dio = ref.watch(authProvider.notifier).getDioInstance();
+  return ComponentCompatibilityService(dio);
+});
+
+/// Provider that gets compatible component IDs for a single component.
+final compatibleComponentIdsProvider = FutureProvider.family<Set<String>, String>((ref, componentId) async {
+  final service = ref.watch(componentCompatibilityServiceProvider);
+  return await service.getCompatibleComponentIds(componentId);
+});
+
+
+/// Provider that checks if a component is compatible with selected components.
+/// Takes componentId and selectedComponentIds, returns true if compatible.
+final componentCompatibilityCheckProvider = FutureProvider.family<bool, ({String componentId, List<String> selectedIds})>((ref, params) async {
+  final service = ref.watch(componentCompatibilityServiceProvider);
+  
+  if (params.selectedIds.isEmpty) return true; // No selection means compatible
+
+  return await service.isCompatibleWithBuild(params.componentId, params.selectedIds);
+});
+
+/// Provider that batch checks compatibility for multiple components.
+/// Takes list of componentIds and selectedComponentIds, returns map of componentId -> isCompatible.
+/// This is more efficient than checking each component individually.
+final batchCompatibilityCheckProvider = FutureProvider.family<Map<String, bool>, ({List<String> componentIds, List<String> selectedIds})>((ref, params) async {
+  final service = ref.watch(componentCompatibilityServiceProvider);
+  
+  return await service.batchCheckCompatibilityWithBuild(params.componentIds, params.selectedIds);
 });

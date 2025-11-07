@@ -25,6 +25,7 @@ import 'package:frontend/screens/guides/guides_page.dart';
 import 'package:frontend/screens/forum/forums_page.dart';
 import 'package:frontend/screens/forum/post_detail_page.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
+import 'package:frontend/screens/parts/all_parts_page.dart';
 import 'package:frontend/screens/quiz/quiz_page.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/models/component_models.dart';
@@ -176,6 +177,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return PostDetailPage(postId: postId);
         },
+      ),
+      GoRoute(
+        path: '/parts',
+        name: 'all-parts',
+        builder: (context, state) => const AllPartsPage(),
       ),
       GoRoute(
         path: '/parts/:type',

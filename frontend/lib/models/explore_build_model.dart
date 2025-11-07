@@ -7,6 +7,7 @@
 library;
 
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/component_models.dart';
 
 /// Represents a PC build created by a user, mirroring the backend's Build entity.
 class Build {
@@ -47,6 +48,12 @@ class Build {
   /// The current logged-in user's rating for this build, if any
   final double? userRating;
 
+  /// List of components used in this build
+  final List<BaseComponent> components;
+
+  /// List of tags associated with this build
+  final List<String> tags;
+
   Build({
     required this.id,
     required this.userId,
@@ -60,6 +67,8 @@ class Build {
     this.averageRating = 0.0,
     this.ratingsCount = 0,
     this.userRating,
+    this.components = const [],
+    this.tags = const [],
   });
 
   /// Creates a `Build` instance from a JSON map.
@@ -83,6 +92,78 @@ class Build {
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value) ?? 0;
       return 0;
+    }
+
+    // Parse components if available
+    List<BaseComponent> parseComponents(dynamic componentsJson) {
+      if (componentsJson == null) return [];
+      if (componentsJson is! List) return [];
+      
+      return componentsJson.map((componentJson) {
+        try {
+          // Try to parse from nested structure first
+          Map<String, dynamic>? componentData;
+          if (componentJson is Map<String, dynamic>) {
+            componentData = componentJson['component'] ?? componentJson['Component'] ?? componentJson;
+          } else {
+            return null;
+          }
+          
+          if (componentData == null) return null;
+          
+          // Parse component type
+          final typeString = (componentData['type'] ?? componentData['Type'])?.toString().toUpperCase();
+          if (typeString == null) return null;
+          
+          // Parse based on component type
+          switch (typeString) {
+            case 'CPU':
+              return CPUComponent.fromJson(componentData);
+            case 'GPU':
+              return GPUComponent.fromJson(componentData);
+            case 'MOTHERBOARD':
+              return MotherboardComponent.fromJson(componentData);
+            case 'MEMORY':
+            case 'RAM':
+              return MemoryComponent.fromJson(componentData);
+            case 'STORAGE':
+              return StorageComponent.fromJson(componentData);
+            case 'POWERSUPPLY':
+            case 'PSU':
+            case 'POWER_SUPPLY':
+              return PowerSupplyComponent.fromJson(componentData);
+            case 'CASE':
+            case 'PCCASE':
+              return CaseComponent.fromJson(componentData);
+            case 'COOLER':
+              return CoolerComponent.fromJson(componentData);
+            case 'CASEFAN':
+            case 'CASE_FAN':
+              return CaseFanComponent.fromJson(componentData);
+            case 'MONITOR':
+              return MonitorComponent.fromJson(componentData);
+            default:
+              return null;
+          }
+        } catch (e) {
+          return null;
+        }
+      }).whereType<BaseComponent>().toList();
+    }
+
+    // Parse tags if available
+    List<String> parseTags(dynamic tagsJson) {
+      if (tagsJson == null) return [];
+      if (tagsJson is List) {
+        return tagsJson.map((tag) {
+          if (tag is String) return tag;
+          if (tag is Map) {
+            return (tag['name'] ?? tag['Name'] ?? tag['tag'] ?? tag['Tag'] ?? '').toString();
+          }
+          return tag.toString();
+        }).where((tag) => tag.isNotEmpty).toList();
+      }
+      return [];
     }
 
     return Build(
@@ -112,6 +193,8 @@ class Build {
         // Also check the raw value directly to catch edge cases
         return (parsed > 0 && rawValue != 0) ? parsed : null;
       }(),
+      components: parseComponents(json['components'] ?? json['Components'] ?? json['buildComponents'] ?? json['BuildComponents']),
+      tags: parseTags(json['tags'] ?? json['Tags'] ?? json['buildTags'] ?? json['BuildTags']),
     );
   }
 }
