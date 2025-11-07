@@ -20,6 +20,8 @@ namespace KAZABUILD.Domain.Entities.Users
         /// Content of the Answer.
         /// </summary>
         [Required]
+        [StringLength(128, ErrorMessage = "Answer cannot be longer than 50 characters!")]
+        [MinLength(8, ErrorMessage = "Answer must be at least 8 characters long!")]
         public string Answer { get; set; } = default!;
 
         //Additional database information

@@ -163,8 +163,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(p => p.UserPreferenceAnswer)
                 .WithOne(a => a.SubUserPreference)
                 .HasForeignKey<UserPreference>(p => p.UserPreferenceAnswerId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false);
 
             //====================================== USER PREFERENCE ANSWER ======================================//
 

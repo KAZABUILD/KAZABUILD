@@ -14,6 +14,8 @@ namespace KAZABUILD.Application.DTOs.Users.UserPreference
         /// Preference answered by the questionnaire
         /// </summary>
         [Required]
+        [StringLength(128, ErrorMessage = "Question cannot be longer than 50 characters!")]
+        [MinLength(8, ErrorMessage = "Question must be at least 8 characters long!")]
         public string Question { get; set; } = default!;
     }
 }
