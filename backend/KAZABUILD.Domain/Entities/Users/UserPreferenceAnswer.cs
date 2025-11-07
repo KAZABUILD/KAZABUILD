@@ -3,24 +3,24 @@ using System.ComponentModel.DataAnnotations;
 namespace KAZABUILD.Domain.Entities.Users
 {
     /// <summary>
-    /// Model storing a question the user can answer in the questionnaire.
+    /// Model storing an answer the user can select while answering a question in the questionnaire.
     /// </summary>
-    public class UserPreference
+    public class UserPreferenceAnswer
     {
         [Key]
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Id of the answer the question relates to.
-        /// Nullable if it's one of the main questions.
-        /// </summary>
-        public Guid? UserPreferenceAnswerId { get; set; }
-
-        /// <summary>
-        /// Content of the Preference.
+        /// Id of the question this object is an answer to.
         /// </summary>
         [Required]
-        public string Question { get; set; } = default!;
+        public Guid UserPreferenceId { get; set; } = default!;
+
+        /// <summary>
+        /// Content of the Answer.
+        /// </summary>
+        [Required]
+        public string Answer { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
@@ -33,7 +33,8 @@ namespace KAZABUILD.Domain.Entities.Users
         public string? Note { get; set; }
 
         //Database relationships
-        public UserPreferenceAnswer UserPreferenceAnswer { get; set; } = default!;
-        public ICollection<UserPreferenceAnswer> UserPreferenceAnswers { get; set; } = [];
+        public UserPreference? UserPreference { get; set; } = default!;
+        public ICollection<UserAnswer> UserAnswers { get; set; } = [];
+        public UserPreference SubUserPreference { get; set; } = default!;
     }
 }

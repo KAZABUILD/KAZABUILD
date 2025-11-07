@@ -4,6 +4,17 @@ namespace KAZABUILD.Application.DTOs.Users.UserPreference
 {
     public class UpdateUserPreferenceDto
     {
+        /// <summary>
+        /// Id of the answer the question relates to.
+        /// Nullable if it's one of the main questions.
+        /// </summary>
+        public Guid? UserPreferenceAnswerId { get; set; }
+
+        /// <summary>
+        /// Preference answered by the questionnaire
+        /// </summary>
+        public string? Question { get; set; }
+
         [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]
         public string? Note { get; set; }
     }
