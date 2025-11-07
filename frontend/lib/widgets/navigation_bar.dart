@@ -544,14 +544,15 @@ class _PartsDropdownMenu extends StatefulWidget {
   /// A static list of all PC part categories to be displayed in the menu.
   /// This keeps the data self-contained within the widget.
   static final List<PcPart> parts = [
-    PcPart(name: 'CPU', icon: Icons.memory, type: ComponentType.cpu),
-    PcPart(name: 'GPU', icon: Icons.developer_board, type: ComponentType.gpu),
-    PcPart(name: 'Motherboard', icon: Icons.dns, type: ComponentType.motherboard),
-    PcPart(name: 'Case', icon: Icons.desktop_windows_outlined, type: ComponentType.pcCase),
+    PcPart(name: 'CPU', icon: Icons.speed, type: ComponentType.cpu),
+    PcPart(name: 'GPU', icon: Icons.videogame_asset, type: ComponentType.gpu),
+    PcPart(name: 'Motherboard', icon: Icons.developer_board, type: ComponentType.motherboard),
+    PcPart(name: 'Memory (RAM)', icon: Icons.memory, type: ComponentType.ram),
+    PcPart(name: 'Storage', icon: Icons.save, type: ComponentType.storage),
     PcPart(name: 'Power Supply', icon: Icons.power, type: ComponentType.psu),
-    PcPart(name: 'Memory', icon: Icons.sd_storage, type: ComponentType.ram),
-    PcPart(name: 'Cooler', icon: Icons.air, type: ComponentType.cooler),
-    PcPart(name: 'Fan', icon: Icons.wind_power, type: ComponentType.caseFan),
+    PcPart(name: 'Cooler', icon: Icons.ac_unit, type: ComponentType.cooler),
+    PcPart(name: 'Case Fan', icon: Icons.air, type: ComponentType.caseFan),
+    PcPart(name: 'Case', icon: Icons.computer, type: ComponentType.pcCase),
     PcPart(name: 'Monitor', icon: Icons.monitor, type: ComponentType.monitor),
   ];
   @override
@@ -583,7 +584,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 
     _overlayEntry = OverlayEntry(
       builder: (_) => Positioned(
-        left: offset.dx - 150, // Adjust position to align with Parts button
+        left: offset.dx, // Align with the left edge of the Parts button
         top: offset.dy + size.height + 4,
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHoveringDropdown = true),
@@ -640,13 +641,24 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            MouseRegion(
-              onEnter: (_) => setState(() => _isHoveringButton = true),
-              onExit: (_) => setState(() => _isHoveringButton = false),
-              child: TextButton(
+        MouseRegion(
+          onEnter: (_) {
+            setState(() => _isHoveringButton = true);
+            _showDropdown();
+          },
+          onExit: (_) {
+            setState(() => _isHoveringButton = false);
+            // Only hide dropdown if not hovering over dropdown itself
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (!_isHoveringDropdown && !_isHoveringButton) {
+                _hideDropdown();
+              }
+            });
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
                 onPressed: () => context.go('/parts'),
                 style: TextButton.styleFrom(
                   foregroundColor: _isHoveringButton
@@ -657,26 +669,11 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.only(left: 12, right: 0, top: 8, bottom: 8),
                 ),
                 child: const Text('Parts'),
               ),
-            ),
-            MouseRegion(
-              onEnter: (_) {
-                setState(() => _isHoveringButton = true);
-                _showDropdown();
-              },
-              onExit: (_) {
-                setState(() => _isHoveringButton = false);
-                // Only hide dropdown if not hovering over dropdown itself
-                Future.delayed(const Duration(milliseconds: 150), () {
-                  if (!_isHoveringDropdown && !_isHoveringButton) {
-                    _hideDropdown();
-                  }
-                });
-              },
-              child: InkWell(
+              InkWell(
                 onTap: () {
                   if (_isDropdownOpen) {
                     _hideDropdown();
@@ -686,7 +683,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 4.0, right: 8.0, top: 8.0, bottom: 8.0),
+                  padding: const EdgeInsets.only(left: 0, right: 8.0, top: 8.0, bottom: 8.0),
                   child: Icon(
                     _isDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                     size: 20,
@@ -696,8 +693,8 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),

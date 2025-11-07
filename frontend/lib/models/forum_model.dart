@@ -7,6 +7,8 @@
 library;
 import 'package:frontend/models/explore_build_model.dart';
 
+import 'package:frontend/models/auth_provider.dart';
+
 /// Represents a single reply to a [ForumPost].
 class PostReply {
   /// The unique identifier for the reply.
@@ -30,21 +32,13 @@ class PostReply {
   });
 
   /// Creates a `PostReply` instance from a JSON map.
-  /// This is used when parsing replies included with a ForumPost or from UserComments endpoint.
+  /// This is used when parsing replies included with a ForumPost.
   factory PostReply.fromJson(Map<String, dynamic> json) {
-    // Handle both lowercase and capitalized field names (C# backend may return capitalized)
-    final id = json['id'] ?? json['Id'];
-    final userId = json['userId'] ?? json['UserId'];
-    final content = json['content'] ?? json['Content'];
-    final postedAt = json['postedAt'] ?? json['PostedAt'];
-    
     return PostReply(
-      id: id?.toString() ?? '',
-      authorId: userId?.toString() ?? '',
-      content: content ?? '',
-      createdAt: postedAt != null 
-          ? (postedAt is DateTime ? postedAt : DateTime.parse(postedAt.toString()))
-          : DateTime.now(),
+      id: json['id'],
+      authorId: json['userId'], // Backend UserComment model uses 'userId'
+      content: json['content'],
+      createdAt: DateTime.parse(json['postedAt']), // Assuming replies also have 'postedAt'
     );
   }
 }

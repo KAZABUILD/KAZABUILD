@@ -20,13 +20,10 @@ class AllPartsPage extends ConsumerStatefulWidget {
 }
 
 class _AllPartsPageState extends ConsumerState<AllPartsPage> {
-  final _searchController = TextEditingController();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  String _searchQuery = '';
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -62,57 +59,18 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header Section
-                      _HeaderSection(
-                        searchController: _searchController,
-                        searchQuery: _searchQuery,
-                        onSearchChanged: (value) {
-                          setState(() {
-                            _searchQuery = value.toLowerCase();
-                          });
-                        },
-                      ),
+                      const _HeaderSection(),
                       const SizedBox(height: 32),
-                      // Content
+                      // Category Menu
                       asyncComponents.when(
                         data: (components) {
-                          if (kDebugMode) {
-                            print('Total components loaded: ${components.length}');
-                            final countsByType = <ComponentType, int>{};
-                            for (final component in components) {
-                              countsByType[component.type] = (countsByType[component.type] ?? 0) + 1;
-                            }
-                            countsByType.forEach((type, count) {
-                              print('  ${type.name}: $count');
-                            });
+                          // Count components by type for display
+                          final countsByType = <ComponentType, int>{};
+                          for (final component in components) {
+                            countsByType[component.type] = (countsByType[component.type] ?? 0) + 1;
                           }
                           
-                          // Filter by search query
-                          final filteredComponents = _searchQuery.isEmpty
-                              ? components
-                              : components.where((c) =>
-                                  c.name.toLowerCase().contains(_searchQuery) ||
-                                  c.manufacturer.toLowerCase().contains(_searchQuery) ||
-                                  c.type.name.toLowerCase().contains(_searchQuery),
-                                ).toList();
-
-                          // Group components by type
-                          final groupedComponents = <ComponentType, List<BaseComponent>>{};
-                          for (final component in filteredComponents) {
-                            groupedComponents.putIfAbsent(component.type, () => []).add(component);
-                          }
-
-                          if (groupedComponents.isEmpty) {
-                            return _EmptyState(query: _searchQuery);
-                          }
-
-                          return Column(
-                            children: groupedComponents.entries.map((entry) {
-                              return _ComponentTypeSection(
-                                componentType: entry.key,
-                                components: entry.value,
-                              );
-                            }).toList(),
-                          );
+                          return _CategoryMenuGrid(countsByType: countsByType);
                         },
                         loading: () => const Center(
                           child: Padding(
@@ -134,17 +92,9 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
   }
 }
 
-/// Header section with title and search bar
+/// Header section with title
 class _HeaderSection extends StatelessWidget {
-  final TextEditingController searchController;
-  final String searchQuery;
-  final ValueChanged<String> onSearchChanged;
-
-  const _HeaderSection({
-    required this.searchController,
-    required this.searchQuery,
-    required this.onSearchChanged,
-  });
+  const _HeaderSection();
 
   @override
   Widget build(BuildContext context) {
@@ -156,13 +106,13 @@ class _HeaderSection extends StatelessWidget {
         Row(
           children: [
             Icon(
-              Icons.memory,
+              Icons.category,
               size: 40,
               color: theme.colorScheme.primary,
             ),
             const SizedBox(width: 16),
             Text(
-              'All PC Parts',
+              'PC Parts Categories',
               style: theme.textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.5,
@@ -172,98 +122,12 @@ class _HeaderSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Browse and discover all available PC components',
+          'Choose a category to browse available PC components',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
-        const SizedBox(height: 24),
-        // Search bar
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              hintText: 'Search by name, manufacturer, or type...',
-              prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
-              suffixIcon: searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        searchController.clear();
-                        onSearchChanged('');
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
-            ),
-            onChanged: onSearchChanged,
-          ),
-        ),
       ],
-    );
-  }
-}
-
-/// Empty state when no results found
-class _EmptyState extends StatelessWidget {
-  final String query;
-
-  const _EmptyState({required this.query});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(64.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 80,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No parts found',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              query.isEmpty
-                  ? 'Try adjusting your search criteria'
-                  : 'No results for "$query"',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -311,15 +175,11 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-/// A section widget that displays components of a specific type.
-class _ComponentTypeSection extends StatelessWidget {
-  final ComponentType componentType;
-  final List<BaseComponent> components;
+/// A grid widget that displays all component categories as clickable cards.
+class _CategoryMenuGrid extends StatelessWidget {
+  final Map<ComponentType, int> countsByType;
 
-  const _ComponentTypeSection({
-    required this.componentType,
-    required this.components,
-  });
+  const _CategoryMenuGrid({required this.countsByType});
 
   String _getTypeDisplayName(ComponentType type) {
     switch (type) {
@@ -371,7 +231,7 @@ class _ComponentTypeSection extends StatelessWidget {
     }
   }
 
-  Color _getTypeColor(ComponentType type, BuildContext context) {
+  Color _getTypeColor(ComponentType type) {
     switch (type) {
       case ComponentType.cpu:
         return Colors.blue;
@@ -398,145 +258,159 @@ class _ComponentTypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final allTypes = ComponentType.values;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 1200
+            ? 4
+            : constraints.maxWidth > 800
+                ? 3
+                : constraints.maxWidth > 600
+                    ? 2
+                    : 2;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 1.1,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 20,
+          ),
+          itemCount: allTypes.length,
+          itemBuilder: (context, index) {
+            final type = allTypes[index];
+            final count = countsByType[type] ?? 0;
+            final typeColor = _getTypeColor(type);
+            
+            return _CategoryCard(
+              componentType: type,
+              displayName: _getTypeDisplayName(type),
+              icon: _getTypeIcon(type),
+              color: typeColor,
+              itemCount: count,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// A card widget representing a single component category.
+class _CategoryCard extends StatefulWidget {
+  final ComponentType componentType;
+  final String displayName;
+  final IconData icon;
+  final Color color;
+  final int itemCount;
+
+  const _CategoryCard({
+    required this.componentType,
+    required this.displayName,
+    required this.icon,
+    required this.color,
+    required this.itemCount,
+  });
+
+  @override
+  State<_CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<_CategoryCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final typeColor = _getTypeColor(componentType, context);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  typeColor.withOpacity(0.1),
-                  typeColor.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: typeColor.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: typeColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _getTypeIcon(componentType),
-                    color: typeColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _getTypeDisplayName(componentType),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: typeColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${components.length} ${components.length == 1 ? 'item' : 'items'} available',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () {
-                    context.go('/parts/${componentType.name}');
-                  },
-                  icon: const Icon(Icons.arrow_forward, size: 18),
-                  label: const Text('View All'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: typeColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        transform: Matrix4.identity()..scale(_isHovered ? 1.05 : 1.0),
+        child: Card(
+          elevation: _isHovered ? 8 : 2,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: _isHovered
+                  ? widget.color.withOpacity(0.5)
+                  : Colors.transparent,
+              width: 2,
             ),
           ),
-          const SizedBox(height: 20),
-          // Component grid
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 1200
-                  ? 5
-                  : constraints.maxWidth > 900
-                      ? 4
-                      : constraints.maxWidth > 600
-                          ? 3
-                          : 2;
-              
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: components.length > 10 ? 10 : components.length,
-                itemBuilder: (context, index) {
-                  return _ComponentCard(
-                    component: components[index],
-                    typeColor: typeColor,
-                    componentType: componentType,
-                  );
-                },
-              );
+          child: InkWell(
+            onTap: () {
+              context.go('/parts/${widget.componentType.name}');
             },
-          ),
-          // Show more button if there are more than 10 items
-          if (components.length > 10)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Center(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    context.go('/parts/${componentType.name}');
-                  },
-                  icon: const Icon(Icons.arrow_forward),
-                  label: Text('View all ${components.length} ${_getTypeDisplayName(componentType)} parts'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: typeColor,
-                    side: BorderSide(color: typeColor),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    widget.color.withOpacity(0.1),
+                    widget.color.withOpacity(0.05),
+                    theme.colorScheme.surface,
+                  ],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Icon
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: widget.color.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        widget.icon,
+                        size: 48,
+                        color: widget.color,
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 20),
+                    // Category name
+                    Text(
+                      widget.displayName,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: widget.color,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    // Item count
+                    Text(
+                      '${widget.itemCount} ${widget.itemCount == 1 ? 'item' : 'items'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Arrow indicator
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: widget.color.withOpacity(0.7),
+                    ),
+                  ],
                 ),
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
