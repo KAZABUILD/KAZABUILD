@@ -580,10 +580,19 @@ class _TopBar extends StatelessWidget {
                     onPressed: onSave,
                     icon: const Icon(Icons.save_outlined, size: 18),
                     label: const Text('Save Build'),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      backgroundColor: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Estimated wattage: ${estimatedWattage}W'),
+                Text(
+                  'Estimated wattage: ${estimatedWattage}W',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
               ],
             )
           : Row(
@@ -645,11 +654,17 @@ class _TopBar extends StatelessWidget {
                   icon: const Icon(Icons.save_outlined, size: 18),
                   label: const Text('Save Build'),
                   style: ElevatedButton.styleFrom(
-                    // Standard elevated button style
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    backgroundColor: theme.colorScheme.primary,
                   ),
                 ),
                 const Spacer(),
-                Text('Estimated wattage: ${estimatedWattage}W'),
+                Text(
+                  'Estimated wattage: ${estimatedWattage}W',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
               ],
             ),
     );

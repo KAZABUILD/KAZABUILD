@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:frontend/screens/home/faq_section.dart';
 import 'package:frontend/screens/home/featured_builds.dart';
 import 'package:frontend/screens/home/home_body.dart';
@@ -34,6 +35,16 @@ class _HomePageState extends State<HomePage> {
       key: _scaffoldKey,
       // The navigation drawer that slides in from the left on mobile.
       drawer: CustomDrawer(showProfileArea: true),
+      // Temporary floating action button to access admin panel for layout testing
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          context.go('/admin');
+        },
+        icon: const Icon(Icons.admin_panel_settings),
+        label: const Text('Admin Panel'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+      ),
       body: Column(
         children: [
           // The main navigation bar, which is responsive.

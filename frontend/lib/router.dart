@@ -29,6 +29,15 @@ import 'package:frontend/screens/parts/all_parts_page.dart';
 import 'package:frontend/screens/quiz/quiz_page.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/screens/admin/admin_dashboard.dart';
+import 'package:frontend/screens/admin/admin_users_page.dart';
+import 'package:frontend/screens/admin/admin_builds_page.dart';
+import 'package:frontend/screens/admin/admin_forums_page.dart';
+import 'package:frontend/screens/admin/admin_parts_page.dart';
+import 'package:frontend/screens/admin/admin_guides_page.dart';
+import 'package:frontend/screens/admin/admin_analytics_page.dart';
+import 'package:frontend/screens/admin/admin_settings_page.dart';
+import 'package:frontend/screens/admin/admin_base_layout.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -50,7 +59,9 @@ class AuthRouterListener extends ChangeNotifier {
   }
 }
 
-final authRouterListenerProvider = ChangeNotifierProvider<AuthRouterListener>((ref) {
+final authRouterListenerProvider = ChangeNotifierProvider<AuthRouterListener>((
+  ref,
+) {
   final listener = AuthRouterListener();
   // Listen to authProvider changes
   ref.listen(authProvider, (previous, next) {
@@ -68,7 +79,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/', // Set initial location to splash screen
     debugLogDiagnostics: true, // Useful for debugging routing issues.
-
     /// The list of all routes in the application.
     routes: [
       GoRoute(
@@ -80,6 +90,78 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/home',
         name: 'home',
         builder: (context, state) => const HomePage(),
+      ),
+      GoRoute(
+        path: '/admin',
+        name: 'admin-dashboard',
+        builder: (context, state) {
+          // Debug: Ensure this route is being hit
+          debugPrint('Admin Dashboard route hit!');
+          return const AdminDashboard();
+        },
+      ),
+      GoRoute(
+        path: '/admin/users',
+        name: 'admin-users',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/users',
+          pageTitle: 'User Management',
+          child: const AdminUsersPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/builds',
+        name: 'admin-builds',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/builds',
+          pageTitle: 'Build Management',
+          child: const AdminBuildsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/forums',
+        name: 'admin-forums',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/forums',
+          pageTitle: 'Forum Moderation',
+          child: const AdminForumsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/parts',
+        name: 'admin-parts',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/parts',
+          pageTitle: 'Parts Management',
+          child: const AdminPartsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/guides',
+        name: 'admin-guides',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/guides',
+          pageTitle: 'Guides Management',
+          child: const AdminGuidesPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/analytics',
+        name: 'admin-analytics',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/analytics',
+          pageTitle: 'Analytics Dashboard',
+          child: const AdminAnalyticsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/settings',
+        name: 'admin-settings',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/settings',
+          pageTitle: 'Admin Settings',
+          child: const AdminSettingsPage(),
+        ),
       ),
       GoRoute(
         path: '/build/:id',
@@ -192,10 +274,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             (e) => e.name == typeStr,
             orElse: () => ComponentType.cpu,
           );
-          return PartPickerPage(
-            componentType: type,
-            currentBuild: const [],
-          );
+          return PartPickerPage(componentType: type, currentBuild: const []);
         },
       ),
       GoRoute(
@@ -213,15 +292,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (state.matchedLocation == '/') {
         return null;
       }
+
+      final location = state.matchedLocation;
+
+      // Allow admin routes without any authentication checks - just for layout preview
+      if (location.startsWith('/admin')) {
+        debugPrint('Accessing admin route: $location - allowing access');
+        return null; // No redirect, allow access
+      }
+
       final authState = ref.read(authProvider);
       if (authState.isLoading) return null;
-      
+
       final loggedIn = authState.maybeWhen(
         data: (user) => user != null,
         orElse: () => false,
       );
-
-      final location = state.matchedLocation;
 
       // Define protected routes that require a user to be logged in.
       final protectedRoutes = ['/settings', '/profile'];
@@ -232,7 +318,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Define authentication routes that a logged-in user should not access.
-      final authRoutes = ['/login', '/signup', '/forgot-password', '/confirm-reset-password'];
+      final authRoutes = [
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/confirm-reset-password',
+      ];
       if (loggedIn && authRoutes.any((r) => location.startsWith(r))) {
         return '/home';
       }

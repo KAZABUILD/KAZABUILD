@@ -317,6 +317,16 @@ class CustomDrawer extends ConsumerWidget {
             },
           ),
           const Divider(),
+          // Temporary admin panel link for testing layout
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings, color: Colors.orange),
+            title: const Text('Admin Panel (Test)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/admin');
+            },
+          ),
+          const Divider(),
 
           /// An expandable tile for all the individual part categories.
          ExpansionTile(
@@ -552,6 +562,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
   OverlayEntry? _overlayEntry;
   bool _isHoveringDropdown = false;
   bool _isHoveringButton = false;
+  bool _isDropdownOpen = false;
 
   @override
   void dispose() {
@@ -561,20 +572,27 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 
   void _showDropdown() {
     if (_overlayEntry != null) return;
-    final box = context.findRenderObject() as RenderBox;
-    final offset = box.localToGlobal(Offset.zero);
-    final size = box.size;
+    
+    setState(() => _isDropdownOpen = true);
+    
+    final RenderBox? buttonBox = context.findRenderObject() as RenderBox?;
+    if (buttonBox == null) return;
+    
+    final offset = buttonBox.localToGlobal(Offset.zero);
+    final size = buttonBox.size;
 
     _overlayEntry = OverlayEntry(
       builder: (_) => Positioned(
-        left: offset.dx,
-        top: offset.dy + size.height,
+        left: offset.dx - 150, // Adjust position to align with Parts button
+        top: offset.dy + size.height + 4,
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHoveringDropdown = true),
           onExit: (_) {
             setState(() => _isHoveringDropdown = false);
-            Future.delayed(const Duration(milliseconds: 100), () {
-              if (!_isHoveringDropdown) _hideDropdown();
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (!_isHoveringDropdown && !_isHoveringButton) {
+                _hideDropdown();
+              }
             });
           },
           child: Material(
@@ -611,41 +629,83 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
   void _hideDropdown() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+    setState(() => _isDropdownOpen = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHoveringButton = true);
-        _showDropdown();
-      },
-      onExit: (_) {
-        setState(() => _isHoveringButton = false);
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (!_isHoveringDropdown) _hideDropdown();
-        });
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: () => context.go('/parts'),
-            style: TextButton.styleFrom(
-              foregroundColor: _isHoveringButton ? Theme.of(context).colorScheme.secondary : null,
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            MouseRegion(
+              onEnter: (_) => setState(() => _isHoveringButton = true),
+              onExit: (_) => setState(() => _isHoveringButton = false),
+              child: TextButton(
+                onPressed: () => context.go('/parts'),
+                style: TextButton.styleFrom(
+                  foregroundColor: _isHoveringButton
+                      ? colorScheme.secondary
+                      : theme.textTheme.bodyLarge?.color,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: const Text('Parts'),
+              ),
             ),
-            child: const Text('Parts'),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 2,
-            width: _isHoveringButton ? 20 : 0,
-            color: Theme.of(context).colorScheme.secondary,
-          ),
-        ],
-      ),
+            MouseRegion(
+              onEnter: (_) {
+                setState(() => _isHoveringButton = true);
+                _showDropdown();
+              },
+              onExit: (_) {
+                setState(() => _isHoveringButton = false);
+                // Only hide dropdown if not hovering over dropdown itself
+                Future.delayed(const Duration(milliseconds: 150), () {
+                  if (!_isHoveringDropdown && !_isHoveringButton) {
+                    _hideDropdown();
+                  }
+                });
+              },
+              child: InkWell(
+                onTap: () {
+                  if (_isDropdownOpen) {
+                    _hideDropdown();
+                  } else {
+                    _showDropdown();
+                  }
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4.0, right: 8.0, top: 8.0, bottom: 8.0),
+                  child: Icon(
+                    _isDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                    size: 20,
+                    color: _isHoveringButton
+                        ? colorScheme.secondary
+                        : theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 2,
+          width: _isHoveringButton ? 20 : 0,
+          color: colorScheme.secondary,
+        ),
+      ],
     );
   }
 }
