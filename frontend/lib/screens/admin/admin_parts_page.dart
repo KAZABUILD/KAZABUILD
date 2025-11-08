@@ -4,19 +4,28 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_color.dart';
+import '../../models/admin_provider.dart';
 
-class AdminPartsPage extends StatefulWidget {
+class AdminPartsPage extends ConsumerStatefulWidget {
   const AdminPartsPage({super.key});
 
   @override
-  State<AdminPartsPage> createState() => _AdminPartsPageState();
+  ConsumerState<AdminPartsPage> createState() => _AdminPartsPageState();
 }
 
-class _AdminPartsPageState extends State<AdminPartsPage> {
+class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'CPU', 'GPU', 'RAM', 'Motherboard', 'Storage', 'PSU', 'Case'];
+  final List<String> _categories = ['All', 'CPU', 'GPU', 'MEMORY', 'MOTHERBOARD', 'STORAGE', 'POWER_SUPPLY', 'CASE', 'COOLER', 'CASE_FAN', 'MONITOR'];
+  int _currentPage = 1;
+  final int _pageSize = 12;
+  String? _orderBy;
+  String _sortDirection = 'desc';
+  
+  // Cache query params to prevent Map recreation on every build
+  Map<String, dynamic>? _cachedQueryParams;
 
   @override
   void dispose() {
@@ -118,7 +127,12 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (value) => setState(() {}),
+                  onChanged: (value) {
+                    setState(() {
+                      _currentPage = 1;
+                      _cachedQueryParams = null; // Invalidate cache
+                    });
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -141,6 +155,8 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
                   onChanged: (value) {
                     setState(() {
                       _selectedCategory = value!;
+                      _currentPage = 1;
+                      _cachedQueryParams = null; // Invalidate cache
                     });
                   },
                   underline: Container(),
@@ -158,25 +174,60 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
     );
   }
 
+  Map<String, dynamic> _buildQueryParams() {
+    // Don't send pagination params to backend - get all components and paginate on client side
+    final newParams = {
+      'query': _searchController.text.isEmpty ? null : _searchController.text,
+      'componentTypes': _selectedCategory == 'All' 
+          ? null 
+          : [_selectedCategory],
+      'page': null, // Don't paginate on backend
+      'pageLength': null, // Get all components
+      'orderBy': _orderBy ?? 'DatabaseEntryAt',
+      'sortDirection': _sortDirection,
+    };
+    
+    // Check if params actually changed to prevent unnecessary rebuilds
+    if (_cachedQueryParams != null) {
+      bool changed = false;
+      for (var key in newParams.keys) {
+        if (_cachedQueryParams![key] != newParams[key]) {
+          changed = true;
+          break;
+        }
+      }
+      // Compare lists if componentTypes changed
+      if (!changed && newParams['componentTypes'] != null && _cachedQueryParams!['componentTypes'] != null) {
+        final newTypes = newParams['componentTypes'] as List<String>?;
+        final oldTypes = _cachedQueryParams!['componentTypes'] as List<String>?;
+        if (newTypes?.length != oldTypes?.length ||
+            (newTypes != null && oldTypes != null && 
+             !newTypes.every((t) => oldTypes.contains(t)))) {
+          changed = true;
+        }
+      }
+      if (!changed) {
+        return _cachedQueryParams!;
+      }
+    }
+    
+    _cachedQueryParams = newParams;
+    return _cachedQueryParams!;
+  }
+
   Widget _buildContent(bool isDark) {
-    final parts = List.generate(
-      15,
-      (index) => {
-        'id': 'part_${index + 1}',
-        'name': 'Component ${index + 1}',
-        'brand': ['Intel', 'AMD', 'NVIDIA', 'Corsair', 'Samsung'][index % 5],
-        'category': _categories[(index % (_categories.length - 1)) + 1],
-        'price': (index * 50 + 100).toDouble(),
-        'stock': (index * 10) % 100,
-        'rating': (4.0 + (index % 2) * 0.5),
-      },
-    );
+    final queryParams = _buildQueryParams();
+    final componentsAsync = ref.watch(adminComponentsProvider(queryParams));
 
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          _buildStatsRow(isDark),
+          componentsAsync.when(
+            data: (components) => _buildStatsRow(isDark, components),
+            loading: () => _buildStatsRow(isDark, []),
+            error: (error, stack) => _buildStatsRow(isDark, []),
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: Container(
@@ -190,13 +241,89 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
                 children: [
                   _buildTableHeader(isDark),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: parts.length,
-                      itemBuilder: (context, index) {
-                        return _buildPartRow(parts[index], isDark);
+                    child: componentsAsync.when(
+                      data: (allComponents) {
+                        print('AdminPartsPage: Received ${allComponents.length} total components');
+                        
+                        // Client-side pagination
+                        final startIndex = (_currentPage - 1) * _pageSize;
+                        final endIndex = startIndex + _pageSize;
+                        final components = allComponents.length > startIndex
+                            ? allComponents.sublist(
+                                startIndex,
+                                endIndex > allComponents.length ? allComponents.length : endIndex,
+                              )
+                            : <AdminComponent>[];
+                        
+                        print('AdminPartsPage: Showing ${components.length} components (page $_currentPage, ${allComponents.length} total)');
+                        
+                        if (allComponents.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.memory_outlined,
+                                  size: 64,
+                                  color: isDark
+                                      ? AppColorsDark.textWhite.withOpacity(0.5)
+                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No components found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: isDark
+                                        ? AppColorsDark.textWhite
+                                        : AppColorsLight.textBlack,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        print('AdminPartsPage: Rendering ${components.length} components in ListView');
+                        return ListView.separated(
+                          itemCount: components.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 0),
+                          itemBuilder: (context, index) {
+                            final component = components[index];
+                            if (index < 5) {
+                              print('AdminPartsPage: Building row $index for component ${component.name ?? component.id}');
+                            }
+                            return _buildPartRow(component, isDark);
+                          },
+                        );
                       },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: AppColorsDark.error),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading components: ${error.toString()}',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColorsDark.textWhite
+                                    : AppColorsLight.textBlack,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => ref.invalidate(adminComponentsProvider(queryParams)),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
+                  _buildPagination(isDark, componentsAsync),
                 ],
               ),
             ),
@@ -206,12 +333,19 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark) {
+  Widget _buildStatsRow(bool isDark, List<AdminComponent> allComponents) {
+    // Calculate stats from all components (not just current page)
+    final totalComponents = allComponents.length;
+    final uniqueTypes = allComponents.map((c) => c.componentType).toSet().length;
+    final withRelease = allComponents.where((c) => c.release != null).length;
+    final totalPages = (totalComponents / _pageSize).ceil();
+    
+    // Show total stats
     final stats = [
-      {'label': 'Total Parts', 'value': '2,890', 'icon': Icons.memory, 'color': AppColorsDark.buttonBlue},
-      {'label': 'In Stock', 'value': '2,456', 'icon': Icons.inventory, 'color': AppColorsDark.buttonGreen},
-      {'label': 'Out of Stock', 'value': '234', 'icon': Icons.inventory_2, 'color': AppColorsDark.error},
-      {'label': 'Categories', 'value': '8', 'icon': Icons.category, 'color': AppColorsDark.buttonPurple},
+      {'label': 'Total Components', 'value': totalComponents.toString(), 'icon': Icons.memory, 'color': AppColorsDark.buttonBlue},
+      {'label': 'Types', 'value': uniqueTypes.toString(), 'icon': Icons.category, 'color': AppColorsDark.buttonPurple},
+      {'label': 'With Release Date', 'value': withRelease.toString(), 'icon': Icons.calendar_today, 'color': AppColorsDark.buttonGreen},
+      {'label': 'Page $_currentPage / $totalPages', 'value': '', 'icon': Icons.pages, 'color': AppColorsDark.warning},
     ];
 
     return Row(
@@ -295,12 +429,28 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
       child: Row(
         children: [
           Expanded(flex: 3, child: _buildHeaderCell('Part Name', isDark)),
-          Expanded(flex: 2, child: _buildHeaderCell('Brand', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Category', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Price', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Stock', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Rating', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Actions', isDark)),
+          Expanded(flex: 2, child: _buildHeaderCell('Manufacturer', isDark)),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Type', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Release', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Actions', isDark),
+            ),
+          ),
         ],
       ),
     );
@@ -318,12 +468,23 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
     );
   }
 
-  Widget _buildPartRow(Map<String, dynamic> part, bool isDark) {
-    final stockColor = part['stock'] > 10
-        ? AppColorsDark.buttonGreen
-        : part['stock'] > 0
-            ? AppColorsDark.warning
-            : AppColorsDark.error;
+  Widget _buildPartRow(AdminComponent component, bool isDark) {
+    // Map component type to display name
+    String getTypeDisplayName(String type) {
+      final typeMap = {
+        'CASE_FAN': 'Case Fan',
+        'GPU': 'GPU',
+        'CPU': 'CPU',
+        'MEMORY': 'Memory',
+        'MOTHERBOARD': 'Motherboard',
+        'STORAGE': 'Storage',
+        'MONITOR': 'Monitor',
+        'COOLER': 'Cooler',
+        'POWER_SUPPLY': 'PSU',
+        'CASE': 'Case',
+      };
+      return typeMap[type.toUpperCase()] ?? type;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -353,14 +514,31 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    part['name'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? AppColorsDark.textWhite
-                          : AppColorsLight.textBlack,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        component.name ?? 'Unnamed Component',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (component.numberOfParts != null && component.numberOfParts! > 0)
+                        Text(
+                          '${component.numberOfParts} parts',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColorsDark.textWhite.withOpacity(0.6)
+                                : AppColorsLight.textBlack.withOpacity(0.6),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -369,103 +547,251 @@ class _AdminPartsPageState extends State<AdminPartsPage> {
           Expanded(
             flex: 2,
             child: Text(
-              part['brand'],
+              component.manufacturer ?? 'Unknown',
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite
-                    : AppColorsLight.textBlack,
+                    ? AppColorsDark.textWhite.withOpacity(0.7)
+                    : AppColorsLight.textBlack.withOpacity(0.7),
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
             flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColorsDark.buttonBlue.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                part['category'],
-                style: TextStyle(
-                  color: AppColorsDark.buttonBlue,
-                  fontSize: 12,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              '\$${part['price'].toStringAsFixed(2)}',
-              style: TextStyle(
-                color: isDark
-                    ? AppColorsDark.textWhite
-                    : AppColorsLight.textBlack,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: stockColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                part['stock'].toString(),
-                style: TextStyle(
-                  color: stockColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                constraints: const BoxConstraints(
+                  maxWidth: 120,
+                  minWidth: 80,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.star, size: 16, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  part['rating'].toStringAsFixed(1),
+                child: Text(
+                  getTypeDisplayName(component.componentType),
                   style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
+                    color: AppColorsDark.buttonBlue,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                   ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ],
+              ),
             ),
           ),
           Expanded(
             flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () {},
-                  tooltip: 'Edit',
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                component.release != null ? _formatDate(component.release!) : 'N/A',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                  fontSize: 11,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () {},
-                  tooltip: 'Delete',
-                  color: AppColorsDark.error,
-                ),
-              ],
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility, size: 18),
+                    onPressed: () {
+                      // TODO: Navigate to component detail page when available
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Component detail page coming soon'),
+                          backgroundColor: AppColorsDark.buttonBlue,
+                        ),
+                      );
+                    },
+                    tooltip: 'View',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: () {
+                      // TODO: Implement edit component - navigate to edit page or show dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Edit component functionality coming soon'),
+                          backgroundColor: AppColorsDark.buttonBlue,
+                        ),
+                      );
+                    },
+                    tooltip: 'Edit',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 18),
+                    onPressed: () {
+                      _showDeleteConfirmation(context, component, isDark);
+                    },
+                    tooltip: 'Delete',
+                    color: AppColorsDark.error,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildPagination(bool isDark, AsyncValue<List<AdminComponent>> componentsAsync) {
+    return componentsAsync.when(
+      data: (allComponents) {
+        final totalComponents = allComponents.length;
+        final totalPages = totalComponents > 0 ? (totalComponents / _pageSize).ceil() : 1;
+        
+        // Client-side pagination için hesaplama
+        final startIndex = (_currentPage - 1) * _pageSize;
+        final endIndex = startIndex + _pageSize;
+        final currentPageItems = allComponents.length > startIndex
+            ? allComponents.sublist(
+                startIndex,
+                endIndex > allComponents.length ? allComponents.length : endIndex,
+              )
+            : <AdminComponent>[];
+        
+        final start = totalComponents > 0 && currentPageItems.isNotEmpty 
+            ? startIndex + 1 
+            : 0;
+        final end = totalComponents > 0 && currentPageItems.isNotEmpty
+            ? startIndex + currentPageItems.length
+            : 0;
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.1),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                totalComponents > 0
+                    ? 'Showing $start-$end of $totalComponents components (Page $_currentPage / $totalPages)'
+                    : 'No components',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                ),
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 1
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                              _cachedQueryParams = null; // Invalidate cache
+                            });
+                          }
+                        : null,
+                  ),
+                  Text(
+                    'Page $_currentPage / $totalPages',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    // Client-side pagination: currentPage < totalPages kontrolü yeterli
+                    onPressed: _currentPage < totalPages
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                              _cachedQueryParams = null; // Invalidate cache
+                            });
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, AdminComponent component, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Component'),
+        content: Text('Are you sure you want to delete "${component.name ?? "Unnamed Component"}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                final adminService = ref.read(adminServiceProvider);
+                await adminService.deleteComponent(component.id);
+                
+                if (mounted) {
+                  // Invalidate the components provider to refresh the list
+                  ref.invalidate(adminComponentsProvider(_cachedQueryParams ?? {}));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Component deleted successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete component: ${e.toString()}'),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColorsDark.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 

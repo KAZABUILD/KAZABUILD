@@ -4,19 +4,25 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
+import '../../models/admin_provider.dart';
 
-class AdminUsersPage extends StatefulWidget {
+class AdminUsersPage extends ConsumerStatefulWidget {
   const AdminUsersPage({super.key});
 
   @override
-  State<AdminUsersPage> createState() => _AdminUsersPageState();
+  ConsumerState<AdminUsersPage> createState() => _AdminUsersPageState();
 }
 
-class _AdminUsersPageState extends State<AdminUsersPage> {
+class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Active', 'Banned', 'Inactive'];
+  String? _orderBy;
+  String _sortDirection = 'asc';
+  
+  // Cache query params to prevent Map recreation on every build
+  Map<String, dynamic>? _cachedQueryParams;
 
   @override
   void dispose() {
@@ -118,39 +124,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (value) => setState(() {}),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColorsDark.backgroundTertiary
-                      : AppColorsLight.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButton<String>(
-                  value: _selectedFilter,
-                  items: _filters.map((filter) {
-                    return DropdownMenuItem(
-                      value: filter,
-                      child: Text(filter),
-                    );
-                  }).toList(),
                   onChanged: (value) {
                     setState(() {
-                      _selectedFilter = value!;
+                      _cachedQueryParams = null; // Invalidate cache
                     });
                   },
-                  underline: Container(),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
-                  ),
                 ),
               ),
+              // Status filter removed - using backend pagination instead
+              // If status filtering is needed, it should be implemented in backend
             ],
           ),
         ],
@@ -158,26 +140,40 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
+  Map<String, dynamic> _buildQueryParams() {
+    final newParams = {
+      'query': _searchController.text.isEmpty ? null : _searchController.text,
+      'orderBy': _orderBy ?? 'DatabaseEntryAt',
+      'sortDirection': _sortDirection,
+    };
+    
+    // Check if params actually changed to prevent unnecessary rebuilds
+    if (_cachedQueryParams != null) {
+      bool changed = false;
+      for (var key in newParams.keys) {
+        if (_cachedQueryParams![key] != newParams[key]) {
+          changed = true;
+          break;
+        }
+      }
+      if (!changed) {
+        return _cachedQueryParams!;
+      }
+    }
+    
+    _cachedQueryParams = newParams;
+    return _cachedQueryParams!;
+  }
+
   Widget _buildContent(bool isDark) {
-    // Mock data - replace with actual API call
-    final users = List.generate(
-      15,
-      (index) => {
-        'id': 'user_${index + 1}',
-        'name': 'User ${index + 1}',
-        'email': 'user${index + 1}@example.com',
-        'status': ['Active', 'Banned', 'Inactive'][index % 3],
-        'joined': DateTime.now().subtract(Duration(days: index * 10)),
-        'builds': (index * 3) % 15,
-        'posts': (index * 2) % 10,
-      },
-    );
+    final queryParams = _buildQueryParams();
+    final usersAsync = ref.watch(adminUsersProvider(queryParams));
 
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          _buildStatsRow(isDark),
+          _buildStatsRow(isDark, usersAsync),
           const SizedBox(height: 24),
           Expanded(
             child: Container(
@@ -187,19 +183,95 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     : AppColorsLight.backgroundTertiary,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
-                children: [
-                  _buildTableHeader(isDark),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: users.length,
-                      itemBuilder: (context, index) {
-                        return _buildUserRow(users[index], isDark);
-                      },
-                    ),
+              child: usersAsync.when(
+                data: (users) {
+                  print('AdminUsersPage: Received ${users.length} users from backend');
+                  
+                  // Debug: Print all users and their status
+                  for (var user in users) {
+                    print('AdminUsersPage: User ${user.id} - Role: ${user.userRole}, Status: ${user.status}, isBlocked: ${user.isBlocked}, bannedUntil: ${user.bannedUntil}');
+                  }
+                  
+                  // Count statuses
+                  final statusCounts = <String, int>{};
+                  for (var user in users) {
+                    statusCounts[user.status] = (statusCounts[user.status] ?? 0) + 1;
+                  }
+                  print('AdminUsersPage: Status counts: $statusCounts');
+                  
+                  if (users.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 64,
+                            color: isDark
+                                ? AppColorsDark.textWhite.withOpacity(0.5)
+                                : AppColorsLight.textBlack.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No users found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: isDark
+                                  ? AppColorsDark.textWhite
+                                  : AppColorsLight.textBlack,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  print('AdminUsersPage: Rendering ${users.length} users in ListView');
+                  
+                  return Column(
+                    children: [
+                      _buildTableHeader(isDark),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: users.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 0),
+                          itemBuilder: (context, index) {
+                            final user = users[index];
+                            return _buildUserRow(user, isDark);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppColorsDark.error,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading users: ${error.toString()}',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(adminUsersProvider(queryParams)),
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                  _buildPagination(isDark),
-                ],
+                ),
               ),
             ),
           ),
@@ -208,13 +280,43 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark) {
-    final stats = [
-      {'label': 'Total Users', 'value': '1,234', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
-      {'label': 'Active Users', 'value': '1,089', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
-      {'label': 'Banned Users', 'value': '23', 'icon': Icons.block, 'color': AppColorsDark.error},
-      {'label': 'New This Month', 'value': '156', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
-    ];
+  Widget _buildStatsRow(bool isDark, AsyncValue<List<AdminUser>> usersAsync) {
+    return usersAsync.when(
+      data: (users) {
+        final totalUsers = users.length;
+        final activeUsers = users.where((u) => u.status == 'Active').length;
+        final bannedUsers = users.where((u) => u.status == 'Banned').length;
+        final now = DateTime.now();
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final newThisMonth = users.where((u) => 
+          u.registeredAt != null && u.registeredAt!.isAfter(startOfMonth)
+        ).length;
+
+        final stats = [
+          {'label': 'Total Users', 'value': totalUsers.toString(), 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
+          {'label': 'Active Users', 'value': activeUsers.toString(), 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
+          {'label': 'Banned Users', 'value': bannedUsers.toString(), 'icon': Icons.block, 'color': AppColorsDark.error},
+          {'label': 'New This Month', 'value': newThisMonth.toString(), 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+        ];
+        
+        return _buildStatsContent(isDark, stats);
+      },
+      loading: () => _buildStatsContent(isDark, [
+        {'label': 'Total Users', 'value': '...', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
+        {'label': 'Active Users', 'value': '...', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
+        {'label': 'Banned Users', 'value': '...', 'icon': Icons.block, 'color': AppColorsDark.error},
+        {'label': 'New This Month', 'value': '...', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+      ]),
+      error: (_, __) => _buildStatsContent(isDark, [
+        {'label': 'Total Users', 'value': '0', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
+        {'label': 'Active Users', 'value': '0', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
+        {'label': 'Banned Users', 'value': '0', 'icon': Icons.block, 'color': AppColorsDark.error},
+        {'label': 'New This Month', 'value': '0', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+      ]),
+    );
+  }
+
+  Widget _buildStatsContent(bool isDark, List<Map<String, dynamic>> stats) {
 
     return Row(
       children: stats.map((stat) {
@@ -298,11 +400,35 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         children: [
           Expanded(flex: 2, child: _buildHeaderCell('User', isDark)),
           Expanded(flex: 2, child: _buildHeaderCell('Email', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Status', isDark)),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Status', isDark),
+            ),
+          ),
           Expanded(flex: 1, child: _buildHeaderCell('Joined', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Builds', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Posts', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Actions', isDark)),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Builds', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Posts', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Actions', isDark),
+            ),
+          ),
         ],
       ),
     );
@@ -320,12 +446,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  Widget _buildUserRow(Map<String, dynamic> user, bool isDark) {
-    final statusColor = user['status'] == 'Active'
+  Widget _buildUserRow(AdminUser user, bool isDark) {
+    final statusColor = user.status == 'Active'
         ? AppColorsDark.buttonGreen
-        : user['status'] == 'Banned'
+        : user.status == 'Banned'
             ? AppColorsDark.error
             : Colors.grey;
+
+    final displayName = user.displayName ?? user.login;
+    final email = user.email ?? 'N/A';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -347,17 +476,36 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 CircleAvatar(
                   backgroundColor: AppColorsDark.buttonBlue,
                   child: Text(
-                    user['name'][0].toUpperCase(),
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  user['name'],
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (user.userRole.isNotEmpty)
+                        Text(
+                          user.userRole,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite.withOpacity(0.5)
+                                : AppColorsLight.textBlack.withOpacity(0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -366,37 +514,49 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           Expanded(
             flex: 2,
             child: Text(
-              user['email'],
+              email,
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite.withOpacity(0.7)
                     : AppColorsLight.textBlack.withOpacity(0.7),
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
             flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                user['status'],
-                style: TextStyle(
-                  color: statusColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                textAlign: TextAlign.center,
+                constraints: const BoxConstraints(
+                  maxWidth: 200,
+                  minWidth: 80,
+                ),
+                child: Text(
+                  user.status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
             ),
           ),
           Expanded(
             flex: 1,
             child: Text(
-              _formatDate(user['joined'] as DateTime),
+              user.registeredAt != null
+                  ? _formatDate(user.registeredAt!)
+                  : 'N/A',
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite.withOpacity(0.7)
@@ -408,40 +568,57 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           Expanded(
             flex: 1,
             child: Text(
-              user['builds'].toString(),
+              '-', // Builds count - would need separate API call
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite
                     : AppColorsLight.textBlack,
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
           ),
           Expanded(
             flex: 1,
             child: Text(
-              user['posts'].toString(),
+              '-', // Posts count - would need separate API call
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite
                     : AppColorsLight.textBlack,
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
           ),
           Expanded(
             flex: 1,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 IconButton(
+                  icon: const Icon(Icons.visibility, size: 18),
+                  onPressed: () {
+                    context.go('/profile/${user.id}');
+                  },
+                  tooltip: 'View',
+                ),
+                IconButton(
                   icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () {},
+                  onPressed: () {
+                    // TODO: Implement edit user - navigate to edit page or show dialog
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Edit user functionality coming soon'),
+                        backgroundColor: AppColorsDark.buttonBlue,
+                      ),
+                    );
+                  },
                   tooltip: 'Edit',
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () {},
+                  onPressed: () {
+                    _showDeleteConfirmation(context, user, isDark);
+                  },
                   tooltip: 'Delete',
                   color: AppColorsDark.error,
                 ),
@@ -453,49 +630,50 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
-  Widget _buildPagination(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+
+  void _showDeleteConfirmation(BuildContext context, AdminUser user, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Text('Are you sure you want to delete ${user.displayName ?? user.login}? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Showing 1-15 of 1,234 users',
-            style: TextStyle(
-              color: isDark
-                  ? AppColorsDark.textWhite.withOpacity(0.7)
-                  : AppColorsLight.textBlack.withOpacity(0.7),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                final adminService = ref.read(adminServiceProvider);
+                await adminService.deleteUser(user.id);
+                
+                if (mounted) {
+                  // Invalidate the users provider to refresh the list
+                  ref.invalidate(adminUsersProvider(_cachedQueryParams ?? {}));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('User deleted successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete user: ${e.toString()}'),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColorsDark.error,
             ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () {},
-              ),
-              ...List.generate(5, (index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text('${index + 1}'),
-                  ),
-                );
-              }),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () {},
-              ),
-            ],
+            child: const Text('Delete'),
           ),
         ],
       ),

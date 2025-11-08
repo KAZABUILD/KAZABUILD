@@ -22,6 +22,8 @@ import 'package:frontend/screens/home/homepage.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
+import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/models/api_constants.dart';
 
 /// A simple data class to represent a PC part in the dropdown menu.
 class PcPart {
@@ -317,13 +319,27 @@ class CustomDrawer extends ConsumerWidget {
             },
           ),
           const Divider(),
-          // Temporary admin panel link for testing layout
-          ListTile(
-            leading: const Icon(Icons.admin_panel_settings, color: Colors.orange),
-            title: const Text('Admin Panel (Test)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-            onTap: () {
-              Navigator.pop(context);
-              context.go('/admin');
+          // Admin panel link - only show for administrators
+          Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authProvider);
+              return authState.when(
+                data: (user) {
+                  if (user != null && user.userRole.isAdministrator) {
+                    return ListTile(
+                      leading: const Icon(Icons.admin_panel_settings, color: Colors.orange),
+                      title: const Text('Admin Panel', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/admin');
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
             },
           ),
           const Divider(),
@@ -516,8 +532,12 @@ class _LoggedInProfileArea extends ConsumerWidget {
               CircleAvatar(
                 radius: 14,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                child: user.photoURL == null ? Text(user.username[0].toUpperCase()) : null,
+                backgroundImage: UserImageUtils.getUserImageUrl(user.photoURL) != null
+                    ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
+                    : null,
+                child: UserImageUtils.getUserImageUrl(user.photoURL) == null
+                    ? Text(user.username[0].toUpperCase())
+                    : null,
               ),
               const SizedBox(width: 8),
               Column(

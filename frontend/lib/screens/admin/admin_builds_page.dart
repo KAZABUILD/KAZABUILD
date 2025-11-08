@@ -4,20 +4,28 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
+import '../../models/admin_provider.dart';
 
-class AdminBuildsPage extends StatefulWidget {
+class AdminBuildsPage extends ConsumerStatefulWidget {
   const AdminBuildsPage({super.key});
 
   @override
-  State<AdminBuildsPage> createState() => _AdminBuildsPageState();
+  ConsumerState<AdminBuildsPage> createState() => _AdminBuildsPageState();
 }
 
-class _AdminBuildsPageState extends State<AdminBuildsPage> {
+class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatus = 'All';
-  final List<String> _statuses = ['All', 'Draft', 'Published', 'Archived'];
-
+  final List<String> _statuses = ['All', 'Draft', 'Published', 'Official', 'Generated'];
+  String? _orderBy;
+  String _sortDirection = 'desc';
+  
+  // Cache query params to prevent Map recreation on every build
+  Map<String, dynamic>? _cachedQueryParams;
+  
   @override
   void dispose() {
     _searchController.dispose();
@@ -134,7 +142,11 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (value) => setState(() {}),
+                  onChanged: (value) {
+                    setState(() {
+                      _cachedQueryParams = null; // Invalidate cache
+                    });
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -157,6 +169,7 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
                   onChanged: (value) {
                     setState(() {
                       _selectedStatus = value!;
+                      _cachedQueryParams = null; // Invalidate cache
                     });
                   },
                   underline: Container(),
@@ -174,26 +187,57 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
     );
   }
 
+  Map<String, dynamic> _buildQueryParams() {
+    final newParams = {
+      'query': _searchController.text.isEmpty ? null : _searchController.text,
+      'status': _selectedStatus == 'All' 
+          ? null 
+          : [_selectedStatus.toUpperCase()],
+      'orderBy': _orderBy ?? 'DatabaseEntryAt',
+      'sortDirection': _sortDirection,
+    };
+    
+    // Check if params actually changed to prevent unnecessary rebuilds
+    if (_cachedQueryParams != null) {
+      bool changed = false;
+      for (var key in newParams.keys) {
+        if (_cachedQueryParams![key] != newParams[key]) {
+          changed = true;
+          break;
+        }
+      }
+      // Compare lists if status changed
+      if (!changed && newParams['status'] != null && _cachedQueryParams!['status'] != null) {
+        final newStatus = newParams['status'] as List<String>?;
+        final oldStatus = _cachedQueryParams!['status'] as List<String>?;
+        if (newStatus?.length != oldStatus?.length ||
+            (newStatus != null && oldStatus != null && 
+             !newStatus.every((s) => oldStatus.contains(s)))) {
+          changed = true;
+        }
+      }
+      if (!changed) {
+        return _cachedQueryParams!;
+      }
+    }
+    
+    _cachedQueryParams = newParams;
+    return _cachedQueryParams!;
+  }
+
   Widget _buildContent(bool isDark) {
-    final builds = List.generate(
-      12,
-      (index) => {
-        'id': 'build_${index + 1}',
-        'name': 'Gaming PC Build ${index + 1}',
-        'author': 'User ${index + 1}',
-        'status': ['Draft', 'Published', 'Archived'][index % 3],
-        'created': DateTime.now().subtract(Duration(days: index * 7)),
-        'views': (index * 100) % 5000,
-        'likes': (index * 15) % 500,
-        'rating': (4.0 + (index % 2) * 0.5),
-      },
-    );
+    final queryParams = _buildQueryParams();
+    final buildsAsync = ref.watch(adminBuildsProvider(queryParams));
 
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          _buildStatsRow(isDark),
+          buildsAsync.when(
+            data: (builds) => _buildStatsRow(isDark, builds),
+            loading: () => _buildStatsRow(isDark, []),
+            error: (error, stack) => _buildStatsRow(isDark, []),
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: Container(
@@ -207,14 +251,57 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
                 children: [
                   _buildTableHeader(isDark),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: builds.length,
-                      itemBuilder: (context, index) {
-                        return _buildBuildRow(builds[index], isDark);
+                    child: buildsAsync.when(
+                      data: (builds) {
+                        print('AdminBuildsPage: Received ${builds.length} builds from backend');
+                        
+                        if (builds.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.computer_outlined,
+                                  size: 64,
+                                  color: isDark
+                                      ? AppColorsDark.textWhite.withOpacity(0.5)
+                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No builds found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: isDark
+                                        ? AppColorsDark.textWhite
+                                        : AppColorsLight.textBlack,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return ListView.separated(
+                          itemCount: builds.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 0),
+                          itemBuilder: (context, index) {
+                            final build = builds[index];
+                            return _buildBuildRow(build, isDark);
+                          },
+                        );
                       },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(
+                        child: Text(
+                          'Error loading builds: $error',
+                          style: TextStyle(
+                            color: AppColorsDark.error,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  _buildPagination(isDark),
                 ],
               ),
             ),
@@ -224,12 +311,18 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark) {
+  Widget _buildStatsRow(bool isDark, List<AdminBuild> builds) {
+    // Calculate stats from all builds
+    final totalBuilds = builds.length;
+    final published = builds.where((b) => b.status.toUpperCase() == 'PUBLISHED').length;
+    final drafts = builds.where((b) => b.status.toUpperCase() == 'DRAFT').length;
+    final official = builds.where((b) => b.status.toUpperCase() == 'OFFICIAL').length;
+    
     final stats = [
-      {'label': 'Total Builds', 'value': '5,678', 'icon': Icons.computer, 'color': AppColorsDark.buttonBlue},
-      {'label': 'Published', 'value': '4,234', 'icon': Icons.publish, 'color': AppColorsDark.buttonGreen},
-      {'label': 'Drafts', 'value': '1,234', 'icon': Icons.edit, 'color': AppColorsDark.warning},
-      {'label': 'Avg Rating', 'value': '4.5', 'icon': Icons.star, 'color': AppColorsDark.buttonPurple},
+      {'label': 'Total Builds', 'value': totalBuilds.toString(), 'icon': Icons.computer, 'color': AppColorsDark.buttonBlue},
+      {'label': 'Published', 'value': published.toString(), 'icon': Icons.publish, 'color': AppColorsDark.buttonGreen},
+      {'label': 'Drafts', 'value': drafts.toString(), 'icon': Icons.edit, 'color': AppColorsDark.warning},
+      {'label': 'Official', 'value': official.toString(), 'icon': Icons.verified, 'color': AppColorsDark.buttonPurple},
     ];
 
     return Row(
@@ -313,12 +406,48 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
       child: Row(
         children: [
           Expanded(flex: 3, child: _buildHeaderCell('Build Name', isDark)),
-          Expanded(flex: 2, child: _buildHeaderCell('Author', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Status', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Views', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Likes', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Rating', isDark)),
-          Expanded(flex: 1, child: _buildHeaderCell('Actions', isDark)),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('User ID', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Status', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Build ID', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Last Edited', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildHeaderCell('Published', isDark),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.center,
+              child: _buildHeaderCell('Actions', isDark),
+            ),
+          ),
         ],
       ),
     );
@@ -336,12 +465,17 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
     );
   }
 
-  Widget _buildBuildRow(Map<String, dynamic> build, bool isDark) {
-    final statusColor = build['status'] == 'Published'
+  Widget _buildBuildRow(AdminBuild build, bool isDark) {
+    final statusUpper = build.status.toUpperCase();
+    final statusColor = statusUpper == 'PUBLISHED'
         ? AppColorsDark.buttonGreen
-        : build['status'] == 'Draft'
+        : statusUpper == 'DRAFT'
             ? AppColorsDark.warning
-            : Colors.grey;
+            : statusUpper == 'OFFICIAL'
+                ? AppColorsDark.buttonPurple
+                : statusUpper == 'GENERATED'
+                    ? Colors.blue
+                    : Colors.grey;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -375,7 +509,7 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        build['name'],
+                        build.name ?? 'Unnamed Build',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: isDark
@@ -383,15 +517,26 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
                               : AppColorsLight.textBlack,
                         ),
                       ),
-                      Text(
-                        'Created: ${_formatDate(build['created'] as DateTime)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.6)
-                              : AppColorsLight.textBlack.withOpacity(0.6),
+                      if (build.publishedAt != null)
+                        Text(
+                          'Published: ${_formatDate(build.publishedAt!)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColorsDark.textWhite.withOpacity(0.6)
+                                : AppColorsLight.textBlack.withOpacity(0.6),
+                          ),
+                        )
+                      else if (build.databaseEntryAt != null)
+                        Text(
+                          'Created: ${_formatDate(build.databaseEntryAt!)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColorsDark.textWhite.withOpacity(0.6)
+                                : AppColorsLight.textBlack.withOpacity(0.6),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -400,104 +545,132 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              build['author'],
-              style: TextStyle(
-                color: isDark
-                    ? AppColorsDark.textWhite
-                    : AppColorsLight.textBlack,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: Text(
-                build['status'],
+                build.userId != null ? build.userId!.substring(0, 8) : 'Unknown',
                 style: TextStyle(
-                  color: statusColor,
+                  color: isDark
+                      ? AppColorsDark.textWhite
+                      : AppColorsLight.textBlack,
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
           ),
           Expanded(
             flex: 1,
-            child: Text(
-              build['views'].toString(),
-              style: TextStyle(
-                color: isDark
-                    ? AppColorsDark.textWhite
-                    : AppColorsLight.textBlack,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                constraints: const BoxConstraints(
+                  maxWidth: 120,
+                  minWidth: 80,
+                ),
+                child: Text(
+                  build.status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
           Expanded(
             flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.favorite, size: 16, color: Colors.red),
-                const SizedBox(width: 4),
-                Text(
-                  build['likes'].toString(),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                build.id.substring(0, 8),
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                build.lastEditedAt != null ? _formatDate(build.lastEditedAt!) : 'N/A',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                build.publishedAt != null ? _formatDate(build.publishedAt!) : 'N/A',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility, size: 18),
+                    onPressed: () {
+                      context.go('/build/${build.id}');
+                    },
+                    tooltip: 'View',
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.star, size: 16, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  build['rating'].toStringAsFixed(1),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: () {
+                      // TODO: Implement edit build - navigate to edit page or show dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Edit build functionality coming soon'),
+                          backgroundColor: AppColorsDark.buttonBlue,
+                        ),
+                      );
+                    },
+                    tooltip: 'Edit',
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.visibility, size: 18),
-                  onPressed: () {},
-                  tooltip: 'View',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () {},
-                  tooltip: 'Edit',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () {},
-                  tooltip: 'Delete',
-                  color: AppColorsDark.error,
-                ),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 18),
+                    onPressed: () {
+                      _showDeleteConfirmation(context, build, isDark);
+                    },
+                    tooltip: 'Delete',
+                    color: AppColorsDark.error,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -505,49 +678,50 @@ class _AdminBuildsPageState extends State<AdminBuildsPage> {
     );
   }
 
-  Widget _buildPagination(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+
+  void _showDeleteConfirmation(BuildContext context, AdminBuild build, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Build'),
+        content: Text('Are you sure you want to delete "${build.name ?? "Unnamed Build"}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Showing 1-12 of 5,678 builds',
-            style: TextStyle(
-              color: isDark
-                  ? AppColorsDark.textWhite.withOpacity(0.7)
-                  : AppColorsLight.textBlack.withOpacity(0.7),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                final adminService = ref.read(adminServiceProvider);
+                await adminService.deleteBuild(build.id);
+                
+                if (mounted) {
+                  // Invalidate the builds provider to refresh the list
+                  ref.invalidate(adminBuildsProvider(_cachedQueryParams ?? {}));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Build deleted successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete build: ${e.toString()}'),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColorsDark.error,
             ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () {},
-              ),
-              ...List.generate(5, (index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text('${index + 1}'),
-                  ),
-                );
-              }),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () {},
-              ),
-            ],
+            child: const Text('Delete'),
           ),
         ],
       ),

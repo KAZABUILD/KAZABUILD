@@ -35,6 +35,7 @@ final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId
     content: post.content,
     createdAt: post.createdAt,
     replies: comments,
+    replyCount: comments.length, // Use actual comments count from detail fetch
     acceptedReplyId: post.acceptedReplyId,
     tags: post.tags,
     build: post.build,
@@ -42,11 +43,20 @@ final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId
 });
 
 /// A provider to fetch the author's details based on their ID.
-final userProvider = FutureProvider.family<AppUser, String>((ref, userId) async {
-  // This uses the existing auth service to fetch user data.
-  final authService = ref.read(authServiceProvider); // Use read as it's a one-time fetch
-  final userResponse = await authService.getUserById(userId);
-  return AppUser.fromJson(userResponse.data);
+/// Returns null if the user cannot be fetched (e.g., user deleted, network error).
+/// Note: This is defined in forums_page.dart, but kept here for backward compatibility.
+/// Consider moving to a shared location if used in multiple files.
+final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+  try {
+    // This uses the existing auth service to fetch user data.
+    final authService = ref.read(authServiceProvider); // Use read as it's a one-time fetch
+    final userResponse = await authService.getUserById(userId);
+    return AppUser.fromJson(userResponse.data);
+  } catch (e) {
+    // If user cannot be fetched, return null instead of throwing
+    debugPrint('Error fetching user $userId: $e');
+    return null;
+  }
 });
 
 /// A page that displays the full details of a single [ForumPost] and its replies.
@@ -284,24 +294,47 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
               Row(
                 children: [
                   ...authorAsync.when<List<Widget>>(
-                    data: (author) => [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.primary,
-                        child: Text(
-                          (author.displayName.isNotEmpty ? author.displayName : author.username).substring(0, 1).toUpperCase(),
-                          style: const TextStyle(color: Colors.white),
+                    data: (author) {
+                      if (author == null) {
+                        return [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: theme.colorScheme.primary,
+                            child: const Text(
+                              'U',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('by Unknown User'),
+                          const Spacer(),
+                        ];
+                      }
+                      final displayName = author.displayName.isNotEmpty 
+                          ? author.displayName 
+                          : author.username;
+                      final initial = displayName.isNotEmpty 
+                          ? displayName[0].toUpperCase() 
+                          : 'U';
+                      return [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: theme.colorScheme.primary,
+                          child: Text(
+                            initial,
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'by ${author.displayName.isNotEmpty ? author.displayName : author.username}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        const SizedBox(width: 8),
+                        Text(
+                          'by $displayName',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                    ],
+                        const Spacer(),
+                      ];
+                    },
                     loading: () => [const CircularProgressIndicator()],
                     error: (e, s) => [const Text('Unknown Author')],
                   ),
@@ -431,13 +464,30 @@ class _ReplyCard extends ConsumerWidget {
         children: [
           /// Author's avatar.
           authorAsync.when(
-            data: (author) => CircleAvatar(
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              child: Text(
-                (author.displayName.isNotEmpty ? author.displayName : author.username).substring(0, 1).toUpperCase(),
-                style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
-              ),
-            ),
+            data: (author) {
+              if (author == null) {
+                return CircleAvatar(
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  child: Text(
+                    'U',
+                    style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+                  ),
+                );
+              }
+              final displayName = author.displayName.isNotEmpty 
+                  ? author.displayName 
+                  : author.username;
+              final initial = displayName.isNotEmpty 
+                  ? displayName[0].toUpperCase() 
+                  : 'U';
+              return CircleAvatar(
+                backgroundColor: theme.colorScheme.secondaryContainer,
+                child: Text(
+                  initial,
+                  style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+                ),
+              );
+            },
             loading: () => const CircleAvatar(),
             error: (e, s) => const CircleAvatar(child: Icon(Icons.error)),
           ),
@@ -449,27 +499,32 @@ class _ReplyCard extends ConsumerWidget {
               children: [
                 /// Author's display name and the time of the reply.
                 authorAsync.when(
-                  data: (author) => Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          author.displayName.isNotEmpty ? author.displayName : author.username,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                  data: (author) {
+                    final displayName = author?.displayName.isNotEmpty == true 
+                        ? author!.displayName 
+                        : (author?.username ?? 'Unknown User');
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            displayName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    const Spacer(),
-                    Text(
-                      DateFormat(
-                        'MMM d, yyyy • h:mm a',
-                      ).format(reply.createdAt),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    ],
-                  ),
+                        const Spacer(),
+                        Text(
+                          DateFormat(
+                            'MMM d, yyyy • h:mm a',
+                          ).format(reply.createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                   loading: () => const SizedBox(height: 20),
                   error: (e, s) => const Text('Unknown Author'),
                 ),

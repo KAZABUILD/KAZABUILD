@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/user_role.dart';
 import 'package:frontend/screens/auth/change_password_page.dart';
 import 'package:frontend/screens/auth/confirm_reset_password_page.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
@@ -31,6 +32,7 @@ import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/admin/admin_dashboard.dart';
 import 'package:frontend/screens/admin/admin_users_page.dart';
+import 'package:frontend/screens/admin/admin_access_debug_page.dart';
 import 'package:frontend/screens/admin/admin_builds_page.dart';
 import 'package:frontend/screens/admin/admin_forums_page.dart';
 import 'package:frontend/screens/admin/admin_parts_page.dart';
@@ -99,6 +101,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           debugPrint('Admin Dashboard route hit!');
           return const AdminDashboard();
         },
+      ),
+      GoRoute(
+        path: '/admin/debug',
+        name: 'admin-debug',
+        builder: (context, state) => const AdminAccessDebugPage(),
       ),
       GoRoute(
         path: '/admin/users',
@@ -295,10 +302,60 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final location = state.matchedLocation;
 
-      // Allow admin routes without any authentication checks - just for layout preview
+      // Check admin routes - require authentication and ADMINISTRATOR role
+      // Exception: /admin/debug is accessible to all logged-in users for debugging
       if (location.startsWith('/admin')) {
-        debugPrint('Accessing admin route: $location - allowing access');
-        return null; // No redirect, allow access
+        // Allow debug page for all logged-in users
+        if (location == '/admin/debug') {
+          final authState = ref.read(authProvider);
+          if (authState.isLoading) return null;
+          if (authState.hasError) return '/login';
+          if (authState.valueOrNull == null) return '/login';
+          return null; // Allow access to debug page
+        }
+        
+        final authState = ref.read(authProvider);
+        
+        // Wait for auth state to load
+        if (authState.isLoading) {
+          debugPrint('Admin route: Auth state is loading, waiting...');
+          return null; // Don't redirect yet, wait for auth to load
+        }
+        
+        // Handle error state
+        if (authState.hasError) {
+          debugPrint('Admin route: Auth state has error: ${authState.error} - redirecting to login');
+          return '/login';
+        }
+        
+        final user = authState.valueOrNull;
+        if (user == null) {
+          debugPrint('Admin route: No user logged in - redirecting to login');
+          return '/login';
+        }
+        
+        // Debug: Print user role information with full details
+        debugPrint('=== ADMIN ROUTE ACCESS CHECK ===');
+        debugPrint('User: ${user.username}');
+        debugPrint('User ID: ${user.uid}');
+        debugPrint('Role Name: ${user.userRole.name}');
+        debugPrint('Role Value: ${user.userRole.value}');
+        debugPrint('Is Administrator: ${user.userRole.isAdministrator}');
+        debugPrint('All Roles: ${UserRole.values.map((r) => '${r.name}=${r.value}').join(', ')}');
+        debugPrint('================================');
+        
+        // Check if user has administrator privileges
+        // SYSTEM role is now included in isAdministrator getter
+        if (!user.userRole.isAdministrator) {
+          debugPrint('Admin route: Access DENIED - User ${user.username}');
+          debugPrint('Role: ${user.userRole.name} (value: ${user.userRole.value})');
+          debugPrint('Required: ADMINISTRATOR (6), OWNER (7), or SYSTEM (8)');
+          debugPrint('Please check /admin/debug for more details');
+          return '/home';
+        }
+        
+        debugPrint('Admin route: Access GRANTED to ${user.username} with role ${user.userRole.name}');
+        return null; // Allow access
       }
 
       final authState = ref.read(authProvider);

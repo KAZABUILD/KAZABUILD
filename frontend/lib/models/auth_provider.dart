@@ -19,9 +19,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/utils/google_id.dart';
 import 'package:frontend/services/cookie_storage_service.dart';
+import 'package:frontend/models/user_role.dart';
 
 /// A dedicated service for handling authentication-related API calls.
 /// This abstracts the networking logic away from the state notifier.
@@ -108,13 +110,67 @@ class AuthService {
   }
 
   /// Sends a request to upload an image.
+  /// Supports all image formats accepted by the backend (.jpg, .jpeg, .png, .gif, .webp, .avif, .bmp, .tiff, .tif, .heic, .heif, .ico)
   Future<Response> uploadImage(String imagePath, String targetId, String locationType) async {
-    final fileName = imagePath.split('/').last;
+    // Create XFile from path (works for both web and mobile)
+    final xFile = XFile(imagePath);
+    
+    // Get file name from XFile (it handles web blob URLs correctly)
+    var fileName = xFile.name;
+    
+    // If name is empty, try to extract from path
+    if (fileName.isEmpty || !fileName.contains('.')) {
+      final pathParts = imagePath.split('/');
+      fileName = pathParts.last;
+    }
+    
+    // Ensure filename has extension
+    if (!fileName.contains('.')) {
+      // Try to get extension from mime type or default to jpg
+      final mimeType = xFile.mimeType;
+      String extension = 'jpg';
+      if (mimeType != null) {
+        if (mimeType.contains('jpeg')) {
+          extension = 'jpg';
+        } else if (mimeType.contains('png')) {
+          extension = 'png';
+        } else if (mimeType.contains('gif')) {
+          extension = 'gif';
+        } else if (mimeType.contains('webp')) {
+          extension = 'webp';
+        } else if (mimeType.contains('bmp')) {
+          extension = 'bmp';
+        } else if (mimeType.contains('tiff')) {
+          extension = 'tiff';
+        } else if (mimeType.contains('heic') || mimeType.contains('heif')) {
+          extension = 'heic';
+        } else if (mimeType.contains('ico')) {
+          extension = 'ico';
+        }
+      }
+      fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+    }
+    
+    // Normalize file extension to lowercase and ensure jpeg -> jpg
+    var extension = fileName.split('.').last.toLowerCase();
+    if (extension == 'jpeg') {
+      extension = 'jpg';
+    }
+    final nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+    fileName = '$nameWithoutExt.$extension';
+    
+    // Read file as bytes (XFile works on both web and mobile)
+    final fileBytes = await xFile.readAsBytes();
+    
+    // Create form data with the file
     final formData = FormData.fromMap({
-      'File': await MultipartFile.fromFile(imagePath, filename: fileName),
+      'File': MultipartFile.fromBytes(
+        fileBytes,
+        filename: fileName,
+      ),
       'TargetId': targetId,
       'LocationType': locationType,
-      'Name': 'user_upload_$fileName',
+      'Name': 'user_profile_${DateTime.now().millisecondsSinceEpoch}',
     });
 
     // Makes a POST request to the /Images/add endpoint.
@@ -226,6 +282,9 @@ class AppUser {
   /// The user's profile visibility setting.
   final ProfileAccessibility profileAccessibility;
 
+  /// The user's role (e.g., USER, MODERATOR, ADMINISTRATOR).
+  final UserRole userRole;
+
   /// Creates an instance of an application user.
   /// All fields are final to ensure the object is immutable.
   const AppUser({
@@ -239,6 +298,7 @@ class AppUser {
     this.themePreference = ThemeMode.dark,
     this.languagePreference = 'en',
     this.profileAccessibility = ProfileAccessibility.public,
+    this.userRole = UserRole.guest,
     this.gender,
     this.birthDate,
     this.address,
@@ -248,11 +308,19 @@ class AppUser {
   /// This is useful for parsing user data received from the backend API.
   factory AppUser.fromJson(Map<String, dynamic> json) {
     // Helper to parse ThemeMode from string, defaulting to dark.
+    // Backend sends "DARK" or "LIGHT", but ThemeMode uses "dark", "light", "system"
     ThemeMode parseTheme(String? themeStr) {
-      return ThemeMode.values.firstWhere(
-        (e) => e.name.toUpperCase() == themeStr?.toUpperCase(),
-        orElse: () => ThemeMode.dark,
-      );
+      if (themeStr == null) return ThemeMode.dark;
+      
+      final upperTheme = themeStr.toUpperCase();
+      if (upperTheme == 'DARK') {
+        return ThemeMode.dark;
+      } else if (upperTheme == 'LIGHT') {
+        return ThemeMode.light;
+      } else {
+        // Default to dark if unknown
+        return ThemeMode.dark;
+      }
     }
 
     // Helper to parse ProfileAccessibility from string, defaulting to public.
@@ -263,12 +331,23 @@ class AppUser {
       );
     }
 
+
+    // Handle ImageId - backend returns ImageId (GUID) which needs to be used as photoURL
+    // Frontend will convert it to a URL when displaying
+    String? photoURL;
+    if (json['imageUrl'] != null || json['ImageUrl'] != null) {
+      photoURL = json['imageUrl'] ?? json['ImageUrl'];
+    } else if (json['imageId'] != null || json['ImageId'] != null) {
+      // Backend returns ImageId as GUID, store it as-is (will be converted to URL in UI)
+      photoURL = json['imageId']?.toString() ?? json['ImageId']?.toString();
+    }
+    
     return AppUser(
       uid: json['id'] ?? json['Id'],
       username: json['login'] ?? json['Login'],
       displayName: json['displayName'] ?? json['DisplayName'] ?? json['login'] ?? json['Login'],
       email: json['email'] ?? json['Email'],
-      photoURL: json['imageUrl'] ?? json['ImageUrl'],
+      photoURL: photoURL,
       bio: json['description'] ?? json['Description'],
       phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'],
       gender: json['gender'] ?? json['Gender'],
@@ -276,8 +355,47 @@ class AppUser {
       themePreference: parseTheme(json['theme'] ?? json['Theme']),
       languagePreference: (json['language'] ?? json['Language'])?.toLowerCase() ?? 'en',
       profileAccessibility: parseAccessibility(json['profileAccessibility'] ?? json['ProfileAccessibility']),
+      userRole: AppUser._parseUserRole(json['userRole'] ?? json['UserRole']),
       address: (json['address'] ?? json['Address']) != null ? Address.fromJson(json['address'] ?? json['Address']) : null,
     );
+  }
+  
+  /// Helper to parse UserRole - backend sends enum as integer or string
+  /// Made static so it can be called from factory method
+  static UserRole _parseUserRole(dynamic roleValue) {
+    if (roleValue == null) {
+      log('UserRole parse: roleValue is null, defaulting to guest');
+      return UserRole.guest;
+    }
+    
+    log('UserRole parse: raw value = $roleValue (type: ${roleValue.runtimeType})');
+    
+    // If it's already an integer
+    if (roleValue is int) {
+      final role = UserRole.values.firstWhere(
+        (role) => role.value == roleValue,
+        orElse: () {
+          log('UserRole parse: No role found for integer value $roleValue, defaulting to guest');
+          return UserRole.guest;
+        },
+      );
+      log('UserRole parse: Parsed integer $roleValue to ${role.name}');
+      return role;
+    }
+    
+    // If it's a string, try parsing it
+    if (roleValue is String) {
+      final role = UserRole.fromString(roleValue);
+      log('UserRole parse: Parsed string "$roleValue" to ${role.name}');
+      return role;
+    }
+    
+    // Try converting to string first
+    final roleStr = roleValue.toString();
+    log('UserRole parse: Converting to string: "$roleStr"');
+    final role = UserRole.fromString(roleStr);
+    log('UserRole parse: Final parsed role: ${role.name}');
+    return role;
   }
 }
 
@@ -336,6 +454,14 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       // Fetch the full user profile using the user ID.
       final userResponse = await _authService.getUserById(userId);
       final userData = userResponse.data;
+      
+      // Debug: Log the raw user data to see what backend is sending
+      log('=== USER DATA FROM BACKEND ===');
+      log('Raw userData: $userData');
+      log('UserRole in JSON: ${userData['userRole'] ?? userData['UserRole']}');
+      log('UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}');
+      log('==============================');
+      
       final user = AppUser.fromJson(userData);
 
       // Save user data and login info for offline access and auto-fill
@@ -497,8 +623,22 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       final userResponse = await _authService.getUserById(userId);
       final userData = userResponse.data;
 
+      // Debug: Log the raw user data for auto-login
+      log('=== AUTO-LOGIN USER DATA ===');
+      log('Raw userData: $userData');
+      log('UserRole in JSON: ${userData['userRole'] ?? userData['UserRole']}');
+      log('UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}');
+      log('============================');
+
+      final user = AppUser.fromJson(userData);
+      log('=== PARSED USER ===');
+      log('Username: ${user.username}');
+      log('UserRole: ${user.userRole.name} (value: ${user.userRole.value})');
+      log('Is Administrator: ${user.userRole.isAdministrator}');
+      log('===================');
+      
       // Update the state with the logged-in user.
-      state = AsyncValue.data(AppUser.fromJson(userData));
+      state = AsyncValue.data(user);
     } catch (e, st) {
       // If any error occurs (e.g., network issue, invalid token), sign out.
       await signOut();
@@ -524,7 +664,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       throw Exception('No user logged in to update profile.');
     }
 
-    // We don't set the whole state to loading, as this is a partial update.
+    
     // The UI should show a local loading indicator.
     try {
       await _authService.updateUser(currentUserId, data);
@@ -533,8 +673,21 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       final userResponse = await _authService.getUserById(currentUserId);
       final userData = userResponse.data;
 
+      // Debug: Log user data after profile update
+      log('=== PROFILE UPDATE USER DATA ===');
+      log('Raw userData: $userData');
+      log('UserRole in JSON: ${userData['userRole'] ?? userData['UserRole']}');
+      log('================================');
+
+      final user = AppUser.fromJson(userData);
+      log('=== PARSED USER AFTER UPDATE ===');
+      log('Username: ${user.username}');
+      log('UserRole: ${user.userRole.name} (value: ${user.userRole.value})');
+      log('Is Administrator: ${user.userRole.isAdministrator}');
+      log('================================');
+      
       // Update the state with the new user data.
-      state = AsyncValue.data(AppUser.fromJson(userData));
+      state = AsyncValue.data(user);
     } on DioException catch (e) {
       final errorMessage = e.response?.data['message'] ?? 'Profile update failed.';
       log('Update failed: $errorMessage', error: e);
@@ -553,14 +706,32 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     try {
       // Upload the image to the backend
       final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
-      final imageId = imageResponse.data['id'];
-
-      // Construct the image URL for the download endpoint
-      final imageUrl = '$apiBaseUrl/Images/download/$imageId';
       
-      // Update the user's profile with the new image URL
-      await updateUserProfile({'imageUrl': imageUrl});
-    } catch (e) {
+      // Try to get ImageId from various possible fields
+      final imageId = imageResponse.data['id'] ?? 
+                     imageResponse.data['Id'] ?? 
+                     imageResponse.data['imageId'] ?? 
+                     imageResponse.data['ImageId'];
+      
+      log('Image upload response: ${imageResponse.data}');
+      log('Extracted ImageId: $imageId');
+      
+      if (imageId == null) {
+        log('Error: Image ID not found in response. Full response: ${imageResponse.data}');
+        throw Exception('Image ID not returned from server. Response: ${imageResponse.data}');
+      }
+
+      // Convert to string if it's not already
+      final imageIdString = imageId.toString();
+      log('Updating user profile with ImageId: $imageIdString');
+
+      // Update the user's profile with the new image ID
+      // Backend expects ImageId (Guid), not imageUrl
+      await updateUserProfile({'ImageId': imageIdString});
+      
+      log('Profile picture update completed successfully');
+    } catch (e, stackTrace) {
+      log('Error uploading profile picture: $e', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }

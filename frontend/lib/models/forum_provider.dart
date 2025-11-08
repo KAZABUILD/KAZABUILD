@@ -4,6 +4,7 @@
 /// It uses Riverpod to provide services and state notifiers for the forum feature.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -91,7 +92,92 @@ final forumServiceProvider = Provider<ForumService>((ref) {
   return ForumService(dio);
 });
 
-/// A provider that fetches all public forum posts.
+/// Parameters for paginated forum posts fetching.
+class ForumPostsParams {
+  final int page;
+  final int pageSize;
+  final String? category;
+  final String? searchQuery;
+  final String sortOption;
+
+  ForumPostsParams({
+    this.page = 1,
+    this.pageSize = 10,
+    this.category,
+    this.searchQuery,
+    this.sortOption = 'Newest',
+  });
+
+  ForumPostsParams copyWith({
+    int? page,
+    int? pageSize,
+    String? category,
+    String? searchQuery,
+    String? sortOption,
+  }) {
+    return ForumPostsParams(
+      page: page ?? this.page,
+      pageSize: pageSize ?? this.pageSize,
+      category: category ?? this.category,
+      searchQuery: searchQuery ?? this.searchQuery,
+      sortOption: sortOption ?? this.sortOption,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ForumPostsParams &&
+        other.page == page &&
+        other.pageSize == pageSize &&
+        other.category == category &&
+        other.searchQuery == searchQuery &&
+        other.sortOption == sortOption;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(page, pageSize, category, searchQuery, sortOption);
+  }
+}
+
+/// A provider that fetches paginated forum posts based on parameters.
+final forumPostsProvider = FutureProvider.family<List<ForumPost>, ForumPostsParams>((ref, params) async {
+  final forumService = ref.watch(forumServiceProvider);
+  
+  // Build filter map for backend API
+  // Note: Backend DTO uses PascalCase property names
+  final Map<String, dynamic> filter = {
+    'Paging': true,
+    'Page': params.page,
+    'PageLength': params.pageSize,
+    'SortDirection': params.sortOption == 'Newest' ? 'desc' : 'asc',
+    'OrderBy': 'PostedAt',
+  };
+  
+  // Add topic filter if category is selected and not 'All'
+  if (params.category != null && params.category != 'All') {
+    filter['Topic'] = [params.category];
+  }
+  
+  // Add search query if provided - backend searches in Title, Content, Topic, and Creator.DisplayName
+  if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
+    filter['Query'] = params.searchQuery!.trim();
+    // Debug: Log search parameters
+    debugPrint('Forum search: query="${params.searchQuery}", page=${params.page}, category=${params.category}');
+  }
+  
+  // Debug: Log filter parameters
+  debugPrint('Forum posts request: page=${params.page}, pageSize=${params.pageSize}, filters=$filter');
+  
+  final posts = await forumService.getPosts(filter);
+  debugPrint('Forum posts response: ${posts.length} posts returned');
+  
+  return posts;
+});
+
+/// A legacy provider that fetches all public forum posts (for backward compatibility).
+/// This is now deprecated in favor of forumPostsProvider with pagination.
 final allForumPostsProvider = FutureProvider<List<ForumPost>>((ref) async {
   final forumService = ref.watch(forumServiceProvider);
   // Fetch all posts, disable paging to get all of them for now.
@@ -111,8 +197,13 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
     try {
       final response = await _forumService.createPost(data);
       state = const AsyncValue.data(null);
-      // Invalidate the provider to refetch the list on the previous page.
+      // Invalidate all forum posts providers to refetch the list.
+      // This will cause the UI to refresh with the new post.
       _ref.invalidate(allForumPostsProvider);
+      // Also invalidate the paginated provider by using a generic invalidation
+      // Note: This will invalidate all instances of forumPostsProvider
+      // In a more sophisticated implementation, we could track the current params
+      _ref.invalidate(forumPostsProvider);
       return response.data['message'] ?? 'Post created successfully!';
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);

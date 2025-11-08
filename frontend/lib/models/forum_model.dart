@@ -7,8 +7,6 @@
 library;
 import 'package:frontend/models/explore_build_model.dart';
 
-import 'package:frontend/models/auth_provider.dart';
-
 /// Represents a single reply to a [ForumPost].
 class PostReply {
   /// The unique identifier for the reply.
@@ -70,6 +68,9 @@ class ForumPost {
   /// A list of all replies to this post.
   final List<PostReply> replies;
 
+  /// The number of replies/comments for this post (from backend).
+  final int replyCount;
+
   /// The ID of the reply that has been marked as the accepted answer. Null if none.
   final String? acceptedReplyId;
 
@@ -89,6 +90,7 @@ class ForumPost {
     required this.createdAt,
     // Defaults to an empty list if not provided.
     this.replies = const [],
+    this.replyCount = 0,
     this.acceptedReplyId,
     this.tags = const [],
     this.build,
@@ -109,6 +111,8 @@ class ForumPost {
               ?.map((replyJson) => PostReply.fromJson(replyJson))
               .toList() ??
           const [],
+      // Get reply count from backend, fallback to replies list length if not provided
+      replyCount: json['replyCount'] ?? (json['comments'] as List<dynamic>?)?.length ?? 0,
       tags: (json['tags'] as List<dynamic>?)?.map((tag) => tag.toString()).toList() ?? const [],
       // Parse the nested build object if it exists.
       build: json['build'] != null ? Build.fromJson(json['build']) : null,

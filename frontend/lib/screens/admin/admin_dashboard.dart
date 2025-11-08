@@ -5,20 +5,59 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
+import '../../models/admin_provider.dart';
 
-class AdminDashboard extends StatefulWidget {
+class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
 
   @override
-  State<AdminDashboard> createState() => _AdminDashboardState();
+  ConsumerState<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _selectedIndex = 0;
   bool _isSidebarCollapsed = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Cache query params to prevent unnecessary rebuilds
+  static final Map<String, dynamic> _usersParams = {
+    'query': null,
+    'page': null,
+    'pageLength': null,
+    'orderBy': 'DatabaseEntryAt',
+    'sortDirection': 'desc',
+  };
+  static final Map<String, dynamic> _buildsParams = {
+    'query': null,
+    'status': null,
+    'userIds': null,
+    'page': null,
+    'pageLength': null,
+    'orderBy': 'DatabaseEntryAt',
+    'sortDirection': 'desc',
+  };
+  static final Map<String, dynamic> _forumPostsParams = {
+    'query': null,
+    'topics': null,
+    'creatorIds': null,
+    'page': null,
+    'pageLength': null,
+    'orderBy': 'DatabaseEntryAt',
+    'sortDirection': 'desc',
+  };
+  static final Map<String, dynamic> _componentsParams = {
+    'query': null,
+    'componentTypes': null,
+    'names': null,
+    'manufacturers': null,
+    'page': null,
+    'pageLength': null,
+    'orderBy': null,
+    'sortDirection': 'asc',
+  };
 
   final List<NavigationItem> _navigationItems = [
     NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/admin'),
@@ -509,6 +548,80 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildDashboardContent(bool isDark, dynamic colors) {
+    // Use cached params to prevent unnecessary rebuilds
+    final usersAsync = ref.watch(adminUsersProvider(_usersParams));
+    final buildsAsync = ref.watch(adminBuildsProvider(_buildsParams));
+    final forumPostsAsync = ref.watch(adminForumPostsProvider(_forumPostsParams));
+    final componentsAsync = ref.watch(adminComponentsProvider(_componentsParams));
+
+    // Debug logging
+    debugPrint('Dashboard State: Users - loading: ${usersAsync.isLoading}, error: ${usersAsync.hasError}, hasValue: ${usersAsync.valueOrNull != null}');
+    debugPrint('Dashboard State: Builds - loading: ${buildsAsync.isLoading}, error: ${buildsAsync.hasError}, hasValue: ${buildsAsync.valueOrNull != null}');
+    debugPrint('Dashboard State: Posts - loading: ${forumPostsAsync.isLoading}, error: ${forumPostsAsync.hasError}, hasValue: ${forumPostsAsync.valueOrNull != null}');
+    debugPrint('Dashboard State: Components - loading: ${componentsAsync.isLoading}, error: ${componentsAsync.hasError}, hasValue: ${componentsAsync.valueOrNull != null}');
+
+    // Check if ALL providers have errors - only then show full error screen
+    final allProvidersHaveError = usersAsync.hasError && 
+                                  buildsAsync.hasError && 
+                                  forumPostsAsync.hasError && 
+                                  componentsAsync.hasError;
+
+    // Show error message only if ALL providers failed
+    if (allProvidersHaveError) {
+      debugPrint('Dashboard Error: All providers failed');
+      debugPrint('Dashboard Error: Users error: ${usersAsync.error}');
+      debugPrint('Dashboard Error: Builds error: ${buildsAsync.error}');
+      debugPrint('Dashboard Error: Posts error: ${forumPostsAsync.error}');
+      debugPrint('Dashboard Error: Components error: ${componentsAsync.error}');
+      return Container(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColorsDark.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading dashboard data',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark
+                      ? AppColorsDark.textWhite
+                      : AppColorsLight.textBlack,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Unable to load dashboard data. Please try again.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.7)
+                      : AppColorsLight.textBlack.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(adminUsersProvider(_usersParams));
+                  ref.invalidate(adminBuildsProvider(_buildsParams));
+                  ref.invalidate(adminForumPostsProvider(_forumPostsParams));
+                  ref.invalidate(adminComponentsProvider(_componentsParams));
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
@@ -516,10 +629,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Stats Cards
-            _buildStatsGrid(isDark, colors),
+            _buildStatsGrid(isDark, colors, usersAsync, buildsAsync, forumPostsAsync, componentsAsync),
             const SizedBox(height: 32),
             // Recent Activity Section
-            _buildRecentActivity(isDark, colors),
+            _buildRecentActivity(isDark, colors, usersAsync, buildsAsync, forumPostsAsync),
             const SizedBox(height: 32),
             // Quick Actions
             _buildQuickActions(isDark, colors),
@@ -529,39 +642,164 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildStatsGrid(bool isDark, dynamic colors) {
+  Widget _buildStatsGrid(
+    bool isDark,
+    dynamic colors,
+    AsyncValue<List<AdminUser>> usersAsync,
+    AsyncValue<List<AdminBuild>> buildsAsync,
+    AsyncValue<List<AdminForumPost>> forumPostsAsync,
+    AsyncValue<List<AdminComponent>> componentsAsync,
+  ) {
+    // Handle loading state - show loading for all cards if any is loading
+    if (usersAsync.isLoading || buildsAsync.isLoading || 
+        forumPostsAsync.isLoading || componentsAsync.isLoading) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      final crossAxisCount = screenWidth > 1200
+          ? 4
+          : screenWidth > 800
+          ? 3
+          : screenWidth > 600
+          ? 2
+          : 1;
+
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.2,
+        ),
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.1),
+              ),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+      );
+    }
+
+    // Calculate statistics from fetched data
+    final users = usersAsync.valueOrNull ?? [];
+    final builds = buildsAsync.valueOrNull ?? [];
+    final posts = forumPostsAsync.valueOrNull ?? [];
+    final components = componentsAsync.valueOrNull ?? [];
+
+    // Debug logging
+    debugPrint('Dashboard Stats: Users: ${users.length}, Builds: ${builds.length}, Posts: ${posts.length}, Components: ${components.length}');
+
+    final totalUsers = users.length;
+    final totalBuilds = builds.length;
+    final totalForumPosts = posts.length;
+    final totalComponents = components.length;
+
+    // Calculate growth percentages (this month vs last month)
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final startOfLastMonth = DateTime(now.year, now.month - 1, 1);
+
+    final newUsersThisMonth = users.where((u) =>
+      u.registeredAt != null && u.registeredAt!.isAfter(startOfMonth)
+    ).length;
+    final newUsersLastMonth = users.where((u) =>
+      u.registeredAt != null &&
+      u.registeredAt!.isAfter(startOfLastMonth) &&
+      u.registeredAt!.isBefore(startOfMonth)
+    ).length;
+
+    final newBuildsThisMonth = builds.where((b) =>
+      b.databaseEntryAt != null && b.databaseEntryAt!.isAfter(startOfMonth)
+    ).length;
+    final newBuildsLastMonth = builds.where((b) =>
+      b.databaseEntryAt != null &&
+      b.databaseEntryAt!.isAfter(startOfLastMonth) &&
+      b.databaseEntryAt!.isBefore(startOfMonth)
+    ).length;
+
+    final newPostsThisMonth = posts.where((p) =>
+      p.postedAt != null && p.postedAt!.isAfter(startOfMonth)
+    ).length;
+    final newPostsLastMonth = posts.where((p) =>
+      p.postedAt != null &&
+      p.postedAt!.isAfter(startOfLastMonth) &&
+      p.postedAt!.isBefore(startOfMonth)
+    ).length;
+
+    String calculateChange(int current, int last) {
+      if (last == 0) {
+        
+        return current > 0 ? '+100%' : '0%';
+      }
+      
+      final change = ((current - last) / last * 100).round();
+      return change >= 0 ? '+$change%' : '$change%';
+    }
+
+    
+    debugPrint('Dashboard Growth:');
+    debugPrint('  Users - This month: $newUsersThisMonth, Last month: $newUsersLastMonth, Change: ${calculateChange(newUsersThisMonth, newUsersLastMonth)}');
+    debugPrint('  Builds - This month: $newBuildsThisMonth, Last month: $newBuildsLastMonth, Change: ${calculateChange(newBuildsThisMonth, newBuildsLastMonth)}');
+    debugPrint('  Posts - This month: $newPostsThisMonth, Last month: $newPostsLastMonth, Change: ${calculateChange(newPostsThisMonth, newPostsLastMonth)}');
+
     final stats = [
       StatCard(
         title: 'Total Users',
-        value: '1,234',
-        change: '+12%',
-        isPositive: true,
+        value: _formatNumber(totalUsers),
+        change: calculateChange(newUsersThisMonth, newUsersLastMonth),
+        changeLabel: 'vs last month',
+        isPositive: newUsersThisMonth >= newUsersLastMonth,
         icon: Icons.people,
         color: AppColorsDark.buttonBlue,
+        isLoading: false,
+        hasError: usersAsync.hasError,
       ),
       StatCard(
         title: 'Total Builds',
-        value: '5,678',
-        change: '+8%',
-        isPositive: true,
+        value: _formatNumber(totalBuilds),
+        change: calculateChange(newBuildsThisMonth, newBuildsLastMonth),
+        changeLabel: 'vs last month',
+        isPositive: newBuildsThisMonth >= newBuildsLastMonth,
         icon: Icons.computer,
         color: AppColorsDark.buttonGreen,
+        isLoading: false,
+        hasError: buildsAsync.hasError,
       ),
       StatCard(
         title: 'Forum Posts',
-        value: '3,456',
-        change: '+15%',
-        isPositive: true,
+        value: _formatNumber(totalForumPosts),
+        change: calculateChange(newPostsThisMonth, newPostsLastMonth),
+        changeLabel: 'vs last month',
+        isPositive: newPostsThisMonth >= newPostsLastMonth,
         icon: Icons.forum,
         color: AppColorsDark.buttonPurple,
+        isLoading: false,
+        hasError: forumPostsAsync.hasError,
       ),
       StatCard(
         title: 'Active Parts',
-        value: '2,890',
-        change: '+5%',
+        value: _formatNumber(totalComponents),
+        change: '+0%', // Components don't have date tracking for now
+        changeLabel: '',
         isPositive: true,
         icon: Icons.memory,
         color: AppColorsDark.warning,
+        isLoading: false,
+        hasError: componentsAsync.hasError,
       ),
     ];
 
@@ -590,7 +828,71 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  String _formatNumber(int number) {
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M';
+    } else if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(1)}K';
+    }
+    return number.toString();
+  }
+
   Widget _buildStatCard(StatCard stat, bool isDark, dynamic colors) {
+    if (stat.isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColorsDark.backgroundSecondary
+              : AppColorsLight.backgroundTertiary,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : Colors.black.withOpacity(0.1),
+          ),
+        ),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: stat.color,
+          ),
+        ),
+      );
+    }
+
+    if (stat.hasError) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColorsDark.backgroundSecondary
+              : AppColorsLight.backgroundTertiary,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColorsDark.error.withOpacity(0.3),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: AppColorsDark.error,
+              size: 32,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Error',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColorsDark.error,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -626,38 +928,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Icon(stat.icon, color: stat.color, size: 24),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: stat.isPositive
-                      ? AppColorsDark.success.withOpacity(0.2)
-                      : AppColorsDark.error.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      stat.isPositive
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 14,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
                       color: stat.isPositive
-                          ? AppColorsDark.success
-                          : AppColorsDark.error,
+                          ? AppColorsDark.success.withOpacity(0.2)
+                          : AppColorsDark.error.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          stat.isPositive
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          size: 14,
+                          color: stat.isPositive
+                              ? AppColorsDark.success
+                              : AppColorsDark.error,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          stat.change,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: stat.isPositive
+                                ? AppColorsDark.success
+                                : AppColorsDark.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (stat.changeLabel.isNotEmpty) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      stat.change,
+                      stat.changeLabel,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: stat.isPositive
-                            ? AppColorsDark.success
-                            : AppColorsDark.error,
+                        fontSize: 10,
+                        color: isDark
+                            ? AppColorsDark.textWhite.withOpacity(0.5)
+                            : AppColorsLight.textBlack.withOpacity(0.5),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
             ],
           ),
@@ -691,7 +1011,74 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildRecentActivity(bool isDark, dynamic colors) {
+  Widget _buildRecentActivity(
+    bool isDark,
+    dynamic colors,
+    AsyncValue<List<AdminUser>> usersAsync,
+    AsyncValue<List<AdminBuild>> buildsAsync,
+    AsyncValue<List<AdminForumPost>> forumPostsAsync,
+  ) {
+    // Collect recent activities from all data sources
+    final activities = <ActivityItem>[];
+
+    final users = usersAsync.valueOrNull ?? [];
+    final builds = buildsAsync.valueOrNull ?? [];
+    final posts = forumPostsAsync.valueOrNull ?? [];
+
+    // Add recent users
+    final recentUsers = users
+        .where((u) => u.registeredAt != null)
+        .toList()
+      ..sort((a, b) => (b.registeredAt ?? DateTime(1970)).compareTo(a.registeredAt ?? DateTime(1970)));
+    
+    for (var user in recentUsers.take(3)) {
+      if (user.registeredAt != null) {
+        activities.add(ActivityItem(
+          title: 'New user registered: ${user.displayName ?? user.login}',
+          time: user.registeredAt!,
+          icon: Icons.person_add,
+        ));
+      }
+    }
+
+    // Add recent builds
+    final recentBuilds = builds
+        .where((b) => b.databaseEntryAt != null)
+        .toList()
+      ..sort((a, b) => (b.databaseEntryAt ?? DateTime(1970)).compareTo(a.databaseEntryAt ?? DateTime(1970)));
+    
+    for (var build in recentBuilds.take(3)) {
+      if (build.databaseEntryAt != null) {
+        activities.add(ActivityItem(
+          title: 'Build created: ${build.name ?? "Untitled"}',
+          time: build.databaseEntryAt!,
+          icon: Icons.computer,
+        ));
+      }
+    }
+
+    // Add recent forum posts
+    final recentPosts = posts
+        .where((p) => p.postedAt != null)
+        .toList()
+      ..sort((a, b) => (b.postedAt ?? DateTime(1970)).compareTo(a.postedAt ?? DateTime(1970)));
+    
+    for (var post in recentPosts.take(3)) {
+      if (post.postedAt != null) {
+        activities.add(ActivityItem(
+          title: 'Forum post published: ${post.title ?? "Untitled"}',
+          time: post.postedAt!,
+          icon: Icons.forum,
+        ));
+      }
+    }
+
+    // Sort all activities by time (most recent first)
+    activities.sort((a, b) => b.time.compareTo(a.time));
+
+    // Take only the 5 most recent activities
+    final recentActivities = activities.take(5).toList();
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -719,37 +1106,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildActivityItem(
-            'New user registered',
-            '2 minutes ago',
-            Icons.person_add,
-            isDark,
-            colors,
-          ),
-          _buildActivityItem(
-            'Build created',
-            '15 minutes ago',
-            Icons.computer,
-            isDark,
-            colors,
-          ),
-          _buildActivityItem(
-            'Forum post published',
-            '1 hour ago',
-            Icons.forum,
-            isDark,
-            colors,
-          ),
-          _buildActivityItem(
-            'Part added to database',
-            '2 hours ago',
-            Icons.memory,
-            isDark,
-            colors,
-          ),
+          if (usersAsync.isLoading || buildsAsync.isLoading || forumPostsAsync.isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (recentActivities.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                'No recent activity',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withOpacity(0.5)
+                      : AppColorsLight.textBlack.withOpacity(0.5),
+                ),
+              ),
+            )
+          else
+            ...recentActivities.map((activity) => _buildActivityItem(
+              activity.title,
+              _formatTimeAgo(activity.time),
+              activity.icon,
+              isDark,
+              colors,
+            )),
         ],
       ),
     );
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   Widget _buildActivityItem(
@@ -820,21 +1222,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
         title: 'Manage Users',
         icon: Icons.people,
         color: AppColorsDark.buttonBlue,
+        route: '/admin/users',
       ),
       QuickAction(
         title: 'Review Builds',
         icon: Icons.computer,
         color: AppColorsDark.buttonGreen,
+        route: '/admin/builds',
       ),
       QuickAction(
         title: 'Moderate Forums',
         icon: Icons.forum,
         color: AppColorsDark.buttonPurple,
+        route: '/admin/forums',
       ),
       QuickAction(
         title: 'Update Parts',
         icon: Icons.memory,
         color: AppColorsDark.warning,
+        route: '/admin/parts',
       ),
     ];
 
@@ -871,7 +1277,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     return InkWell(
       onTap: () {
-        // Handle action
+        context.go(action.route);
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -934,17 +1340,23 @@ class StatCard {
   final String title;
   final String value;
   final String change;
+  final String changeLabel; // Açıklayıcı label (örn: "vs last month")
   final bool isPositive;
   final IconData icon;
   final Color color;
+  final bool isLoading;
+  final bool hasError;
 
   StatCard({
     required this.title,
     required this.value,
     required this.change,
+    this.changeLabel = '',
     required this.isPositive,
     required this.icon,
     required this.color,
+    this.isLoading = false,
+    this.hasError = false,
   });
 }
 
@@ -952,6 +1364,24 @@ class QuickAction {
   final String title;
   final IconData icon;
   final Color color;
+  final String route;
 
-  QuickAction({required this.title, required this.icon, required this.color});
+  QuickAction({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.route,
+  });
+}
+
+class ActivityItem {
+  final String title;
+  final DateTime time;
+  final IconData icon;
+
+  ActivityItem({
+    required this.title,
+    required this.time,
+    required this.icon,
+  });
 }

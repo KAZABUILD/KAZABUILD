@@ -9,15 +9,33 @@
 /// - An animated list of post cards that fade and slide in for a smooth
 ///   user experience, powered by `flutter_staggered_animations`.
 library;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/models/forum_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+/// A provider to fetch the author's details based on their ID.
+/// Returns null if the user cannot be fetched (e.g., user deleted, network error).
+final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+  try {
+    // This uses the existing auth service to fetch user data.
+    final authService = ref.read(authServiceProvider);
+    final userResponse = await authService.getUserById(userId);
+    return AppUser.fromJson(userResponse.data);
+  } catch (e) {
+    // If user cannot be fetched, return null instead of throwing
+    // This allows the UI to display a fallback (e.g., "User" or "Unknown")
+    debugPrint('Error fetching user $userId: $e');
+    return null;
+  }
+});
 
 /// The main widget for the forums page.
 class ForumsPage extends ConsumerStatefulWidget {
@@ -43,8 +61,17 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   /// The currently selected option for sorting posts.
   String _selectedSortOption = 'Newest';
 
+  /// Current page number for pagination.
+  int _currentPage = 1;
+
+  /// Number of posts per page.
+  static const int _pageSize = 10;
+
   /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
+  
+  /// Timer for debouncing search input
+  Timer? _searchDebounce;
 
   /// A static list of available categories for the filter chips.
   final List<String> _categories = [
@@ -67,19 +94,25 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   void initState() {
     super.initState();
 
-    /// Adds a listener to the search controller to update the UI in real-time as the user types.
+    /// Adds a listener to the search controller to update the UI with debouncing.
+    /// This prevents too many API calls while the user is typing.
     _searchController.addListener(() {
-      if (_searchController.text != _searchQuery) {
-        setState(() {
-          _searchQuery = _searchController.text;
-        });
-      }
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (_searchController.text != _searchQuery) {
+          setState(() {
+            _searchQuery = _searchController.text.trim();
+            _currentPage = 1; // Reset to first page when search changes
+          });
+        }
+      });
     });
   }
-
+  
   @override
   void dispose() {
     // Clean up controllers to prevent memory leaks.
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -88,7 +121,18 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allPostsAsync = ref.watch(allForumPostsProvider);
+    
+    // Build pagination parameters - memoize to prevent unnecessary rebuilds
+    final postsParams = ForumPostsParams(
+      page: _currentPage,
+      pageSize: _pageSize,
+      category: _selectedCategory == 'All' ? null : _selectedCategory,
+      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      sortOption: _selectedSortOption,
+    );
+    
+    final postsAsync = ref.watch(forumPostsProvider(postsParams));
+
 
     return Scaffold(
       key: _scaffoldKey,
@@ -100,7 +144,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
           Expanded(
             /// [CustomScrollView] allows for combining different types of scrollable lists and headers.
             child: CustomScrollView(
-              // controller: _scrollController, // Keep if needed for effects
+              controller: _scrollController,
               slivers: [
                 /// The main header section with the title and "Start Discussion" button.
                 _buildModernHeader(theme, context),
@@ -113,63 +157,92 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                     categories: _categories,
                     selectedCategory: _selectedCategory,
                     onCategorySelected: (category) {
-                      setState(() => _selectedCategory = category);
+                      setState(() {
+                        _selectedCategory = category;
+                        _currentPage = 1; // Reset to first page when category changes
+                      });
                     },
                     sortOptions: _sortOptions,
                     selectedSortOption: _selectedSortOption,
                     onSortOptionSelected: (option) {
-                      setState(() => _selectedSortOption = option!);
+                      setState(() {
+                        _selectedSortOption = option!;
+                        _currentPage = 1; // Reset to first page when sort changes
+                      });
                     },
                   ),
                 ),
-                allPostsAsync.when(
+                postsAsync.when(
                   loading: () => const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (err, stack) => SliverFillRemaining(
                     child: Center(child: Text('Error: $err')),
                   ),
-                  data: (allPosts) {
-                    /// Apply category and search filters to the list of all posts.
-                    List<ForumPost> processedPosts = allPosts.where((post) {
-                      final categoryMatch = _selectedCategory == 'All' ||
-                          post.topic == _selectedCategory;
-                      final searchMatch = post.title
-                          .toLowerCase()
-                          .contains(_searchQuery.toLowerCase());
-                      return categoryMatch && searchMatch;
-                    }).toList();
-
-                    /// Apply sorting based on the selected option.
-                    switch (_selectedSortOption) {
-                      case 'Oldest':
-                        processedPosts.sort(
-                            (a, b) => a.createdAt.compareTo(b.createdAt));
-                        break;
-                      case 'Newest':
-                      default:
-                        processedPosts.sort(
-                            (a, b) => b.createdAt.compareTo(a.createdAt));
-                        break;
+                  data: (posts) {
+                    // Determine if there are more pages
+                    final hasMorePages = posts.length == _pageSize;
+                    final hasPreviousPage = _currentPage > 1;
+                    
+                    // If no posts found, show empty state
+                    if (posts.isEmpty) {
+                      return SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.forum_outlined,
+                                size: 64,
+                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No posts found',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Try adjusting your filters or search query',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     }
-
+                    
                     return SliverPadding(
                       padding: const EdgeInsets.all(16.0),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) =>
-                              AnimationConfiguration.staggeredList(
-                            position: index,
-                            duration: const Duration(milliseconds: 375),
-                            child: SlideAnimation(
-                              verticalOffset: 50.0,
-                              child: FadeInAnimation(
-                                child: _ModernPostCard(
-                                    post: processedPosts[index]),
+                          (context, index) {
+                            // If this is the last item, add pagination controls
+                            if (index == posts.length) {
+                              return _buildPaginationControls(
+                                theme,
+                                hasPreviousPage,
+                                hasMorePages,
+                              );
+                            }
+                            
+                            return AnimationConfiguration.staggeredList(
+                              position: index,
+                              duration: const Duration(milliseconds: 375),
+                              child: SlideAnimation(
+                                verticalOffset: 50.0,
+                                child: FadeInAnimation(
+                                  child: _ModernPostCard(
+                                      post: posts[index]),
+                                ),
                               ),
-                            ),
-                          ),
-                          childCount: processedPosts.length,
+                            );
+                          },
+                          childCount: posts.length + 1, // +1 for pagination controls
                         ),
                       ),
                     );
@@ -177,6 +250,70 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds pagination controls at the bottom of the post list.
+  Widget _buildPaginationControls(
+    ThemeData theme,
+    bool hasPreviousPage,
+    bool hasMorePages,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Previous page button
+          IconButton(
+            onPressed: hasPreviousPage
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                    // Scroll to top when changing pages
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                : null,
+            icon: const Icon(Icons.chevron_left),
+            tooltip: 'Previous page',
+          ),
+          
+          // Page number display
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Page $_currentPage',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          
+          // Next page button
+          IconButton(
+            onPressed: hasMorePages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                    // Scroll to top when changing pages
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                : null,
+            icon: const Icon(Icons.chevron_right),
+            tooltip: 'Next page',
           ),
         ],
       ),
@@ -437,16 +574,16 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
 ///
 /// It includes the post title, author, category, a content preview, and stats.
 /// It also has a subtle animation on tap.
-class _ModernPostCard extends StatefulWidget {
+class _ModernPostCard extends ConsumerStatefulWidget {
   final ForumPost post;
   const _ModernPostCard({required this.post});
 
   @override
-  State<_ModernPostCard> createState() => _ModernPostCardState();
+  ConsumerState<_ModernPostCard> createState() => _ModernPostCardState();
 }
 
 /// The state for [_ModernPostCard], which manages the tap animation.
-class _ModernPostCardState extends State<_ModernPostCard>
+class _ModernPostCardState extends ConsumerState<_ModernPostCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -472,8 +609,11 @@ class _ModernPostCardState extends State<_ModernPostCard>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Use read instead of watch to prevent unnecessary rebuilds
+    // The user info will be fetched lazily and cached by Riverpod
+    final authorAsync = ref.watch(userProvider(widget.post.creatorId));
+    
     return AnimatedBuilder(
-      // The AnimatedBuilder rebuilds the card when the animation value changes.
       // The AnimatedBuilder rebuilds the card when the animation value changes.
       animation: _scaleAnimation,
       builder: (context, child) {
@@ -507,26 +647,99 @@ class _ModernPostCardState extends State<_ModernPostCard>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     /// A circular avatar for the author with a gradient background.
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primary,
-                            theme.colorScheme.secondary,
-                          ],
+                    authorAsync.when(
+                      data: (author) {
+                        if (author == null) {
+                          // Fallback if user cannot be fetched
+                          return Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.secondary,
+                                ],
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'U',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final displayName = author.displayName.isNotEmpty 
+                            ? author.displayName 
+                            : author.username;
+                        final initial = displayName.isNotEmpty 
+                            ? displayName[0].toUpperCase() 
+                            : 'U';
+                        return Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.colorScheme.primary,
+                                theme.colorScheme.secondary,
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              initial,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      loading: () => Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.surfaceVariant,
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          // TODO: Fetch author username from creatorId
-                          'U', // Placeholder for User
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                      error: (_, __) => Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.secondary,
+                            ],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'U',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           ),
                         ),
                       ),
@@ -600,54 +813,178 @@ class _ModernPostCardState extends State<_ModernPostCard>
                           Row(
                             children: [
                               /// Author's avatar, name, and post date.
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor:
-                                        theme.colorScheme.primary.withOpacity(0.1),
-                                    child: Text(
-                                      'U', // Placeholder
-                                      style:  TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                              authorAsync.when(
+                                data: (author) {
+                                  if (author == null) {
+                                    // Fallback if user cannot be fetched
+                                    return Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor:
+                                              theme.colorScheme.primary.withOpacity(0.1),
+                                          child: Text(
+                                            'U',
+                                            style: TextStyle(
+                                              color: theme.colorScheme.primary,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'User',
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                            ),
+                                            Text(
+                                              DateFormat(
+                                                'MMM dd, yyyy',
+                                              ).format(widget.post.createdAt),
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  final displayName = author.displayName.isNotEmpty 
+                                      ? author.displayName 
+                                      : author.username;
+                                  final initial = displayName.isNotEmpty 
+                                      ? displayName[0].toUpperCase() 
+                                      : 'U';
+                                  return Row(
                                     children: [
-                                      Text(
-                                        'User', // Placeholder
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor:
+                                            theme.colorScheme.primary.withOpacity(0.1),
+                                        child: Text(
+                                          initial,
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
-                                      Text(
-                                        DateFormat(
-                                          'MMM dd, yyyy',
-                                        ).format(widget.post.createdAt),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            displayName,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                          ),
+                                          Text(
+                                            DateFormat(
+                                              'MMM dd, yyyy',
+                                            ).format(widget.post.createdAt),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
                                       ),
                                     ],
-                                  ),
-                                ],
+                                  );
+                                },
+                                loading: () => Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 60,
+                                          height: 12,
+                                          color: theme.colorScheme.surfaceVariant,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          width: 80,
+                                          height: 10,
+                                          color: theme.colorScheme.surfaceVariant,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                error: (_, __) => Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor:
+                                          theme.colorScheme.primary.withOpacity(0.1),
+                                      child: Text(
+                                        'U',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.primary,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'User',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                        Text(
+                                          DateFormat(
+                                            'MMM dd, yyyy',
+                                          ).format(widget.post.createdAt),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                               const Spacer(),
 
                               /// Chips for displaying view and reply counts.
                               _StatChip(
                                 Icons.comment_outlined,
-                                'Replies', // Placeholder
+                                widget.post.replyCount == 1 
+                                    ? '1 Reply' 
+                                    : '${widget.post.replyCount} Replies',
                               ),
                             ],
                           ),

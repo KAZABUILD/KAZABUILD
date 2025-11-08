@@ -50,12 +50,40 @@ class ComponentService {
       }
     }
 
+    // Map ComponentType to backend enum value for Type filter
+    String _mapTypeToBackendEnum(ComponentType type) {
+      switch (type) {
+        case ComponentType.cpu:
+          return 'CPU';
+        case ComponentType.gpu:
+          return 'GPU';
+        case ComponentType.motherboard:
+          return 'MOTHERBOARD';
+        case ComponentType.ram:
+          return 'MEMORY';
+        case ComponentType.storage:
+          return 'STORAGE';
+        case ComponentType.psu:
+          return 'POWER_SUPPLY';
+        case ComponentType.cooler:
+          return 'COOLER';
+        case ComponentType.pcCase:
+          return 'CASE';
+        case ComponentType.caseFan:
+          return 'CASE_FAN';
+        case ComponentType.monitor:
+          return 'MONITOR';
+      }
+    }
+
     // Prepare the request body for backend polymorphic deserializer.
     // Property names must be PascalCase to match .NET's default JSON naming policy.
     // We enable pagination with a very large pageLength to ensure we get all results.
-    // This is safer than relying on the Paging field default value.
+    
+    // The Type filter ensures only the requested component type is returned
     final body = {
       r'$type': _mapTypeToDiscriminator(componentType),
+      'Type': [_mapTypeToBackendEnum(componentType)], // Explicitly filter by component type
       'Paging': true,
       'Page': 1,
       'PageLength': 10000,  // Large number to get all results
