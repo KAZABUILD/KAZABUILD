@@ -13,6 +13,7 @@ import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/comments_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
@@ -58,16 +59,7 @@ class BuildDetailPage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              if (build.imageUrl != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.network(
-                    build.imageUrl!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 400,
-                  ),
-                ),
+              _buildBuildImage(context, theme, build),
               const SizedBox(height: 24),
               _buildMetaInfo(context, theme, build),
               const SizedBox(height: 16),
@@ -106,6 +98,112 @@ class BuildDetailPage extends ConsumerWidget {
               _CommentsSection(buildId: build.id),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the build image widget with proper URL construction and error handling
+  Widget _buildBuildImage(BuildContext context, ThemeData theme, Build build) {
+    final imageUrl = _getImageUrl(build);
+    
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return _buildPlaceholderImage(context, theme);
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 400,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: double.infinity,
+            height: 400,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          // On error (including ImageCodeException), show placeholder
+          return _buildPlaceholderImage(context, theme);
+        },
+      ),
+    );
+  }
+
+  /// Gets the image URL for the build, handling GUIDs and different URL formats
+  String? _getImageUrl(Build build) {
+    if (build.imageUrl == null || build.imageUrl!.isEmpty) {
+      return null;
+    }
+
+    final url = build.imageUrl!;
+    
+    // Check if it's a GUID (image ID)
+    final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (guidPattern.hasMatch(url)) {
+      // It's an image ID, construct download URL
+      return '$apiBaseUrl/Images/download/$url';
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Already a full URL
+      return url;
+    } else if (url.startsWith('/')) {
+      // Relative URL
+      return '$apiBaseUrl$url';
+    }
+
+    return null;
+  }
+
+  /// Builds a placeholder image widget when no image is available or on error
+  Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      height: 400,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            theme.colorScheme.surfaceVariant.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.computer,
+              size: 64,
+              color: theme.colorScheme.onSurface.withOpacity(0.3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No Image Available',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+              ),
+            ),
+          ],
         ),
       ),
     );

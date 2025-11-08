@@ -13,10 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
-import 'package:frontend/models/image_provider.dart' as image_provider;
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/models/api_constants.dart';
-import 'package:frontend/screens/explore_build/explore_builds_page.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 
 /// A page that displays the profile of the currently authenticated user.
@@ -538,24 +535,6 @@ class _BuildCard extends ConsumerWidget {
     required this.buildData,
   });
 
-  String? get _imageUrl {
-    String? imageUrl;
-
-    if (buildData.imageUrl != null && buildData.imageUrl!.isNotEmpty) {
-      final url = buildData.imageUrl!;
-      final guidPattern = RegExp(
-          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
-      if (guidPattern.hasMatch(url)) {
-        imageUrl = image_provider.ImageService.getImageUrl(url);
-      } else if (url.startsWith('http://') || url.startsWith('https://')) {
-        imageUrl = url;
-      } else if (url.startsWith('/')) {
-        imageUrl = '$apiBaseUrl$url';
-      }
-    }
-
-    return imageUrl;
-  }
 
   /// Builds a placeholder image widget when no image is available
   Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
@@ -622,14 +601,6 @@ class _BuildCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imageUrl = _imageUrl;
-
-    final imageProvider = (imageUrl != null && imageUrl.isNotEmpty)
-        ? CustomNetworkImage(
-            imageUrl,
-            dioProvider: () => ref.read(authProvider.notifier).getDioInstance(),
-          )
-        : null;
 
     return Card(
       elevation: 0,
@@ -650,40 +621,11 @@ class _BuildCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Build Image
+            // Build Image - always show placeholder to avoid loading and 429 errors
+            // Images will be loaded on the detail page
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                ),
-                child: imageProvider != null
-                    ? Image(
-                        image: imageProvider,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (kDebugMode) {
-                            print("Image Error in _BuildCard: $error");
-                            print(stackTrace);
-                          }
-                          return _buildPlaceholderImage(context, theme);
-                        },
-                      )
-                    : _buildPlaceholderImage(context, theme),
-              ),
+              child: _buildPlaceholderImage(context, theme),
             ),
 
             // Content Section

@@ -9,6 +9,7 @@
 /// for mobile and desktop screens.
 library;
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +18,11 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/currency_provider.dart';
+import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
@@ -77,43 +81,74 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 
   /// Saves the current build to the backend.
   Future<String> saveBuild(WidgetRef ref, String name, String description) async {
+    debugPrint('BuildNotifier.saveBuild: Starting to save build');
     final buildService = ref.read(buildServiceProvider);
     final userId = ref.read(authProvider).valueOrNull?.uid;
 
     if (userId == null) {
+      debugPrint('BuildNotifier.saveBuild: User not logged in');
       throw Exception('You must be logged in to save a build.');
     }
+    debugPrint('BuildNotifier.saveBuild: User ID: $userId');
+
+    // Count components
+    final componentCount = state.where((slot) => slot.selectedProduct != null).length;
+    debugPrint('BuildNotifier.saveBuild: Building with $componentCount components');
 
     // 1. Create the main build entry.
-    final newBuildId = await buildService.createBuild({
-      'userId': userId,
-      'name': name,
-      'description': description,
-      'status': 'DRAFT', // Save as draft by default
-    });
+    debugPrint('BuildNotifier.saveBuild: Creating build with name: $name');
+    try {
+      final newBuildId = await buildService.createBuild({
+        'userId': userId,
+        'name': name,
+        'description': description,
+        'status': 'DRAFT', // Save as draft by default
+      });
+      debugPrint('BuildNotifier.saveBuild: Build created with ID: $newBuildId');
 
-    // 2. Add each selected component to the newly created build.
-    for (final componentSlot in state) {
-      if (componentSlot.selectedProduct != null) {
-        await buildService.addComponentToBuild(
-          newBuildId,
-          componentSlot.selectedProduct!.id,
-          1, // Assuming quantity is always 1 for now
-        );
+      // 2. Add each selected component to the newly created build.
+      int componentIndex = 0;
+      for (final componentSlot in state) {
+        if (componentSlot.selectedProduct != null) {
+          componentIndex++;
+          debugPrint('BuildNotifier.saveBuild: Adding component $componentIndex/${componentCount}: ${componentSlot.selectedProduct!.id}');
+          try {
+            await buildService.addComponentToBuild(
+              newBuildId,
+              componentSlot.selectedProduct!.id,
+              1, // Assuming quantity is always 1 for now
+            );
+            debugPrint('BuildNotifier.saveBuild: Component $componentIndex added successfully');
+          } catch (e) {
+            debugPrint('BuildNotifier.saveBuild: Error adding component $componentIndex: $e');
+            // Continue with other components even if one fails
+          }
+        }
       }
+      debugPrint('BuildNotifier.saveBuild: Build saved successfully with ID: $newBuildId');
+      return newBuildId;
+    } catch (e) {
+      debugPrint('BuildNotifier.saveBuild: Error creating build: $e');
+      rethrow;
     }
-    return newBuildId;
   }
 
   /// Publishes a build by updating its status.
   Future<void> publishBuild(WidgetRef ref, String buildId) async {
     final buildService = ref.read(buildServiceProvider);
     try {
+      // Update build status to PUBLISHED
       await buildService.updateBuild(buildId, {'status': 'PUBLISHED'});
       // Invalidate the providers so the UI updates with the new status
+      // This will trigger a refresh when the provider is next accessed
       ref.invalidate(allBuildsProvider);
-      ref.invalidate(userBuildsProvider(ref.read(authProvider).value!.uid));
+      final userId = ref.read(authProvider).valueOrNull?.uid;
+      if (userId != null) {
+        ref.invalidate(userBuildsProvider(userId));
+      }
     } catch (e) {
+      // Log the error for debugging
+      debugPrint('Error in publishBuild: $e');
       rethrow;
     }
   }
@@ -331,34 +366,437 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     }
   }
 
+  /// Shows a dialog to get build name, description, and image, then saves and publishes it.
+  Future<String?> _showPostBuildDialog() async {
+    debugPrint('_showPostBuildDialog: Starting dialog');
+    
+    // Check if widget is mounted before opening dialog
+    if (!mounted) {
+      debugPrint('_showPostBuildDialog: Widget not mounted, cannot show dialog');
+      return null;
+    }
+    
+    // Store a reference to the current context for navigation
+    final BuildContext? currentContext = mounted ? context : null;
+    
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    
+    // Use a ValueNotifier to preserve image state outside the dialog
+    final selectedImageNotifier = ValueNotifier<XFile?>(null);
+    final imagePathNotifier = ValueNotifier<String?>(null);
+
+    debugPrint('_showPostBuildDialog: Showing dialog');
+    final bool? shouldPost = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+          title: const Text('Post Build'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Build Name *',
+                      hintText: 'Enter a name for your build',
+                    ),
+                    validator: (value) =>
+                        value == null || value.isEmpty ? 'Please enter a name' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (Optional)',
+                      hintText: 'Describe your build...',
+                    ),
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Build Image (Optional)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ValueListenableBuilder<XFile?>(
+                    valueListenable: selectedImageNotifier,
+                    builder: (context, selectedImage, _) {
+                      if (selectedImage == null) {
+                        return OutlinedButton.icon(
+                          onPressed: () async {
+                            debugPrint('Select Image button pressed');
+                            final ImagePicker picker = ImagePicker();
+                            final XFile? image = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              maxWidth: 1920,
+                              maxHeight: 1080,
+                              imageQuality: 90,
+                            );
+                            if (image != null) {
+                              debugPrint('Image selected: ${image.path}');
+                              setDialogState(() {
+                                selectedImageNotifier.value = image;
+                                imagePathNotifier.value = image.path;
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.image),
+                          label: const Text('Select Image'),
+                        );
+                      }
+                      return Column(
+                        children: [
+                          FutureBuilder<Uint8List>(
+                            future: selectedImage.readAsBytes(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Container(
+                            height: 150,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: const Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        if (snapshot.hasData) {
+                          return Container(
+                            height: 150,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.memory(
+                                snapshot.data!,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          );
+                        }
+                        return Container(
+                          height: 150,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey),
+                            color: Colors.grey.shade200,
+                          ),
+                          child: const Icon(Icons.image, size: 50),
+                        );
+                      },
+                    ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () {
+                              debugPrint('Remove Image button pressed');
+                              setDialogState(() {
+                                selectedImageNotifier.value = null;
+                                imagePathNotifier.value = null;
+                              });
+                            },
+                            icon: const Icon(Icons.delete),
+                            label: const Text('Remove Image'),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                debugPrint('Post Build button pressed in dialog');
+                debugPrint('Form key current state: ${formKey.currentState}');
+                if (formKey.currentState!.validate()) {
+                  debugPrint('Form is valid, closing dialog with true');
+                  debugPrint('Build name: ${nameController.text}');
+                  debugPrint('Build description length: ${descriptionController.text.length}');
+                  debugPrint('Selected image: ${selectedImageNotifier.value?.path ?? 'none'}');
+                  Navigator.of(context).pop(true);
+                } else {
+                  debugPrint('Form validation failed - name is empty or invalid');
+                }
+              },
+              child: const Text('Post Build'),
+            ),
+          ],
+        );
+        },
+      ),
+    );
+
+    // If user cancelled, return early
+    debugPrint('_showPostBuildDialog: Dialog returned: $shouldPost, mounted: $mounted');
+    if (shouldPost != true || !mounted) {
+      debugPrint('_showPostBuildDialog: User cancelled or widget not mounted, returning null');
+      return null;
+    }
+    debugPrint('_showPostBuildDialog: Proceeding with build publish');
+
+    // Store values before async operations
+    final buildName = nameController.text.trim();
+    final buildDescription = descriptionController.text.trim();
+    final imageFile = selectedImageNotifier.value;
+    final imagePathValue = imagePathNotifier.value;
+    
+    debugPrint('_showPostBuildDialog: Stored values - name: "$buildName", description: "${buildDescription.length} chars", image: ${imageFile?.path ?? 'none'}');
+
+    // Don't show loading snackbar here - it causes context issues
+    // We'll show a success message after publishing or navigate directly
+
+    try {
+      // 1. Save the build first to get the build ID
+      debugPrint('_showPostBuildDialog: Saving build with name: $buildName, description length: ${buildDescription.length}');
+      final newBuildId = await ref
+          .read(buildProvider.notifier)
+          .saveBuild(ref, buildName, buildDescription);
+      debugPrint('_showPostBuildDialog: Build saved with ID: $newBuildId');
+
+      if (!mounted) {
+        debugPrint('_showPostBuildDialog: Widget not mounted after save, returning null');
+        return null;
+      }
+
+      // 2. Upload image if one was selected
+      if (imageFile != null) {
+        try {
+          debugPrint('_showPostBuildDialog: Uploading image...');
+          final dio = ref.read(authProvider.notifier).getDioInstance();
+          
+          // Check if it's a blob URL - if so, read bytes directly
+          MultipartFile filePart;
+          if (imagePathValue != null && imagePathValue.startsWith('blob:')) {
+            // For blob URLs, read the file bytes directly
+            debugPrint('_showPostBuildDialog: Image is blob URL, reading bytes...');
+            final bytes = await imageFile.readAsBytes();
+            filePart = MultipartFile.fromBytes(
+              bytes,
+              filename: imageFile.name,
+            );
+          } else if (imagePathValue != null && imagePathValue.isNotEmpty) {
+            // For real file paths, use fromFile
+            debugPrint('_showPostBuildDialog: Image is file path: $imagePathValue');
+            filePart = await MultipartFile.fromFile(imagePathValue, filename: imageFile.name);
+          } else {
+            // Fallback: read bytes from XFile
+            debugPrint('_showPostBuildDialog: Reading image bytes from XFile...');
+            final bytes = await imageFile.readAsBytes();
+            filePart = MultipartFile.fromBytes(
+              bytes,
+              filename: imageFile.name,
+            );
+          }
+          
+          final formData = FormData.fromMap({
+            'File': filePart,
+            'TargetId': newBuildId,
+            'LocationType': 'BUILD',
+            'Name': 'build_image_${imageFile.name}',
+          });
+
+          debugPrint('_showPostBuildDialog: Sending image upload request...');
+          await dio.post('$apiBaseUrl/Images/add', data: formData);
+          debugPrint('_showPostBuildDialog: Image uploaded successfully');
+        } catch (e) {
+          // Log error but continue with publishing
+          debugPrint('_showPostBuildDialog: Image upload error: $e');
+          // Don't show snackbar here - causes context issues
+          // Image upload failure is not critical, build will still be published
+        }
+      } else {
+        debugPrint('_showPostBuildDialog: No image selected, skipping image upload');
+      }
+
+      if (!mounted) {
+        debugPrint('_showPostBuildDialog: Widget not mounted after image upload, returning null');
+        return null;
+      }
+
+      // 3. Publish the build
+      debugPrint('_showPostBuildDialog: Publishing build: $newBuildId');
+      try {
+        await ref.read(buildProvider.notifier).publishBuild(ref, newBuildId);
+        debugPrint('_showPostBuildDialog: Build published successfully');
+      } catch (e) {
+        debugPrint('_showPostBuildDialog: Error publishing build: $e');
+        rethrow;
+      }
+
+      if (!mounted) {
+        debugPrint('_showPostBuildDialog: Widget not mounted after publish, returning null');
+        return null;
+      }
+
+      // 4. Verify the build was published by fetching it
+      debugPrint('Verifying build was published...');
+      try {
+        final buildService = ref.read(buildServiceProvider);
+        final publishedBuild = await buildService.getBuildById(newBuildId);
+        debugPrint('Build status after publish: ${publishedBuild.status}');
+        if (publishedBuild.status != 'PUBLISHED') {
+          debugPrint('ERROR: Build status is ${publishedBuild.status}, expected PUBLISHED');
+          throw Exception('Build was not published correctly. Status: ${publishedBuild.status}');
+        }
+        debugPrint('Build verified as PUBLISHED');
+      } catch (e) {
+        debugPrint('Error verifying build: $e');
+        // Continue anyway - might be a temporary issue
+      }
+
+      if (!mounted) return null;
+
+      // 5. Invalidate and refresh the explore builds provider
+      debugPrint('Invalidating allBuildsProvider');
+      ref.invalidate(allBuildsProvider);
+      
+      // Wait a moment for backend to process the status update
+      debugPrint('Waiting for backend to process...');
+      await Future.delayed(const Duration(milliseconds: 2500));
+      
+      if (!mounted) return null;
+
+      // Force refresh by reading the provider to ensure it fetches fresh data
+      debugPrint('Refreshing allBuildsProvider');
+      try {
+        // Clear any cached data first
+        ref.invalidate(allBuildsProvider);
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        final builds = await ref.read(allBuildsProvider.future);
+        debugPrint('Builds refreshed. Total builds: ${builds.length}');
+        
+        // Check if our build is in the list
+        final foundBuild = builds.any((build) => build.id == newBuildId);
+        debugPrint('Our build found in list: $foundBuild');
+        
+        if (foundBuild) {
+          debugPrint('SUCCESS: Published build found in list!');
+        } else {
+          debugPrint('WARNING: Published build not found in refreshed list');
+          debugPrint('Build IDs in list: ${builds.map((b) => b.id).toList()}');
+          // Try one more refresh after a delay
+          await Future.delayed(const Duration(milliseconds: 1000));
+          ref.invalidate(allBuildsProvider);
+        }
+      } catch (e, stackTrace) {
+        debugPrint('Error refreshing builds: $e');
+        debugPrint('Stack trace: $stackTrace');
+        // Even if refresh fails, continue - the page will refresh when navigated to
+      }
+
+      if (!mounted) return null;
+
+      // Navigate to explore page - this will refresh the builds list
+      debugPrint('_showPostBuildDialog: Build published successfully, navigating to explore page');
+      
+      // Use a post-frame callback to ensure navigation happens after the current frame
+      if (mounted && currentContext != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && currentContext.mounted) {
+            try {
+              debugPrint('_showPostBuildDialog: Navigating to explore page');
+              currentContext.go('/explore');
+            } catch (e) {
+              debugPrint('_showPostBuildDialog: Navigation error: $e');
+              // Try alternative navigation method
+              try {
+                Navigator.of(currentContext).pushNamedAndRemoveUntil('/explore', (route) => false);
+              } catch (e2) {
+                debugPrint('_showPostBuildDialog: Alternative navigation also failed: $e2');
+              }
+            }
+          }
+        });
+      } else {
+        debugPrint('_showPostBuildDialog: Cannot navigate - context not available');
+      }
+      
+      return newBuildId;
+    } catch (e, stackTrace) {
+      debugPrint('_showPostBuildDialog: Error publishing build: $e');
+      debugPrint('_showPostBuildDialog: Stack trace: $stackTrace');
+      
+      // Log the error - we can't show snackbar due to context issues
+      debugPrint('_showPostBuildDialog: ERROR - Failed to publish build: $e');
+      debugPrint('_showPostBuildDialog: Stack trace: $stackTrace');
+      
+      // Try to show error message if context is still available
+      if (mounted && currentContext != null && currentContext.mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (currentContext.mounted) {
+            try {
+              ScaffoldMessenger.of(currentContext).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to publish your build: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            } catch (snackbarError) {
+              debugPrint('_showPostBuildDialog: Could not show error snackbar: $snackbarError');
+            }
+          }
+        });
+      }
+      
+      return null;
+    }
+  }
+
   /// Saves and then publishes the build to the Explore page.
   void _publishBuild() async {
+    debugPrint('_publishBuild called');
+    
     // Check if user is logged in
     final user = ref.read(authProvider).valueOrNull;
     if (user == null) {
+      debugPrint('User not logged in');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to publish your build.')),
+        const SnackBar(
+          content: Text('Please log in to publish your build.'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
+    debugPrint('User logged in: ${user.uid}');
 
-    // Prompt the user to save the build first, which returns the new ID.
-    final newBuildId = await _showSaveBuildDialog();
-
-    // If the build was saved, proceed to publish it.
-    if (newBuildId != null && mounted) {
-      try {
-        await ref.read(buildProvider.notifier).publishBuild(ref, newBuildId);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Build published successfully!'),
-          backgroundColor: Colors.green,
-        ));
-        // Navigate to the explore page to see the newly published build.
-        context.go('/explore');
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish build: ${e.toString()}')));
-      }
+    // Check if build has at least one component
+    final components = ref.read(buildProvider);
+    if (_isBuildEmpty(components)) {
+      debugPrint('Build is empty');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add at least one component to your build before posting.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
     }
+    debugPrint('Build has ${components.length} components');
+
+    // Show the post build dialog
+    debugPrint('Showing post build dialog...');
+    final result = await _showPostBuildDialog();
+    debugPrint('Post build dialog returned: $result');
   }
 
   @override
@@ -550,7 +988,10 @@ class _TopBar extends StatelessWidget {
                     ),
                     const Spacer(),
                     ElevatedButton.icon(
-                      onPressed: onPost,
+                      onPressed: () {
+                        debugPrint('Post Build button clicked in mobile layout');
+                        onPost();
+                      },
                       icon: const Icon(Icons.send, size: 18),
                       label: const Text('Post Build'),
                       style: ElevatedButton.styleFrom(
@@ -630,7 +1071,10 @@ class _TopBar extends StatelessWidget {
                 ),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: onPost,
+                  onPressed: () {
+                    debugPrint('Post Build button clicked in desktop layout');
+                    onPost();
+                  },
                   icon: const Icon(Icons.send, size: 18),
                   label: const Text('Post Build'),
                   style: ElevatedButton.styleFrom(

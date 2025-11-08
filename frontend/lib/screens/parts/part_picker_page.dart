@@ -2420,34 +2420,9 @@ abstract class _ProductRow extends ConsumerWidget {
           const SizedBox(width: 24),
           ElevatedButton.icon(
             onPressed: () {
-              // Add component to build
-              final buildNotifier = ref.read(buildProvider.notifier);
-              buildNotifier.addComponent(product);
-              
-              // Get router before any navigation
-              final router = GoRouter.of(context);
-              
-              // Show success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${product.name} added to build successfully!'),
-                  backgroundColor: AppColorsDark.buttonGreen,
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-              
-              // Check if we can pop (i.e., if page was opened as a modal from BuildNowPage)
-              if (Navigator.canPop(context)) {
-                // If we can pop, pop first then navigate
-                Navigator.pop(context, product);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  router.go('/build-now');
-                });
-              } else {
-                // If we can't pop (direct route navigation), just navigate
-                router.go('/build-now');
-              }
+              // Simply pop and return the selected product
+              // BuildNowPage will handle adding it to the build
+              Navigator.pop(context, product);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColorsDark.buttonGreen,

@@ -10,103 +10,15 @@
 library;
 
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
-import 'package:frontend/models/image_provider.dart' as image_provider;
-import 'package:frontend/models/api_constants.dart';
-import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:dio/dio.dart';
-
-/// A custom ImageProvider that fetches images over the network using a custom
-/// HTTP client. This is crucial for development environments with self-signed
-/// SSL certificates, as it allows bypassing certificate validation.
-class CustomNetworkImage extends ImageProvider<CustomNetworkImage> {
-  final String url;
-  final double scale;
-  // Dio'yu doğrudan provider'a veremeyiz, bu yüzden onu getiren bir fonksiyon kullanıyoruz.
-  final Dio Function() dioProvider;
-
-  CustomNetworkImage(this.url, {this.scale = 1.0, required this.dioProvider});
-
-  @override
-  Future<CustomNetworkImage> obtainKey(ImageConfiguration configuration) {
-    return SynchronousFuture<CustomNetworkImage>(this);
-  }
-
-  @override
-  ImageStreamCompleter loadImage(CustomNetworkImage key, ImageDecoderCallback decode) {
-    return MultiFrameImageStreamCompleter(
-      codec: _loadAsync(key, decode),
-      scale: key.scale,
-    );
-  }
-
-  Future<ui.Codec> _loadAsync(CustomNetworkImage key, ImageDecoderCallback decode) async {
-    assert(key == this);
-
-    try {
-      // AuthNotifier'dan gelen, token ve sertifika ayarları yapılmış dio'yu al.
-      final dio = dioProvider();
-
-      if (kDebugMode) {
-        print('CustomNetworkImage: Loading image from URL: $url');
-      }
-
-      // Ensure we use the full URL correctly
-      // If Dio has a baseUrl set, we need to make sure it doesn't prepend it to absolute URLs
-      final requestUrl = url.startsWith('http://') || url.startsWith('https://') 
-          ? url 
-          : '$apiBaseUrl$url';
-
-      if (kDebugMode) {
-        print('CustomNetworkImage: Request URL: $requestUrl');
-      }
-
-      // Parse the URL to ensure it's properly formatted
-      final uri = Uri.parse(requestUrl);
-      
-      // Use getUri to ensure absolute URLs are handled correctly
-      final response = await dio.getUri<List<int>>(
-        uri,
-        options: Options(
-          responseType: ResponseType.bytes,
-          followRedirects: true,
-          validateStatus: (status) => status != null && status < 500,
-        ),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to load image: HTTP ${response.statusCode} for URL: $requestUrl');
-      }
-
-      final bytes = response.data;
-      if (bytes == null || bytes.isEmpty) {
-        throw Exception('NetworkImage is an empty file: $requestUrl');
-      }
-
-      // Convert List<int> to Uint8List
-      final uint8List = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
-      
-      final buffer = await ui.ImmutableBuffer.fromUint8List(uint8List);
-      return decode(buffer);
-    } catch (e, stackTrace) {
-     
-      if (kDebugMode) {
-        print('Error loading image with CustomNetworkImage: $e');
-        print('URL: $url');
-        print('Stack trace: $stackTrace');
-      }
-      rethrow;
-    }
-  }
-}
 
 /// The main widget for the "Explore Builds" screen.
 class ExploreBuildsPage extends ConsumerStatefulWidget {
@@ -125,6 +37,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   Set<String> _selectedTags = {};
   Set<String> _selectedStatuses = {};
   bool _showFilters = false;
+  bool _hasRefreshed = false;
 
   @override
   void dispose() {
@@ -204,6 +117,17 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
+
+    // Refresh builds once when page becomes visible (e.g., when navigating from build page)
+    if (!_hasRefreshed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _hasRefreshed = true;
+          // Invalidate to force refresh on next access
+          ref.invalidate(allBuildsProvider);
+        }
+      });
+    }
 
     /// Calculate the number of columns for the grid based on screen width,
     /// ensuring it's between 1 and 4 for optimal viewing on different devices.
@@ -687,7 +611,9 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
 
   @override
   Widget build(BuildContext context) {
-    // Image loading disabled for now - show placeholders directly
+    // Skip image fetching entirely - show placeholders for all builds
+    // This prevents 429 errors and unnecessary API calls
+    // Images will be loaded on-demand when user clicks on a build card
     return _buildGrid(<String, String?>{}, imagesLoaded: true);
   }
 
@@ -838,37 +764,74 @@ class _BuildCard extends ConsumerWidget {
   final Map<String, String?> imageMap;
   final bool imagesLoaded;
 
-  String? get _imageUrl {
-    final imageId = imageMap[buildData.id];
-    String? imageUrl;
-
-    if (imageId != null) {
-      // If we have an imageId from the map, use it to construct the URL.
-      imageUrl = image_provider.ImageService.getImageUrl(imageId);
-    } else if (buildData.imageUrl != null && buildData.imageUrl!.isNotEmpty) {
-      // Fallback to the imageUrl from the build data itself.
-      final url = buildData.imageUrl!;
-      // Check if it's a GUID (and thus an image ID)
-      final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
-      if (guidPattern.hasMatch(url)) {
-        imageUrl = image_provider.ImageService.getImageUrl(url);
-      } else if (url.startsWith('http://') || url.startsWith('https://')) {
-        // It's already a full URL.
-        imageUrl = url;
-      } else if (url.startsWith('/')) {
-        // It's a relative path from the API base.
-        imageUrl = '$apiBaseUrl$url';
-      }
-    }
-
-    return imageUrl;
-  }
-
   const _BuildCard({
     required this.buildData,
     required this.imageMap,
     required this.imagesLoaded,
   });
+
+  /// Builds the image widget - shows image if available, otherwise placeholder
+  Widget _buildImage(BuildContext context, ThemeData theme, WidgetRef ref) {
+    // Check if build has an image URL
+    final imageUrl = _getImageUrl();
+    
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return _buildPlaceholderImage(context, theme);
+    }
+
+    // Show image with error handling
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // On error, show placeholder
+        return _buildPlaceholderImage(context, theme);
+      },
+    );
+  }
+
+  /// Gets the image URL for the build
+  String? _getImageUrl() {
+    if (buildData.imageUrl == null || buildData.imageUrl!.isEmpty) {
+      return null;
+    }
+
+    final url = buildData.imageUrl!;
+    
+    // Check if it's a GUID (image ID)
+    final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (guidPattern.hasMatch(url)) {
+      // It's an image ID, construct download URL
+      return '$apiBaseUrl/Images/download/$url';
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Already a full URL
+      return url;
+    } else if (url.startsWith('/')) {
+      // Relative URL
+      return '$apiBaseUrl$url';
+    }
+
+    return null;
+  }
 
   /// Builds a placeholder image widget when no image is available
   Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
@@ -909,27 +872,6 @@ class _BuildCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imageUrl = _imageUrl;
-
-    if (kDebugMode) {
-      print('_BuildCard: Build ID: ${buildData.id}');
-      print('_BuildCard: Image ID from map: ${imageMap[buildData.id]}');
-      print('_BuildCard: Build imageUrl: ${buildData.imageUrl}');
-      print('_BuildCard: Final imageUrl: $imageUrl');
-    }
-
-    // Check if images have been loaded from the API
-    // If imagesLoaded is true, we know the API call completed (even if it returned 0 images)
-    final imageChecked = imagesLoaded;
-
-    // Create image provider only if we have a valid URL
-    final imageProvider = (imageUrl != null && imageUrl.isNotEmpty)
-        ? CustomNetworkImage(
-            imageUrl,
-            
-            dioProvider: () => ref.read(authProvider.notifier).getDioInstance(),
-          )
-        : null;
 
     return Card(
       elevation: 2,
@@ -950,43 +892,10 @@ class _BuildCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Build Image
+            // Build Image - show image if available, otherwise placeholder
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                ),
-                child: imageProvider != null
-                    ? Image(
-                        image: imageProvider,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (kDebugMode) {
-                            print("Image Error in _BuildCard: $error");
-                            print(stackTrace);
-                          }
-                          return _buildPlaceholderImage(context, theme);
-                        },
-                      )
-                    : imageChecked
-                        ? _buildPlaceholderImage(context, theme)
-                        : const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-              ),
+              child: _buildImage(context, theme, ref),
             ),
 
             /// The content section below the image.
@@ -1037,36 +946,58 @@ class _BuildCard extends ConsumerWidget {
                       ],
                     ),
                   const SizedBox(height: 8),
-                  // Components preview
-                  if (buildData.components.isNotEmpty)
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: buildData.components.take(3).map((component) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            _getComponentTypeShortName(component.type),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
+                  // Components list - show component type and name
+                  if (buildData.components.isNotEmpty) ...[
+                    ...buildData.components.take(5).map((component) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_getComponentTypeShortName(component.type)}: ',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  if (buildData.components.length > 3)
+                            Expanded(
+                              child: Text(
+                                component.name,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ] else ...[
+                    // Debug: Show message if no components
+                    if (kDebugMode)
+                      Text(
+                        'No components (${buildData.components.length})',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: Colors.red,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
+                  if (buildData.components.length > 5)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '+${buildData.components.length - 3} more',
+                        '+${buildData.components.length - 5} more components',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 9,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ),

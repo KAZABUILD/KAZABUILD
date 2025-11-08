@@ -5,6 +5,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
@@ -19,11 +20,68 @@ class BuildService {
   /// Fetches builds from the backend based on a given filter map.
   Future<List<Build>> getBuilds(Map<String, dynamic> filter) async {
     try {
+      debugPrint('Fetching builds with filter: $filter');
       final response = await _dio.post('$apiBaseUrl/Builds/get', data: filter);
-
+      debugPrint('Get builds response status: ${response.statusCode}');
+      
       final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
-      return buildsJson.map((json) => Build.fromJson(json)).toList();
+      debugPrint('Received ${buildsJson.length} builds from backend');
+      
+      // Log component and image information from JSON before parsing
+      for (var json in buildsJson) {
+        if (json is Map<String, dynamic>) {
+          final components = json['components'] ?? json['Components'];
+          final imageUrl = json['imageUrl'] ?? json['ImageUrl'];
+          final buildId = json['id'] ?? json['Id'];
+          final buildName = json['name'] ?? json['Name'];
+          debugPrint('Build $buildId ($buildName):');
+          if (components != null) {
+            debugPrint('  Components in JSON: ${components is List ? components.length : 'not a list'}');
+            if (components is List && components.isNotEmpty) {
+              debugPrint('  First component: ${components[0]}');
+            }
+          } else {
+            debugPrint('  NO components in JSON');
+          }
+          if (imageUrl != null) {
+            debugPrint('  ImageUrl in JSON: $imageUrl');
+          } else {
+            debugPrint('  NO imageUrl in JSON');
+          }
+        }
+      }
+      
+      final builds = buildsJson.map((json) {
+        final build = Build.fromJson(json);
+        debugPrint('Build ${build.id} (${build.name}): parsed ${build.components.length} components, imageUrl=${build.imageUrl}');
+        if (build.components.isNotEmpty) {
+          debugPrint('  Components: ${build.components.map((c) => '${c.type}: ${c.name}').join(', ')}');
+        } else {
+          debugPrint('  ⚠️ WARNING: Build has 0 components after parsing!');
+          // Extra logging for debugging
+          final componentsInJson = json['components'] ?? json['Components'];
+          if (componentsInJson != null) {
+            debugPrint('  ⚠️ But JSON had components: ${componentsInJson is List ? componentsInJson.length : 'not a list'}');
+            if (componentsInJson is List && componentsInJson.isNotEmpty) {
+              debugPrint('  ⚠️ First component in JSON: ${componentsInJson[0]}');
+            }
+          }
+        }
+        return build;
+      }).toList();
+      
+      // Log build statuses
+      for (var build in builds) {
+        debugPrint('Build ${build.id}: status=${build.status}, name=${build.name}, components=${build.components.length}');
+      }
+      
+      return builds;
     } catch (e) {
+      debugPrint('Error fetching builds: $e');
+      if (e is DioException && e.response != null) {
+        debugPrint('Response data: ${e.response?.data}');
+        debugPrint('Response status: ${e.response?.statusCode}');
+      }
       // In case of an error, rethrow it to be handled by the provider.
       rethrow;
     }
@@ -43,14 +101,26 @@ class BuildService {
   /// Creates a new build on the backend and returns its ID.
   Future<String> createBuild(Map<String, dynamic> buildData) async {
     try {
+      debugPrint('BuildService.createBuild: Creating build with data: $buildData');
       final response = await _dio.post('$apiBaseUrl/Builds/add', data: buildData);
+      debugPrint('BuildService.createBuild: Response status: ${response.statusCode}');
+      debugPrint('BuildService.createBuild: Response data: ${response.data}');
+      
       // The backend returns an object like: {"build": "...", "id": "..."}
       if (response.data is Map<String, dynamic> && response.data.containsKey('id')) {
-        return response.data['id'];
+        final buildId = response.data['id'];
+        debugPrint('BuildService.createBuild: Build created with ID: $buildId');
+        return buildId;
       } else {
+        debugPrint('BuildService.createBuild: ERROR - ID not found in response');
         throw Exception('Failed to create build: ID not found in response.');
       }
     } catch (e) {
+      debugPrint('BuildService.createBuild: Error: $e');
+      if (e is DioException && e.response != null) {
+        debugPrint('BuildService.createBuild: Response data: ${e.response?.data}');
+        debugPrint('BuildService.createBuild: Response status: ${e.response?.statusCode}');
+      }
       rethrow;
     }
   }
@@ -58,8 +128,15 @@ class BuildService {
   /// Updates an existing build on the backend.
   Future<void> updateBuild(String buildId, Map<String, dynamic> data) async {
     try {
-      await _dio.put('$apiBaseUrl/Builds/$buildId', data: data);
+      debugPrint('Updating build $buildId with data: $data');
+      final response = await _dio.put('$apiBaseUrl/Builds/$buildId', data: data);
+      debugPrint('Update build response: ${response.statusCode} - ${response.data}');
     } catch (e) {
+      debugPrint('Error updating build: $e');
+      if (e is DioException && e.response != null) {
+        debugPrint('Response data: ${e.response?.data}');
+        debugPrint('Response status: ${e.response?.statusCode}');
+      }
       rethrow;
     }
   }
@@ -67,8 +144,21 @@ class BuildService {
   /// Adds a component to an existing build.
   Future<void> addComponentToBuild(String buildId, String componentId, int quantity) async {
     try {
-      await _dio.post('$apiBaseUrl/BuildComponents/add', data: {'buildId': buildId, 'componentId': componentId, 'quantity': quantity});
-    } catch (e) { rethrow; }
+      debugPrint('BuildService.addComponentToBuild: Adding component $componentId to build $buildId');
+      final response = await _dio.post('$apiBaseUrl/BuildComponents/add', data: {
+        'buildId': buildId, 
+        'componentId': componentId, 
+        'quantity': quantity
+      });
+      debugPrint('BuildService.addComponentToBuild: Component added successfully. Response status: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('BuildService.addComponentToBuild: Error adding component: $e');
+      if (e is DioException && e.response != null) {
+        debugPrint('BuildService.addComponentToBuild: Response data: ${e.response?.data}');
+        debugPrint('BuildService.addComponentToBuild: Response status: ${e.response?.statusCode}');
+      }
+      rethrow;
+    }
   }
 
   /// Gets a BuildInteraction by userId and buildId
