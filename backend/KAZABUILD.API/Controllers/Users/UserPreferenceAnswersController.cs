@@ -1,4 +1,4 @@
-using KAZABUILD.Application.DTOs.Users.UserPreference;
+using KAZABUILD.Application.DTOs.Users.UserPreferenceAnswer;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
@@ -17,15 +17,15 @@ using System.Security.Claims;
 namespace KAZABUILD.API.Controllers.Users
 {
     /// <summary>
-    /// Controller for User Preference related endpoints.
-    /// Used to set the questionnaire questions.
+    /// Controller for User Preference Answer related endpoints.
+    /// Used to set answers to questions in the questionnaires.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserPreferencesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserPreferenceAnswersController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -33,13 +33,13 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new UserPreference for admins.
+        /// API Endpoint for creating a new UserPreferenceAnswer for admins.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
+        public async Task<IActionResult> AddUserPreferenceAnswer([FromBody] CreateUserPreferenceAnswerDto dto)
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -48,41 +48,37 @@ namespace KAZABUILD.API.Controllers.Users
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            //Only check if sub-preference
-            if(dto.UserPreferenceAnswerId != null)
+            
+            //Check if the answer exists
+            var answer = await _db.UserPreferences.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceId);
+            if (answer == null)
             {
-                //Check if the answer exists
-                var answer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId);
-                if (answer == null)
-                {
-                    //Log failure
-                    await _logger.LogAsync(
-                        currentUserId,
-                        "POST",
-                        "UserPreference",
-                        ip,
-                        Guid.Empty,
-                        PrivacyLevel.WARNING,
-                        "Operation Failed - UserPreferenceAnswers Doesn't Exist"
-                    );
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "UserPreferenceAnswer",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - UserPreference Doesn't Exist"
+                );
 
-                    //Return proper error response
-                    return BadRequest(new { message = "Main preference not found!" });
-                }
+                //Return proper error response
+                return BadRequest(new { message = "Preference not found!" });
             }
 
-            //Create a userPreference to add
-            UserPreference userPreference = new()
+            //Create a userPreferenceAnswer to add
+            UserPreferenceAnswer userPreferenceAnswer = new()
             {
-                UserPreferenceAnswerId = dto.UserPreferenceAnswerId,
-                Question = dto.Question,
+                UserPreferenceId = dto.UserPreferenceId,
+                Answer = dto.Answer,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Add the userPreference to the database
-            _db.UserPreferences.Add(userPreference);
+            //Add the userPreferenceAnswer to the database
+            _db.UserPreferenceAnswers.Add(userPreferenceAnswer);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -91,33 +87,33 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
-                "UserPreference",
+                "UserPreferenceAnswer",
                 ip,
-                userPreference.Id,
+                userPreferenceAnswer.Id,
                 PrivacyLevel.INFORMATION,
-                "Successful Operation - New UserPreference Created"
+                "Successful Operation - New UserPreferenceAnswer Created"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.created", new
+            await _publisher.PublishAsync("userPreferenceAnswer.created", new
             {
-                userPreferenceId = userPreference.Id,
+                userPreferenceAnswerId = userPreferenceAnswer.Id,
                 createdBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "User Preference created successfully!", id = userPreference.Id });
+            return Ok(new { message = "User Preference created successfully!", id = userPreferenceAnswer.Id });
         }
 
         /// <summary>
-        /// API endpoint for updating the selected UserPreference for admins.
+        /// API endpoint for updating the selected UserPreferenceAnswer for admins.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> UpdateUserPreference(Guid id, [FromBody] UpdateUserPreferenceDto dto)
+        public async Task<IActionResult> UpdateUserPreferenceAnswer(Guid id, [FromBody] UpdateUserPreferenceAnswerDto dto)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -127,19 +123,19 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to edit
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userPreferenceAnswer to edit
+            var userPreferenceAnswer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(p => p.Id == id);
+            if (userPreferenceAnswer == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "PUT",
-                    "UserPreference",
+                    "UserPreferenceAnswer",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserPreferenceAnswer"
                 );
 
                 //Return not found response
@@ -150,36 +146,33 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if(!string.IsNullOrWhiteSpace(dto.Question))
+            if(!string.IsNullOrWhiteSpace(dto.Answer))
             {
-                changedFields.Add("Question: " + userPreference.Question);
+                changedFields.Add("Answer: " + userPreferenceAnswer.Answer);
 
-                userPreference.Question = dto.Question;
+                userPreferenceAnswer.Answer = dto.Answer;
             }
-            if (dto.UserPreferenceAnswerId != null && (await _db.UserPreferenceAnswers.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId)) != null)
+            if (dto.UserPreferenceId != null)
             {
-                changedFields.Add("UserPreferenceAnswerId: " + userPreference.UserPreferenceAnswerId);
+                changedFields.Add("UserPreferenceId: " + userPreferenceAnswer.UserPreferenceId);
 
-                if (dto.UserPreferenceAnswerId == Guid.Empty)
-                    userPreference.UserPreferenceAnswerId = null;
-                else
-                    userPreference.UserPreferenceAnswerId = dto.UserPreferenceAnswerId;
+                userPreferenceAnswer.UserPreferenceId = (Guid)dto.UserPreferenceId;
             }
             if (dto.Note != null)
             {
-                changedFields.Add("Note: " + userPreference.Note);
+                changedFields.Add("Note: " + userPreferenceAnswer.Note);
 
                 if (string.IsNullOrWhiteSpace(dto.Note))
-                    userPreference.Note = null;
+                    userPreferenceAnswer.Note = null;
                 else
-                    userPreference.Note = dto.Note;
+                    userPreferenceAnswer.Note = dto.Note;
             }
 
             //Update edit timestamp
-            userPreference.LastEditedAt = DateTime.UtcNow;
+            userPreferenceAnswer.LastEditedAt = DateTime.UtcNow;
 
-            //Update the userPreference
-            _db.UserPreferences.Update(userPreference);
+            //Update the userPreferenceAnswer
+            _db.UserPreferenceAnswers.Update(userPreferenceAnswer);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -191,17 +184,17 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "PUT",
-                "UserPreference",
+                "UserPreferenceAnswer",
                 ip,
-                userPreference.Id,
+                userPreferenceAnswer.Id,
                 PrivacyLevel.INFORMATION,
                 $"Successful Operation - {description}"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.updated", new
+            await _publisher.PublishAsync("userPreferenceAnswer.updated", new
             {
-                userPreferenceId = id,
+                userPreferenceAnswerId = id,
                 updatedBy = currentUserId
             });
 
@@ -210,14 +203,14 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        /// API endpoint for getting the UserPreference specified by id,
+        /// API endpoint for getting the UserPreferenceAnswer specified by id,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:Guid}")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<UserPreferenceResponseDto>> GetUserPreference(Guid id)
+        public async Task<ActionResult<UserPreferenceAnswerResponseDto>> GetUserPreferenceAnswer(Guid id)
         {
             //Get user id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -227,19 +220,19 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to return
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userPreferenceAnswer to return
+            var userPreferenceAnswer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(p => p.Id == id);
+            if (userPreferenceAnswer == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "GET",
-                    "UserPreference",
+                    "UserPreferenceAnswer",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserPreferenceAnswer"
                 );
 
                 //Return not found response
@@ -250,7 +243,7 @@ namespace KAZABUILD.API.Controllers.Users
             string logDescription;
 
             //Declare response variable
-            UserPreferenceResponseDto response;
+            UserPreferenceAnswerResponseDto response;
 
             //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
@@ -261,12 +254,12 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - User Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create userPreferenceAnswer response
+                response = new UserPreferenceAnswerResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
-                    Question = userPreference.Question
+                    Id = userPreferenceAnswer.Id,
+                    UserPreferenceId = userPreferenceAnswer.UserPreferenceId,
+                    Answer = userPreferenceAnswer.Answer
                 };
             }
             else
@@ -274,15 +267,15 @@ namespace KAZABUILD.API.Controllers.Users
                 //Change log description
                 logDescription = "Successful Operation - Admin Access";
 
-                //Create userPreference response
-                response = new UserPreferenceResponseDto
+                //Create userPreferenceAnswer response
+                response = new UserPreferenceAnswerResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
-                    Question = userPreference.Question,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note,
+                    Id = userPreferenceAnswer.Id,
+                    UserPreferenceId = userPreferenceAnswer.UserPreferenceId,
+                    Answer = userPreferenceAnswer.Answer,
+                    DatabaseEntryAt = userPreferenceAnswer.DatabaseEntryAt,
+                    LastEditedAt = userPreferenceAnswer.LastEditedAt,
+                    Note = userPreferenceAnswer.Note,
                 };
             }
 
@@ -290,7 +283,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "UserPreferenceAnswer",
                 ip,
                 id,
                 PrivacyLevel.INFORMATION,
@@ -298,27 +291,27 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.got", new
+            await _publisher.PublishAsync("userPreferenceAnswer.got", new
             {
-                userPreferenceId = id,
+                userPreferenceAnswerId = id,
                 gotBy = currentUserId
             });
 
-            //Return the userPreference
+            //Return the userPreferenceAnswer
             return Ok(response);
         }
 
         /// <summary>
-        /// API endpoint for getting UserPreferences with pagination and search,
+        /// API endpoint for getting UserPreferenceAnswers with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("get")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<UserPreferenceResponseDto>>> GetUserPreferences([FromBody] GetUserPreferenceDto dto)
+        public async Task<ActionResult<IEnumerable<UserPreferenceAnswerResponseDto>>> GetUserPreferenceAnswers([FromBody] GetUserPreferenceAnswerDto dto)
         {
-            //Get userPreference id and claims from the request
+            //Get userPreferenceAnswer id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -330,18 +323,18 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserPreferences.AsNoTracking();
+            var query = _db.UserPreferenceAnswers.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserPreferenceAnswerId != null)
+            if (dto.UserPreferenceId != null)
             {
-                query = query.Where(p => p.UserPreferenceAnswerId != null && dto.UserPreferenceAnswerId.Contains((Guid)p.UserPreferenceAnswerId));
+                query = query.Where(p => dto.UserPreferenceId.Contains(p.UserPreferenceId));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Search(dto.Query, p => p.Question);
+                query = query.Search(dto.Query, p => p.Answer);
             }
 
             //Order by specified field if provided
@@ -350,7 +343,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
-            //Get userPreferences with paging
+            //Get userPreferenceAnswers with paging
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
                 query = query
@@ -361,43 +354,43 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.ToListAsync();
+            List<UserPreferenceAnswer> userPreferenceAnswers = await query.ToListAsync();
 
             //Declare response variable
-            List<UserPreferenceResponseDto> responses;
+            List<UserPreferenceAnswerResponseDto> responses;
 
             //Check what permissions user has and return respective information
             if (!isPrivileged) //Return user knowledge if no privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - User Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - User Access, Multiple UserPreferenceAnswers";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference =>
+                //Create a userPreferenceAnswer response list
+                responses = [.. userPreferenceAnswers.Select(userPreferenceAnswer =>
                 {
                     //Return a follow response
-                    return new UserPreferenceResponseDto
+                    return new UserPreferenceAnswerResponseDto
                     {
-                        Id = userPreference.Id,
-                        UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
-                        Question = userPreference.Question
+                        Id = userPreferenceAnswer.Id,
+                        UserPreferenceId = userPreferenceAnswer.UserPreferenceId,
+                        Answer = userPreferenceAnswer.Answer
                     };
                 })];
             }
             else //Return admin knowledge if has privileges
             {
                 //Change log description
-                logDescription = "Successful Operation - Admin Access, Multiple UserPreferences";
+                logDescription = "Successful Operation - Admin Access, Multiple UserPreferenceAnswers";
 
-                //Create a userPreference response list
-                responses = [.. userPreferences.Select(userPreference => new UserPreferenceResponseDto
+                //Create a userPreferenceAnswer response list
+                responses = [.. userPreferenceAnswers.Select(userPreferenceAnswer => new UserPreferenceAnswerResponseDto
                 {
-                    Id = userPreference.Id,
-                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
-                    Question = userPreference.Question,
-                    DatabaseEntryAt = userPreference.DatabaseEntryAt,
-                    LastEditedAt = userPreference.LastEditedAt,
-                    Note = userPreference.Note
+                    Id = userPreferenceAnswer.Id,
+                    UserPreferenceId = userPreferenceAnswer.UserPreferenceId,
+                    Answer = userPreferenceAnswer.Answer,
+                    DatabaseEntryAt = userPreferenceAnswer.DatabaseEntryAt,
+                    LastEditedAt = userPreferenceAnswer.LastEditedAt,
+                    Note = userPreferenceAnswer.Note
                 })];
 
             }
@@ -406,7 +399,7 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "GET",
-                "UserPreference",
+                "UserPreferenceAnswer",
                 ip,
                 Guid.Empty,
                 PrivacyLevel.INFORMATION,
@@ -414,26 +407,26 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.gotUserPreferences", new
+            await _publisher.PublishAsync("userPreferenceAnswer.gotUserPreferenceAnswers", new
             {
-                userPreferenceIds = userPreferences.Select(p => p.Id),
+                userPreferenceAnswerIds = userPreferenceAnswers.Select(p => p.Id),
                 gotBy = currentUserId
             });
 
-            //Return the userPreferences
+            //Return the userPreferenceAnswers
             return Ok(responses);
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected UserPreference for admins.
+        /// API endpoint for deleting the selected UserPreferenceAnswer for admins.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
         [Authorize(Policy = "Admins")]
-        public async Task<IActionResult> DeleteUserPreference(Guid id)
+        public async Task<IActionResult> DeleteUserPreferenceAnswer(Guid id)
         {
-            //Get userPreference id and role from the request claims
+            //Get userPreferenceAnswer id and role from the request claims
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
 
@@ -441,27 +434,27 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
-            if (userPreference == null)
+            //Get the userPreferenceAnswer to delete
+            var userPreferenceAnswer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(p => p.Id == id);
+            if (userPreferenceAnswer == null)
             {
                 //Log failure
                 await _logger.LogAsync(
                     currentUserId,
                     "DELETE",
-                    "UserPreference",
+                    "UserPreferenceAnswer",
                     ip,
                     id,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Such UserPreference"
+                    "Operation Failed - No Such UserPreferenceAnswer"
                 );
 
                 //Return not found response
-                return NotFound(new { message = "UserPreference not found!" });
+                return NotFound(new { message = "UserPreferenceAnswer not found!" });
             }
 
-            //Delete the userPreference
-            _db.UserPreferences.Remove(userPreference);
+            //Delete the userPreferenceAnswer
+            _db.UserPreferenceAnswers.Remove(userPreferenceAnswer);
 
             //Save changes to the database
             await _db.SaveChangesAsync();
@@ -470,22 +463,22 @@ namespace KAZABUILD.API.Controllers.Users
             await _logger.LogAsync(
                 currentUserId,
                 "DELETE",
-                "UserPreference",
+                "UserPreferenceAnswer",
                 ip,
-                userPreference.Id,
+                userPreferenceAnswer.Id,
                 PrivacyLevel.INFORMATION,
                 "Successful Operation"
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("userPreference.deleted", new
+            await _publisher.PublishAsync("userPreferenceAnswer.deleted", new
             {
-                userPreferenceId = id,
+                userPreferenceAnswerId = id,
                 deletedBy = currentUserId
             });
 
             //Return success response
-            return Ok(new { message = "UserPreference deleted successfully!" });
+            return Ok(new { message = "UserPreferenceAnswer deleted successfully!" });
         }
     }
 }

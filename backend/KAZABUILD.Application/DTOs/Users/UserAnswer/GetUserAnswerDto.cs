@@ -1,24 +1,13 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Image
+namespace KAZABUILD.Application.DTOs.Users.UserAnswer
 {
-    public class GetImageDto
+    public class GetUserAnswerDto
     {
         //Filter By fields
-        public List<ImageLocationType>? LocationType { get; set; }
-
         public List<Guid>? UserId { get; set; }
 
-        public List<Guid>? BuildId { get; set; }
-
-        public List<Guid>? ForumPostId { get; set; }
-
-        public List<Guid>? ComponentId { get; set; }
-
-        public List<Guid>? SubComponentId { get; set; }
-
-        public List<Guid>? UserCommentId { get; set; }
+        public List<Guid>? UserPreferenceAnswerId { get; set; }
 
         //Paging related fields
         /// <summary>

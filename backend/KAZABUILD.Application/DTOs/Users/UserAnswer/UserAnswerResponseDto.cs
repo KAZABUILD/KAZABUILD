@@ -1,14 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Users.UserPreference
+namespace KAZABUILD.Application.DTOs.Users.UserAnswer
 {
-    public class UserPreferenceResponseDto
+    public class UserAnswerResponseDto
     {
         public Guid? Id { get; set; }
 
-        public Guid? UserPreferenceAnswerId { get; set; }
+        public Guid? UserId { get; set; }
 
-        public string? Question { get; set; }
+        public Guid? UserPreferenceAnswerId { get; set; }
 
         public DateTime? DatabaseEntryAt { get; set; }
 

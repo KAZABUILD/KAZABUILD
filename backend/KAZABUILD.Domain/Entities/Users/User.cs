@@ -162,7 +162,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public ICollection<UserFollow> Followers { get; set; } = [];
         public ICollection<UserFollow> Followed { get; set; } = [];
         public ICollection<UserToken> UserTokens { get; set; } = [];
-        public ICollection<UserPreference> UserPreferences { get; set; } = [];
+        public ICollection<UserAnswer> UserAnswers { get; set; } = [];
         public ICollection<UserComment> UserComments { get; set; } = [];
         public ICollection<ForumPost> ForumPosts { get; set; } = [];
         public ICollection<Message> ReceivedMessages { get; set; } = [];
