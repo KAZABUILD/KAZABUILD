@@ -49,7 +49,7 @@ namespace KAZABUILD.API.Controllers.Builds
 
             //Check if the Tag already exists
             var tagExists = await _db.Tags.FirstOrDefaultAsync(t => t.Name == dto.Name);
-            if (tagExists != null)
+            if (tagExists == null)
             {
                 //Log failure
                 await _logger.LogAsync(

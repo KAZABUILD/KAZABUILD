@@ -1,7 +1,6 @@
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities.Users;
-using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 using KAZABUILD.Infrastructure.DependencyInjection;
@@ -210,49 +209,6 @@ namespace KAZABUILD.API
                 await dbContext.SaveChangesAsync();
             }
 
-            //Create predefined tags if they don't exist
-            var predefinedTags = new[]
-            {
-                new { Name = "Gaming", Description = "Builds optimized for gaming performance" },
-                new { Name = "Budget", Description = "Affordable builds with good value" },
-                new { Name = "Workstation", Description = "Professional workstations for productivity" },
-                new { Name = "RGB", Description = "Builds with RGB lighting" },
-                new { Name = "Quiet", Description = "Silent or quiet operation builds" },
-                new { Name = "Overclocking", Description = "Builds optimized for overclocking" },
-                new { Name = "Mini-ITX", Description = "Small form factor Mini-ITX builds" },
-                new { Name = "Streaming", Description = "Builds optimized for streaming" },
-                new { Name = "Content Creation", Description = "Builds for video editing and content creation" },
-                new { Name = "Productivity", Description = "Builds optimized for productivity tasks" },
-                new { Name = "Compact", Description = "Compact and space-efficient builds" },
-                new { Name = "High-End", Description = "High-performance premium builds" },
-                new { Name = "Mid-Range", Description = "Mid-range performance builds" },
-                new { Name = "Entry-Level", Description = "Entry-level budget-friendly builds" },
-                new { Name = "Water-Cooled", Description = "Builds with water cooling" },
-                new { Name = "Air-Cooled", Description = "Builds with air cooling" },
-                new { Name = "Custom Loop", Description = "Builds with custom water cooling loops" },
-                new { Name = "SFF (Small Form Factor)", Description = "Small form factor builds" },
-                new { Name = "Silent", Description = "Silent operation builds" },
-                new { Name = "RGB Sync", Description = "Builds with synchronized RGB lighting" },
-            };
-
-            foreach (var predefinedTag in predefinedTags)
-            {
-                var existingTag = await dbContext.Tags.FirstOrDefaultAsync(t => t.Name == predefinedTag.Name);
-                if (existingTag == null)
-                {
-                    var tag = new Tag
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = predefinedTag.Name,
-                        Description = predefinedTag.Description,
-                        DatabaseEntryAt = DateTime.UtcNow,
-                        LastEditedAt = DateTime.UtcNow
-                    };
-                    dbContext.Tags.Add(tag);
-                }
-            }
-            await dbContext.SaveChangesAsync();
-
             //Try to run the app and throw an error for empty validation
             try
             {
@@ -282,7 +238,11 @@ namespace KAZABUILD.API
 
                 //Close the app upon a button press
                 Console.WriteLine("Press any button to close...");
-                Console.ReadKey();
+                if (!app.Environment.IsEnvironment("Testing"))
+                {
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadKey();
+                }
                 return;
             }
             catch (Exception ex)

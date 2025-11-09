@@ -1,20 +1,8 @@
 using KAZABUILD.Application.DTOs.Builds.Build;
-using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
-using KAZABUILD.Application.DTOs.Components.Components.CPUComponent;
-using KAZABUILD.Application.DTOs.Components.Components.GPUComponent;
-using KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent;
-using KAZABUILD.Application.DTOs.Components.Components.MemoryComponent;
-using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
-using KAZABUILD.Application.DTOs.Components.Components.PowerSupplyComponent;
-using KAZABUILD.Application.DTOs.Components.Components.CoolerComponent;
-using KAZABUILD.Application.DTOs.Components.Components.CaseComponent;
-using KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent;
-using KAZABUILD.Application.DTOs.Components.Components.MonitorComponent;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
-using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -250,7 +238,7 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 build.Status = (BuildStatus)dto.Status;
 
-                if(dto.Status == BuildStatus.PUBLISHED)
+                if (dto.Status == BuildStatus.PUBLISHED)
                 {
                     changedFields.Add("PublishedAt: " + build.PublishedAt);
 
@@ -322,20 +310,8 @@ namespace KAZABUILD.API.Controllers.Builds
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current user has admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-
-            //Get the build to return with all necessary includes
-            var build = await _db.Builds
-                .AsNoTracking()
-                .Include(b => b.User)
-                .Include(b => b.Tags)
-                .Include(b => b.Components)
-                    .ThenInclude(c => c.Component)
-                .Include(b => b.Interactions)
-                .Include(b => b.Images)
-                .FirstOrDefaultAsync(b => b.Id == id);
-                
+            //Get the build to return
+            var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == id);
             if (build == null)
             {
                 //Log failure
@@ -353,8 +329,15 @@ namespace KAZABUILD.API.Controllers.Builds
                 return NotFound(new { build = "Build not found!" });
             }
 
+            //Log Description string declaration
+            string logDescription;
+
+            //Declare response variable
+            BuildResponseDto response;
+
             //Check if current user is getting themselves or if they have admin permissions
             var isSelf = currentUserId == build.UserId;
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
             if (!isSelf && !isPrivileged && (build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED))
@@ -374,135 +357,6 @@ namespace KAZABUILD.API.Controllers.Builds
                 return Forbid();
             }
 
-            //Calculate rating information for this build
-            var ratings = await _db.BuildInteractions
-                .Where(i => i.BuildId == id && i.Rating != null && i.Rating > 0)
-                .GroupBy(i => i.BuildId)
-                .Select(g => new
-                {
-                    BuildId = g.Key,
-                    Average = g.Average(i => (double)i.Rating!) / 20.0, // Convert 0-100 to 0-5
-                    Count = g.Count()
-                })
-                .FirstOrDefaultAsync();
-
-            var avgRating = ratings?.Average ?? 0.0;
-            var ratingsCount = ratings?.Count ?? 0;
-
-            //Get user rating for current user
-            var userRatingRecord = await _db.BuildInteractions
-                .Where(i => i.BuildId == id && i.UserId == currentUserId && i.Rating != null && i.Rating > 0)
-                .FirstOrDefaultAsync();
-            var userRating = userRatingRecord != null ? (double?)userRatingRecord.Rating / 20.0 : null;
-
-            //Helper method to map component to DTO (same as in GetBuilds)
-            BaseComponentResponseDto? MapComponent(BaseComponent? component)
-            {
-                if (component == null) return null;
-                return component switch
-                {
-                    CPUComponent cpu => new CPUComponentResponseDto
-                    {
-                        Id = cpu.Id,
-                        Name = cpu.Name,
-                        Type = cpu.Type,
-                        Manufacturer = cpu.Manufacturer,
-                    },
-                    GPUComponent gpu => new GPUComponentResponseDto
-                    {
-                        Id = gpu.Id,
-                        Name = gpu.Name,
-                        Type = gpu.Type,
-                        Manufacturer = gpu.Manufacturer,
-                    },
-                    MotherboardComponent mb => new MotherboardComponentResponseDto
-                    {
-                        Id = mb.Id,
-                        Name = mb.Name,
-                        Type = mb.Type,
-                        Manufacturer = mb.Manufacturer,
-                    },
-                    MemoryComponent ram => new MemoryComponentResponseDto
-                    {
-                        Id = ram.Id,
-                        Name = ram.Name,
-                        Type = ram.Type,
-                        Manufacturer = ram.Manufacturer,
-                    },
-                    StorageComponent storage => new StorageComponentResponseDto
-                    {
-                        Id = storage.Id,
-                        Name = storage.Name,
-                        Type = storage.Type,
-                        Manufacturer = storage.Manufacturer,
-                    },
-                    PowerSupplyComponent psu => new PowerSupplyComponentResponseDto
-                    {
-                        Id = psu.Id,
-                        Name = psu.Name,
-                        Type = psu.Type,
-                        Manufacturer = psu.Manufacturer,
-                    },
-                    CoolerComponent cooler => new CoolerComponentResponseDto
-                    {
-                        Id = cooler.Id,
-                        Name = cooler.Name,
-                        Type = cooler.Type,
-                        Manufacturer = cooler.Manufacturer,
-                    },
-                    CaseComponent pcCase => new CaseComponentResponseDto
-                    {
-                        Id = pcCase.Id,
-                        Name = pcCase.Name,
-                        Type = pcCase.Type,
-                        Manufacturer = pcCase.Manufacturer,
-                    },
-                    CaseFanComponent fan => new CaseFanComponentResponseDto
-                    {
-                        Id = fan.Id,
-                        Name = fan.Name,
-                        Type = fan.Type,
-                        Manufacturer = fan.Manufacturer,
-                    },
-                    MonitorComponent monitor => new MonitorComponentResponseDto
-                    {
-                        Id = monitor.Id,
-                        Name = monitor.Name,
-                        Type = monitor.Type,
-                        Manufacturer = monitor.Manufacturer,
-                    },
-                    _ => null
-                };
-            }
-
-            //Map components
-            var components = build.Components?
-                .Where(bc => bc.Component != null)
-                .Select(bc => MapComponent(bc.Component))
-                .Where(c => c != null)
-                .Cast<BaseComponentResponseDto>()
-                .ToList() ?? new List<BaseComponentResponseDto>();
-
-            //Map tags
-            var tags = build.Tags?.Select(t => t.Name).ToList() ?? new List<string>();
-            
-            // Debug logging for tags
-            System.Diagnostics.Debug.WriteLine($"GetBuild: Build {build.Id} has {tags.Count} tags: {string.Join(", ", tags)}");
-
-            //Get build image (first BUILD type image)
-            var buildImage = build.Images?.FirstOrDefault(img => img.LocationType == ImageLocationType.BUILD);
-            var imageUrl = buildImage?.Id.ToString();
-
-            //Get author information
-            var authorName = build.User?.DisplayName ?? build.User?.Login ?? "Unknown";
-            var authorImageId = build.User?.ImageId;
-
-            //Log Description string declaration
-            string logDescription;
-
-            //Create build response with all necessary information
-            BuildResponseDto response;
-            
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -517,16 +371,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     Name = build.Name,
                     Description = build.Description,
                     Status = build.Status,
-                    PublishedAt = build.PublishedAt,
-                    // Additional fields for build detail page
-                    Components = components,
-                    Tags = tags,
-                    AverageRating = avgRating,
-                    RatingsCount = ratingsCount,
-                    UserRating = userRating,
-                    AuthorName = authorName,
-                    AuthorImageId = authorImageId,
-                    ImageUrl = imageUrl
+                    PublishedAt = build.PublishedAt
                 };
             }
             else
@@ -545,16 +390,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     PublishedAt = build.PublishedAt,
                     DatabaseEntryAt = build.DatabaseEntryAt,
                     LastEditedAt = build.LastEditedAt,
-                    Note = build.Note,
-                    // Additional fields for build detail page
-                    Components = components,
-                    Tags = tags,
-                    AverageRating = avgRating,
-                    RatingsCount = ratingsCount,
-                    UserRating = userRating,
-                    AuthorName = authorName,
-                    AuthorImageId = authorImageId,
-                    ImageUrl = imageUrl
+                    Note = build.Note
                 };
             }
 
@@ -601,238 +437,83 @@ namespace KAZABUILD.API.Controllers.Builds
             //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
-            //Start with base query and apply security filter first
-            var baseQuery = _db.Builds.AsNoTracking()
-                .Where(b => b.UserId == currentUserId || isPrivileged || (b.Status != BuildStatus.DRAFT && b.Status != BuildStatus.GENERATED));
+            //Declare the query
+            var query = _db.Builds.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                baseQuery = baseQuery.Where(b => dto.UserId.Contains(b.UserId));
+                query = query.Where(b => dto.UserId.Contains(b.UserId));
             }
             if (dto.Name != null)
             {
-                baseQuery = baseQuery.Where(b => dto.Name.Contains(b.Name));
+                query = query.Where(b => dto.Name.Contains(b.Name));
             }
             if (dto.Status != null)
             {
-                baseQuery = baseQuery.Where(b => dto.Status.Contains(b.Status));
+                query = query.Where(b => dto.Status.Contains(b.Status));
             }
             if (dto.Tag != null)
             {
-                baseQuery = baseQuery.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
+                query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                baseQuery = baseQuery.Include(b => b.User).Search(dto.Query, b => b.Name, b => b.Status, b => b.Description, b => b.User!.DisplayName);
+                query = query.Include(b => b.User).Search(dto.Query, b => b.Name, b => b.Status, b => b.Description, b => b.User!.DisplayName);
             }
 
-            //Order by specified field if provided, otherwise use default sorting by DatabaseEntryAt descending
-            IQueryable<Build> orderedQuery = baseQuery;
+            //Order by specified field if provided
             if (!string.IsNullOrWhiteSpace(dto.OrderBy))
             {
-                orderedQuery = baseQuery.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
-            }
-            else
-            {
-                // Default sorting: newest builds first (PublishedAt descending, then DatabaseEntryAt)
-                // Published builds should be sorted by PublishedAt, drafts by DatabaseEntryAt
-                orderedQuery = baseQuery
-                    .OrderByDescending(b => b.PublishedAt ?? b.DatabaseEntryAt);
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
             }
 
             //Get builds with paging
-            IQueryable<Build> pagedQuery = orderedQuery;
             if (dto.Paging && dto.Page != null && dto.PageLength != null)
             {
-                pagedQuery = orderedQuery
+                query = query
                     .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
                     .Take((int)dto.PageLength);
             }
 
-            //Now apply includes for the final query
-            var query = pagedQuery
-                .Include(b => b.User)
-                .Include(b => b.Tags)
-                .Include(b => b.Components)
-                    .ThenInclude(c => c.Component)
-                .Include(b => b.Interactions)
-                .Include(b => b.Images);
-
             //Log Description string declaration
             string logDescription;
 
-            List<Build> builds = await query.ToListAsync();
-
-            //Calculate ratings for all builds
-            var buildIds = builds.Select(b => b.Id).ToList();
-            
-            System.Diagnostics.Debug.WriteLine($"GetBuilds: Calculating ratings for {buildIds.Count} builds");
-            
-            var allInteractions = await _db.BuildInteractions
-                .Where(i => buildIds.Contains(i.BuildId))
-                .ToListAsync();
-            
-            System.Diagnostics.Debug.WriteLine($"GetBuilds: Found {allInteractions.Count} total interactions");
-            System.Diagnostics.Debug.WriteLine($"GetBuilds: Interactions with ratings: {allInteractions.Count(i => i.Rating != null && i.Rating > 0)}");
-            
-            var ratings = allInteractions
-                .Where(i => i.Rating != null && i.Rating > 0)
-                .GroupBy(i => i.BuildId)
-                .Select(g => new
-                {
-                    BuildId = g.Key,
-                    Average = g.Average(i => (double)i.Rating!) / 20.0, // Convert 0-100 to 0-5
-                    Count = g.Count()
-                })
-                .ToDictionary(r => r.BuildId, r => new { r.Average, r.Count });
-
-            System.Diagnostics.Debug.WriteLine($"GetBuilds: Calculated ratings for {ratings.Count} builds");
-            foreach (var rating in ratings.Take(5))
-            {
-                System.Diagnostics.Debug.WriteLine($"GetBuilds: Build {rating.Key}: Average={rating.Value.Average:F2}, Count={rating.Value.Count}");
-            }
-
-            //Get user ratings for current user (nullable dictionary)
-            var userRatingsDict = allInteractions
-                .Where(i => i.UserId == currentUserId && i.Rating != null && i.Rating > 0)
-                .ToDictionary(i => i.BuildId, i => (double)i.Rating! / 20.0); // Convert 0-100 to 0-5
-                
-            System.Diagnostics.Debug.WriteLine($"GetBuilds: Found {userRatingsDict.Count} user ratings for current user");
-
-            //Helper method to map component to DTO (simplified version)
-            BaseComponentResponseDto? MapComponent(BaseComponent? component)
-            {
-                if (component == null) return null;
-                return component switch
-                {
-                    CPUComponent cpu => new CPUComponentResponseDto
-                    {
-                        Id = cpu.Id,
-                        Name = cpu.Name,
-                        Type = cpu.Type,
-                        Manufacturer = cpu.Manufacturer,
-                    },
-                    GPUComponent gpu => new GPUComponentResponseDto
-                    {
-                        Id = gpu.Id,
-                        Name = gpu.Name,
-                        Type = gpu.Type,
-                        Manufacturer = gpu.Manufacturer,
-                    },
-                    MotherboardComponent mb => new MotherboardComponentResponseDto
-                    {
-                        Id = mb.Id,
-                        Name = mb.Name,
-                        Type = mb.Type,
-                        Manufacturer = mb.Manufacturer,
-                    },
-                    MemoryComponent ram => new MemoryComponentResponseDto
-                    {
-                        Id = ram.Id,
-                        Name = ram.Name,
-                        Type = ram.Type,
-                        Manufacturer = ram.Manufacturer,
-                    },
-                    StorageComponent storage => new StorageComponentResponseDto
-                    {
-                        Id = storage.Id,
-                        Name = storage.Name,
-                        Type = storage.Type,
-                        Manufacturer = storage.Manufacturer,
-                    },
-                    PowerSupplyComponent psu => new PowerSupplyComponentResponseDto
-                    {
-                        Id = psu.Id,
-                        Name = psu.Name,
-                        Type = psu.Type,
-                        Manufacturer = psu.Manufacturer,
-                    },
-                    CoolerComponent cooler => new CoolerComponentResponseDto
-                    {
-                        Id = cooler.Id,
-                        Name = cooler.Name,
-                        Type = cooler.Type,
-                        Manufacturer = cooler.Manufacturer,
-                    },
-                    CaseComponent pcCase => new CaseComponentResponseDto
-                    {
-                        Id = pcCase.Id,
-                        Name = pcCase.Name,
-                        Type = pcCase.Type,
-                        Manufacturer = pcCase.Manufacturer,
-                    },
-                    CaseFanComponent fan => new CaseFanComponentResponseDto
-                    {
-                        Id = fan.Id,
-                        Name = fan.Name,
-                        Type = fan.Type,
-                        Manufacturer = fan.Manufacturer,
-                    },
-                    MonitorComponent monitor => new MonitorComponentResponseDto
-                    {
-                        Id = monitor.Id,
-                        Name = monitor.Name,
-                        Type = monitor.Type,
-                        Manufacturer = monitor.Manufacturer,
-                    },
-                    _ => null
-                };
-            }
+            List<Build> builds = await query.Where(b => b.UserId == currentUserId || isPrivileged || (b.Status != BuildStatus.DRAFT && b.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare response variable
             List<BuildResponseDto> responses;
 
             //Check what permissions user has and return respective information
-            logDescription = isPrivileged 
-                ? "Successful Operation - Admin Access, Multiple Builds"
-                : "Successful Operation - User Access, Multiple Builds";
-
-            //Create a build response list with all necessary information
-            responses = builds.Select(build =>
+            if (!isPrivileged) //Return user knowledge if no privileges
             {
-                //Get rating information
-                var ratingInfo = ratings.GetValueOrDefault(build.Id);
-                var avgRating = ratingInfo?.Average ?? 0.0;
-                var ratingsCount = ratingInfo?.Count ?? 0;
-                var userRating = userRatingsDict.ContainsKey(build.Id) 
-                    ? (double?)userRatingsDict[build.Id] 
-                    : null;
-                
-                // Debug logging for first few builds
-                if (build.Id == builds.FirstOrDefault()?.Id)
+                //Change log description
+                logDescription = "Successful Operation - User Access, Multiple Builds";
+
+                //Create a build response list
+                responses = [.. builds.Select(build =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"GetBuilds: Build {build.Id} ({build.Name}): Avg={avgRating:F2}, Count={ratingsCount}, UserRating={(userRating?.ToString("F2") ?? "null")}");
-                }
+                    //Return a follow response
+                    return new BuildResponseDto
+                    {
+                        Id = build.Id,
+                        UserId = build.UserId,
+                        Name = build.Name,
+                        Description = build.Description,
+                        Status = build.Status,
+                        PublishedAt = build.PublishedAt
+                    };
+                })];
+            }
+            else //Return admin knowledge if has privileges
+            {
+                //Change log description
+                logDescription = "Successful Operation - Admin Access, Multiple Builds";
 
-                //Get build image (first BUILD type image)
-                var buildImage = build.Images?.FirstOrDefault(img => img.LocationType == ImageLocationType.BUILD);
-                var imageUrl = buildImage?.Id.ToString();
-
-                //Map components
-                var components = build.Components?
-                    .Where(bc => bc.Component != null)
-                    .Select(bc => MapComponent(bc.Component!))
-                    .Where(c => c != null)
-                    .Cast<BaseComponentResponseDto>()
-                    .ToList() ?? new List<BaseComponentResponseDto>();
-
-                //Map tags
-                var tags = build.Tags?.Select(t => t.Name).ToList() ?? new List<string>();
-                
-                // Debug logging for tags
-                if (build.Id == builds.FirstOrDefault()?.Id)
-                {
-                    System.Diagnostics.Debug.WriteLine($"GetBuilds: Build {build.Id} has {tags.Count} tags: {string.Join(", ", tags)}");
-                }
-
-                //Get author information
-                var authorName = build.User?.DisplayName ?? build.User?.Login ?? "Unknown";
-                var authorImageId = build.User?.ImageId;
-
-                var response = new BuildResponseDto
+                //Create a build response list
+                responses = [.. builds.Select(build => new BuildResponseDto
                 {
                     Id = build.Id,
                     UserId = build.UserId,
@@ -840,22 +521,12 @@ namespace KAZABUILD.API.Controllers.Builds
                     Description = build.Description,
                     Status = build.Status,
                     PublishedAt = build.PublishedAt,
-                    // DatabaseEntryAt is needed for sorting, so return it for all users
                     DatabaseEntryAt = build.DatabaseEntryAt,
-                    LastEditedAt = isPrivileged ? build.LastEditedAt : null,
-                    Note = isPrivileged ? build.Note : null,
-                    // Additional fields for explore builds page
-                    Components = components,
-                    Tags = tags,
-                    AverageRating = avgRating,
-                    RatingsCount = ratingsCount,
-                    UserRating = userRating,
-                    AuthorName = authorName,
-                    AuthorImageId = authorImageId,
-                    ImageUrl = imageUrl
-                };
-                return response;
-            }).ToList();
+                    LastEditedAt = build.LastEditedAt,
+                    Note = build.Note
+                })];
+
+            }
 
             //Log success
             await _logger.LogAsync(
