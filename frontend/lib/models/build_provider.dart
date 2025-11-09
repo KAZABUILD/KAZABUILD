@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/tag_model.dart';
 
 /// A service class to handle API requests related to builds.
 class BuildService {
@@ -53,17 +54,19 @@ class BuildService {
       
       final builds = buildsJson.map((json) {
         final build = Build.fromJson(json);
-        debugPrint('Build ${build.id} (${build.name}): parsed ${build.components.length} components, imageUrl=${build.imageUrl}');
+        debugPrint('Build ${build.id} (${build.name}): parsed ${build.components.length} components, ${build.tags.length} tags, imageUrl=${build.imageUrl}');
         if (build.components.isNotEmpty) {
           debugPrint('  Components: ${build.components.map((c) => '${c.type}: ${c.name}').join(', ')}');
+        }
+        if (build.tags.isNotEmpty) {
+          debugPrint('  Tags: ${build.tags.join(', ')}');
         } else {
-          debugPrint('  ⚠️ WARNING: Build has 0 components after parsing!');
-          // Extra logging for debugging
-          final componentsInJson = json['components'] ?? json['Components'];
-          if (componentsInJson != null) {
-            debugPrint('  ⚠️ But JSON had components: ${componentsInJson is List ? componentsInJson.length : 'not a list'}');
-            if (componentsInJson is List && componentsInJson.isNotEmpty) {
-              debugPrint('  ⚠️ First component in JSON: ${componentsInJson[0]}');
+          // Debug: Check if tags exist in JSON
+          final tagsInJson = json['tags'] ?? json['Tags'];
+          if (tagsInJson != null) {
+            debugPrint('  ⚠️ WARNING: Build has 0 tags after parsing, but JSON had tags: ${tagsInJson is List ? tagsInJson.length : 'not a list'}');
+            if (tagsInJson is List && tagsInJson.isNotEmpty) {
+              debugPrint('  ⚠️ First tag in JSON: ${tagsInJson[0]}');
             }
           }
         }
@@ -182,13 +185,15 @@ class BuildService {
   }
 
   /// Updates an existing BuildInteraction rating
+  /// If rating is 0, it effectively removes the rating (sets it to 0, which is excluded from calculations)
   Future<Map<String, dynamic>> updateBuildInteractionRating(String interactionId, double rating) async {
     try {
       // Backend expects 0-100 scale; UI works with 0-5 stars
+      // Rating of 0 means remove rating
       final scaled = (rating * 20).round();
       final response = await _dio.put('$apiBaseUrl/BuildInteractions/$interactionId', data: {
         'IsWishlisted': null,
-        'IsLiked': rating >= 3.0, // Consider 3+ stars as liked
+        'IsLiked': rating >= 3.0 && rating > 0, // Consider 3+ stars as liked, but not if rating is 0
         'Rating': scaled,
       });
       return (response.data is Map<String, dynamic>)
@@ -201,22 +206,32 @@ class BuildService {
 
   /// Submits a rating for a build and returns the updated rating aggregate
   /// Handles both creating new interactions and updating existing ones
+  /// If rating is 0, it removes the rating (sets it to 0, which is excluded from calculations)
   Future<Map<String, dynamic>> rateBuild(String buildId, double rating, String userId) async {
     try {
-      // Backend expects 0-100 scale; UI works with 0-5 stars
-      final scaled = (rating * 20).round();
-      final response = await _dio.post('$apiBaseUrl/BuildInteractions/add', data: {
-        'UserId': userId,
-        'BuildId': buildId,
-        'IsWishlisted': false,
-        'IsLiked': rating >= 3.0, // Consider 3+ stars as liked
-        'Rating': scaled,
-      });
-      return (response.data is Map<String, dynamic>)
-          ? response.data as Map<String, dynamic>
-          : <String, dynamic>{};
+      // First, check if an interaction already exists
+      final interactionId = await getBuildInteractionId(buildId, userId);
+      
+      if (interactionId != null) {
+        // Interaction exists, update it
+        return await updateBuildInteractionRating(interactionId, rating);
+      } else {
+        // No interaction exists, create a new one
+        // Backend expects 0-100 scale; UI works with 0-5 stars
+        final scaled = (rating * 20).round();
+        final response = await _dio.post('$apiBaseUrl/BuildInteractions/add', data: {
+          'UserId': userId,
+          'BuildId': buildId,
+          'IsWishlisted': false,
+          'IsLiked': rating >= 3.0 && rating > 0, // Consider 3+ stars as liked, but not if rating is 0
+          'Rating': scaled,
+        });
+        return (response.data is Map<String, dynamic>)
+            ? response.data as Map<String, dynamic>
+            : <String, dynamic>{};
+      }
     } catch (e) {
-      // Check if it's an "already exists" error (400 Bad Request)
+      // If it's an "already exists" error, try to update instead
       bool isAlreadyExistsError = false;
       
       if (e is DioException) {
@@ -264,6 +279,182 @@ class BuildService {
       rethrow;
     }
   }
+
+  /// Predefined list of meaningful tags that users can select
+  static const List<String> predefinedTags = [
+    'Gaming',
+    'Budget',
+    'Workstation',
+    'RGB',
+    'Quiet',
+    'Overclocking',
+    'Mini-ITX',
+    'Streaming',
+    'Content Creation',
+    'Productivity',
+    'Compact',
+    'High-End',
+    'Mid-Range',
+    'Entry-Level',
+    'Water-Cooled',
+    'Air-Cooled',
+    'Custom Loop',
+    'SFF (Small Form Factor)',
+    'Silent',
+    'RGB Sync',
+  ];
+
+  /// Fetches all available tags from the backend, filtered to only show predefined meaningful tags.
+  Future<List<Tag>> getTags({String? query, int? page, int? pageLength}) async {
+    try {
+      final data = <String, dynamic>{
+        'paging': false, // Get all tags to filter them
+        'orderBy': 'Name',
+        'sortDirection': 'ASC',
+      };
+      if (query != null && query.isNotEmpty) {
+        data['query'] = query;
+      }
+      
+      final response = await _dio.post('$apiBaseUrl/Tags/get', data: data);
+      final List<dynamic> tagsJson = response.data as List<dynamic>? ?? [];
+      final allTags = tagsJson.map((json) => Tag.fromJson(json as Map<String, dynamic>)).toList();
+      
+      // Filter tags to only include predefined meaningful ones (case-insensitive)
+      final filteredTags = allTags.where((tag) {
+        return predefinedTags.any((predefined) => 
+          tag.name.toLowerCase().trim() == predefined.toLowerCase().trim()
+        );
+      }).toList();
+      
+      // Sort by predefined order
+      filteredTags.sort((a, b) {
+        final aIndex = predefinedTags.indexWhere((p) => p.toLowerCase() == a.name.toLowerCase());
+        final bIndex = predefinedTags.indexWhere((p) => p.toLowerCase() == b.name.toLowerCase());
+        if (aIndex == -1 && bIndex == -1) return 0;
+        if (aIndex == -1) return 1;
+        if (bIndex == -1) return -1;
+        return aIndex.compareTo(bIndex);
+      });
+      
+      // If no predefined tags found, create them from the predefined list
+      if (filteredTags.isEmpty) {
+        debugPrint('⚠️ No predefined tags found in backend. Using predefined list.');
+        // Return tags based on predefined list (these will need to be created in backend by admin)
+        return predefinedTags.map((name) => Tag(
+          id: name.toLowerCase().replaceAll(' ', '-'),
+          name: name,
+          description: 'Tag for $name builds',
+        )).toList();
+      }
+      
+      return filteredTags;
+    } catch (e) {
+      debugPrint('Error fetching tags: $e');
+      // If error, return predefined tags as fallback
+      return predefinedTags.map((name) => Tag(
+        id: name.toLowerCase().replaceAll(' ', '-'),
+        name: name,
+        description: 'Tag for $name builds',
+      )).toList();
+    }
+  }
+
+  /// Finds a tag by name and returns its ID, or null if not found
+  Future<String?> findTagIdByName(String tagName) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/Tags/get', data: {
+        'query': tagName,
+        'paging': false,
+      });
+      final List<dynamic> tagsJson = response.data as List<dynamic>? ?? [];
+      for (final json in tagsJson) {
+        final tag = Tag.fromJson(json);
+        if (tag.name.toLowerCase().trim() == tagName.toLowerCase().trim()) {
+          return tag.id;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error finding tag by name: $e');
+      return null;
+    }
+  }
+
+  /// Adds a tag to a build by tag name (will find or suggest creating the tag)
+  Future<void> addTagToBuildByName(String buildId, String tagName) async {
+    try {
+      // First, try to find the tag by name
+      final tagId = await findTagIdByName(tagName);
+      if (tagId == null) {
+        throw Exception('Tag "$tagName" not found in backend. Please create it first through admin panel.');
+      }
+      
+      await _dio.post('$apiBaseUrl/BuildTags/add', data: {
+        'buildId': buildId,
+        'tagId': tagId,
+      });
+    } catch (e) {
+      debugPrint('Error adding tag to build: $e');
+      rethrow;
+    }
+  }
+
+  /// Adds a tag to a build by tag ID
+  Future<void> addTagToBuild(String buildId, String tagId) async {
+    try {
+      await _dio.post('$apiBaseUrl/BuildTags/add', data: {
+        'buildId': buildId,
+        'tagId': tagId,
+      });
+    } catch (e) {
+      debugPrint('Error adding tag to build: $e');
+      rethrow;
+    }
+  }
+
+  /// Removes a tag from a build.
+  Future<void> removeTagFromBuild(String buildTagId) async {
+    try {
+      await _dio.delete('$apiBaseUrl/BuildTags/$buildTagId');
+    } catch (e) {
+      debugPrint('Error removing tag from build: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets all tags for a specific build.
+  Future<List<Tag>> getBuildTags(String buildId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/BuildTags/get', data: {
+        'buildId': [buildId],
+        'paging': false,
+      });
+      final List<dynamic> buildTagsJson = response.data as List<dynamic>? ?? [];
+      // Extract tags from buildTags
+      final tagIds = buildTagsJson
+          .map((bt) {
+            final map = bt as Map<String, dynamic>;
+            return map['tagId'] ?? map['TagId'];
+          })
+          .where((id) => id != null)
+          .map((id) => id.toString())
+          .toList();
+      
+      if (tagIds.isEmpty) return [];
+      
+      // Fetch tag details
+      final tagsResponse = await _dio.post('$apiBaseUrl/Tags/get', data: {
+        'tagId': tagIds,
+        'paging': false,
+      });
+      final List<dynamic> tagsJson = tagsResponse.data as List<dynamic>? ?? [];
+      return tagsJson.map((json) => Tag.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error fetching build tags: $e');
+      rethrow;
+    }
+  }
 }
 
 /// A provider that creates an instance of [BuildService] with an authenticated Dio client.
@@ -295,4 +486,16 @@ final buildDetailProvider = FutureProvider.family<Build, String>((ref, buildId) 
   final buildService = ref.watch(buildServiceProvider);
   // Use the new, more direct method to fetch a single build.
   return buildService.getBuildById(buildId);
+});
+
+/// A provider that fetches all available tags.
+final tagsProvider = FutureProvider<List<Tag>>((ref) async {
+  final buildService = ref.watch(buildServiceProvider);
+  return buildService.getTags();
+});
+
+/// A provider that fetches tags for a specific build.
+final buildTagsProvider = FutureProvider.family<List<Tag>, String>((ref, buildId) async {
+  final buildService = ref.watch(buildServiceProvider);
+  return buildService.getBuildTags(buildId);
 });

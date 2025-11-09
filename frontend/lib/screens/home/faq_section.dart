@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_color.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A simple data class to hold the data for a single FAQ item.
 class FaqItem {
@@ -30,7 +31,7 @@ class FaqSection extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     // Default FAQ items - Can be replaced with backend data later
-    final List<FaqItem> faqs = _getDefaultFaqs();
+    final List<FaqItem> faqs = _getDefaultFaqs(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 24.0),
@@ -55,7 +56,7 @@ class FaqSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Frequently Asked Questions',
+                    AppLocalizations.of(context)!.frequentlyAskedQuestions,
                     style: theme.textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark
@@ -67,7 +68,7 @@ class FaqSection extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Find answers to common questions about KAZABUILD',
+                AppLocalizations.of(context)!.findAnswersToCommonQuestions,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: isDark
                       ? AppColorsDark.textWhite.withOpacity(0.7)
@@ -100,47 +101,40 @@ class FaqSection extends StatelessWidget {
 
   /// Returns default FAQ items for the homepage.
   /// In the future, this can be replaced with data from the backend.
-  List<FaqItem> _getDefaultFaqs() {
-    return const [
+  List<FaqItem> _getDefaultFaqs(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
       FaqItem(
-        question: 'What is KAZABUILD?',
-        answer:
-            'KAZABUILD is a comprehensive PC building platform where enthusiasts can create, share, and explore custom PC builds. Whether you\'re a beginner or an expert, KAZABUILD helps you design the perfect PC configuration, get expert advice, and connect with the PC building community.',
+        question: l10n.whatIsKazabuild,
+        answer: l10n.whatIsKazabuildAnswer,
       ),
       FaqItem(
-        question: 'How do I create a PC build?',
-        answer:
-            'Creating a PC build is easy! Click on "Build Now" from the navigation menu, and you\'ll be guided through our interactive build wizard. You can select components from various categories like CPU, GPU, RAM, storage, and more. Our system will help you check compatibility and suggest optimal configurations based on your needs and budget.',
+        question: l10n.howDoICreateABuild,
+        answer: l10n.howDoICreateABuildAnswer,
       ),
       FaqItem(
-        question: 'Are the component prices up to date?',
-        answer:
-            'We strive to keep our component database and pricing as up-to-date as possible. However, prices can fluctuate frequently in the market. We recommend checking the latest prices from official retailers before making a purchase. Our platform provides a good estimate to help you plan your budget.',
+        question: l10n.arePricesUpToDate,
+        answer: l10n.arePricesUpToDateAnswer,
       ),
       FaqItem(
-        question: 'Can I share my builds with others?',
-        answer:
-            'Absolutely! KAZABUILD is designed to be a social platform. You can share your builds with the community, get feedback, and inspire others. You can also explore builds created by other users, save your favorites, and learn from different configurations.',
+        question: l10n.canIShareMyBuilds,
+        answer: l10n.canIShareMyBuildsAnswer,
       ),
       FaqItem(
-        question: 'How do I check component compatibility?',
-        answer:
-            'Our build wizard automatically checks component compatibility as you select parts. The system validates factors like socket compatibility, power supply requirements, case size, and more. If there are any compatibility issues, you\'ll be notified with suggestions for compatible alternatives.',
+        question: l10n.howDoICheckCompatibility,
+        answer: l10n.howDoICheckCompatibilityAnswer,
       ),
       FaqItem(
-        question: 'Is KAZABUILD free to use?',
-        answer:
-            'Yes! KAZABUILD is completely free to use. You can create unlimited builds, browse the community, participate in forums, and access all our guides and resources without any cost. Simply create an account to get started and unlock additional features like saving your builds and joining discussions.',
+        question: l10n.isKazabuildFree,
+        answer: l10n.isKazabuildFreeAnswer,
       ),
       FaqItem(
-        question: 'How can I get help with my build?',
-        answer:
-            'There are several ways to get help on KAZABUILD. You can post questions in our forums, where experienced builders and enthusiasts will be happy to help. You can also browse our comprehensive guides section for tutorials and tips. Additionally, you can comment on similar builds in the community to get specific advice.',
+        question: l10n.howCanIGetHelp,
+        answer: l10n.howCanIGetHelpAnswer,
       ),
       FaqItem(
-        question: 'Can I save multiple builds?',
-        answer:
-            'Yes! Once you create an account, you can save multiple builds and access them anytime. This is perfect for planning different builds for various purposes like gaming, content creation, or workstation setups. You can also edit, duplicate, and share your saved builds.',
+        question: l10n.canISaveMultipleBuilds,
+        answer: l10n.canISaveMultipleBuildsAnswer,
       ),
     ];
   }

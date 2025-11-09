@@ -18,11 +18,15 @@ import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
 /// The main widget for the "Explore Builds" screen.
 class ExploreBuildsPage extends ConsumerStatefulWidget {
-  const ExploreBuildsPage({super.key});
+  final String? initialTag;
+  
+  const ExploreBuildsPage({super.key, this.initialTag});
 
   @override
   ConsumerState<ExploreBuildsPage> createState() => _ExploreBuildsPageState();
@@ -37,7 +41,16 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   Set<String> _selectedTags = {};
   Set<String> _selectedStatuses = {};
   bool _showFilters = false;
-  bool _hasRefreshed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // If initialTag is provided via URL parameter, add it to selected tags
+    if (widget.initialTag != null && widget.initialTag!.isNotEmpty) {
+      _selectedTags = {widget.initialTag!};
+      _showFilters = true; // Show filters if a tag is selected
+    }
+  }
 
   @override
   void dispose() {
@@ -62,15 +75,32 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   List<Build> _filterAndSortBuilds(List<Build> builds) {
     var filtered = builds;
 
-    // Apply search filter
+    // Apply search filter - search in name, author, tags, and description
     if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
+      final query = _searchQuery.toLowerCase().trim();
       filtered = filtered.where((build) {
+        // Search in build name
         final nameMatch = build.name.toLowerCase().contains(query);
+        
+        // Search in author username
         final authorMatch = build.author?.username.toLowerCase().contains(query) ?? false;
-        final tagMatch = build.tags.any((tag) => tag.toLowerCase().contains(query));
+        
+        // Search in tags - check if any tag contains the query (tags are case-insensitive)
+        final tagMatch = build.tags.isNotEmpty && 
+                         build.tags.any((tag) => tag.toLowerCase().trim().contains(query));
+        
+        // Search in description
         final descriptionMatch = build.description?.toLowerCase().contains(query) ?? false;
-        return nameMatch || authorMatch || tagMatch || descriptionMatch;
+        
+        // Return true if any field matches
+        final matches = nameMatch || authorMatch || tagMatch || descriptionMatch;
+        
+        // Debug logging for tag matches
+        if (kDebugMode && matches && tagMatch) {
+          print('🔍 Search match found by TAG: "$query" in build "${build.name}" (tags: ${build.tags.join(", ")})');
+        }
+        
+        return matches;
       }).toList();
     }
 
@@ -92,6 +122,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
     switch (_sortBy) {
       case 'Latest':
         filtered.sort((a, b) {
+          // Use databaseEntryAt for sorting (backend already sorts by PublishedAt/DatabaseEntryAt)
           final aDate = a.databaseEntryAt ?? DateTime(1970);
           final bDate = b.databaseEntryAt ?? DateTime(1970);
           return bDate.compareTo(aDate);
@@ -117,17 +148,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
-
-    // Refresh builds once when page becomes visible (e.g., when navigating from build page)
-    if (!_hasRefreshed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _hasRefreshed = true;
-          // Invalidate to force refresh on next access
-          ref.invalidate(allBuildsProvider);
-        }
-      });
-    }
 
     /// Calculate the number of columns for the grid based on screen width,
     /// ensuring it's between 1 and 4 for optimal viewing on different devices.
@@ -195,6 +215,37 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                       const SizedBox(height: 32),
                       ref.watch(allBuildsProvider).when(
                             data: (builds) {
+                              if (builds.isEmpty) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(48.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.inbox,
+                                          size: 64,
+                                          color: theme.colorScheme.onSurface.withOpacity(0.3),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No builds found',
+                                          style: theme.textTheme.titleLarge?.copyWith(
+                                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Try adjusting your filters or check back later',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
                               final filteredBuilds = _filterAndSortBuilds(builds);
                               return _BuildsGridWithPagination(
                                 builds: filteredBuilds,
@@ -208,12 +259,50 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                 child: CircularProgressIndicator(),
                               ),
                             ),
-                            error: (err, stack) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(48.0),
-                                child: Text('Error: $err'),
-                              ),
-                            ),
+                            error: (err, stack) {
+                              if (kDebugMode) {
+                                print('Error loading builds: $err');
+                                print('Stack trace: $stack');
+                              }
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(48.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 64,
+                                        color: theme.colorScheme.error,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Error loading builds',
+                                        style: theme.textTheme.titleLarge?.copyWith(
+                                          color: theme.colorScheme.error,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        err.toString(),
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          ref.invalidate(allBuildsProvider);
+                                        },
+                                        icon: const Icon(Icons.refresh),
+                                        label: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                       ),
                     ],
                   ),
@@ -282,7 +371,7 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Explore Builds',
+                    AppLocalizations.of(context)!.exploreBuilds,
                     style: theme.textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
@@ -290,24 +379,12 @@ class _Header extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Discover amazing PC builds from the community',
+                    AppLocalizations.of(context)!.discoverAmazingBuilds,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
-              ),
-            ),
-            // Post Build Button
-            FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Post Build'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
           ],
@@ -334,7 +411,7 @@ class _Header extends StatelessWidget {
                   controller: searchController,
                   onChanged: onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Search builds by name, author, or tags...',
+                    hintText: AppLocalizations.of(context)!.searchBuilds,
                     prefixIcon: Icon(
                       Icons.search,
                       color: theme.colorScheme.primary,
@@ -384,7 +461,7 @@ class _Header extends StatelessWidget {
                   Icons.tune,
                   color: showFilters ? theme.colorScheme.primary : null,
                 ),
-                tooltip: 'Filters',
+                tooltip: AppLocalizations.of(context)!.filters,
                 style: IconButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                 ),
@@ -407,18 +484,18 @@ class _Header extends StatelessWidget {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: sortBy,
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'Latest',
-                      child: Text('Latest'),
+                      child: Text(AppLocalizations.of(context)!.latest),
                     ),
                     DropdownMenuItem(
                       value: 'Popular',
-                      child: Text('Popular'),
+                      child: Text(AppLocalizations.of(context)!.popular),
                     ),
                     DropdownMenuItem(
                       value: 'Price',
-                      child: Text('Price'),
+                      child: Text(AppLocalizations.of(context)!.price),
                     ),
                   ],
                   onChanged: (value) {
@@ -470,13 +547,52 @@ class _FilterPanel extends ConsumerWidget {
     return buildsAsync.when(
       data: (builds) {
         // Collect all unique tags and statuses
+        // Only show predefined meaningful tags
         final allTags = <String>{};
         final allStatuses = <String>{};
         
+        // Predefined meaningful tags
+        const predefinedTags = [
+          'Gaming',
+          'Budget',
+          'Workstation',
+          'RGB',
+          'Quiet',
+          'Overclocking',
+          'Mini-ITX',
+          'Streaming',
+          'Content Creation',
+          'Productivity',
+          'Compact',
+          'High-End',
+          'Mid-Range',
+          'Entry-Level',
+          'Water-Cooled',
+          'Air-Cooled',
+          'Custom Loop',
+          'SFF (Small Form Factor)',
+          'Silent',
+          'RGB Sync',
+        ];
+        
         for (final build in builds) {
-          allTags.addAll(build.tags);
+          // Only add predefined tags
+          for (final tag in build.tags) {
+            if (predefinedTags.any((predefined) => 
+              tag.toLowerCase().trim() == predefined.toLowerCase().trim()
+            )) {
+              allTags.add(tag);
+            }
+          }
           allStatuses.add(build.status);
         }
+        
+        // Sort tags by predefined order
+        final sortedTags = predefinedTags.where((predefined) {
+          return allTags.any((tag) => 
+            tag.toLowerCase().trim() == predefined.toLowerCase().trim()
+          );
+        }).toList();
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -495,7 +611,7 @@ class _FilterPanel extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Filters',
+                AppLocalizations.of(context)!.filters,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -544,7 +660,7 @@ class _FilterPanel extends ConsumerWidget {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: allTags.take(20).map((tag) {
+                  children: sortedTags.map((tag) {
                     final isSelected = selectedTags.contains(tag);
                     return FilterChip(
                       label: Text(tag),
@@ -571,7 +687,7 @@ class _FilterPanel extends ConsumerWidget {
                     onStatusesChanged({});
                   },
                   icon: const Icon(Icons.clear_all),
-                  label: const Text('Clear All Filters'),
+                  label: Text(AppLocalizations.of(context)!.clearAllFilters),
                 ),
               ],
             ],
@@ -633,13 +749,17 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
             childAspectRatio: 0.7,
           ),
           itemCount: _currentPageBuilds.length,
-          itemBuilder: (context, index) {
-            return _BuildCard(
-              buildData: _currentPageBuilds[index],
-              imageMap: imageMap,
-              imagesLoaded: imagesLoaded,
-            );
-          },
+           itemBuilder: (context, index) {
+             return _BuildCard(
+               buildData: _currentPageBuilds[index],
+               imageMap: imageMap,
+               imagesLoaded: imagesLoaded,
+               onRatingChanged: () {
+                 // Don't refresh builds list to prevent re-sorting
+                 // Optimistic update in the card is sufficient
+               },
+             );
+           },
         ),
         
         // Pagination controls
@@ -759,19 +879,145 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
 /// A card widget that displays a summary of a single [CommunityBuild].
 ///
 /// Tapping on the card navigates to the [BuildDetailPage] for that build.
-class _BuildCard extends ConsumerWidget {
+/// Users can rate builds by clicking on the star rating widget.
+class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
   final Map<String, String?> imageMap;
   final bool imagesLoaded;
+  final VoidCallback? onRatingChanged; // Callback to notify parent of rating changes
 
   const _BuildCard({
     required this.buildData,
     required this.imageMap,
     required this.imagesLoaded,
+    this.onRatingChanged,
   });
 
+  @override
+  ConsumerState<_BuildCard> createState() => _BuildCardState();
+}
+
+class _BuildCardState extends ConsumerState<_BuildCard> {
+  late double _averageRating;
+  late int _ratingsCount;
+  double? _userRating;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _averageRating = widget.buildData.averageRating;
+    _ratingsCount = widget.buildData.ratingsCount;
+    _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
+        ? widget.buildData.userRating 
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(_BuildCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.buildData.averageRating != widget.buildData.averageRating ||
+        oldWidget.buildData.ratingsCount != widget.buildData.ratingsCount ||
+        oldWidget.buildData.userRating != widget.buildData.userRating) {
+      setState(() {
+        _averageRating = widget.buildData.averageRating;
+        _ratingsCount = widget.buildData.ratingsCount;
+        _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
+            ? widget.buildData.userRating 
+            : null;
+      });
+    }
+  }
+
+  /// Submits a rating for this build
+  /// If user clicks the same rating again, it removes the rating (undo)
+  Future<void> _submitRating(double rating) async {
+    final currentUser = ref.read(authProvider).valueOrNull;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to rate this build.')),
+        );
+      }
+      return;
+    }
+
+    if (_submitting) return;
+
+    // Check if user is clicking the same rating (undo)
+    final isUndo = _userRating != null && _userRating == rating;
+    final ratingToSubmit = isUndo ? 0.0 : rating;
+
+    // Store previous values for rollback on error
+    final previousAverage = _averageRating;
+    final previousCount = _ratingsCount;
+    final previousUserRating = _userRating;
+
+    setState(() {
+      _submitting = true;
+      // Optimistic update
+      if (isUndo) {
+        // Remove rating: subtract user's rating from average
+        if (_ratingsCount > 1) {
+          final total = (_averageRating * _ratingsCount) - _userRating!;
+          _averageRating = total / (_ratingsCount - 1);
+          _ratingsCount = _ratingsCount - 1;
+        } else {
+          // Last rating removed
+          _averageRating = 0.0;
+          _ratingsCount = 0;
+        }
+        _userRating = null;
+      } else {
+        final hadPrevious = _userRating != null;
+        if (!hadPrevious) {
+          // New rating
+          _averageRating = _ratingsCount == 0 
+              ? rating 
+              : ((_averageRating * _ratingsCount) + rating) / (_ratingsCount + 1);
+          _ratingsCount = _ratingsCount + 1;
+        } else {
+          // Update existing rating
+          final total = (_averageRating * _ratingsCount) - _userRating! + rating;
+          _averageRating = _ratingsCount == 0 ? rating : (total / _ratingsCount);
+        }
+        _userRating = rating;
+      }
+    });
+
+    try {
+      final service = ref.read(buildServiceProvider);
+      await service.rateBuild(widget.buildData.id, ratingToSubmit, currentUser.uid);
+      
+      // Refresh only the build detail page, not the entire list
+      // This prevents the list from re-sorting when a rating is given
+      if (mounted) {
+        ref.invalidate(buildDetailProvider(widget.buildData.id));
+        // Don't invalidate allBuildsProvider to prevent re-sorting
+        // The local state update is already done optimistically
+        widget.onRatingChanged?.call();
+      }
+    } catch (e) {
+      // Rollback on error
+      if (mounted) {
+        setState(() {
+          _averageRating = previousAverage;
+          _ratingsCount = previousCount;
+          _userRating = previousUserRating;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to ${isUndo ? 'remove' : 'submit'} rating: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
   /// Builds the image widget - shows image if available, otherwise placeholder
-  Widget _buildImage(BuildContext context, ThemeData theme, WidgetRef ref) {
+  Widget _buildImage(BuildContext context, ThemeData theme) {
     // Check if build has an image URL
     final imageUrl = _getImageUrl();
     
@@ -810,11 +1056,11 @@ class _BuildCard extends ConsumerWidget {
 
   /// Gets the image URL for the build
   String? _getImageUrl() {
-    if (buildData.imageUrl == null || buildData.imageUrl!.isEmpty) {
+    if (widget.buildData.imageUrl == null || widget.buildData.imageUrl!.isEmpty) {
       return null;
     }
 
-    final url = buildData.imageUrl!;
+    final url = widget.buildData.imageUrl!;
     
     // Check if it's a GUID (image ID)
     final guidPattern = RegExp(
@@ -870,8 +1116,17 @@ class _BuildCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    if (kDebugMode) {
+      print('_BuildCard: Build ID: ${widget.buildData.id}, Name: ${widget.buildData.name}');
+      print('_BuildCard: Average Rating: $_averageRating, Count: $_ratingsCount, User Rating: $_userRating');
+      print('_BuildCard: Tags: ${widget.buildData.tags} (${widget.buildData.tags.length} tags)');
+      if (widget.buildData.tags.isEmpty) {
+        print('  ⚠️ WARNING: Build "${widget.buildData.name}" has NO TAGS!');
+      }
+    }
 
     return Card(
       elevation: 2,
@@ -885,7 +1140,7 @@ class _BuildCard extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () {
-          context.go('/build/${buildData.id}');
+          context.go('/build/${widget.buildData.id}');
         },
         borderRadius: BorderRadius.circular(20),
         child: Column(
@@ -895,7 +1150,7 @@ class _BuildCard extends ConsumerWidget {
             // Build Image - show image if available, otherwise placeholder
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: _buildImage(context, theme, ref),
+              child: _buildImage(context, theme),
             ),
 
             /// The content section below the image.
@@ -906,7 +1161,7 @@ class _BuildCard extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    buildData.name,
+                    widget.buildData.name,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -914,17 +1169,17 @@ class _BuildCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  if (buildData.author != null)
+                  if (widget.buildData.author != null)
                     Row(
                       children: [
                         CircleAvatar(
                           radius: 12,
-                          backgroundImage: buildData.author!.photoURL != null
-                              ? NetworkImage(buildData.author!.photoURL!)
+                          backgroundImage: widget.buildData.author!.photoURL != null
+                              ? NetworkImage(widget.buildData.author!.photoURL!)
                               : null,
-                          child: buildData.author!.photoURL == null
+                          child: widget.buildData.author!.photoURL == null
                               ? Text(
-                                  buildData.author!.username.substring(0, 1).toUpperCase(),
+                                  widget.buildData.author!.username.substring(0, 1).toUpperCase(),
                                   style: TextStyle(
                                     color: theme.colorScheme.onPrimary,
                                     fontSize: 10,
@@ -936,7 +1191,7 @@ class _BuildCard extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            buildData.author!.username,
+                            widget.buildData.author!.username,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurface.withOpacity(0.7),
                             ),
@@ -947,8 +1202,8 @@ class _BuildCard extends ConsumerWidget {
                     ),
                   const SizedBox(height: 8),
                   // Components list - show component type and name
-                  if (buildData.components.isNotEmpty) ...[
-                    ...buildData.components.take(5).map((component) {
+                  if (widget.buildData.components.isNotEmpty) ...[
+                    ...widget.buildData.components.take(5).map((component) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Row(
@@ -981,7 +1236,7 @@ class _BuildCard extends ConsumerWidget {
                     // Debug: Show message if no components
                     if (kDebugMode)
                       Text(
-                        'No components (${buildData.components.length})',
+                        'No components (${widget.buildData.components.length})',
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 10,
                           color: Colors.red,
@@ -989,11 +1244,11 @@ class _BuildCard extends ConsumerWidget {
                         ),
                       ),
                   ],
-                  if (buildData.components.length > 5)
+                  if (widget.buildData.components.length > 5)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '+${buildData.components.length - 5} more components',
+                        '+${widget.buildData.components.length - 5} more components',
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 10,
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -1001,61 +1256,115 @@ class _BuildCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  if (buildData.components.isNotEmpty) const SizedBox(height: 8),
-                  // Tags
-                  if (buildData.tags.isNotEmpty)
+                  // Tags section - show tags if available (make them more visible)
+                  if (widget.buildData.components.isNotEmpty) const SizedBox(height: 8),
+                  if (widget.buildData.tags.isNotEmpty) ...[
                     Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: buildData.tags.take(3).map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.label,
-                                size: 10,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                tag,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 9,
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: widget.buildData.tags.take(3).map((tag) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              // Navigate to explore builds page with this tag selected
+                              context.go('/explore?tag=${Uri.encodeComponent(tag)}');
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withOpacity(0.5),
+                                  width: 1.5,
                                 ),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.label,
+                                    size: 14,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    tag,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         );
                       }).toList(),
                     ),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Interactive star rating - wrapped to prevent card navigation
+                      GestureDetector(
+                        onTap: () {
+                          // Consume tap to prevent card navigation
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(5, (index) {
+                            final starIndex = index + 1;
+                            final hasUserRating = _userRating != null && _userRating! > 0;
+                            final isFilled = hasUserRating && _userRating! >= starIndex - 0.5;
+                            return InkWell(
+                              onTap: _submitting ? null : () {
+                                _submitRating(starIndex.toDouble());
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  isFilled ? Icons.star : Icons.star_border,
+                                  size: 16,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
                       Row(
                         children: [
-                          Icon(
-                            Icons.star,
-                            size: 16,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            buildData.averageRating > 0
-                                ? buildData.averageRating.toStringAsFixed(1)
-                                : 'New',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+                          if (_averageRating > 0) ...[
+                            Text(
+                              _averageRating.toStringAsFixed(1),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
+                            if (_ratingsCount > 0) ...[
+                              Text(
+                                ' ($_ratingsCount)',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ] else ...[
+                            Text(
+                              AppLocalizations.of(context)!.newText,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       Container(
@@ -1065,7 +1374,7 @@ class _BuildCard extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          buildData.status,
+                          widget.buildData.status,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w600,

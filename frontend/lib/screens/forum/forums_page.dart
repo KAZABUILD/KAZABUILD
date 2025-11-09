@@ -20,6 +20,7 @@ import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A provider to fetch the author's details based on their ID.
 /// Returns null if the user cannot be fetched (e.g., user deleted, network error).
@@ -53,13 +54,13 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// The currently selected category for filtering posts.
-  String _selectedCategory = 'All';
+  String? _selectedCategory;
 
   /// The current text in the search input field.
   String _searchQuery = '';
 
   /// The currently selected option for sorting posts.
-  String _selectedSortOption = 'Newest';
+  String? _selectedSortOption;
 
   /// Current page number for pagination.
   int _currentPage = 1;
@@ -73,19 +74,25 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   /// Timer for debouncing search input
   Timer? _searchDebounce;
 
-  /// A static list of available categories for the filter chips.
-  final List<String> _categories = [
-    'All',
-    'Troubleshooting',
-    'Build Advice',
-    'Show Off Your Build',
-  ];
+  /// Returns localized categories list
+  List<String> _getCategories(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      l10n.all,
+      l10n.troubleshooting,
+      l10n.buildAdvice,
+      l10n.showOffBuild,
+    ];
+  }
 
-  /// A static list of available options for the sort dropdown.
-  final List<String> _sortOptions = [
-    'Newest',
-    'Oldest',
-  ];
+  /// Returns localized sort options list
+  List<String> _getSortOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      l10n.newest,
+      l10n.oldest,
+    ];
+  }
 
   /// Controller for the main [CustomScrollView] to manage scroll-related effects if needed.
   final ScrollController _scrollController = ScrollController();
@@ -122,13 +129,18 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
+    // Get localized values
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
+    
     // Build pagination parameters - memoize to prevent unnecessary rebuilds
     final postsParams = ForumPostsParams(
       page: _currentPage,
       pageSize: _pageSize,
-      category: _selectedCategory == 'All' ? null : _selectedCategory,
+      category: selectedCat == allText ? null : _selectedCategory,
       searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
-      sortOption: _selectedSortOption,
+      sortOption: selectedSort,
     );
     
     final postsAsync = ref.watch(forumPostsProvider(postsParams));
@@ -154,19 +166,19 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                   pinned: true,
                   delegate: _ModernForumActionsHeader(
                     searchController: _searchController,
-                    categories: _categories,
-                    selectedCategory: _selectedCategory,
+                    categories: _getCategories(context),
+                    selectedCategory: selectedCat,
                     onCategorySelected: (category) {
                       setState(() {
                         _selectedCategory = category;
                         _currentPage = 1; // Reset to first page when category changes
                       });
                     },
-                    sortOptions: _sortOptions,
-                    selectedSortOption: _selectedSortOption,
+                    sortOptions: _getSortOptions(context),
+                    selectedSortOption: selectedSort,
                     onSortOptionSelected: (option) {
                       setState(() {
-                        _selectedSortOption = option!;
+                        _selectedSortOption = option;
                         _currentPage = 1; // Reset to first page when sort changes
                       });
                     },
@@ -177,7 +189,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (err, stack) => SliverFillRemaining(
-                    child: Center(child: Text('Error: $err')),
+                    child: Center(child: Text('${AppLocalizations.of(context)!.error}: $err')),
                   ),
                   data: (posts) {
                     // Determine if there are more pages
@@ -198,7 +210,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No posts found',
+                                AppLocalizations.of(context)!.noPostsFound,
                                 style: theme.textTheme.titleLarge?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -400,7 +412,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                       ),
                     ),
                     icon: const Icon(Icons.add, size: 24),
-                    label: const Text('Start Discussion'),
+                    label: Text(AppLocalizations.of(context)!.startDiscussion),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: theme.colorScheme.onPrimary,

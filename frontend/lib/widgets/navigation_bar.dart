@@ -24,6 +24,7 @@ import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/screens/guides/guides_page.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A simple data class to represent a PC part in the dropdown menu.
 class PcPart {
@@ -103,12 +104,12 @@ class CustomNavigationBar extends ConsumerWidget {
           ),
 
           /// The main navigation buttons in the center of the bar.
-          const Row(
+          Row(
             children:  [
-              _NavButton(title: 'Build Now', route: '/build-now'),
-              _NavButton(title: 'Explore Builds', route: '/explore'),
-              _NavButton(title: 'Guides',route: '/guides'),
-              _NavButton(title: 'Forums', route: '/forums'),
+              _NavButton(title: AppLocalizations.of(context)!.buildNow, route: '/build-now'),
+              _NavButton(title: AppLocalizations.of(context)!.exploreBuilds, route: '/explore'),
+              _NavButton(title: AppLocalizations.of(context)!.guides,route: '/guides'),
+              _NavButton(title: AppLocalizations.of(context)!.forums, route: '/forums'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -264,7 +265,7 @@ class CustomDrawer extends ConsumerWidget {
           if (showProfileArea && user == null) ...[
             ListTile(
               leading: const Icon(Icons.login),
-              title: const Text('Sign In'),
+              title: Text(AppLocalizations.of(context)!.signIn),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/login');
@@ -275,7 +276,7 @@ class CustomDrawer extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.person_add),
-              title: const Text('Sign Up'),
+              title: Text(AppLocalizations.of(context)!.signUp),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/signup');
@@ -288,7 +289,7 @@ class CustomDrawer extends ConsumerWidget {
           // TODO: Refactor these to use named routes for better maintainability.
           ListTile(
             leading: const Icon(Icons.construction),
-            title: const Text('Build Now'),
+            title: Text(AppLocalizations.of(context)!.buildNow),
             onTap: () {
               Navigator.pop(context);
               context.go('/build-now');
@@ -296,7 +297,7 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.explore),
-            title: const Text('Explore Builds'),
+            title: Text(AppLocalizations.of(context)!.exploreBuilds),
             onTap: () {
               Navigator.pop(context);
               context.go('/explore');
@@ -304,7 +305,7 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.book),
-            title: const Text('Guides'),
+            title: Text(AppLocalizations.of(context)!.guides),
             onTap: () {
               Navigator.pop(context);
               context.go('/guides');
@@ -312,7 +313,7 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.forum),
-            title: const Text('Forums'),
+            title: Text(AppLocalizations.of(context)!.forums),
             onTap: () {
               Navigator.pop(context);
               context.go('/forums');
@@ -328,7 +329,7 @@ class CustomDrawer extends ConsumerWidget {
                   if (user != null && user.userRole.isAdministrator) {
                     return ListTile(
                       leading: const Icon(Icons.admin_panel_settings, color: Colors.orange),
-                      title: const Text('Admin Panel', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                      title: Text(AppLocalizations.of(context)!.adminPanel, style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
                       onTap: () {
                         Navigator.pop(context);
                         context.go('/admin');
@@ -345,20 +346,50 @@ class CustomDrawer extends ConsumerWidget {
           const Divider(),
 
           /// An expandable tile for all the individual part categories.
-         ExpansionTile(
-            leading: const Icon(Icons.category),
-            title: const Text('Parts'),
-            children: _PartsDropdownMenu.parts.map((part) {
-              return ListTile(
-                leading: Icon(part.icon, size: 20),
-                title: Text(part.name),
-                contentPadding: const EdgeInsets.only(left: 72, right: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/parts/${part.type.name}');
-                },
+          Builder(
+            builder: (context) {
+              // Helper function to get localized part name
+              String getLocalizedPartName(ComponentType type) {
+                final l10n = AppLocalizations.of(context)!;
+                switch (type) {
+                  case ComponentType.cpu:
+                    return l10n.cpu;
+                  case ComponentType.gpu:
+                    return l10n.gpu;
+                  case ComponentType.motherboard:
+                    return l10n.motherboard;
+                  case ComponentType.ram:
+                    return l10n.memoryRam;
+                  case ComponentType.storage:
+                    return l10n.storage;
+                  case ComponentType.psu:
+                    return l10n.powerSupply;
+                  case ComponentType.cooler:
+                    return l10n.cooler;
+                  case ComponentType.caseFan:
+                    return l10n.caseFan;
+                  case ComponentType.pcCase:
+                    return l10n.pcCase;
+                  case ComponentType.monitor:
+                    return l10n.monitor;
+                }
+              }
+              return ExpansionTile(
+                leading: const Icon(Icons.category),
+                title: Text(AppLocalizations.of(context)!.parts),
+                children: _PartsDropdownMenu.parts.map((part) {
+                  return ListTile(
+                    leading: Icon(part.icon, size: 20),
+                    title: Text(getLocalizedPartName(part.type)),
+                    contentPadding: const EdgeInsets.only(left: 72, right: 16),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/parts/${part.type.name}');
+                    },
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
 
           /// If a user is logged in, show Settings and Log Out options.
@@ -366,7 +397,7 @@ class CustomDrawer extends ConsumerWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
+              title: Text(AppLocalizations.of(context)!.settings),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/settings');
@@ -374,7 +405,7 @@ class CustomDrawer extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.logout),
-              title: const Text('Log Out'),
+              title: Text(AppLocalizations.of(context)!.logout),
               onTap: () {
                 Navigator.pop(context);
                 ref.read(authProvider.notifier).signOut();
@@ -477,19 +508,19 @@ class _SignInArea extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome', style: theme.textTheme.bodySmall),
+            Text(AppLocalizations.of(context)!.welcome, style: theme.textTheme.bodySmall),
             Row(
               children: [
                 TextButton(
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                   onPressed: () => context.go('/login'),
-                  child: Text('Sign In', style: textStyle),
+                  child: Text(AppLocalizations.of(context)!.signIn, style: textStyle),
                 ),
                 Text(' / ', style: theme.textTheme.bodySmall),
                 TextButton(
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                   onPressed: () => context.go('/signup'),
-                  child: Text('Sign Up', style: textStyle),
+                  child: Text(AppLocalizations.of(context)!.signUp, style: textStyle),
                 ),
               ],
             ),
@@ -519,10 +550,10 @@ class _LoggedInProfileArea extends ConsumerWidget {
         if (value == 'logout') ref.read(authProvider.notifier).signOut();
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'profile', child: Text('Profile')),
-        const PopupMenuItem(value: 'settings', child: Text('Settings')),
+        PopupMenuItem(value: 'profile', child: Text(AppLocalizations.of(context)!.profile)),
+        PopupMenuItem(value: 'settings', child: Text(AppLocalizations.of(context)!.settings)),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'logout', child: Text('Log Out')),
+        PopupMenuItem(value: 'logout', child: Text(AppLocalizations.of(context)!.logout)),
       ],
       child: authState.when(
         data: (user) {
@@ -544,7 +575,7 @@ class _LoggedInProfileArea extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(user.username, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  Text('View Profile', style: Theme.of(context).textTheme.bodySmall),
+                  Text(AppLocalizations.of(context)!.viewProfile, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
               const Icon(Icons.arrow_drop_down),
@@ -584,6 +615,33 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
   bool _isHoveringDropdown = false;
   bool _isHoveringButton = false;
   bool _isDropdownOpen = false;
+
+  /// Returns the localized name for a component type
+  String _getLocalizedPartName(ComponentType type) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (type) {
+      case ComponentType.cpu:
+        return l10n.cpu;
+      case ComponentType.gpu:
+        return l10n.gpu;
+      case ComponentType.motherboard:
+        return l10n.motherboard;
+      case ComponentType.ram:
+        return l10n.memoryRam;
+      case ComponentType.storage:
+        return l10n.storage;
+      case ComponentType.psu:
+        return l10n.powerSupply;
+      case ComponentType.cooler:
+        return l10n.cooler;
+      case ComponentType.caseFan:
+        return l10n.caseFan;
+      case ComponentType.pcCase:
+        return l10n.pcCase;
+      case ComponentType.monitor:
+        return l10n.monitor;
+    }
+  }
 
   @override
   void dispose() {
@@ -631,6 +689,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                 children: _PartsDropdownMenu.parts.map((part) {
                   return _DropdownItem(
                     part: part,
+                    localizedName: _getLocalizedPartName(part.type),
                     onTap: () {
                       _hideDropdown();
                       context.go('/parts/${part.type.name}');
@@ -691,7 +750,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                   ),
                   padding: const EdgeInsets.only(left: 12, right: 0, top: 8, bottom: 8),
                 ),
-                child: const Text('Parts'),
+                child: Text(AppLocalizations.of(context)!.parts),
               ),
               InkWell(
                 onTap: () {
@@ -730,10 +789,12 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 /// A dropdown item widget with hover effects for the parts dropdown menu.
 class _DropdownItem extends StatefulWidget {
   final PcPart part;
+  final String localizedName;
   final VoidCallback onTap;
 
   const _DropdownItem({
     required this.part,
+    required this.localizedName,
     required this.onTap,
   });
 
@@ -778,7 +839,7 @@ class _DropdownItemState extends State<_DropdownItem> {
               ),
               const SizedBox(width: 12),
               Text(
-                widget.part.name,
+                widget.localizedName,
                 style: TextStyle(
                   color: _isHovering 
                       ? colorScheme.secondary

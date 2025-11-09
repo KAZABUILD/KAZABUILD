@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/models/guide_model.dart';
 import 'package:frontend/screens/guides/guide_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main widget for the guides page.
 class GuidesPage extends StatefulWidget {
@@ -25,7 +26,7 @@ class GuidesPage extends StatefulWidget {
 class _GuidesPageState extends State<GuidesPage> {
   /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  String _selectedCategory = 'All';
+  String? _selectedCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +39,14 @@ class _GuidesPageState extends State<GuidesPage> {
     final List<Guide> allGuides = _getGuides();
     
     // Filter guides by category
-    final List<Guide> guides = _selectedCategory == 'All'
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final List<Guide> guides = selectedCat == allText
         ? allGuides
-        : allGuides.where((g) => g.category == _selectedCategory).toList();
+        : allGuides.where((g) => g.category == selectedCat).toList();
     
     // Get unique categories
-    final categories = ['All', ...allGuides.map((g) => g.category).toSet().toList()..sort()];
+    final categories = [allText, ...allGuides.map((g) => g.category).toSet().toList()..sort()];
 
     return Scaffold(
       key: _scaffoldKey,
@@ -82,7 +85,7 @@ class _GuidesPageState extends State<GuidesPage> {
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
-                                          'No guides found in this category',
+                                          AppLocalizations.of(context)!.noGuidesFound,
                                           style: theme.textTheme.titleLarge?.copyWith(
                                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                                           ),
@@ -147,7 +150,7 @@ class _GuidesPageState extends State<GuidesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'PC Building Guides',
+                          AppLocalizations.of(context)!.guidesTitle,
                           style: theme.textTheme.headlineLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             letterSpacing: -0.5,
@@ -155,7 +158,7 @@ class _GuidesPageState extends State<GuidesPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'From beginner tips to advanced performance tuning, find everything you need to build better.',
+                          AppLocalizations.of(context)!.guidesDescription,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
@@ -167,29 +170,35 @@ class _GuidesPageState extends State<GuidesPage> {
               ),
               const SizedBox(height: 32),
               // Category filter chips
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: categories.map((category) {
-                  final isSelected = _selectedCategory == category;
-                  return FilterChip(
-                    label: Text(category),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                    selectedColor: theme.colorScheme.primary.withOpacity(0.2),
-                    checkmarkColor: theme.colorScheme.primary,
-                    labelStyle: TextStyle(
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
+              Builder(
+                builder: (context) {
+                  final allText = AppLocalizations.of(context)!.all;
+                  final selectedCat = _selectedCategory ?? allText;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: categories.map((category) {
+                      final isSelected = selectedCat == category;
+                      return FilterChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                        checkmarkColor: theme.colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                },
               ),
             ],
           ),

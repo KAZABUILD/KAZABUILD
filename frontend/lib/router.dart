@@ -40,6 +40,8 @@ import 'package:frontend/screens/admin/admin_guides_page.dart';
 import 'package:frontend/screens/admin/admin_analytics_page.dart';
 import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
+import 'package:frontend/screens/info/aboutus_page.dart';
+import 'package:frontend/screens/info/feedback_page.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -235,7 +237,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/explore',
         name: 'explore',
-        builder: (context, state) => const ExploreBuildsPage(),
+        builder: (context, state) {
+          // Extract tag from query parameters if present
+          final tag = state.uri.queryParameters['tag'];
+          return ExploreBuildsPage(initialTag: tag);
+        },
+      ),
+      // Alternative path for explore-builds (for backward compatibility)
+      GoRoute(
+        path: '/explore-builds',
+        name: 'explore-builds',
+        builder: (context, state) {
+          // Extract tag from query parameters if present
+          final tag = state.uri.queryParameters['tag'];
+          return ExploreBuildsPage(initialTag: tag);
+        },
       ),
       GoRoute(
         path: '/guides',
@@ -288,6 +304,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/quiz',
         name: 'quiz',
         builder: (context, state) => const QuizPage(),
+      ),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (context, state) => const AboutUsPage(),
+      ),
+      GoRoute(
+        path: '/feedback',
+        name: 'feedback',
+        builder: (context, state) => const FeedbackPage(),
       ),
     ],
 

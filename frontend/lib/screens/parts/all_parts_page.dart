@@ -10,6 +10,7 @@ import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main page for viewing all PC parts grouped by type.
 class AllPartsPage extends ConsumerStatefulWidget {
@@ -112,7 +113,7 @@ class _HeaderSection extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Text(
-              'PC Parts Categories',
+              AppLocalizations.of(context)!.pcPartsCategories,
               style: theme.textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.5,
@@ -122,7 +123,7 @@ class _HeaderSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Choose a category to browse available PC components',
+          AppLocalizations.of(context)!.chooseCategoryToBrowse,
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
@@ -155,7 +156,7 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Error loading parts',
+              AppLocalizations.of(context)!.errorLoadingParts,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -181,28 +182,29 @@ class _CategoryMenuGrid extends StatelessWidget {
 
   const _CategoryMenuGrid({required this.countsByType});
 
-  String _getTypeDisplayName(ComponentType type) {
+  String _getTypeDisplayName(BuildContext context, ComponentType type) {
+    final l10n = AppLocalizations.of(context)!;
     switch (type) {
       case ComponentType.cpu:
-        return 'CPU';
+        return l10n.cpu;
       case ComponentType.gpu:
-        return 'GPU';
+        return l10n.gpu;
       case ComponentType.motherboard:
-        return 'Motherboard';
+        return l10n.motherboard;
       case ComponentType.ram:
-        return 'Memory (RAM)';
+        return l10n.memoryRam;
       case ComponentType.storage:
-        return 'Storage';
+        return l10n.storage;
       case ComponentType.psu:
-        return 'Power Supply';
+        return l10n.powerSupply;
       case ComponentType.cooler:
-        return 'Cooler';
+        return l10n.cooler;
       case ComponentType.caseFan:
-        return 'Case Fan';
+        return l10n.caseFan;
       case ComponentType.pcCase:
-        return 'Case';
+        return l10n.pcCase;
       case ComponentType.monitor:
-        return 'Monitor';
+        return l10n.monitor;
     }
   }
 
@@ -287,7 +289,7 @@ class _CategoryMenuGrid extends StatelessWidget {
             
             return _CategoryCard(
               componentType: type,
-              displayName: _getTypeDisplayName(type),
+              displayName: _getTypeDisplayName(context, type),
               icon: _getTypeIcon(type),
               color: typeColor,
               itemCount: count,
@@ -393,7 +395,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                     const SizedBox(height: 8),
                     // Item count
                     Text(
-                      '${widget.itemCount} ${widget.itemCount == 1 ? 'item' : 'items'}',
+                      AppLocalizations.of(context)!.itemsCount(widget.itemCount),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withOpacity(0.7),
                       ),
@@ -542,6 +544,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
   /// Shows component details in a dialog
   void _showComponentDetails(BuildContext context, WidgetRef ref, BaseComponent component) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -565,19 +568,21 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Basic info
-              _buildInfoRow(theme, 'Manufacturer', component.manufacturer),
-              _buildInfoRow(theme, 'Type', component.type.name.toUpperCase()),
+              _buildInfoRow(context, theme, l10n.manufacturer, component.manufacturer),
+              _buildInfoRow(context, theme, l10n.type, component.type.name.toUpperCase()),
               if (component.lowestPrice != null)
                 _buildInfoRow(
+                  context,
                   theme,
-                  'Price',
+                  l10n.price,
                   '\$${component.lowestPrice!.toStringAsFixed(2)}',
                   isHighlighted: true,
                 ),
               if (component.release != null)
                 _buildInfoRow(
+                  context,
                   theme,
-                  'Release Date',
+                  l10n.releaseDate,
                   component.release!.toString().split(' ')[0],
                 ),
               const SizedBox(height: 16),
@@ -585,14 +590,14 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               const SizedBox(height: 16),
               
               // Component-specific details
-              ..._buildComponentSpecificDetails(theme, component),
+              ..._buildComponentSpecificDetails(context, theme, component),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(AppLocalizations.of(context)!.close),
           ),
           FilledButton.icon(
             onPressed: () {
@@ -602,14 +607,14 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               context.go('/build-now');
             },
             icon: const Icon(Icons.add),
-            label: const Text('Add to Build'),
+            label: Text(AppLocalizations.of(context)!.addToBuild),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(ThemeData theme, String label, String value, {bool isHighlighted = false}) {
+  Widget _buildInfoRow(BuildContext context, ThemeData theme, String label, String value, {bool isHighlighted = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -639,7 +644,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
     );
   }
 
-  List<Widget> _buildComponentSpecificDetails(ThemeData theme, BaseComponent component) {
+  List<Widget> _buildComponentSpecificDetails(BuildContext context, ThemeData theme, BaseComponent component) {
     switch (component.type) {
       case ComponentType.cpu:
         if (component is CPUComponent) {
@@ -652,37 +657,37 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Series', component.series),
-            _buildInfoRow(theme, 'Socket', component.socketType),
-            _buildInfoRow(theme, 'Microarchitecture', component.microarchitecture),
-            _buildInfoRow(theme, 'Core Family', component.coreFamily),
-            _buildInfoRow(theme, 'Total Cores', '${component.coreTotal}'),
+            _buildInfoRow(context, theme, 'Series', component.series),
+            _buildInfoRow(context, theme, 'Socket', component.socketType),
+            _buildInfoRow(context, theme, 'Microarchitecture', component.microarchitecture),
+            _buildInfoRow(context, theme, 'Core Family', component.coreFamily),
+            _buildInfoRow(context, theme, 'Total Cores', '${component.coreTotal}'),
             if (component.performanceAmount != null)
-              _buildInfoRow(theme, 'P-Cores', '${component.performanceAmount}'),
+              _buildInfoRow(context, theme, 'P-Cores', '${component.performanceAmount}'),
             if (component.efficiencyAmount != null)
-              _buildInfoRow(theme, 'E-Cores', '${component.efficiencyAmount}'),
-            _buildInfoRow(theme, 'Threads', '${component.threadsAmount}'),
+              _buildInfoRow(context, theme, 'E-Cores', '${component.efficiencyAmount}'),
+            _buildInfoRow(context, theme, 'Threads', '${component.threadsAmount}'),
             if (component.basePerformanceSpeed != null)
-              _buildInfoRow(theme, 'Base Clock (P-Core)', '${component.basePerformanceSpeed} GHz'),
+              _buildInfoRow(context, theme, 'Base Clock (P-Core)', '${component.basePerformanceSpeed} GHz'),
             if (component.boostPerformanceSpeed != null)
-              _buildInfoRow(theme, 'Boost Clock (P-Core)', '${component.boostPerformanceSpeed} GHz'),
+              _buildInfoRow(context, theme, 'Boost Clock (P-Core)', '${component.boostPerformanceSpeed} GHz'),
             if (component.baseEfficiencySpeed != null)
-              _buildInfoRow(theme, 'Base Clock (E-Core)', '${component.baseEfficiencySpeed} GHz'),
+              _buildInfoRow(context, theme, 'Base Clock (E-Core)', '${component.baseEfficiencySpeed} GHz'),
             if (component.boostEfficiencySpeed != null)
-              _buildInfoRow(theme, 'Boost Clock (E-Core)', '${component.boostEfficiencySpeed} GHz'),
-            if (component.l1 != null) _buildInfoRow(theme, 'L1 Cache', '${component.l1} MB'),
-            if (component.l2 != null) _buildInfoRow(theme, 'L2 Cache', '${component.l2} MB'),
-            if (component.l3 != null) _buildInfoRow(theme, 'L3 Cache', '${component.l3} MB'),
-            if (component.l4 != null) _buildInfoRow(theme, 'L4 Cache', '${component.l4} MB'),
-            _buildInfoRow(theme, 'TDP', '${component.thermalDesignPower}W'),
-            _buildInfoRow(theme, 'Lithography', component.lithography),
-            _buildInfoRow(theme, 'Memory Type', component.memoryType),
-            _buildInfoRow(theme, 'Packaging', component.packagingType),
-            _buildInfoRow(theme, 'Includes Cooler', component.includesCooler ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'SMT Support', component.supportsSimultaneousMultithreading ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'ECC Support', component.supportsECC ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'Boost Clock (E-Core)', '${component.boostEfficiencySpeed} GHz'),
+            if (component.l1 != null) _buildInfoRow(context, theme, 'L1 Cache', '${component.l1} MB'),
+            if (component.l2 != null) _buildInfoRow(context, theme, 'L2 Cache', '${component.l2} MB'),
+            if (component.l3 != null) _buildInfoRow(context, theme, 'L3 Cache', '${component.l3} MB'),
+            if (component.l4 != null) _buildInfoRow(context, theme, 'L4 Cache', '${component.l4} MB'),
+            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
+            _buildInfoRow(context, theme, 'Lithography', component.lithography),
+            _buildInfoRow(context, theme, 'Memory Type', component.memoryType),
+            _buildInfoRow(context, theme, 'Packaging', component.packagingType),
+            _buildInfoRow(context, theme, 'Includes Cooler', component.includesCooler ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'SMT Support', component.supportsSimultaneousMultithreading ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'ECC Support', component.supportsECC ? 'Yes' : 'No'),
             if (component.graphics.isNotEmpty && component.graphics != 'N/A')
-              _buildInfoRow(theme, 'Integrated Graphics', component.graphics),
+              _buildInfoRow(context, theme, 'Integrated Graphics', component.graphics),
           ];
         }
         break;
@@ -697,20 +702,20 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Chipset', component.chipset),
-            _buildInfoRow(theme, 'VRAM', '${component.videoMemoryAmount.toStringAsFixed(0)} GB'),
-            _buildInfoRow(theme, 'Memory Type', component.videoMemoryType),
-            _buildInfoRow(theme, 'Base Clock', '${component.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(theme, 'Boost Clock', '${component.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(theme, 'Core Count', '${component.coreCount}'),
-            _buildInfoRow(theme, 'Memory Clock', '${component.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(theme, 'Memory Bus Width', '${component.memoryBusWidth} bit'),
-            _buildInfoRow(theme, 'TDP', '${component.thermalDesignPower}W'),
-            _buildInfoRow(theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Slot Width', '${component.caseExpansionSlotWidth} slots'),
-            _buildInfoRow(theme, 'Total Slots', '${component.totalSlotAmount}'),
-            _buildInfoRow(theme, 'Cooling Type', component.coolingType),
-            _buildInfoRow(theme, 'Frame Sync', component.frameSync),
+            _buildInfoRow(context, theme, 'Chipset', component.chipset),
+            _buildInfoRow(context, theme, 'VRAM', '${component.videoMemoryAmount.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Memory Type', component.videoMemoryType),
+            _buildInfoRow(context, theme, 'Base Clock', '${component.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Boost Clock', '${component.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Core Count', '${component.coreCount}'),
+            _buildInfoRow(context, theme, 'Memory Clock', '${component.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Memory Bus Width', '${component.memoryBusWidth} bit'),
+            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
+            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Slot Width', '${component.caseExpansionSlotWidth} slots'),
+            _buildInfoRow(context, theme, 'Total Slots', '${component.totalSlotAmount}'),
+            _buildInfoRow(context, theme, 'Cooling Type', component.coolingType),
+            _buildInfoRow(context, theme, 'Frame Sync', component.frameSync),
           ];
         }
         break;
@@ -725,32 +730,32 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Socket', component.socketType),
-            _buildInfoRow(theme, 'Chipset', component.chipsetType),
-            _buildInfoRow(theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(theme, 'RAM Type', component.ramType),
-            _buildInfoRow(theme, 'RAM Slots', '${component.ramSlotsAmount}'),
-            _buildInfoRow(theme, 'Max RAM', '${component.maxRAMAmount} GB'),
-            _buildInfoRow(theme, 'SATA 6 Gb/s', '${component.sata6GBsAmount}'),
-            _buildInfoRow(theme, 'SATA 3 Gb/s', '${component.sata3GBsAmount}'),
-            _buildInfoRow(theme, 'U.2 Ports', '${component.u2PortAmount}'),
-            _buildInfoRow(theme, 'Wi-Fi', component.wirelessNetworkingStandard),
+            _buildInfoRow(context, theme, 'Socket', component.socketType),
+            _buildInfoRow(context, theme, 'Chipset', component.chipsetType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'RAM Type', component.ramType),
+            _buildInfoRow(context, theme, 'RAM Slots', '${component.ramSlotsAmount}'),
+            _buildInfoRow(context, theme, 'Max RAM', '${component.maxRAMAmount} GB'),
+            _buildInfoRow(context, theme, 'SATA 6 Gb/s', '${component.sata6GBsAmount}'),
+            _buildInfoRow(context, theme, 'SATA 3 Gb/s', '${component.sata3GBsAmount}'),
+            _buildInfoRow(context, theme, 'U.2 Ports', '${component.u2PortAmount}'),
+            _buildInfoRow(context, theme, 'Wi-Fi', component.wirelessNetworkingStandard),
             if (component.cpuFanHeaderAmount != null)
-              _buildInfoRow(theme, 'CPU Fan Headers', '${component.cpuFanHeaderAmount}'),
+              _buildInfoRow(context, theme, 'CPU Fan Headers', '${component.cpuFanHeaderAmount}'),
             if (component.caseFanHeaderAmount != null)
-              _buildInfoRow(theme, 'Case Fan Headers', '${component.caseFanHeaderAmount}'),
+              _buildInfoRow(context, theme, 'Case Fan Headers', '${component.caseFanHeaderAmount}'),
             if (component.pumpHeaderAmount != null)
-              _buildInfoRow(theme, 'Pump Headers', '${component.pumpHeaderAmount}'),
+              _buildInfoRow(context, theme, 'Pump Headers', '${component.pumpHeaderAmount}'),
             if (component.argb5vHeaderAmount != null)
-              _buildInfoRow(theme, 'ARGB 5V Headers', '${component.argb5vHeaderAmount}'),
+              _buildInfoRow(context, theme, 'ARGB 5V Headers', '${component.argb5vHeaderAmount}'),
             if (component.rgb12vHeaderAmount != null)
-              _buildInfoRow(theme, 'RGB 12V Headers', '${component.rgb12vHeaderAmount}'),
-            _buildInfoRow(theme, 'Audio Chipset', component.audioChipset),
-            _buildInfoRow(theme, 'Max Audio Channels', '${component.maxAudioChannels}'),
-            _buildInfoRow(theme, 'ECC Support', component.hasECCSupport ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'RAID Support', component.hasRAIDSupport ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'BIOS Flashback', component.hasFlashback ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'Clear CMOS', component.hasCMOS ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'RGB 12V Headers', '${component.rgb12vHeaderAmount}'),
+            _buildInfoRow(context, theme, 'Audio Chipset', component.audioChipset),
+            _buildInfoRow(context, theme, 'Max Audio Channels', '${component.maxAudioChannels}'),
+            _buildInfoRow(context, theme, 'ECC Support', component.hasECCSupport ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'RAID Support', component.hasRAIDSupport ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'BIOS Flashback', component.hasFlashback ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'Clear CMOS', component.hasCMOS ? 'Yes' : 'No'),
           ];
         }
         break;
@@ -765,21 +770,21 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Type', component.ramType),
-            _buildInfoRow(theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
-            _buildInfoRow(theme, 'Speed', '${component.speed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(theme, 'CAS Latency', '${component.casLatency}'),
+            _buildInfoRow(context, theme, 'Type', component.ramType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Speed', '${component.speed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'CAS Latency', '${component.casLatency}'),
             if (component.timings != null)
-              _buildInfoRow(theme, 'Timings', component.timings!),
-            _buildInfoRow(theme, 'Modules', '${component.moduleQuantity}'),
-            _buildInfoRow(theme, 'Module Capacity', '${component.moduleCapacity.toStringAsFixed(0)} GB'),
-            _buildInfoRow(theme, 'ECC', component.ecc),
-            _buildInfoRow(theme, 'Registered', component.registeredType),
-            _buildInfoRow(theme, 'Heat Spreader', component.haveHeatSpreader ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'RGB', component.haveRGB ? 'Yes' : 'No'),
-            _buildInfoRow(theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Voltage', '${component.voltage}V'),
+              _buildInfoRow(context, theme, 'Timings', component.timings!),
+            _buildInfoRow(context, theme, 'Modules', '${component.moduleQuantity}'),
+            _buildInfoRow(context, theme, 'Module Capacity', '${component.moduleCapacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'ECC', component.ecc),
+            _buildInfoRow(context, theme, 'Registered', component.registeredType),
+            _buildInfoRow(context, theme, 'Heat Spreader', component.haveHeatSpreader ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'RGB', component.haveRGB ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Voltage', '${component.voltage}V'),
           ];
         }
         break;
@@ -794,12 +799,12 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Series', component.series),
-            _buildInfoRow(theme, 'Type', component.driveType),
-            _buildInfoRow(theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
-            _buildInfoRow(theme, 'Interface', component.interface),
-            _buildInfoRow(theme, 'NVMe', component.hasNVMe ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'Series', component.series),
+            _buildInfoRow(context, theme, 'Type', component.driveType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Interface', component.interface),
+            _buildInfoRow(context, theme, 'NVMe', component.hasNVMe ? 'Yes' : 'No'),
           ];
         }
         break;
@@ -814,13 +819,13 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Wattage', '${component.powerOutput.toStringAsFixed(0)}W'),
-            _buildInfoRow(theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Wattage', '${component.powerOutput.toStringAsFixed(0)}W'),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
             if (component.efficiencyRating != null)
-              _buildInfoRow(theme, 'Efficiency', component.efficiencyRating!),
-            _buildInfoRow(theme, 'Modularity', component.modularityType),
-            _buildInfoRow(theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Fanless', component.isFanless ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'Efficiency', component.efficiencyRating!),
+            _buildInfoRow(context, theme, 'Modularity', component.modularityType),
+            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Fanless', component.isFanless ? 'Yes' : 'No'),
           ];
         }
         break;
@@ -835,22 +840,22 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Type', component.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
-            _buildInfoRow(theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Type', component.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
+            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
             if (component.radiatorSize != null)
-              _buildInfoRow(theme, 'Radiator Size', '${component.radiatorSize!.toStringAsFixed(0)} mm'),
+              _buildInfoRow(context, theme, 'Radiator Size', '${component.radiatorSize!.toStringAsFixed(0)} mm'),
             if (component.fanSize != null)
-              _buildInfoRow(theme, 'Fan Size', '${component.fanSize!.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Fan Quantity', '${component.fanQuantity}'),
+              _buildInfoRow(context, theme, 'Fan Size', '${component.fanSize!.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Fan Quantity', '${component.fanQuantity}'),
             if (component.minFanRotationSpeed != null)
-              _buildInfoRow(theme, 'Min Fan Speed', '${component.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+              _buildInfoRow(context, theme, 'Min Fan Speed', '${component.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
             if (component.maxFanRotationSpeed != null)
-              _buildInfoRow(theme, 'Max Fan Speed', '${component.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+              _buildInfoRow(context, theme, 'Max Fan Speed', '${component.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
             if (component.minNoiseLevel != null)
-              _buildInfoRow(theme, 'Min Noise', '${component.minNoiseLevel!.toStringAsFixed(1)} dBA'),
+              _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel!.toStringAsFixed(1)} dBA'),
             if (component.maxNoiseLevel != null)
-              _buildInfoRow(theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
-            _buildInfoRow(theme, 'Fanless Operation', component.canOperateFanless ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+            _buildInfoRow(context, theme, 'Fanless Operation', component.canOperateFanless ? 'Yes' : 'No'),
           ];
         }
         break;
@@ -865,22 +870,22 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Size', '${component.size.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Quantity', '${component.quantity}'),
-            _buildInfoRow(theme, 'Min Airflow', '${component.minAirflow.toStringAsFixed(0)} CFM'),
+            _buildInfoRow(context, theme, 'Size', '${component.size.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Quantity', '${component.quantity}'),
+            _buildInfoRow(context, theme, 'Min Airflow', '${component.minAirflow.toStringAsFixed(0)} CFM'),
             if (component.maxAirflow != null)
-              _buildInfoRow(theme, 'Max Airflow', '${component.maxAirflow!.toStringAsFixed(0)} CFM'),
-            _buildInfoRow(theme, 'Min Noise', '${component.minNoiseLevel.toStringAsFixed(1)} dBA'),
+              _buildInfoRow(context, theme, 'Max Airflow', '${component.maxAirflow!.toStringAsFixed(0)} CFM'),
+            _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel.toStringAsFixed(1)} dBA'),
             if (component.maxNoiseLevel != null)
-              _buildInfoRow(theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
-            _buildInfoRow(theme, 'PWM', component.pulseWidthModulation ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+            _buildInfoRow(context, theme, 'PWM', component.pulseWidthModulation ? 'Yes' : 'No'),
             if (component.ledType != null)
-              _buildInfoRow(theme, 'LED Type', component.ledType!),
+              _buildInfoRow(context, theme, 'LED Type', component.ledType!),
             if (component.connectorType != null)
-              _buildInfoRow(theme, 'Connector', component.connectorType!),
-            _buildInfoRow(theme, 'Controller', component.controllerType),
-            _buildInfoRow(theme, 'Static Pressure', '${component.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
-            _buildInfoRow(theme, 'Flow Direction', component.flowDirection),
+              _buildInfoRow(context, theme, 'Connector', component.connectorType!),
+            _buildInfoRow(context, theme, 'Controller', component.controllerType),
+            _buildInfoRow(context, theme, 'Static Pressure', '${component.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
+            _buildInfoRow(context, theme, 'Flow Direction', component.flowDirection),
           ];
         }
         break;
@@ -895,26 +900,26 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(theme, 'Max GPU Length', '${component.maxVideoCardLength.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Max Cooler Height', '${component.maxCPUCoolerHeight} mm'),
-            _buildInfoRow(theme, 'PSU Shrouded', component.powerSupplyShrouded ? 'Yes' : 'No'),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Max GPU Length', '${component.maxVideoCardLength.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Max Cooler Height', '${component.maxCPUCoolerHeight} mm'),
+            _buildInfoRow(context, theme, 'PSU Shrouded', component.powerSupplyShrouded ? 'Yes' : 'No'),
             if (component.powerSupplyAmount != null)
-              _buildInfoRow(theme, 'PSU Included', '${component.powerSupplyAmount!.toStringAsFixed(0)}W'),
-            _buildInfoRow(theme, 'Transparent Side Panel', component.hasTransparentSidePanel ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'PSU Included', '${component.powerSupplyAmount!.toStringAsFixed(0)}W'),
+            _buildInfoRow(context, theme, 'Transparent Side Panel', component.hasTransparentSidePanel ? 'Yes' : 'No'),
             if (component.sidePanelType != null)
-              _buildInfoRow(theme, 'Side Panel Type', component.sidePanelType!),
-            _buildInfoRow(theme, '3.5" Internal Bays', '${component.internal35BayAmount}'),
-            _buildInfoRow(theme, '2.5" Internal Bays', '${component.internal25BayAmount}'),
-            _buildInfoRow(theme, '3.5" External Bays', '${component.external35BayAmount}'),
-            _buildInfoRow(theme, '5.25" External Bays', '${component.external525BayAmount}'),
-            _buildInfoRow(theme, 'Expansion Slots', '${component.expansionSlotAmount}'),
-            _buildInfoRow(theme, 'Width', '${component.width.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Depth', '${component.depth.toStringAsFixed(0)} mm'),
-            _buildInfoRow(theme, 'Volume', '${component.volume.toStringAsFixed(1)} L'),
-            _buildInfoRow(theme, 'Weight', '${component.weight.toStringAsFixed(1)} kg'),
-            _buildInfoRow(theme, 'Rear Connector Support', component.supportsRearConnectingMotherboard ? 'Yes' : 'No'),
+              _buildInfoRow(context, theme, 'Side Panel Type', component.sidePanelType!),
+            _buildInfoRow(context, theme, '3.5" Internal Bays', '${component.internal35BayAmount}'),
+            _buildInfoRow(context, theme, '2.5" Internal Bays', '${component.internal25BayAmount}'),
+            _buildInfoRow(context, theme, '3.5" External Bays', '${component.external35BayAmount}'),
+            _buildInfoRow(context, theme, '5.25" External Bays', '${component.external525BayAmount}'),
+            _buildInfoRow(context, theme, 'Expansion Slots', '${component.expansionSlotAmount}'),
+            _buildInfoRow(context, theme, 'Width', '${component.width.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Depth', '${component.depth.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Volume', '${component.volume.toStringAsFixed(1)} L'),
+            _buildInfoRow(context, theme, 'Weight', '${component.weight.toStringAsFixed(1)} kg'),
+            _buildInfoRow(context, theme, 'Rear Connector Support', component.supportsRearConnectingMotherboard ? 'Yes' : 'No'),
           ];
         }
         break;
@@ -929,18 +934,18 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(theme, 'Screen Size', '${component.screenSize.toStringAsFixed(1)}"'),
-            _buildInfoRow(theme, 'Resolution', '${component.horizontalResolution}x${component.verticalResolution}'),
-            _buildInfoRow(theme, 'Refresh Rate', '${component.maxRefreshRate.toStringAsFixed(0)} Hz'),
-            _buildInfoRow(theme, 'Panel Type', component.panelType),
-            _buildInfoRow(theme, 'Response Time', '${component.responseTime.toStringAsFixed(1)} ms'),
-            _buildInfoRow(theme, 'Viewing Angle', component.viewingAngle),
-            _buildInfoRow(theme, 'Aspect Ratio', component.aspectRatio),
+            _buildInfoRow(context, theme, 'Screen Size', '${component.screenSize.toStringAsFixed(1)}"'),
+            _buildInfoRow(context, theme, 'Resolution', '${component.horizontalResolution}x${component.verticalResolution}'),
+            _buildInfoRow(context, theme, 'Refresh Rate', '${component.maxRefreshRate.toStringAsFixed(0)} Hz'),
+            _buildInfoRow(context, theme, 'Panel Type', component.panelType),
+            _buildInfoRow(context, theme, 'Response Time', '${component.responseTime.toStringAsFixed(1)} ms'),
+            _buildInfoRow(context, theme, 'Viewing Angle', component.viewingAngle),
+            _buildInfoRow(context, theme, 'Aspect Ratio', component.aspectRatio),
             if (component.maxBrightness != null)
-              _buildInfoRow(theme, 'Max Brightness', '${component.maxBrightness!.toStringAsFixed(0)} nits'),
+              _buildInfoRow(context, theme, 'Max Brightness', '${component.maxBrightness!.toStringAsFixed(0)} nits'),
             if (component.highDynamicRangeType != null)
-              _buildInfoRow(theme, 'HDR', component.highDynamicRangeType!),
-            _buildInfoRow(theme, 'Adaptive Sync', component.adaptiveSyncType),
+              _buildInfoRow(context, theme, 'HDR', component.highDynamicRangeType!),
+            _buildInfoRow(context, theme, 'Adaptive Sync', component.adaptiveSyncType),
           ];
         }
         break;
@@ -1151,7 +1156,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
                           )
                         else
                           Text(
-                            'Price N/A',
+                            AppLocalizations.of(context)!.priceNotAvailable,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurface.withOpacity(0.5),
                             ),

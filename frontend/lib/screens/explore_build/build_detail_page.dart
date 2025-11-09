@@ -17,6 +17,8 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:frontend/screens/explore_build/similar_builds_section.dart';
 
 /// A page that displays the full details of a specific [CommunityBuild].
 class BuildDetailPage extends ConsumerWidget {
@@ -90,6 +92,22 @@ class BuildDetailPage extends ConsumerWidget {
                 _ComponentsSection(components: build.components),
                 const SizedBox(height: 32),
               ],
+              // Tags section
+              if (build.tags.isNotEmpty) ...[
+                Text(
+                  'Tags',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _TagsSection(tags: build.tags),
+                const SizedBox(height: 32),
+              ],
+              // Similar builds section
+              if (build.tags.isNotEmpty)
+                SimilarBuildsSection(buildId: build.id, tags: build.tags),
+              if (build.tags.isNotEmpty) const SizedBox(height: 32),
               Text(
                 'Comments:',
                 style: theme.textTheme.headlineSmall,
@@ -256,6 +274,61 @@ class BuildDetailPage extends ConsumerWidget {
         const SizedBox(width: 12),
         _RatingBar(build: build),
       ],
+    );
+  }
+}
+
+/// Widget that displays the list of tags for a build
+class _TagsSection extends StatelessWidget {
+  final List<String> tags;
+  
+  const _TagsSection({required this.tags});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: tags.map((tag) {
+        return InkWell(
+          onTap: () {
+            // Navigate to explore builds page with this tag selected
+            context.go('/explore?tag=${Uri.encodeComponent(tag)}');
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.label,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  tag,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -512,6 +585,10 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
 
     if (_submitting) return;
     
+    // Check if user is clicking the same rating (undo)
+    final isUndo = _userRating != null && _userRating == rating;
+    final ratingToSubmit = isUndo ? 0.0 : rating;
+    
     // Store previous values in case we need to revert
     final previousAverage = _average;
     final previousCount = _count;
@@ -519,21 +596,34 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     
     setState(() {
       _submitting = true;
-      // Optimistic update: if user had no rating, bump count and recompute avg
-      final hadPrevious = _userRating != null;
-      if (!hadPrevious) {
-        // Calculate new average: (oldAvg * oldCount + newRating) / (oldCount + 1)
-        _average = _count == 0 
-            ? rating 
-            : ((_average * _count) + rating) / (_count + 1);
-        _count = _count + 1;
+      // Optimistic update
+      if (isUndo) {
+        // Remove rating: subtract user's rating from average
+        if (_count > 1) {
+          final total = (_average * _count) - _userRating!;
+          _average = total / (_count - 1);
+          _count = _count - 1;
+        } else {
+          // Last rating removed
+          _average = 0.0;
+          _count = 0;
+        }
+        _userRating = null;
       } else {
-        // Replace previous vote: subtract old, add new
-        final total = (_average * _count) - _userRating! + rating;
-        _average = _count == 0 ? rating : (total / _count);
-        // Count stays the same when updating existing rating
+        final hadPrevious = _userRating != null;
+        if (!hadPrevious) {
+          // New rating
+          _average = _count == 0 
+              ? rating 
+              : ((_average * _count) + rating) / (_count + 1);
+          _count = _count + 1;
+        } else {
+          // Update existing rating
+          final total = (_average * _count) - _userRating! + rating;
+          _average = _count == 0 ? rating : (total / _count);
+        }
+        _userRating = rating;
       }
-      _userRating = rating;
     });
 
     try {
@@ -553,7 +643,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         return;
       }
       final service = ref.read(buildServiceProvider);
-      final result = await service.rateBuild(widget.build.id, rating, user.uid);
+      final result = await service.rateBuild(widget.build.id, ratingToSubmit, user.uid);
       
       // Check if backend returned rating statistics
       final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
@@ -568,11 +658,8 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         });
       } else {
         // Backend didn't return stats, but request succeeded
-        // Keep the optimistic update and refresh the build data
-        if (mounted) {
-          // Invalidate the build detail provider to refetch fresh data
-          ref.invalidate(buildDetailProvider(widget.build.id));
-        }
+        // Keep the optimistic update - don't refresh to avoid disrupting UI
+        // The rating will be updated when the page is refreshed or navigated to again
       }
     } catch (e) {
       // On error, revert optimistic update
@@ -585,11 +672,11 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         // Check if it's the "already exists" error - treat as success
         final errorMsg = e.toString().toLowerCase();
         if (errorMsg.contains('already exists') || errorMsg.contains('interaction already')) {
-          // Rating was already saved, refresh to get latest data
-          ref.invalidate(buildDetailProvider(widget.build.id));
+          // Rating was already saved, keep optimistic update
+          // Don't refresh to avoid disrupting UI
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to submit rating: $e')),
+            SnackBar(content: Text('Failed to ${isUndo ? 'remove' : 'submit'} rating: $e')),
           );
         }
       }
@@ -616,6 +703,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
             final starIndex = index + 1;
             // Only fill stars if user has a valid rating AND it's >= this star index
             final isFilled = hasUserRating && userRatingValue! >= starIndex - 0.5;
+            final isCurrentRating = hasUserRating && _userRating == starIndex.toDouble();
             return IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -624,7 +712,9 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
                 color: Colors.amber,
               ),
               onPressed: _submitting ? null : () => _submit(starIndex.toDouble()),
-              tooltip: 'Rate $starIndex',
+              tooltip: isCurrentRating 
+                  ? 'Remove rating' 
+                  : 'Rate $starIndex',
             );
           }),
         ),

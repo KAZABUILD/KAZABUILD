@@ -23,6 +23,7 @@ import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
@@ -80,7 +81,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   }
 
   /// Saves the current build to the backend.
-  Future<String> saveBuild(WidgetRef ref, String name, String description) async {
+  Future<String> saveBuild(WidgetRef ref, String name, String description, {List<String>? tagIds}) async {
     debugPrint('BuildNotifier.saveBuild: Starting to save build');
     final buildService = ref.read(buildServiceProvider);
     final userId = ref.read(authProvider).valueOrNull?.uid;
@@ -125,6 +126,28 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
           }
         }
       }
+
+      // 3. Add tags to the build if provided
+      // tagIds is actually a list of tag names, not IDs
+      if (tagIds != null && tagIds.isNotEmpty) {
+        debugPrint('BuildNotifier.saveBuild: Adding ${tagIds.length} tags to build');
+        for (final tagName in tagIds) {
+          try {
+            // Try to find the actual tag ID in backend by name
+            final tagId = await buildService.findTagIdByName(tagName);
+            if (tagId != null) {
+              await buildService.addTagToBuild(newBuildId, tagId);
+              debugPrint('BuildNotifier.saveBuild: Tag "$tagName" (ID: $tagId) added successfully');
+            } else {
+              debugPrint('BuildNotifier.saveBuild: Warning - Tag "$tagName" not found in backend. Skipping.');
+            }
+          } catch (e) {
+            debugPrint('BuildNotifier.saveBuild: Error adding tag "$tagName": $e');
+            // Continue with other tags even if one fails
+          }
+        }
+      }
+
       debugPrint('BuildNotifier.saveBuild: Build saved successfully with ID: $newBuildId');
       return newBuildId;
     } catch (e) {
@@ -267,45 +290,97 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final selectedTagIds = <String>{};
 
     final bool? shouldSave = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save Build'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Build Name'),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Please enter a name' : null,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(AppLocalizations.of(context)!.saveBuild),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(labelText: AppLocalizations.of(context)!.buildName),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? AppLocalizations.of(context)!.pleaseEnterName : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(labelText: AppLocalizations.of(context)!.description),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context)!.tags,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final tagsAsync = ref.watch(tagsProvider);
+                        return tagsAsync.when(
+                          data: (tags) {
+                            if (tags.isEmpty) {
+                              return Text(
+                                AppLocalizations.of(context)!.noTagsAvailable,
+                                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                              );
+                            }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: tags.map((tag) {
+                                // Store tag name instead of ID for easier matching
+                                final isSelected = selectedTagIds.contains(tag.name);
+                                return FilterChip(
+                                  label: Text(tag.name),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setDialogState(() {
+                                      if (selected) {
+                                        selectedTagIds.add(tag.name);
+                                      } else {
+                                        selectedTagIds.remove(tag.name);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          },
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: $error'),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description (Optional)'),
-                maxLines: 3,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(AppLocalizations.of(context)!.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    Navigator.of(context).pop(true);
+                  }
+                },
+                child: Text(AppLocalizations.of(context)!.save),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop(true);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+          );
+        },
       ),
     );
 
@@ -313,11 +388,11 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       try {
         final newBuildId = await ref
             .read(buildProvider.notifier)
-            .saveBuild(ref, nameController.text, descriptionController.text);
+            .saveBuild(ref, nameController.text, descriptionController.text, tagIds: selectedTagIds.toList());
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Build saved successfully!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.buildSavedSuccessfully),
             backgroundColor: Colors.green,
           ),
         );
@@ -325,7 +400,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save build: ${e.toString()}'),
+            content: Text('${AppLocalizations.of(context)!.failedToSaveBuild}: ${e.toString()}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -345,16 +420,16 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final bool? shouldClear = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Start New Build?'),
-        content: const Text('You have unsaved changes. Are you sure you want to clear the current build?'),
+        title: Text(AppLocalizations.of(context)!.startNewBuild),
+        content: Text(AppLocalizations.of(context)!.unsavedChanges),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear Build'),
+            child: Text(AppLocalizations.of(context)!.clearBuild),
             style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
           ),
         ],
@@ -382,6 +457,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final selectedTagIds = <String>{};
     
     // Use a ValueNotifier to preserve image state outside the dialog
     final selectedImageNotifier = ValueNotifier<XFile?>(null);
@@ -393,7 +469,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-          title: const Text('Post Build'),
+          title: Text(AppLocalizations.of(context)!.postBuild),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -403,21 +479,65 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                 children: [
                   TextFormField(
                     controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Build Name *',
-                      hintText: 'Enter a name for your build',
+                    decoration: InputDecoration(
+                      labelText: '${AppLocalizations.of(context)!.buildName} *',
+                      hintText: AppLocalizations.of(context)!.enterBuildName,
                     ),
                     validator: (value) =>
-                        value == null || value.isEmpty ? 'Please enter a name' : null,
+                        value == null || value.isEmpty ? AppLocalizations.of(context)!.pleaseEnterName : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description (Optional)',
-                      hintText: 'Describe your build...',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.description,
+                      hintText: AppLocalizations.of(context)!.describeBuild,
                     ),
                     maxLines: 4,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    AppLocalizations.of(context)!.tags,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final tagsAsync = ref.watch(tagsProvider);
+                      return tagsAsync.when(
+                        data: (tags) {
+                          if (tags.isEmpty) {
+                            return Text(
+                              AppLocalizations.of(context)!.noTagsAvailable,
+                              style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                            );
+                          }
+                          return Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: tags.map((tag) {
+                              // Store tag name instead of ID for easier matching
+                              final isSelected = selectedTagIds.contains(tag.name);
+                              return FilterChip(
+                                label: Text(tag.name),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setDialogState(() {
+                                    if (selected) {
+                                      selectedTagIds.add(tag.name);
+                                    } else {
+                                      selectedTagIds.remove(tag.name);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                        loading: () => const CircularProgressIndicator(),
+                        error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: $error'),
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -535,7 +655,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                   debugPrint('Form validation failed - name is empty or invalid');
                 }
               },
-              child: const Text('Post Build'),
+              child: Text(AppLocalizations.of(context)!.postBuild),
             ),
           ],
         );
@@ -567,7 +687,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       debugPrint('_showPostBuildDialog: Saving build with name: $buildName, description length: ${buildDescription.length}');
       final newBuildId = await ref
           .read(buildProvider.notifier)
-          .saveBuild(ref, buildName, buildDescription);
+          .saveBuild(ref, buildName, buildDescription, tagIds: selectedTagIds.toList());
       debugPrint('_showPostBuildDialog: Build saved with ID: $newBuildId');
 
       if (!mounted) {
@@ -993,7 +1113,7 @@ class _TopBar extends StatelessWidget {
                         onPost();
                       },
                       icon: const Icon(Icons.send, size: 18),
-                      label: const Text('Post Build'),
+                      label: Text(AppLocalizations.of(context)!.postBuild),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.secondary,
                         foregroundColor: theme.colorScheme.onSecondary,
@@ -1076,7 +1196,7 @@ class _TopBar extends StatelessWidget {
                     onPost();
                   },
                   icon: const Icon(Icons.send, size: 18),
-                  label: const Text('Post Build'),
+                  label: Text(AppLocalizations.of(context)!.postBuild),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.secondary,
                     foregroundColor: theme.colorScheme.onSecondary,

@@ -5,12 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:frontend/screens/builder/build_now_page.dart';
-import 'package:frontend/screens/forum/forums_page.dart';
-import 'package:frontend/screens/guides/guides_page.dart';
-import 'package:frontend/screens/info/aboutus_page.dart';
-import 'package:frontend/screens/info/feedback_page.dart';
-import 'package:frontend/screens/home/homepage.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:go_router/go_router.dart';
 
 /// The main footer widget for the application.
 class LastBar extends StatelessWidget {
@@ -30,41 +26,62 @@ class LastBar extends StatelessWidget {
       child: Column(
         children: [
           /// On mobile, stack the columns vertically. On desktop, place them in a row.
-          isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _FooterColumn(
-                      title: 'Links',
-                      items: ['Home', 'Builds', 'Guides', 'Forums'],
-                    ),
-                    const SizedBox(height: 40),
-                    const _FooterColumn(
-                      title: 'Info',
-                      items: ['About Us', 'Contact & Feedback'],
-                    ),
-                  ],
-                )
-              : const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _FooterColumn(
-                      title: 'Links',
-                      items: ['Home', 'Builds', 'Guides', 'Forums'],
-                    ),
-                    SizedBox(width: 80),
-                    _FooterColumn(
-                      title: 'Info',
-                      items: ['About Us', 'Contact & Feedback'],
-                    ),
-                  ],
-                ),
+          Builder(
+            builder: (context) {
+              final l10n = AppLocalizations.of(context)!;
+              return isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _FooterColumn(
+                          title: l10n.links,
+                          items: [
+                            _FooterItem(text: l10n.home, route: '/home'),
+                            _FooterItem(text: l10n.builds, route: '/explore'),
+                            _FooterItem(text: l10n.guides, route: '/guides'),
+                            _FooterItem(text: l10n.forums, route: '/forums'),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
+                        _FooterColumn(
+                          title: l10n.info,
+                          items: [
+                            _FooterItem(text: l10n.aboutUs, route: '/about'),
+                            _FooterItem(text: l10n.contactFeedback, route: '/feedback'),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _FooterColumn(
+                          title: l10n.links,
+                          items: [
+                            _FooterItem(text: l10n.home, route: '/home'),
+                            _FooterItem(text: l10n.builds, route: '/explore'),
+                            _FooterItem(text: l10n.guides, route: '/guides'),
+                            _FooterItem(text: l10n.forums, route: '/forums'),
+                          ],
+                        ),
+                        const SizedBox(width: 80),
+                        _FooterColumn(
+                          title: l10n.info,
+                          items: [
+                            _FooterItem(text: l10n.aboutUs, route: '/about'),
+                            _FooterItem(text: l10n.contactFeedback, route: '/feedback'),
+                          ],
+                        ),
+                      ],
+                    );
+            },
+          ),
 
           /// A divider and copyright notice at the very bottom.
           const Divider(color: Colors.white24, height: 60),
-          const Text(
-            '© KAZA BUILD',
-            style: TextStyle(color: Colors.white54, fontSize: 12),
+          Text(
+            AppLocalizations.of(context)!.copyright,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
         ],
       ),
@@ -72,13 +89,21 @@ class LastBar extends StatelessWidget {
   }
 }
 
+/// A data class to hold footer item information
+class _FooterItem {
+  final String text;
+  final String route;
+  
+  const _FooterItem({required this.text, required this.route});
+}
+
 /// A helper widget that displays a single column of links in the footer.
 class _FooterColumn extends StatelessWidget {
   /// The title of the link column (e.g., "Links", "Info").
   final String title;
 
-  /// The list of link texts to display in the column.
-  final List<String> items;
+  /// The list of footer items to display in the column.
+  final List<_FooterItem> items;
 
   const _FooterColumn({required this.title, required this.items});
 
@@ -104,60 +129,10 @@ class _FooterColumn extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8.0),
             child: InkWell(
               onTap: () {
-                /// Navigate to the correct page based on the item's text.
-                // TODO: Refactor this to use named routes (e.g., `Navigator.pushNamed(context, '/feedback')`)
-                // for better maintainability and to avoid using `MaterialPageRoute` directly.
-                if (item == 'Contact & Feedback') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const FeedbackPage(),
-                    ),
-                  );
-                } else if (item == 'Home') {
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          const HomePage(),
-                      transitionsBuilder:
-                          (context, animation, secondaryAnimation, child) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            );
-                          },
-                    ),
-                  );
-                } else if (item == 'About Us') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AboutUsPage(),
-                    ),
-                  );
-                } else if (item == 'Guides') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const GuidesPage()),
-                  );
-                } else if (item == 'Builds') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BuildNowPage(),
-                    ),
-                  );
-                } else if (item == 'Forums') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ForumsPage()),
-                  );
-                } else {
-                  /// Placeholder for any items that might be added without a defined route.
-                }
+                /// Navigate to the correct page using GoRouter
+                context.go(item.route);
               },
-              child: Text(item, style: const TextStyle(color: Colors.white70)),
+              child: Text(item.text, style: const TextStyle(color: Colors.white70)),
             ),
           ),
         ),

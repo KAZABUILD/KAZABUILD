@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/router.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/locale_provider.dart';
+import 'package:frontend/l10n/app_localization.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
 
@@ -37,9 +39,12 @@ class MyApp extends ConsumerWidget {
     // (e.g., from light to dark), this widget will rebuild to apply the new theme.
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
+    // Watches the `localeProvider` for changes. When the locale changes,
+    // this widget will rebuild to apply the new language.
+    final locale = ref.watch(localeProvider);
 
     // MaterialApp is the root of the app's UI, providing routing, theming,
-    // and other core functionalities.
+    // localization, and other core functionalities.
     return MaterialApp.router(
       title: 'Kaza Build',
 
@@ -51,6 +56,13 @@ class MyApp extends ConsumerWidget {
       // The `themeMode` is controlled by the `themeProvider`, allowing for
       // dynamic switching between light, dark, or system default themes.
       themeMode: themeMode,
+
+      // Localization support: delegates and supported locales
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      // The current locale is controlled by the `localeProvider`, allowing for
+      // dynamic switching between English, Polish, and Turkish.
+      locale: locale,
 
       // Hides the "debug" banner in the top-right corner of the app.
       debugShowCheckedModeBanner: false,

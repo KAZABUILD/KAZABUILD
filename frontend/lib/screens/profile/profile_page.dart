@@ -15,6 +15,7 @@ import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A page that displays the profile of the currently authenticated user.
 class ProfilePage extends ConsumerWidget {
@@ -312,7 +313,7 @@ class ProfilePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'My Builds',
+                          AppLocalizations.of(context)!.myBuilds,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
@@ -321,7 +322,7 @@ class ProfilePage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${builds.length} ${builds.length == 1 ? 'build' : 'builds'}',
+                          AppLocalizations.of(context)!.buildsCount(builds.length),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

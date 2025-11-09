@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
+import '../../l10n/app_localization.dart';
 
 /// The main content widget for the homepage.
 class HomeBody extends StatefulWidget {
@@ -113,12 +114,12 @@ class _HomeBodyState extends State<HomeBody> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _CustomStartButton(
-                  label: "Take Quiz",
+                  label: AppLocalizations.of(context)!.takeQuiz,
                   onPressed: () => context.go('/quiz'),
                 ),
                 const SizedBox(width: 20),
                 _CustomStartButton(
-                  label: "Start Build",
+                  label: AppLocalizations.of(context)!.startBuild,
                   onPressed: () => context.go('/build-now'),
                 ),
               ],

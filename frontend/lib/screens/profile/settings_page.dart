@@ -10,10 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/widgets/theme_provider.dart';
 import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A page where the authenticated user can manage their account settings.
 class SettingsPage extends ConsumerStatefulWidget {
@@ -30,11 +30,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Profile updated successfully!'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.profileUpdated),
               ],
             ),
             backgroundColor: Colors.green,
@@ -53,7 +53,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Update failed: ${e.toString()}')),
+                Expanded(child: Text('${AppLocalizations.of(context)!.updateFailed}: ${e.toString()}')),
               ],
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
@@ -135,7 +135,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Settings',
+                                        AppLocalizations.of(context)!.settings,
                                         style: theme.textTheme.headlineMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                           color: theme.colorScheme.onSurface,
@@ -143,7 +143,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Manage your account settings and preferences',
+                                        AppLocalizations.of(context)!.manageAccountSettings,
                                         style: theme.textTheme.bodyMedium?.copyWith(
                                           color: theme.colorScheme.onSurfaceVariant,
                                         ),
@@ -158,7 +158,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             // Profile Picture Section
                             _SettingsSection(
                               theme: theme,
-                              title: 'Profile Picture',
+                              title: AppLocalizations.of(context)!.profilePicture,
                               icon: Icons.image_rounded,
                               children: [
                                 _ProfilePictureItem(
@@ -175,11 +175,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       if (mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: const Row(
+                                            content: Row(
                                               children: [
-                                                Icon(Icons.check_circle, color: Colors.white),
-                                                SizedBox(width: 8),
-                                                Expanded(child: Text('Profile picture updated successfully!')),
+                                                const Icon(Icons.check_circle, color: Colors.white),
+                                                const SizedBox(width: 8),
+                                                Expanded(child: Text(AppLocalizations.of(context)!.profilePictureUpdated)),
                                               ],
                                             ),
                                             backgroundColor: Colors.green,
@@ -199,7 +199,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                               children: [
                                                 const Icon(Icons.error_outline, color: Colors.white),
                                                 const SizedBox(width: 8),
-                                                Expanded(child: Text('Failed to upload: ${e.toString()}')),
+                                                Expanded(child: Text('${AppLocalizations.of(context)!.failedToUpload}: ${e.toString()}')),
                                               ],
                                             ),
                                             backgroundColor: Theme.of(context).colorScheme.error,
@@ -221,12 +221,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             // Profile Information Section
                             _SettingsSection(
                               theme: theme,
-                              title: 'Profile Information',
+                              title: AppLocalizations.of(context)!.profileInformation,
                               icon: Icons.person_rounded,
                               children: [
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Email',
+                                  label: AppLocalizations.of(context)!.email,
                                   value: user.email,
                                   icon: Icons.email_rounded,
                                   isEditable: false,
@@ -234,13 +234,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 const Divider(height: 32),
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Display Name',
+                                  label: AppLocalizations.of(context)!.displayName,
                                   value: user.displayName,
                                   icon: Icons.badge_rounded,
                                   onEdit: () => _showEditDialog(
                                     context,
                                     theme,
-                                    'Display Name',
+                                    AppLocalizations.of(context)!.displayName,
                                     user.displayName,
                                     (value) => _updateProfile({'DisplayName': value}),
                                     isMultiLine: false,
@@ -249,23 +249,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 const Divider(height: 32),
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Username',
+                                  label: AppLocalizations.of(context)!.username,
                                   value: user.username,
                                   icon: Icons.alternate_email_rounded,
                                   isEditable: false,
-                                  subtitle: 'Username cannot be changed',
+                                  subtitle: AppLocalizations.of(context)!.usernameCannotBeChanged,
                                 ),
                                 const Divider(height: 32),
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Bio',
-                                  value: user.bio ?? 'Not set',
+                                  label: AppLocalizations.of(context)!.bio,
+                                  value: user.bio ?? AppLocalizations.of(context)!.notSet,
                                   icon: Icons.description_rounded,
                                   isMultiLine: true,
                                   onEdit: () => _showEditDialog(
                                     context,
                                     theme,
-                                    'Bio',
+                                    AppLocalizations.of(context)!.bio,
                                     user.bio ?? '',
                                     (value) => _updateProfile({'Description': value.isEmpty ? null : value}),
                                     isMultiLine: true,
@@ -274,13 +274,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 const Divider(height: 32),
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Phone Number',
-                                  value: user.phoneNumber ?? 'Not set',
+                                  label: AppLocalizations.of(context)!.phoneNumber,
+                                  value: user.phoneNumber ?? AppLocalizations.of(context)!.notSet,
                                   icon: Icons.phone_rounded,
                                   onEdit: () => _showEditDialog(
                                     context,
                                     theme,
-                                    'Phone Number',
+                                    AppLocalizations.of(context)!.phoneNumber,
                                     user.phoneNumber ?? '',
                                     (value) => _updateProfile({'PhoneNumber': value.isEmpty ? null : value}),
                                     isMultiLine: false,
@@ -294,7 +294,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             // Address Section
                             _SettingsSection(
                               theme: theme,
-                              title: 'Address',
+                              title: AppLocalizations.of(context)!.address,
                               icon: Icons.location_on_rounded,
                               children: [
                                 _AddressItem(
@@ -309,15 +309,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             // Privacy & Security Section
                             _SettingsSection(
                               theme: theme,
-                              title: 'Privacy & Security',
+                              title: AppLocalizations.of(context)!.privacySecurity,
                               icon: Icons.lock_rounded,
                               children: [
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Profile Privacy',
+                                  label: AppLocalizations.of(context)!.profilePrivacy,
                                   value: user.profileAccessibility == ProfileAccessibility.private
-                                      ? 'Private'
-                                      : 'Public',
+                                      ? AppLocalizations.of(context)!.private
+                                      : AppLocalizations.of(context)!.public,
                                   icon: Icons.visibility_rounded,
                                   trailing: Switch(
                                     value: user.profileAccessibility == ProfileAccessibility.private,
@@ -331,8 +331,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 const Divider(height: 32),
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Change Password',
-                                  value: 'Update your account password',
+                                  label: AppLocalizations.of(context)!.changePassword,
+                                  value: AppLocalizations.of(context)!.updateAccountPassword,
                                   icon: Icons.lock_outline_rounded,
                                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                                   onTap: () => context.push('/change-password'),
@@ -344,30 +344,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             // Preferences Section
                             _SettingsSection(
                               theme: theme,
-                              title: 'Preferences',
+                              title: AppLocalizations.of(context)!.preferences,
                               icon: Icons.tune_rounded,
                               children: [
                                 _SettingsItem(
                                   theme: theme,
-                                  label: 'Theme',
-                                  value: _getThemeDisplayName(ref.watch(themeProvider)),
+                                  label: AppLocalizations.of(context)!.theme,
+                                  value: _getThemeDisplayName(context, ref.watch(themeProvider)),
                                   icon: Icons.palette_rounded,
                                   trailing: SegmentedButton<ThemeMode>(
-                                    segments: const [
+                                    segments: [
                                       ButtonSegment(
                                         value: ThemeMode.light,
-                                        label: Text('Light'),
-                                        icon: Icon(Icons.light_mode, size: 18),
+                                        label: Text(AppLocalizations.of(context)!.light),
+                                        icon: const Icon(Icons.light_mode, size: 18),
                                       ),
                                       ButtonSegment(
                                         value: ThemeMode.dark,
-                                        label: Text('Dark'),
-                                        icon: Icon(Icons.dark_mode, size: 18),
+                                        label: Text(AppLocalizations.of(context)!.dark),
+                                        icon: const Icon(Icons.dark_mode, size: 18),
                                       ),
                                       ButtonSegment(
                                         value: ThemeMode.system,
-                                        label: Text('System'),
-                                        icon: Icon(Icons.brightness_auto, size: 18),
+                                        label: Text(AppLocalizations.of(context)!.system),
+                                        icon: const Icon(Icons.brightness_auto, size: 18),
                                       ),
                                     ],
                                     selected: {ref.watch(themeProvider)},
@@ -395,14 +395,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  String _getThemeDisplayName(ThemeMode mode) {
+  String _getThemeDisplayName(BuildContext context, ThemeMode mode) {
+    final l10n = AppLocalizations.of(context)!;
     switch (mode) {
       case ThemeMode.light:
-        return 'Light';
+        return l10n.light;
       case ThemeMode.dark:
-        return 'Dark';
+        return l10n.dark;
       case ThemeMode.system:
-        return 'System';
+        return l10n.system;
     }
   }
 
@@ -442,7 +443,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               minLines: isMultiLine ? 3 : 1,
               keyboardType: keyboardType,
               decoration: InputDecoration(
-                hintText: 'Enter $title',
+                hintText: title == AppLocalizations.of(context)!.displayName 
+                    ? AppLocalizations.of(context)!.enterDisplayName
+                    : title == AppLocalizations.of(context)!.bio
+                        ? AppLocalizations.of(context)!.enterBio
+                        : title == AppLocalizations.of(context)!.phoneNumber
+                            ? AppLocalizations.of(context)!.enterPhoneNumber
+                            : 'Enter $title',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -450,8 +457,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
               ),
               validator: (value) {
-                if (title == 'Display Name' && (value == null || value.length < 4)) {
-                  return 'Display name must be at least 4 characters';
+                if (title == AppLocalizations.of(context)!.displayName && (value == null || value.length < 4)) {
+                  return AppLocalizations.of(context)!.displayNameMustBeAtLeast4;
                 }
                 return null;
               },
@@ -461,7 +468,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -470,7 +477,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onSave(controller.text.trim());
               }
             },
-            child: const Text('Save'),
+            child: Text(AppLocalizations.of(context)!.save),
           ),
         ],
       ),
@@ -497,7 +504,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           children: [
             Icon(Icons.location_on_rounded, color: theme.colorScheme.primary),
             const SizedBox(width: 12),
-            const Text('Edit Address'),
+            Text(AppLocalizations.of(context)!.editAddress),
           ],
         ),
         content: Form(
@@ -511,7 +518,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   TextFormField(
                     controller: countryController,
                     decoration: InputDecoration(
-                      labelText: 'Country',
+                      labelText: AppLocalizations.of(context)!.country,
                       prefixIcon: const Icon(Icons.flag_rounded),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -524,7 +531,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   TextFormField(
                     controller: provinceController,
                     decoration: InputDecoration(
-                      labelText: 'Province / State',
+                      labelText: AppLocalizations.of(context)!.provinceState,
                       prefixIcon: const Icon(Icons.map_rounded),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -537,7 +544,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   TextFormField(
                     controller: cityController,
                     decoration: InputDecoration(
-                      labelText: 'City',
+                      labelText: AppLocalizations.of(context)!.city,
                       prefixIcon: const Icon(Icons.location_city_rounded),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -554,7 +561,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: TextFormField(
                           controller: streetController,
                           decoration: InputDecoration(
-                            labelText: 'Street',
+                            labelText: AppLocalizations.of(context)!.street,
                             prefixIcon: const Icon(Icons.streetview_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -569,7 +576,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: TextFormField(
                           controller: streetNumberController,
                           decoration: InputDecoration(
-                            labelText: 'Number',
+                            labelText: AppLocalizations.of(context)!.number,
                             prefixIcon: const Icon(Icons.numbers_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -588,7 +595,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: TextFormField(
                           controller: postalCodeController,
                           decoration: InputDecoration(
-                            labelText: 'Postal Code',
+                            labelText: AppLocalizations.of(context)!.postalCode,
                             prefixIcon: const Icon(Icons.markunread_mailbox_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -603,7 +610,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: TextFormField(
                           controller: apartmentController,
                           decoration: InputDecoration(
-                            labelText: 'Apartment (Optional)',
+                            labelText: AppLocalizations.of(context)!.apartmentOptional,
                             prefixIcon: const Icon(Icons.home_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -623,7 +630,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -643,7 +650,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _updateProfile(addressData);
               }
             },
-            child: const Text('Save'),
+            child: Text(AppLocalizations.of(context)!.save),
           ),
         ],
       ),
@@ -971,7 +978,7 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
             FilledButton.icon(
               onPressed: _isUploading ? null : _pickImage,
               icon: const Icon(Icons.photo_library_rounded, size: 20),
-              label: const Text('Choose from Gallery'),
+              label: Text(AppLocalizations.of(context)!.chooseFromGallery),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -983,7 +990,7 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
             OutlinedButton.icon(
               onPressed: _isUploading ? null : _takePhoto,
               icon: const Icon(Icons.camera_alt_rounded, size: 20),
-              label: const Text('Take Photo'),
+              label: Text(AppLocalizations.of(context)!.takePhoto),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -1013,7 +1020,7 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Supported formats: JPG, JPEG, PNG, GIF, WEBP, AVIF, BMP, TIFF, HEIC, ICO. Max size: 25MB.',
+                  AppLocalizations.of(context)!.supportedFormats,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -1039,8 +1046,9 @@ class _AddressItem extends StatelessWidget {
     required this.onEdit,
   });
 
-  String _formatAddress(Address? address) {
-    if (address == null) return 'Not set';
+  String _formatAddress(BuildContext context, Address? address) {
+    final l10n = AppLocalizations.of(context)!;
+    if (address == null) return l10n.notSet;
     
     final parts = <String>[];
     if (address.street != null && address.street!.isNotEmpty) {
@@ -1062,7 +1070,7 @@ class _AddressItem extends StatelessWidget {
       parts.add(address.country!);
     }
     
-    return parts.isEmpty ? 'Not set' : parts.join(', ');
+    return parts.isEmpty ? l10n.notSet : parts.join(', ');
   }
 
   @override
@@ -1093,7 +1101,7 @@ class _AddressItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Address',
+                    AppLocalizations.of(context)!.address,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
@@ -1101,7 +1109,7 @@ class _AddressItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatAddress(address),
+                    _formatAddress(context, address),
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.5,
