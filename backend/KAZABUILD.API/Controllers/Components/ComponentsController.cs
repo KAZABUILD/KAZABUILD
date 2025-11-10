@@ -1,3 +1,4 @@
+using Azure;
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent;
@@ -1765,6 +1766,13 @@ namespace KAZABUILD.API.Controllers.Components
             //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
+            //Add the common fields to the response
+            response.Id = component.Id;
+            response.Name = component.Name;
+            response.Manufacturer = component.Manufacturer;
+            response.Release = component.Release;
+            response.Type = component.Type;
+
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -2312,6 +2320,7 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             CaseComponent caseComponent => new CaseComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseComponent.Name,
                                 Manufacturer = caseComponent.Manufacturer,
                                 Release = caseComponent.Release,
@@ -2334,6 +2343,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CaseFanComponent caseFanComponent => new CaseFanComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseFanComponent.Name,
                                 Manufacturer = caseFanComponent.Manufacturer,
                                 Release = caseFanComponent.Release,
@@ -2353,6 +2363,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CoolerComponent coolerComponent => new CoolerComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = coolerComponent.Name,
                                 Manufacturer = coolerComponent.Manufacturer,
                                 Release = coolerComponent.Release,
@@ -2370,6 +2381,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CPUComponent cpuComponent => new CPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = cpuComponent.Name,
                                 Manufacturer = cpuComponent.Manufacturer,
                                 Release = cpuComponent.Release,
@@ -2400,6 +2412,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             GPUComponent gpuComponent => new GPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = gpuComponent.Name,
                                 Manufacturer = gpuComponent.Manufacturer,
                                 Release = gpuComponent.Release,
@@ -2421,6 +2434,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MemoryComponent memoryComponent => new MemoryComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = memoryComponent.Name,
                                 Manufacturer = memoryComponent.Manufacturer,
                                 Release = memoryComponent.Release,
@@ -2442,6 +2456,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MonitorComponent monitorComponent => new MonitorComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = monitorComponent.Name,
                                 Manufacturer = monitorComponent.Manufacturer,
                                 Release = monitorComponent.Release,
@@ -2460,6 +2475,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MotherboardComponent motherboardComponent => new MotherboardComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = motherboardComponent.Name,
                                 Manufacturer = motherboardComponent.Manufacturer,
                                 Release = motherboardComponent.Release,
@@ -2497,6 +2513,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             PowerSupplyComponent powerSupplyComponent => new PowerSupplyComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = powerSupplyComponent.Name,
                                 Manufacturer = powerSupplyComponent.Manufacturer,
                                 Release = powerSupplyComponent.Release,
@@ -2510,6 +2527,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             StorageComponent storageComponent => new StorageComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = storageComponent.Name,
                                 Manufacturer = storageComponent.Manufacturer,
                                 Release = storageComponent.Release,
@@ -2557,6 +2575,7 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             CaseComponent caseComponent => new CaseComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseComponent.Name,
                                 Manufacturer = caseComponent.Manufacturer,
                                 Release = caseComponent.Release,
@@ -2582,6 +2601,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CaseFanComponent caseFanComponent => new CaseFanComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseFanComponent.Name,
                                 Manufacturer = caseFanComponent.Manufacturer,
                                 Release = caseFanComponent.Release,
@@ -2604,6 +2624,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CoolerComponent coolerComponent => new CoolerComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = coolerComponent.Name,
                                 Manufacturer = coolerComponent.Manufacturer,
                                 Release = coolerComponent.Release,
@@ -2624,6 +2645,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CPUComponent cpuComponent => new CPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = cpuComponent.Name,
                                 Manufacturer = cpuComponent.Manufacturer,
                                 Release = cpuComponent.Release,
@@ -2657,6 +2679,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             GPUComponent gpuComponent => new GPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = gpuComponent.Name,
                                 Manufacturer = gpuComponent.Manufacturer,
                                 Release = gpuComponent.Release,
@@ -2681,6 +2704,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MemoryComponent memoryComponent => new MemoryComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = memoryComponent.Name,
                                 Manufacturer = memoryComponent.Manufacturer,
                                 Release = memoryComponent.Release,
@@ -2705,6 +2729,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MonitorComponent monitorComponent => new MonitorComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = monitorComponent.Name,
                                 Manufacturer = monitorComponent.Manufacturer,
                                 Release = monitorComponent.Release,
@@ -2726,6 +2751,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MotherboardComponent motherboardComponent => new MotherboardComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = motherboardComponent.Name,
                                 Manufacturer = motherboardComponent.Manufacturer,
                                 Release = motherboardComponent.Release,
@@ -2766,6 +2792,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             PowerSupplyComponent powerSupplyComponent => new PowerSupplyComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = powerSupplyComponent.Name,
                                 Manufacturer = powerSupplyComponent.Manufacturer,
                                 Release = powerSupplyComponent.Release,
@@ -2782,6 +2809,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             StorageComponent storageComponent => new StorageComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = storageComponent.Name,
                                 Manufacturer = storageComponent.Manufacturer,
                                 Release = storageComponent.Release,

@@ -326,7 +326,7 @@ namespace KAZABUILD.API.Controllers
                     image.UserId = dto.TargetId;
 
                     //Check if the post exists
-                    var user = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (user == null)
                     {
                         //Log failure
