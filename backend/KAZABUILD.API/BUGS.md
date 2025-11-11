@@ -99,7 +99,18 @@ Source: frontend
 Details: Comments are getting queried one by one causing the application to not load within a reasonable time frame.
 
 [00017] Paging is done client side only.
-Type: incorrect implementation/error/missing feature
+Type: incorrect implementation
 Status: pending
 Source: frontend
 Details: The website should be paging server side.
+
+[00018] The system admin is not using the name set in the appsettings.
+Type: error
+Status: pending
+Source: backend
+
+[00018] .
+Type: incorrect implementation/error/missing feature
+Status: pending
+Source: frontend
+Details: .
