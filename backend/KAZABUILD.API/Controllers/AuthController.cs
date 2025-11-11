@@ -293,7 +293,7 @@ namespace KAZABUILD.API.Controllers
 
             //Get the correct token
             var token = (await _db.UserTokens
-                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null).ToListAsync())
+                .Where(t => t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null).ToListAsync())
                 .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
@@ -665,7 +665,7 @@ namespace KAZABUILD.API.Controllers
 
             //Get the correct token
             var token = (await _db.UserTokens
-                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null).ToListAsync())
+                .Where(t => t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null).ToListAsync())
                 .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
@@ -890,7 +890,7 @@ namespace KAZABUILD.API.Controllers
 
             //Get the correct token
             var token = (await _db.UserTokens
-                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null).ToListAsync())
+                .Where(t => t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null).ToListAsync())
                 .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
