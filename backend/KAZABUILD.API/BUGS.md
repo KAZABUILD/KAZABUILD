@@ -6,7 +6,7 @@
 Type: incorrect implementation/error/missing feature
 Status: fixed/edited/pending
 Source: backend/frontend/database/testing
-Details: write details if necessary
+Details: Write details if necessary.
 
 
 ## FRONTEND
@@ -80,3 +80,26 @@ Type: incorrect implementation/error
 Status: pending
 Source: frontend
 Details: There is no such feature as following builds in the buildInteraction model.
+
+[00014] Changing the language doesn't change the text on the builds page.
+Type: incorrect implementation/error
+Status: pending
+Source: frontend
+
+[00015] The default image is incorrect.
+Type: incorrect implementation
+Status: pending
+Source: frontend
+Details: Default images should not have any text in them and should scale to the size of the displayed image.
+
+[00016] The forum post loading takes forever.
+Type: incorrect implementation
+Status: pending
+Source: frontend
+Details: Comments are getting queried one by one causing the application to not load within a reasonable time frame.
+
+[00017] Paging is done client side only.
+Type: incorrect implementation/error/missing feature
+Status: pending
+Source: frontend
+Details: The website should be paging server side.

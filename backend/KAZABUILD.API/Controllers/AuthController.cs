@@ -371,7 +371,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Return a success response
-            return Ok(response);
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
 
         /// <summary>
@@ -741,7 +741,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
 
         /// <summary>
@@ -966,7 +966,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
     }
 }
