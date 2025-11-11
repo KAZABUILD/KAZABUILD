@@ -152,9 +152,11 @@ class AdminService {
     String sortDirection = 'asc',
   }) async {
     // Determine which type discriminator to use
-    // If componentTypes is null or has multiple types, use "Case" as generic
-    // If componentTypes has a single type, use that type for better backend filtering
+    // If componentTypes is null, we need to fetch all types
+    // We'll make multiple requests for each type and combine them
     String? typeDiscriminator;
+    List<String>? typesToFetch;
+    
     if (componentTypes != null && componentTypes.length == 1) {
       // Map component type to discriminator value
       final type = componentTypes[0].toUpperCase();
@@ -171,9 +173,77 @@ class AdminService {
         'MONITOR': 'Monitor',
       };
       typeDiscriminator = typeMap[type] ?? 'Case';
+    } else if (componentTypes == null || componentTypes.isEmpty) {
+      // When no filter, fetch all component types
+      // We'll use a list of all types and make requests for each
+      typesToFetch = ['CPU', 'GPU', 'Memory', 'Motherboard', 'Storage', 'PowerSupply', 'Case', 'Cooler', 'CaseFan', 'Monitor'];
+      typeDiscriminator = 'Case'; // Default, but we'll override for each request
     } else {
-      // Use "Case" as generic discriminator when no filter or multiple types
-      typeDiscriminator = 'Case';
+      // Multiple types - use first one as discriminator, but filter by Type field
+      final type = componentTypes[0].toUpperCase();
+      final typeMap = {
+        'CPU': 'CPU',
+        'GPU': 'GPU',
+        'MEMORY': 'Memory',
+        'MOTHERBOARD': 'Motherboard',
+        'STORAGE': 'Storage',
+        'POWER_SUPPLY': 'PowerSupply',
+        'CASE': 'Case',
+        'COOLER': 'Cooler',
+        'CASE_FAN': 'CaseFan',
+        'MONITOR': 'Monitor',
+      };
+      typeDiscriminator = typeMap[type] ?? 'Case';
+    }
+    
+    // If we need to fetch all types, make multiple requests
+    if (typesToFetch != null) {
+      final allComponents = <Map<String, dynamic>>[];
+      
+      for (final type in typesToFetch) {
+        try {
+          final data = <String, dynamic>{
+            r'$type': type,
+            'Query': query ?? '',
+            'SortDirection': sortDirection,
+            'Paging': false,
+          };
+          
+          if (orderBy != null && orderBy.isNotEmpty) {
+            data['OrderBy'] = orderBy;
+          }
+          
+          if (names != null && names.isNotEmpty) {
+            data['Name'] = names;
+          }
+          
+          if (manufacturers != null && manufacturers.isNotEmpty) {
+            data['Manufacturer'] = manufacturers;
+          }
+          
+          final response = await _dio.post('$apiBaseUrl/Components/get', data: data);
+          if (response.data is List) {
+            allComponents.addAll((response.data as List).cast<Map<String, dynamic>>());
+          }
+        } catch (e) {
+          print('Error fetching $type components: $e');
+          // Continue with other types
+        }
+      }
+      
+      // Return combined response
+      return Response(
+        data: allComponents,
+        statusCode: 200,
+        requestOptions: RequestOptions(
+          path: '$apiBaseUrl/Components/get',
+          method: 'POST',
+        ),
+        headers: Headers(),
+        isRedirect: false,
+        redirects: [],
+        statusMessage: 'OK',
+      );
     }
     
     final data = <String, dynamic>{

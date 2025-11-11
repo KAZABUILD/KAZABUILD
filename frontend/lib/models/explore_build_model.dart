@@ -6,7 +6,6 @@
 /// to represent a complete, user-created computer setup.
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/component_models.dart';
 
@@ -98,42 +97,30 @@ class Build {
     // Parse components if available
     List<BaseComponent> parseComponents(dynamic componentsJson) {
       if (componentsJson == null) {
-        if (kDebugMode) print('parseComponents: componentsJson is null');
         return [];
       }
       if (componentsJson is! List) {
-        if (kDebugMode) print('parseComponents: componentsJson is not a List, type: ${componentsJson.runtimeType}');
         return [];
       }
       
-      if (kDebugMode) print('parseComponents: Parsing ${componentsJson.length} components');
-      
       return componentsJson.map((componentJson) {
         try {
-          // Try to parse from nested structure first
           Map<String, dynamic>? componentData;
           if (componentJson is Map<String, dynamic>) {
             componentData = componentJson['component'] ?? componentJson['Component'] ?? componentJson;
           } else {
-            if (kDebugMode) print('parseComponents: componentJson is not a Map, type: ${componentJson.runtimeType}');
             return null;
           }
           
           if (componentData == null) {
-            if (kDebugMode) print('parseComponents: componentData is null');
             return null;
           }
           
-          // Parse component type
           final typeString = (componentData['type'] ?? componentData['Type'])?.toString().toUpperCase();
           if (typeString == null) {
-            if (kDebugMode) print('parseComponents: typeString is null, componentData keys: ${componentData.keys}');
             return null;
           }
           
-          if (kDebugMode) print('parseComponents: Parsing component type: $typeString');
-          
-          // Parse based on component type
           BaseComponent? component;
           switch (typeString) {
             case 'CPU':
@@ -172,24 +159,11 @@ class Build {
               component = MonitorComponent.fromJson(componentData);
               break;
             default:
-              if (kDebugMode) print('parseComponents: Unknown component type: $typeString');
               return null;
           }
           
-          if (kDebugMode) {
-            if (component != null) {
-              print('parseComponents: Successfully parsed component: ${component.name} (${component.type})');
-            } else {
-              print('parseComponents: Failed to parse component of type: $typeString');
-            }
-          }
-          
           return component;
-        } catch (e, stackTrace) {
-          if (kDebugMode) {
-            print('parseComponents: Error parsing component: $e');
-            print('parseComponents: Stack trace: $stackTrace');
-          }
+        } catch (e) {
           return null;
         }
       }).whereType<BaseComponent>().toList();

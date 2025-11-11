@@ -4,4 +4,5 @@ const String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '
 
 /// Google OAuth 2.0 Web Client ID
 /// Set via: --dart-define=GOOGLE_WEB_CLIENT_ID=your-client-id.apps.googleusercontent.com
-const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '');
+/// Or use the default value below for development
+const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '221004750220-te9fs4ltevcvevc62pmdbj81km96htb5.apps.googleusercontent.com');

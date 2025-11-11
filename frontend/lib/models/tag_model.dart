@@ -21,8 +21,12 @@ class Tag {
 
   /// Creates a [Tag] from a JSON map.
   factory Tag.fromJson(Map<String, dynamic> json) {
+    // Backend may not return Id for non-admin users, use empty string as fallback
+    final idValue = json['id'] ?? json['Id'];
+    final id = idValue != null ? idValue.toString() : '';
+    
     return Tag(
-      id: (json['id'] ?? json['Id'] ?? '').toString(),
+      id: id,
       name: json['name'] ?? json['Name'] ?? '',
       description: json['description'] ?? json['Description'] ?? '',
       databaseEntryAt: json['databaseEntryAt'] != null || json['DatabaseEntryAt'] != null

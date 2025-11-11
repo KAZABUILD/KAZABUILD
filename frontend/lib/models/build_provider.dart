@@ -18,74 +18,246 @@ class BuildService {
 
   BuildService(this._dio);
 
+  /// Fetches BuildComponents for a list of build IDs
+  /// Uses cache to avoid re-fetching the same components
+  Future<Map<String, List<Map<String, dynamic>>>> getBuildComponents(
+    List<String> buildIds, {
+    Map<String, Map<String, dynamic>>? cache,
+  }) async {
+    try {
+      if (buildIds.isEmpty) return {};
+      
+      final response = await _dio.post('$apiBaseUrl/BuildComponents/get', data: {
+        'BuildId': buildIds,
+        'Paging': false,
+      });
+      
+      final List<dynamic> buildComponentsJson = response.data as List<dynamic>? ?? [];
+      if (buildComponentsJson.isEmpty) return {};
+      
+      // Extract all unique component IDs
+      final Set<String> componentIds = {};
+      final Map<String, List<String>> buildIdToComponentIds = {};
+      
+      for (var bcJson in buildComponentsJson) {
+        if (bcJson is Map<String, dynamic>) {
+          final buildId = (bcJson['buildId'] ?? bcJson['BuildId'] ?? '').toString();
+          final componentId = (bcJson['componentId'] ?? bcJson['ComponentId'] ?? '').toString();
+          
+          if (buildId.isNotEmpty && componentId.isNotEmpty) {
+            componentIds.add(componentId);
+            buildIdToComponentIds.putIfAbsent(buildId, () => []).add(componentId);
+          }
+        }
+      }
+      
+      if (componentIds.isEmpty) return {};
+      
+      // Use cache if provided, otherwise create empty map
+      final Map<String, Map<String, dynamic>> componentMap = cache != null ? Map.from(cache) : {};
+      
+      // Filter out components that are already in cache
+      final componentIdsToFetch = componentIds.where((id) => !componentMap.containsKey(id)).toList();
+      
+      if (componentIdsToFetch.isEmpty) {
+        // All components are in cache, return them
+        return _groupComponentsByBuildId(buildIdToComponentIds, componentMap);
+      }
+      
+      // Fetch only missing components in small batches with delays
+      const int batchSize = 3;
+      final componentIdsList = componentIdsToFetch;
+      
+      for (int i = 0; i < componentIdsList.length; i += batchSize) {
+        final batch = componentIdsList.skip(i).take(batchSize).toList();
+        
+        // Fetch batch in parallel
+        final batchResults = await Future.wait(
+          batch.map((componentId) async {
+            try {
+              final componentResponse = await _dio.get('$apiBaseUrl/Components/$componentId');
+              
+              if (componentResponse.data is Map<String, dynamic>) {
+                final compJson = componentResponse.data as Map<String, dynamic>;
+                final idValue = compJson['id'] ?? compJson['Id'];
+                
+                String? compId;
+                if (idValue == null) {
+                  compId = componentId;
+                } else if (idValue is String) {
+                  compId = idValue.isEmpty ? componentId : idValue;
+                } else {
+                  compId = idValue.toString();
+                }
+                
+                if (compId.isNotEmpty) {
+                  return MapEntry(compId, compJson);
+                }
+              }
+              return null;
+            } on DioException catch (e) {
+              // Retry once on 429 with delay
+              if (e.response?.statusCode == 429) {
+                await Future.delayed(const Duration(milliseconds: 1500));
+                try {
+                  final componentResponse = await _dio.get('$apiBaseUrl/Components/$componentId');
+                  if (componentResponse.data is Map<String, dynamic>) {
+                    final compJson = componentResponse.data as Map<String, dynamic>;
+                    final idValue = compJson['id'] ?? compJson['Id'];
+                    String? compId;
+                    if (idValue == null) {
+                      compId = componentId;
+                    } else if (idValue is String) {
+                      compId = idValue.isEmpty ? componentId : idValue;
+                    } else {
+                      compId = idValue.toString();
+                    }
+                    if (compId.isNotEmpty) {
+                      return MapEntry(compId, compJson);
+                    }
+                  }
+                } catch (_) {
+                  // Ignore retry errors
+                }
+              }
+              return null;
+            } catch (e) {
+              return null;
+            }
+          }),
+        );
+        
+        // Add successful results to map
+        for (var result in batchResults) {
+          if (result != null) {
+            componentMap[result.key] = result.value;
+          }
+        }
+        
+        // Delay between batches to avoid rate limiting
+        if (i + batchSize < componentIdsList.length) {
+          await Future.delayed(const Duration(milliseconds: 300));
+        }
+      }
+      
+      if (componentMap.isEmpty) return {};
+      
+      // Group components by buildId
+      return _groupComponentsByBuildId(buildIdToComponentIds, componentMap);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Groups components by buildId
+  Map<String, List<Map<String, dynamic>>> _groupComponentsByBuildId(
+    Map<String, List<String>> buildIdToComponentIds,
+    Map<String, Map<String, dynamic>> componentMap,
+  ) {
+    final Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
+    for (var entry in buildIdToComponentIds.entries) {
+      final buildId = entry.key;
+      final compIds = entry.value;
+      
+      final components = compIds
+          .where((compId) => componentMap.containsKey(compId))
+          .map((compId) => componentMap[compId]!)
+          .toList();
+      
+      if (components.isNotEmpty) {
+        componentsByBuildId[buildId] = components;
+      }
+    }
+    return componentsByBuildId;
+  }
+
+  /// Fetches images for builds
+  Future<Map<String, String?>> getBuildImages(List<String> buildIds) async {
+    try {
+      if (buildIds.isEmpty) return {};
+      
+      final response = await _dio.post('$apiBaseUrl/Images/get', data: {
+        'BuildId': buildIds,
+        'LocationType': ['BUILD'],
+        'Paging': false,
+      });
+      
+      final List<dynamic> imagesJson = response.data as List<dynamic>? ?? [];
+      final Map<String, String?> imageUrlsByBuildId = {};
+      
+      for (var imgJson in imagesJson) {
+        if (imgJson is Map<String, dynamic>) {
+          final targetId = (imgJson['targetId'] ?? imgJson['TargetId'] ?? '').toString();
+          
+          if (targetId.isNotEmpty) {
+            // Get image ID for download endpoint
+            final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
+            if (imageId.isNotEmpty) {
+              // Backend serves images via /Images/download/{id} endpoint
+              imageUrlsByBuildId[targetId] = '$apiBaseUrl/Images/download/$imageId';
+            }
+          }
+        }
+      }
+      
+      return imageUrlsByBuildId;
+    } catch (e) {
+      return {};
+    }
+  }
+
   /// Fetches builds from the backend based on a given filter map.
   Future<List<Build>> getBuilds(Map<String, dynamic> filter) async {
     try {
-      debugPrint('Fetching builds with filter: $filter');
       final response = await _dio.post('$apiBaseUrl/Builds/get', data: filter);
-      debugPrint('Get builds response status: ${response.statusCode}');
-      
       final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
-      debugPrint('Received ${buildsJson.length} builds from backend');
       
-      // Log component and image information from JSON before parsing
+      // Extract build IDs
+      final buildIds = buildsJson
+          .where((json) => json is Map<String, dynamic>)
+          .map((json) => (json['id'] ?? json['Id'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toList();
+      
+      // Fetch images and tags in parallel for better performance
+      Map<String, String?> imageUrlsByBuildId = {};
+      Map<String, List<String>> tagsByBuildId = {};
+      
+      try {
+        imageUrlsByBuildId = await getBuildImages(buildIds);
+      } catch (e) {
+        // If fetching images fails, continue with empty map
+        // This ensures builds are still displayed even without images
+      }
+      
+      // Fetch tags for all builds using helper method
+      try {
+        tagsByBuildId = await _fetchBuildTags(buildIds);
+      } catch (e) {
+        // If fetching tags fails, continue with empty map
+        // This ensures builds are still displayed even without tags
+        debugPrint('Error fetching build tags: $e');
+      }
+      
+      // Add imageUrl and tags to build JSON
       for (var json in buildsJson) {
         if (json is Map<String, dynamic>) {
-          final components = json['components'] ?? json['Components'];
-          final imageUrl = json['imageUrl'] ?? json['ImageUrl'];
-          final buildId = json['id'] ?? json['Id'];
-          final buildName = json['name'] ?? json['Name'];
-          debugPrint('Build $buildId ($buildName):');
-          if (components != null) {
-            debugPrint('  Components in JSON: ${components is List ? components.length : 'not a list'}');
-            if (components is List && components.isNotEmpty) {
-              debugPrint('  First component: ${components[0]}');
-            }
-          } else {
-            debugPrint('  NO components in JSON');
+          final buildId = (json['id'] ?? json['Id'] ?? '').toString();
+          if (imageUrlsByBuildId.containsKey(buildId)) {
+            json['imageUrl'] = imageUrlsByBuildId[buildId];
+            json['ImageUrl'] = imageUrlsByBuildId[buildId];
           }
-          if (imageUrl != null) {
-            debugPrint('  ImageUrl in JSON: $imageUrl');
-          } else {
-            debugPrint('  NO imageUrl in JSON');
+          if (tagsByBuildId.containsKey(buildId)) {
+            json['tags'] = tagsByBuildId[buildId];
+            json['Tags'] = tagsByBuildId[buildId];
           }
         }
       }
       
-      final builds = buildsJson.map((json) {
-        final build = Build.fromJson(json);
-        debugPrint('Build ${build.id} (${build.name}): parsed ${build.components.length} components, ${build.tags.length} tags, imageUrl=${build.imageUrl}');
-        if (build.components.isNotEmpty) {
-          debugPrint('  Components: ${build.components.map((c) => '${c.type}: ${c.name}').join(', ')}');
-        }
-        if (build.tags.isNotEmpty) {
-          debugPrint('  Tags: ${build.tags.join(', ')}');
-        } else {
-          // Debug: Check if tags exist in JSON
-          final tagsInJson = json['tags'] ?? json['Tags'];
-          if (tagsInJson != null) {
-            debugPrint('  ⚠️ WARNING: Build has 0 tags after parsing, but JSON had tags: ${tagsInJson is List ? tagsInJson.length : 'not a list'}');
-            if (tagsInJson is List && tagsInJson.isNotEmpty) {
-              debugPrint('  ⚠️ First tag in JSON: ${tagsInJson[0]}');
-            }
-          }
-        }
-        return build;
-      }).toList();
-      
-      // Log build statuses
-      for (var build in builds) {
-        debugPrint('Build ${build.id}: status=${build.status}, name=${build.name}, components=${build.components.length}');
-      }
+      final builds = buildsJson.map((json) => Build.fromJson(json)).toList();
       
       return builds;
     } catch (e) {
-      debugPrint('Error fetching builds: $e');
-      if (e is DioException && e.response != null) {
-        debugPrint('Response data: ${e.response?.data}');
-        debugPrint('Response status: ${e.response?.statusCode}');
-      }
-      // In case of an error, rethrow it to be handled by the provider.
       rethrow;
     }
   }
@@ -94,36 +266,149 @@ class BuildService {
   Future<Build> getBuildById(String buildId) async {
     try {
       final response = await _dio.get('$apiBaseUrl/Builds/$buildId');
-      // The response data is a single JSON object for the build.
-      return Build.fromJson(response.data);
+      final buildJson = response.data as Map<String, dynamic>;
+      
+      // Fetch BuildComponents, Images, and Tags for this build in parallel
+      final results = await Future.wait([
+        getBuildComponents([buildId]),
+        getBuildImages([buildId]),
+        _fetchBuildTags([buildId]),
+      ]);
+      
+      final componentsByBuildId = results[0] as Map<String, List<Map<String, dynamic>>>;
+      final imageUrlsByBuildId = results[1] as Map<String, String?>;
+      final tagsByBuildId = results[2] as Map<String, List<String>>;
+      
+      if (componentsByBuildId.containsKey(buildId)) {
+        final components = componentsByBuildId[buildId]!;
+        buildJson['components'] = components;
+        buildJson['buildComponents'] = components;
+      }
+      if (imageUrlsByBuildId.containsKey(buildId)) {
+        buildJson['imageUrl'] = imageUrlsByBuildId[buildId];
+        buildJson['ImageUrl'] = imageUrlsByBuildId[buildId];
+      }
+      if (tagsByBuildId.containsKey(buildId)) {
+        buildJson['tags'] = tagsByBuildId[buildId];
+        buildJson['Tags'] = tagsByBuildId[buildId];
+      }
+      
+      return Build.fromJson(buildJson);
     } catch (e) {
       rethrow;
     }
+  }
+  
+  /// Helper method to fetch tags for builds
+  Future<Map<String, List<String>>> _fetchBuildTags(List<String> buildIds) async {
+    final Map<String, List<String>> tagsByBuildId = {};
+    
+    try {
+      if (buildIds.isEmpty) return tagsByBuildId;
+      
+      // Get all BuildTags for these builds
+      final buildTagsResponse = await _dio.post('$apiBaseUrl/BuildTags/get', data: {
+        'buildId': buildIds,
+        'paging': false,
+      });
+      
+      final List<dynamic> buildTagsJson = buildTagsResponse.data as List<dynamic>? ?? [];
+      
+      // Extract all unique tag IDs from BuildTags
+      final Set<String> uniqueTagIds = {};
+      final Map<String, List<String>> tagIdsByBuildId = {};
+      
+      for (var btJson in buildTagsJson) {
+        if (btJson is Map<String, dynamic>) {
+          final buildId = (btJson['buildId'] ?? btJson['BuildId'] ?? '').toString();
+          final tagId = (btJson['tagId'] ?? btJson['TagId'] ?? '').toString();
+          
+          if (buildId.isNotEmpty && tagId.isNotEmpty) {
+            uniqueTagIds.add(tagId);
+            tagIdsByBuildId.putIfAbsent(buildId, () => []).add(tagId);
+          }
+        }
+      }
+      
+      // Fetch tag names for all unique tag IDs
+      if (uniqueTagIds.isNotEmpty) {
+        // Fetch all tags from backend
+        final tagsResponse = await _dio.post('$apiBaseUrl/Tags/get', data: {
+          'paging': false,
+        });
+        final List<dynamic> allTagsJson = tagsResponse.data as List<dynamic>? ?? [];
+        
+        // Create a map of tagId -> tagName
+        final Map<String, String> tagNameMap = {};
+        
+        // Try to match tags by ID first
+        for (var tagJson in allTagsJson) {
+          if (tagJson is Map<String, dynamic>) {
+            final tagId = (tagJson['id'] ?? tagJson['Id'] ?? '').toString();
+            final tagName = (tagJson['name'] ?? tagJson['Name'] ?? '').toString();
+            
+            if (tagId.isNotEmpty && tagName.isNotEmpty && uniqueTagIds.contains(tagId)) {
+              tagNameMap[tagId] = tagName;
+            }
+          }
+        }
+        
+        // If we couldn't find all tags (backend doesn't return Id for non-admin),
+        // try to fetch each tag individually by ID
+        final missingTagIds = uniqueTagIds.where((id) => !tagNameMap.containsKey(id)).toList();
+        if (missingTagIds.isNotEmpty) {
+          // Try to fetch tags individually with a small delay to avoid rate limiting
+          for (final tagId in missingTagIds) {
+            try {
+              await Future.delayed(const Duration(milliseconds: 100));
+              final tagResponse = await _dio.get('$apiBaseUrl/Tags/$tagId');
+              if (tagResponse.data is Map<String, dynamic>) {
+                final tagJson = tagResponse.data as Map<String, dynamic>;
+                final tagName = (tagJson['name'] ?? tagJson['Name'] ?? '').toString();
+                if (tagName.isNotEmpty) {
+                  tagNameMap[tagId] = tagName;
+                }
+              }
+            } catch (e) {
+              // Skip if individual tag fetch fails
+              continue;
+            }
+          }
+        }
+        
+        // Now map build IDs to tag names
+        for (var entry in tagIdsByBuildId.entries) {
+          final buildId = entry.key;
+          final tagIds = entry.value;
+          final tagNames = tagIds
+              .map((tagId) => tagNameMap[tagId])
+              .where((name) => name != null && name.isNotEmpty)
+              .cast<String>()
+              .toList();
+          
+          if (tagNames.isNotEmpty) {
+            tagsByBuildId[buildId] = tagNames;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching build tags: $e');
+    }
+    
+    return tagsByBuildId;
   }
 
   /// Creates a new build on the backend and returns its ID.
   Future<String> createBuild(Map<String, dynamic> buildData) async {
     try {
-      debugPrint('BuildService.createBuild: Creating build with data: $buildData');
       final response = await _dio.post('$apiBaseUrl/Builds/add', data: buildData);
-      debugPrint('BuildService.createBuild: Response status: ${response.statusCode}');
-      debugPrint('BuildService.createBuild: Response data: ${response.data}');
       
-      // The backend returns an object like: {"build": "...", "id": "..."}
       if (response.data is Map<String, dynamic> && response.data.containsKey('id')) {
-        final buildId = response.data['id'];
-        debugPrint('BuildService.createBuild: Build created with ID: $buildId');
-        return buildId;
+        return response.data['id'];
       } else {
-        debugPrint('BuildService.createBuild: ERROR - ID not found in response');
         throw Exception('Failed to create build: ID not found in response.');
       }
     } catch (e) {
-      debugPrint('BuildService.createBuild: Error: $e');
-      if (e is DioException && e.response != null) {
-        debugPrint('BuildService.createBuild: Response data: ${e.response?.data}');
-        debugPrint('BuildService.createBuild: Response status: ${e.response?.statusCode}');
-      }
       rethrow;
     }
   }
@@ -131,15 +416,8 @@ class BuildService {
   /// Updates an existing build on the backend.
   Future<void> updateBuild(String buildId, Map<String, dynamic> data) async {
     try {
-      debugPrint('Updating build $buildId with data: $data');
-      final response = await _dio.put('$apiBaseUrl/Builds/$buildId', data: data);
-      debugPrint('Update build response: ${response.statusCode} - ${response.data}');
+      await _dio.put('$apiBaseUrl/Builds/$buildId', data: data);
     } catch (e) {
-      debugPrint('Error updating build: $e');
-      if (e is DioException && e.response != null) {
-        debugPrint('Response data: ${e.response?.data}');
-        debugPrint('Response status: ${e.response?.statusCode}');
-      }
       rethrow;
     }
   }
@@ -147,19 +425,12 @@ class BuildService {
   /// Adds a component to an existing build.
   Future<void> addComponentToBuild(String buildId, String componentId, int quantity) async {
     try {
-      debugPrint('BuildService.addComponentToBuild: Adding component $componentId to build $buildId');
-      final response = await _dio.post('$apiBaseUrl/BuildComponents/add', data: {
-        'buildId': buildId, 
-        'componentId': componentId, 
-        'quantity': quantity
+      await _dio.post('$apiBaseUrl/BuildComponents/add', data: {
+        'BuildId': buildId,
+        'ComponentId': componentId,
+        'Quantity': quantity
       });
-      debugPrint('BuildService.addComponentToBuild: Component added successfully. Response status: ${response.statusCode}');
     } catch (e) {
-      debugPrint('BuildService.addComponentToBuild: Error adding component: $e');
-      if (e is DioException && e.response != null) {
-        debugPrint('BuildService.addComponentToBuild: Response data: ${e.response?.data}');
-        debugPrint('BuildService.addComponentToBuild: Response status: ${e.response?.statusCode}');
-      }
       rethrow;
     }
   }
@@ -280,83 +551,55 @@ class BuildService {
     }
   }
 
-  /// Predefined list of meaningful tags that users can select
-  static const List<String> predefinedTags = [
-    'Gaming',
-    'Budget',
-    'Workstation',
-    'RGB',
-    'Quiet',
-    'Overclocking',
-    'Mini-ITX',
-    'Streaming',
-    'Content Creation',
-    'Productivity',
-    'Compact',
-    'High-End',
-    'Mid-Range',
-    'Entry-Level',
-    'Water-Cooled',
-    'Air-Cooled',
-    'Custom Loop',
-    'SFF (Small Form Factor)',
-    'Silent',
-    'RGB Sync',
-  ];
-
-  /// Fetches all available tags from the backend, filtered to only show predefined meaningful tags.
+  /// Fetches all available tags from the backend database seeds.
+  /// Returns all tags without filtering, sorted by name.
   Future<List<Tag>> getTags({String? query, int? page, int? pageLength}) async {
     try {
       final data = <String, dynamic>{
-        'paging': false, // Get all tags to filter them
+        'paging': false, // Get all tags from database
         'orderBy': 'Name',
-        'sortDirection': 'ASC',
+        'sortDirection': 'asc',
       };
       if (query != null && query.isNotEmpty) {
         data['query'] = query;
       }
+      if (page != null && pageLength != null) {
+        data['paging'] = true;
+        data['page'] = page;
+        data['pageLength'] = pageLength;
+      }
       
       final response = await _dio.post('$apiBaseUrl/Tags/get', data: data);
       final List<dynamic> tagsJson = response.data as List<dynamic>? ?? [];
-      final allTags = tagsJson.map((json) => Tag.fromJson(json as Map<String, dynamic>)).toList();
+      debugPrint('BuildService.getTags: Received ${tagsJson.length} tags from backend');
       
-      // Filter tags to only include predefined meaningful ones (case-insensitive)
-      final filteredTags = allTags.where((tag) {
-        return predefinedTags.any((predefined) => 
-          tag.name.toLowerCase().trim() == predefined.toLowerCase().trim()
-        );
-      }).toList();
-      
-      // Sort by predefined order
-      filteredTags.sort((a, b) {
-        final aIndex = predefinedTags.indexWhere((p) => p.toLowerCase() == a.name.toLowerCase());
-        final bIndex = predefinedTags.indexWhere((p) => p.toLowerCase() == b.name.toLowerCase());
-        if (aIndex == -1 && bIndex == -1) return 0;
-        if (aIndex == -1) return 1;
-        if (bIndex == -1) return -1;
-        return aIndex.compareTo(bIndex);
-      });
-      
-      // If no predefined tags found, create them from the predefined list
-      if (filteredTags.isEmpty) {
-        debugPrint('⚠️ No predefined tags found in backend. Using predefined list.');
-        // Return tags based on predefined list (these will need to be created in backend by admin)
-        return predefinedTags.map((name) => Tag(
-          id: name.toLowerCase().replaceAll(' ', '-'),
-          name: name,
-          description: 'Tag for $name builds',
-        )).toList();
+      // Parse all tags from backend (database seeds)
+      // Note: Backend may not return Id for non-admin users, but we can use name to find Id when needed
+      final allTags = <Tag>[];
+      for (var json in tagsJson) {
+        try {
+          if (json is Map<String, dynamic>) {
+            debugPrint('BuildService.getTags: Parsing tag: ${json['name'] ?? json['Name']}');
+            final tag = Tag.fromJson(json);
+            allTags.add(tag);
+          }
+        } catch (e, stack) {
+          debugPrint('BuildService.getTags: Error parsing tag: $e');
+          debugPrint('BuildService.getTags: Tag JSON: $json');
+          debugPrint('BuildService.getTags: Stack: $stack');
+        }
       }
+      debugPrint('BuildService.getTags: Successfully parsed ${allTags.length} tags');
       
-      return filteredTags;
-    } catch (e) {
-      debugPrint('Error fetching tags: $e');
-      // If error, return predefined tags as fallback
-      return predefinedTags.map((name) => Tag(
-        id: name.toLowerCase().replaceAll(' ', '-'),
-        name: name,
-        description: 'Tag for $name builds',
-      )).toList();
+      // Sort by name alphabetically
+      allTags.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      
+      return allTags;
+    } catch (e, stack) {
+      // Log error but don't return empty list - let the error propagate
+      debugPrint('BuildService.getTags: Error fetching tags: $e');
+      debugPrint('BuildService.getTags: Stack: $stack');
+      rethrow; // Re-throw to let provider handle the error
     }
   }
 
@@ -376,7 +619,6 @@ class BuildService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error finding tag by name: $e');
       return null;
     }
   }
@@ -384,7 +626,6 @@ class BuildService {
   /// Adds a tag to a build by tag name (will find or suggest creating the tag)
   Future<void> addTagToBuildByName(String buildId, String tagName) async {
     try {
-      // First, try to find the tag by name
       final tagId = await findTagIdByName(tagName);
       if (tagId == null) {
         throw Exception('Tag "$tagName" not found in backend. Please create it first through admin panel.');
@@ -395,7 +636,6 @@ class BuildService {
         'tagId': tagId,
       });
     } catch (e) {
-      debugPrint('Error adding tag to build: $e');
       rethrow;
     }
   }
@@ -408,7 +648,6 @@ class BuildService {
         'tagId': tagId,
       });
     } catch (e) {
-      debugPrint('Error adding tag to build: $e');
       rethrow;
     }
   }
@@ -418,7 +657,6 @@ class BuildService {
     try {
       await _dio.delete('$apiBaseUrl/BuildTags/$buildTagId');
     } catch (e) {
-      debugPrint('Error removing tag from build: $e');
       rethrow;
     }
   }
@@ -431,7 +669,6 @@ class BuildService {
         'paging': false,
       });
       final List<dynamic> buildTagsJson = response.data as List<dynamic>? ?? [];
-      // Extract tags from buildTags
       final tagIds = buildTagsJson
           .map((bt) {
             final map = bt as Map<String, dynamic>;
@@ -443,7 +680,6 @@ class BuildService {
       
       if (tagIds.isEmpty) return [];
       
-      // Fetch tag details
       final tagsResponse = await _dio.post('$apiBaseUrl/Tags/get', data: {
         'tagId': tagIds,
         'paging': false,
@@ -451,7 +687,6 @@ class BuildService {
       final List<dynamic> tagsJson = tagsResponse.data as List<dynamic>? ?? [];
       return tagsJson.map((json) => Tag.fromJson(json)).toList();
     } catch (e) {
-      debugPrint('Error fetching build tags: $e');
       rethrow;
     }
   }
@@ -480,6 +715,68 @@ final allBuildsProvider = FutureProvider<List<Build>>((ref) async {
   // Fetch only published builds and disable paging to get all of them.
   return buildService.getBuilds({'status': ['PUBLISHED'], 'paging': false});
 });
+
+/// A provider that lazily fetches components for specific build IDs.
+/// This is used for lazy loading components only when builds are visible.
+final buildComponentsLazyProvider = FutureProvider.family<Map<String, List<Map<String, dynamic>>>, List<String>>((ref, buildIds) async {
+  if (buildIds.isEmpty) return {};
+  final buildService = ref.watch(buildServiceProvider);
+  return buildService.getBuildComponents(buildIds);
+});
+
+/// Session-based cache for components.
+/// Stores fetched components in memory to avoid re-fetching the same component.
+final componentCacheProvider = StateNotifierProvider<ComponentCacheNotifier, Map<String, Map<String, dynamic>>>((ref) {
+  return ComponentCacheNotifier();
+});
+
+class ComponentCacheNotifier extends StateNotifier<Map<String, Map<String, dynamic>>> {
+  ComponentCacheNotifier() : super({});
+
+  /// Adds a component to the cache
+  void addComponent(String componentId, Map<String, dynamic> componentData) {
+    if (!state.containsKey(componentId)) {
+      state = {...state, componentId: componentData};
+    }
+  }
+
+  /// Adds multiple components to the cache
+  void addComponents(Map<String, Map<String, dynamic>> components) {
+    final newState = {...state};
+    components.forEach((id, data) {
+      if (!newState.containsKey(id)) {
+        newState[id] = data;
+      }
+    });
+    state = newState;
+  }
+
+  /// Gets a component from cache, returns null if not found
+  Map<String, dynamic>? getComponent(String componentId) {
+    return state[componentId];
+  }
+
+  /// Checks if a component is in cache
+  bool hasComponent(String componentId) {
+    return state.containsKey(componentId);
+  }
+
+  /// Gets multiple components from cache, returns only cached ones
+  Map<String, Map<String, dynamic>> getComponents(List<String> componentIds) {
+    final result = <String, Map<String, dynamic>>{};
+    for (final id in componentIds) {
+      if (state.containsKey(id)) {
+        result[id] = state[id]!;
+      }
+    }
+    return result;
+  }
+
+  /// Clears the cache
+  void clear() {
+    state = {};
+  }
+}
 
 /// A provider that fetches the details of a single build by its ID.
 final buildDetailProvider = FutureProvider.family<Build, String>((ref, buildId) async {
