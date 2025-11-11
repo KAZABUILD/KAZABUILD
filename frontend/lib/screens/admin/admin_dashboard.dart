@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
+import '../../models/build_provider.dart';
+import '../../models/tag_model.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -73,6 +75,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       label: 'Parts',
       route: '/admin/parts',
     ),
+    NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
     NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
     NavigationItem(
       icon: Icons.analytics,
@@ -553,6 +556,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final buildsAsync = ref.watch(adminBuildsProvider(_buildsParams));
     final forumPostsAsync = ref.watch(adminForumPostsProvider(_forumPostsParams));
     final componentsAsync = ref.watch(adminComponentsProvider(_componentsParams));
+    final tagsAsync = ref.watch(tagsProvider);
 
     // Debug logging
     debugPrint('Dashboard State: Users - loading: ${usersAsync.isLoading}, error: ${usersAsync.hasError}, hasValue: ${usersAsync.valueOrNull != null}');
@@ -629,7 +633,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Stats Cards
-            _buildStatsGrid(isDark, colors, usersAsync, buildsAsync, forumPostsAsync, componentsAsync),
+            _buildStatsGrid(isDark, colors, usersAsync, buildsAsync, forumPostsAsync, componentsAsync, tagsAsync),
             const SizedBox(height: 32),
             // Recent Activity Section
             _buildRecentActivity(isDark, colors, usersAsync, buildsAsync, forumPostsAsync),
@@ -649,12 +653,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     AsyncValue<List<AdminBuild>> buildsAsync,
     AsyncValue<List<AdminForumPost>> forumPostsAsync,
     AsyncValue<List<AdminComponent>> componentsAsync,
+    AsyncValue<List<Tag>> tagsAsync,
   ) {
     // Handle loading state - show loading for all cards if any is loading
     if (usersAsync.isLoading || buildsAsync.isLoading || 
-        forumPostsAsync.isLoading || componentsAsync.isLoading) {
+        forumPostsAsync.isLoading || componentsAsync.isLoading || tagsAsync.isLoading) {
       final screenWidth = MediaQuery.of(context).size.width;
-      final crossAxisCount = screenWidth > 1200
+      final crossAxisCount = screenWidth > 1400
+          ? 5
+          : screenWidth > 1200
           ? 4
           : screenWidth > 800
           ? 3
@@ -671,7 +678,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           mainAxisSpacing: 16,
           childAspectRatio: 1.2,
         ),
-        itemCount: 4,
+        itemCount: 5,
         itemBuilder: (context, index) {
           return Container(
             padding: const EdgeInsets.all(20),
@@ -699,6 +706,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final builds = buildsAsync.valueOrNull ?? [];
     final posts = forumPostsAsync.valueOrNull ?? [];
     final components = componentsAsync.valueOrNull ?? [];
+    final tags = tagsAsync.valueOrNull ?? [];
 
     // Debug logging
     debugPrint('Dashboard Stats: Users: ${users.length}, Builds: ${builds.length}, Posts: ${posts.length}, Components: ${components.length}');
@@ -707,6 +715,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final totalBuilds = builds.length;
     final totalForumPosts = posts.length;
     final totalComponents = components.length;
+    final totalTags = tags.length;
 
     // Calculate growth percentages (this month vs last month)
     final now = DateTime.now();
@@ -801,10 +810,23 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         isLoading: false,
         hasError: componentsAsync.hasError,
       ),
+      StatCard(
+        title: 'Total Tags',
+        value: _formatNumber(totalTags),
+        change: '+0%', // Tags don't have date tracking for now
+        changeLabel: '',
+        isPositive: true,
+        icon: Icons.label,
+        color: AppColorsDark.buttonPurple,
+        isLoading: false,
+        hasError: tagsAsync.hasError,
+      ),
     ];
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth > 1200
+    final crossAxisCount = screenWidth > 1400
+        ? 5
+        : screenWidth > 1200
         ? 4
         : screenWidth > 800
         ? 3

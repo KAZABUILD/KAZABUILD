@@ -16,7 +16,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
-import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -543,154 +542,131 @@ class _FilterPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final buildsAsync = ref.watch(allBuildsProvider);
+    final tagsAsync = ref.watch(tagsProvider);
 
     return buildsAsync.when(
       data: (builds) {
-        // Collect all unique tags and statuses
-        // Only show predefined meaningful tags
-        final allTags = <String>{};
+        // Collect all unique statuses from builds
         final allStatuses = <String>{};
-        
-        // Predefined meaningful tags
-        const predefinedTags = [
-          'Gaming',
-          'Budget',
-          'Workstation',
-          'RGB',
-          'Quiet',
-          'Overclocking',
-          'Mini-ITX',
-          'Streaming',
-          'Content Creation',
-          'Productivity',
-          'Compact',
-          'High-End',
-          'Mid-Range',
-          'Entry-Level',
-          'Water-Cooled',
-          'Air-Cooled',
-          'Custom Loop',
-          'SFF (Small Form Factor)',
-          'Silent',
-          'RGB Sync',
-        ];
-        
         for (final build in builds) {
-          // Only add predefined tags
-          for (final tag in build.tags) {
-            if (predefinedTags.any((predefined) => 
-              tag.toLowerCase().trim() == predefined.toLowerCase().trim()
-            )) {
-              allTags.add(tag);
-            }
-          }
           allStatuses.add(build.status);
         }
-        
-        // Sort tags by predefined order
-        final sortedTags = predefinedTags.where((predefined) {
-          return allTags.any((tag) => 
-            tag.toLowerCase().trim() == predefined.toLowerCase().trim()
-          );
-        }).toList();
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+        return tagsAsync.when(
+          data: (tags) {
+            // Get all tag names from API (database seeds)
+            final allTagNames = tags.map((tag) => tag.name).toList();
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.filters,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Status Filter
+                  if (allStatuses.isNotEmpty) ...[
+                    Text(
+                      'Status',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: allStatuses.map((status) {
+                        final isSelected = selectedStatuses.contains(status);
+                        return FilterChip(
+                          label: Text(status),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            final newStatuses = Set<String>.from(selectedStatuses);
+                            if (selected) {
+                              newStatuses.add(status);
+                            } else {
+                              newStatuses.remove(status);
+                            }
+                            onStatusesChanged(newStatuses);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  // Tags Filter - Show all tags from database
+                  if (allTagNames.isNotEmpty) ...[
+                    Text(
+                      'Tags',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: allTagNames.map((tagName) {
+                        final isSelected = selectedTags.contains(tagName);
+                        return FilterChip(
+                          label: Text(tagName),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            final newTags = Set<String>.from(selectedTags);
+                            if (selected) {
+                              newTags.add(tagName);
+                            } else {
+                              newTags.remove(tagName);
+                            }
+                            onTagsChanged(newTags);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  // Clear Filters Button
+                  if (selectedTags.isNotEmpty || selectedStatuses.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () {
+                        onTagsChanged({});
+                        onStatusesChanged({});
+                      },
+                      icon: const Icon(Icons.clear_all),
+                      label: Text(AppLocalizations.of(context)!.clearAllFilters),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+          loading: () => Container(
+            padding: const EdgeInsets.all(16),
+            child: const CircularProgressIndicator(),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppLocalizations.of(context)!.filters,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Status Filter
-              if (allStatuses.isNotEmpty) ...[
-                Text(
-                  'Status',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: allStatuses.map((status) {
-                    final isSelected = selectedStatuses.contains(status);
-                    return FilterChip(
-                      label: Text(status),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        final newStatuses = Set<String>.from(selectedStatuses);
-                        if (selected) {
-                          newStatuses.add(status);
-                        } else {
-                          newStatuses.remove(status);
-                        }
-                        onStatusesChanged(newStatuses);
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-              ],
-              // Tags Filter
-              if (allTags.isNotEmpty) ...[
-                Text(
-                  'Tags',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: sortedTags.map((tag) {
-                    final isSelected = selectedTags.contains(tag);
-                    return FilterChip(
-                      label: Text(tag),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        final newTags = Set<String>.from(selectedTags);
-                        if (selected) {
-                          newTags.add(tag);
-                        } else {
-                          newTags.remove(tag);
-                        }
-                        onTagsChanged(newTags);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ],
-              // Clear Filters Button
-              if (selectedTags.isNotEmpty || selectedStatuses.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: () {
-                    onTagsChanged({});
-                    onStatusesChanged({});
-                  },
-                  icon: const Icon(Icons.clear_all),
-                  label: Text(AppLocalizations.of(context)!.clearAllFilters),
-                ),
-              ],
-            ],
+          error: (error, stack) => Container(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Error loading tags: $error',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
           ),
         );
       },
@@ -727,13 +703,13 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
 
   @override
   Widget build(BuildContext context) {
-    // Skip image fetching entirely - show placeholders for all builds
-    // This prevents 429 errors and unnecessary API calls
-    // Images will be loaded on-demand when user clicks on a build card
-    return _buildGrid(<String, String?>{}, imagesLoaded: true);
+    // Don't fetch components on explore page to completely avoid 429 errors
+    // Components will be shown only on build detail page
+    // This makes the explore page load instantly without any rate limiting issues
+    return _buildGrid(<String, String?>{}, imagesLoaded: true, componentsByBuildId: {});
   }
 
-  Widget _buildGrid(Map<String, String?> imageMap, {required bool imagesLoaded}) {
+  Widget _buildGrid(Map<String, String?> imageMap, {required bool imagesLoaded, Map<String, List<Map<String, dynamic>>> componentsByBuildId = const {}}) {
     final theme = Theme.of(context);
     
     return Column(
@@ -750,6 +726,8 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
           ),
           itemCount: _currentPageBuilds.length,
            itemBuilder: (context, index) {
+             // Components are not fetched on explore page to avoid 429 errors
+             // They will be displayed on the build detail page
              return _BuildCard(
                buildData: _currentPageBuilds[index],
                imageMap: imageMap,
@@ -1201,63 +1179,17 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                       ],
                     ),
                   const SizedBox(height: 8),
-                  // Components list - show component type and name
-                  if (widget.buildData.components.isNotEmpty) ...[
-                    ...widget.buildData.components.take(5).map((component) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_getComponentTypeShortName(component.type)}: ',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                component.name,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 11,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ] else ...[
-                    // Debug: Show message if no components
-                    if (kDebugMode)
-                      Text(
-                        'No components (${widget.buildData.components.length})',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                  ],
-                  if (widget.buildData.components.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '+${widget.buildData.components.length - 5} more components',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+                  // Components are not shown on explore page to avoid 429 errors
+                  // Click on the card to view components on the detail page
+                  Text(
+                    'Click to view components',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      fontStyle: FontStyle.italic,
                     ),
-                  // Tags section - show tags if available (make them more visible)
-                  if (widget.buildData.components.isNotEmpty) const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 8),
                   if (widget.buildData.tags.isNotEmpty) ...[
                     Wrap(
                       spacing: 6,
@@ -1391,31 +1323,5 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
         ),
       ),
     );
-  }
-
-  /// Returns a short name for component type
-  String _getComponentTypeShortName(ComponentType type) {
-    switch (type) {
-      case ComponentType.cpu:
-        return 'CPU';
-      case ComponentType.gpu:
-        return 'GPU';
-      case ComponentType.motherboard:
-        return 'MB';
-      case ComponentType.ram:
-        return 'RAM';
-      case ComponentType.storage:
-        return 'SSD';
-      case ComponentType.psu:
-        return 'PSU';
-      case ComponentType.cooler:
-        return 'Cooler';
-      case ComponentType.caseFan:
-        return 'Fan';
-      case ComponentType.pcCase:
-        return 'Case';
-      case ComponentType.monitor:
-        return 'Monitor';
-    }
   }
 }

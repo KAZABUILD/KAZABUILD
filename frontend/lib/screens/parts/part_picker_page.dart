@@ -21,6 +21,8 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/component_compatibility_provider.dart' as compatibility;
+import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
@@ -33,11 +35,12 @@ class PartPickerPage extends ConsumerStatefulWidget {
   final ComponentType componentType;
 
   /// The user's current build, used for compatibility checks and summary display.
-  final List<PcComponent> currentBuild;
+  /// If null, will be fetched from buildProvider.
+  final List<PcComponent>? currentBuild;
   const PartPickerPage({
     super.key,
     required this.componentType,
-    required this.currentBuild,
+    this.currentBuild,
   });
 
   @override
@@ -110,6 +113,9 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   // Case filters (additional)
   RangeValues? _caseMaxGpuLengthRange;
   RangeValues? _caseMaxCoolerHeightRange;
+  
+  // Compatibility filter
+  bool _enableCompatibilityFilter = false;
 
   @override
   void initState() {
@@ -128,8 +134,27 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     setState(() {}); // Trigger rebuild to apply search filter
   }
 
+  /// Fetches compatible component IDs for given component IDs
+  Future<Set<String>> _getCompatibleComponentIds(List<String> componentIds, WidgetRef ref) async {
+    final Set<String> compatibleIds = {};
+    final service = ref.read(compatibility.componentCompatibilityServiceProvider);
+    
+    try {
+      for (final componentId in componentIds) {
+        final compatible = await service.getCompatibleComponentIds(componentId);
+        compatibleIds.addAll(compatible);
+        // Also add the component itself as compatible
+        compatibleIds.add(componentId);
+      }
+    } catch (e) {
+      debugPrint('Error fetching compatible components: $e');
+    }
+    
+    return compatibleIds;
+  }
+
   /// Filters products based on all active filters
-  List<BaseComponent> _filterProducts(List<BaseComponent> products) {
+  List<BaseComponent> _filterProducts(List<BaseComponent> products, {Set<String>? compatibleIds}) {
     return products.where((product) {
       // Search filter
       final searchText = _searchController.text.toLowerCase();
@@ -367,6 +392,15 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
           break;
       }
 
+      // Compatibility filter
+      if (_enableCompatibilityFilter && compatibleIds != null) {
+        // If compatibility filter is enabled, only show products that are compatible
+        // with at least one component in the current build
+        if (!compatibleIds.contains(product.id)) {
+          return false;
+        }
+      }
+
       return true;
     }).toList();
   }
@@ -448,8 +482,17 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             _caseMaxCoolerHeightRange = RangeValues(0, maxCoolerHeight > 0 ? maxCoolerHeight : 200);
                           }
                         }
+                        // Get current build from provider if not provided
+                        final List<PcComponent> currentBuild = widget.currentBuild ?? ref.watch(buildProvider);
+                        
                         return _LeftPanel(
-                          currentBuild: widget.currentBuild,
+                          enableCompatibilityFilter: _enableCompatibilityFilter,
+                          onCompatibilityFilterChanged: (val) {
+                            setState(() {
+                              _enableCompatibilityFilter = val;
+                            });
+                          },
+                          currentBuild: currentBuild,
                           allProducts: products,
                           componentType: widget.componentType,
                           // Filter state and callbacks
@@ -794,6 +837,39 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(child: Text('Error: $err')),
                       data: (products) {
+                        // Get current build from provider if not provided
+                        final List<PcComponent> currentBuild = widget.currentBuild ?? ref.watch(buildProvider);
+                        
+                        // If compatibility filter is enabled, fetch compatible component IDs
+                        if (_enableCompatibilityFilter && currentBuild.isNotEmpty) {
+                          // Get all component IDs from current build
+                          final buildComponentIds = currentBuild
+                              .where((item) => item.selectedProduct != null)
+                              .map((item) => item.selectedProduct!.id)
+                              .toList();
+                          
+                          if (buildComponentIds.isNotEmpty) {
+                            // Use FutureBuilder to fetch compatible components
+                            return FutureBuilder<Set<String>>(
+                              future: _getCompatibleComponentIds(buildComponentIds, ref),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                
+                                final compatibleIds = snapshot.data ?? <String>{};
+                                final filteredProducts = _filterProducts(products, compatibleIds: compatibleIds);
+                                
+                                return _ProductList(
+                                  componentType: widget.componentType,
+                                  searchController: _searchController,
+                                  products: filteredProducts,
+                                );
+                              },
+                            );
+                          }
+                        }
+                        
                         final filteredProducts = _filterProducts(products);
                         return _ProductList(
                           componentType: widget.componentType,
@@ -915,8 +991,14 @@ class _LeftPanel extends ConsumerWidget {
   final Function(String, bool) onMonitorAdaptiveSyncTypeChanged;
   final Set<String> selectedMonitorAspectRatios;
   final Function(String, bool) onMonitorAspectRatioChanged;
+  
+  // Compatibility filter
+  final bool enableCompatibilityFilter;
+  final Function(bool) onCompatibilityFilterChanged;
 
   const _LeftPanel({
+    required this.enableCompatibilityFilter,
+    required this.onCompatibilityFilterChanged,
     required this.currentBuild,
     required this.allProducts,
     required this.componentType,
@@ -1021,14 +1103,15 @@ class _LeftPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// A checkbox to toggle the compatibility filter.
-        // TODO: Implement the actual compatibility filtering logic.
         CheckboxListTile(
           title: const Text(
             'Compatibility Filter',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          value: false, // TODO: Re-enable and implement compatibility logic.
-          onChanged: (val) {},
+          value: enableCompatibilityFilter,
+          onChanged: (val) {
+            onCompatibilityFilterChanged(val ?? false);
+          },
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
           activeColor: AppColorsDark.textPurple,
@@ -2420,9 +2503,14 @@ abstract class _ProductRow extends ConsumerWidget {
           const SizedBox(width: 24),
           ElevatedButton.icon(
             onPressed: () {
-              // Simply pop and return the selected product
-              // BuildNowPage will handle adding it to the build
-              Navigator.pop(context, product);
+              // Add component to build (will be added to the correct slot based on component type)
+              ref.read(buildProvider.notifier).addComponent(product);
+              // Navigate to build-now page
+              context.go('/build-now');
+              // Also pop if we came from a navigation stack
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColorsDark.buttonGreen,

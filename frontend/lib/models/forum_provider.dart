@@ -18,15 +18,59 @@ class ForumService {
   ForumService(this._dio);
 
   /// Fetches forum posts from the backend based on a given filter map.
+  /// Also fetches comment counts for each post in parallel.
   Future<List<ForumPost>> getPosts(Map<String, dynamic> filter) async {
     try {
       final response = await _dio.post('$apiBaseUrl/ForumPosts/get', data: filter);
 
       final List<dynamic> postsJson = response.data as List<dynamic>? ?? [];
-      return postsJson.map((json) => ForumPost.fromJson(json)).toList();
+      final posts = postsJson.map((json) => ForumPost.fromJson(json)).toList();
+      
+      // Fetch comment counts for all posts in parallel
+      final commentCounts = await Future.wait(
+        posts.map((post) => _getCommentCount(post.id)),
+      );
+      
+      // Update posts with actual comment counts
+      final updatedPosts = <ForumPost>[];
+      for (int i = 0; i < posts.length; i++) {
+        updatedPosts.add(ForumPost(
+          id: posts[i].id,
+          title: posts[i].title,
+          creatorId: posts[i].creatorId,
+          topic: posts[i].topic,
+          content: posts[i].content,
+          createdAt: posts[i].createdAt,
+          replies: posts[i].replies,
+          replyCount: commentCounts[i], // Use fetched count
+          acceptedReplyId: posts[i].acceptedReplyId,
+          tags: posts[i].tags,
+          build: posts[i].build,
+        ));
+      }
+      
+      return updatedPosts;
     } catch (e) {
       // In case of an error, rethrow it to be handled by the provider.
       rethrow;
+    }
+  }
+  
+  /// Fetches the comment count for a specific forum post.
+  Future<int> _getCommentCount(String forumPostId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/UserComments/get', data: {
+        'ForumPostId': [forumPostId],
+        'CommentTargetType': ['FORUM'],
+        'Paging': false,
+      });
+      
+      final List<dynamic> commentsJson = response.data as List<dynamic>? ?? [];
+      return commentsJson.length;
+    } catch (e) {
+      // If error, return 0
+      debugPrint('Error fetching comment count for post $forumPostId: $e');
+      return 0;
     }
   }
 

@@ -40,6 +40,8 @@ import 'package:frontend/screens/admin/admin_guides_page.dart';
 import 'package:frontend/screens/admin/admin_analytics_page.dart';
 import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
+import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
+import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
 
@@ -173,6 +175,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/admin/tags',
+        name: 'admin-tags',
+        builder: (context, state) => AdminBaseLayout(
+          currentRoute: '/admin/tags',
+          pageTitle: 'Tags Management',
+          child: const AdminTagsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/component-compatibility-test',
+        name: 'admin-component-compatibility-test',
+        builder: (context, state) => const AdminComponentCompatibilityTestPage(),
+      ),
+      GoRoute(
         path: '/build/:id',
         name: 'build-detail',
         builder: (context, state) {
@@ -297,7 +313,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             (e) => e.name == typeStr,
             orElse: () => ComponentType.cpu,
           );
-          return PartPickerPage(componentType: type, currentBuild: const []);
+          // currentBuild null olarak geçiliyor, PartPickerPage buildProvider'dan alacak
+          return PartPickerPage(componentType: type);
         },
       ),
       GoRoute(

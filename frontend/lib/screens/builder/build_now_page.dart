@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/currency_provider.dart';
@@ -40,7 +39,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     PcComponent(name: 'CPU Cooler', type: ComponentType.cooler),
     PcComponent(name: 'Memory (RAM)', type: ComponentType.ram),
     PcComponent(name: 'Storage', type: ComponentType.storage),
-    PcComponent(name: 'Video Card', type: ComponentType.gpu),
+    PcComponent(name: 'GPU (Video Card)', type: ComponentType.gpu),
     PcComponent(name: 'Power Supply', type: ComponentType.psu),
     PcComponent(name: 'Case', type: ComponentType.pcCase),
     PcComponent(name: 'Monitor', type: ComponentType.monitor),
@@ -82,78 +81,63 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 
   /// Saves the current build to the backend.
   Future<String> saveBuild(WidgetRef ref, String name, String description, {List<String>? tagIds}) async {
-    debugPrint('BuildNotifier.saveBuild: Starting to save build');
     final buildService = ref.read(buildServiceProvider);
     final userId = ref.read(authProvider).valueOrNull?.uid;
 
     if (userId == null) {
-      debugPrint('BuildNotifier.saveBuild: User not logged in');
       throw Exception('You must be logged in to save a build.');
     }
-    debugPrint('BuildNotifier.saveBuild: User ID: $userId');
-
-    // Count components
-    final componentCount = state.where((slot) => slot.selectedProduct != null).length;
-    debugPrint('BuildNotifier.saveBuild: Building with $componentCount components');
 
     // 1. Create the main build entry.
-    debugPrint('BuildNotifier.saveBuild: Creating build with name: $name');
-    try {
-      final newBuildId = await buildService.createBuild({
-        'userId': userId,
-        'name': name,
-        'description': description,
-        'status': 'DRAFT', // Save as draft by default
-      });
-      debugPrint('BuildNotifier.saveBuild: Build created with ID: $newBuildId');
+    final newBuildId = await buildService.createBuild({
+      'userId': userId,
+      'name': name,
+      'description': description,
+      'status': 'DRAFT',
+    });
 
-      // 2. Add each selected component to the newly created build.
-      int componentIndex = 0;
-      for (final componentSlot in state) {
-        if (componentSlot.selectedProduct != null) {
-          componentIndex++;
-          debugPrint('BuildNotifier.saveBuild: Adding component $componentIndex/${componentCount}: ${componentSlot.selectedProduct!.id}');
-          try {
-            await buildService.addComponentToBuild(
-              newBuildId,
-              componentSlot.selectedProduct!.id,
-              1, // Assuming quantity is always 1 for now
-            );
-            debugPrint('BuildNotifier.saveBuild: Component $componentIndex added successfully');
-          } catch (e) {
-            debugPrint('BuildNotifier.saveBuild: Error adding component $componentIndex: $e');
-            // Continue with other components even if one fails
-          }
-        }
+    // 2. Add each selected component to the newly created build.
+    final selectedComponents = state.where((slot) => slot.selectedProduct != null).toList();
+    debugPrint('saveBuild: Found ${selectedComponents.length} selected components in state');
+    
+    for (final componentSlot in selectedComponents) {
+      final component = componentSlot.selectedProduct!;
+      final componentId = component.id;
+      
+      debugPrint('saveBuild: Processing component ${component.name} (ID: $componentId, Type: ${component.type})');
+      
+      if (componentId.isEmpty) {
+        debugPrint('saveBuild: ERROR - Component ${component.name} has empty ID! Skipping.');
+        continue;
       }
-
-      // 3. Add tags to the build if provided
-      // tagIds is actually a list of tag names, not IDs
-      if (tagIds != null && tagIds.isNotEmpty) {
-        debugPrint('BuildNotifier.saveBuild: Adding ${tagIds.length} tags to build');
-        for (final tagName in tagIds) {
-          try {
-            // Try to find the actual tag ID in backend by name
-            final tagId = await buildService.findTagIdByName(tagName);
-            if (tagId != null) {
-              await buildService.addTagToBuild(newBuildId, tagId);
-              debugPrint('BuildNotifier.saveBuild: Tag "$tagName" (ID: $tagId) added successfully');
-            } else {
-              debugPrint('BuildNotifier.saveBuild: Warning - Tag "$tagName" not found in backend. Skipping.');
-            }
-          } catch (e) {
-            debugPrint('BuildNotifier.saveBuild: Error adding tag "$tagName": $e');
-            // Continue with other tags even if one fails
-          }
-        }
+      
+      try {
+        await buildService.addComponentToBuild(
+          newBuildId,
+          componentId,
+          1,
+        );
+        debugPrint('saveBuild: Successfully added component ${component.name} to build');
+      } catch (e) {
+        debugPrint('saveBuild: ERROR adding component ${component.name} to build: $e');
       }
-
-      debugPrint('BuildNotifier.saveBuild: Build saved successfully with ID: $newBuildId');
-      return newBuildId;
-    } catch (e) {
-      debugPrint('BuildNotifier.saveBuild: Error creating build: $e');
-      rethrow;
     }
+
+    // 3. Add tags to the build if provided
+    if (tagIds != null && tagIds.isNotEmpty) {
+      for (final tagName in tagIds) {
+        try {
+          final tagId = await buildService.findTagIdByName(tagName);
+          if (tagId != null) {
+            await buildService.addTagToBuild(newBuildId, tagId);
+          }
+        } catch (e) {
+          // Continue with other tags even if one fails
+        }
+      }
+    }
+
+    return newBuildId;
   }
 
   /// Publishes a build by updating its status.
@@ -162,15 +146,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     try {
       // Update build status to PUBLISHED
       await buildService.updateBuild(buildId, {'status': 'PUBLISHED'});
-      // Invalidate the providers so the UI updates with the new status
-      // This will trigger a refresh when the provider is next accessed
-      ref.invalidate(allBuildsProvider);
-      final userId = ref.read(authProvider).valueOrNull?.uid;
-      if (userId != null) {
-        ref.invalidate(userBuildsProvider(userId));
-      }
     } catch (e) {
-      // Log the error for debugging
       debugPrint('Error in publishBuild: $e');
       rethrow;
     }
@@ -218,21 +194,15 @@ class BuildNowPage extends ConsumerStatefulWidget {
   ConsumerState<BuildNowPage> createState() => _BuildNowPageState();
 }
 
-/// The state for the [BuildNowPage].
 class _BuildNowPageState extends ConsumerState<BuildNowPage> {
-  /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  /// A mock link for sharing the build.
-  // TODO: This should be generated dynamically based on the build's state.
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   final String buildLink = 'https://kazabuild.com/b/somerandom123';
 
-  /// A computed property to check if any components have been selected in the build.
   bool _isBuildEmpty(List<PcComponent> components) {
     return components.every((component) => component.selectedProduct == null);
   }
 
-  /// A computed property to calculate the total price of all selected components.
   double _totalPrice(List<PcComponent> components) {
     return components.fold(
       0.0,
@@ -240,7 +210,6 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     );
   }
 
-  /// A computed property to calculate the estimated power consumption in watts.
   int _estimatedWattage(List<PcComponent> components) {
     return components.fold(0, (sum, item) {
       final product = item.selectedProduct;
@@ -250,28 +219,19 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       if (product is GPUComponent) {
         return sum + product.thermalDesignPower.toInt();
       }
-      // Add wattage for other components if available
-      if (product is PowerSupplyComponent) {
-        // PSU itself doesn't add to wattage, but we could estimate other parts
-      }
       if (product is MotherboardComponent) {
-        // Estimate ~30-50W for motherboard
         return sum + 40;
       }
       if (product is MemoryComponent) {
-        // Estimate ~5W per stick
         return sum + (5 * product.moduleQuantity);
       }
       if (product is StorageComponent) {
-        // Estimate ~10W for SSD/HDD
         return sum + 10;
       }
       return sum;
     });
   }
 
-  /// A computed property to determine the overall compatibility status of the build.
-  // TODO: Implement a real compatibility check engine instead of this placeholder logic.
   String _compatibilityStatus(List<PcComponent> components) {
     final selectedComponents = components
         .where((c) => c.selectedProduct != null)
@@ -285,7 +245,21 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         : 'Compatibility issues found!';
   }
 
-  /// Shows a dialog to get the build name and description, then saves it.
+  void _showSnackBar({
+    required String message,
+    Color? backgroundColor,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    _scaffoldMessengerKey.currentState?.clearSnackBars();
+    _scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        duration: duration,
+      ),
+    );
+  }
+
   Future<String?> _showSaveBuildDialog() async {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -338,7 +312,6 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                               spacing: 8,
                               runSpacing: 8,
                               children: tags.map((tag) {
-                                // Store tag name instead of ID for easier matching
                                 final isSelected = selectedTagIds.contains(tag.name);
                                 return FilterChip(
                                   label: Text(tag.name),
@@ -384,29 +357,111 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       ),
     );
 
-    if (shouldSave == true && mounted) {
+    if (shouldSave == true) {
       try {
         final newBuildId = await ref
             .read(buildProvider.notifier)
             .saveBuild(ref, nameController.text, descriptionController.text, tagIds: selectedTagIds.toList());
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.buildSavedSuccessfully),
-            backgroundColor: Colors.green,
-          ),
+        _showSnackBar(
+          message: 'Build successfully saved to your profile',
+          backgroundColor: Colors.green,
         );
         return newBuildId;
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppLocalizations.of(context)!.failedToSaveBuild}: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+        _showSnackBar(
+          message: '${AppLocalizations.of(context)!.failedToSaveBuild}: $e',
+          backgroundColor: Theme.of(context).colorScheme.error,
         );
       }
     }
     return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final components = ref.watch(buildProvider);
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
+    final selectedCurrency = ref.watch(currencyProvider);
+    final currencyData = currencyDetails[selectedCurrency]!;
+    final totalPrice = _totalPrice(components) * currencyData.exchangeRate;
+    final estimatedWattage = _estimatedWattage(components);
+
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey,
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: CustomDrawer(showProfileArea: true),
+        backgroundColor: theme.colorScheme.background,
+        body: Column(
+          children: [
+            CustomNavigationBar(scaffoldKey: _scaffoldKey),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    _TopBar(
+                      theme: theme,
+                      buildLink: buildLink,
+                      components: components,
+                      totalPrice: totalPrice,
+                      currencyData: currencyData,
+                      estimatedWattage: estimatedWattage,
+                      onSave: _showSaveBuildDialog,
+                      onNew: _startNewBuild,
+                      onPost: _publishBuild,
+                      isMobile: isMobile,
+                      onShowSnackBar: _showSnackBar,
+                    ),
+                    if (!_isBuildEmpty(components)) ...[
+                      const SizedBox(height: 16),
+                      _CompatibilityAndPriceBar(
+                        theme: theme,
+                        totalPrice: totalPrice,
+                        currencyData: currencyData,
+                        statusMessage: _compatibilityStatus(components),
+                        isMobile: isMobile,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    _ComponentTable(
+                      theme: theme,
+                      components: components,
+                      onRemove: (i) => ref.read(buildProvider.notifier).removeComponent(components[i].type),
+                      onAdd: (i) async {
+                        final selected = await Navigator.push<BaseComponent>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PartPickerPage(
+                              componentType: components[i].type,
+                              currentBuild: components,
+                            ),
+                          ),
+                        );
+                        if (selected != null && mounted) {
+                          if (selected.id.isEmpty) {
+                            _showSnackBar(
+                              message: 'Selected component has no ID. Try another.',
+                              backgroundColor: Colors.red,
+                            );
+                            return;
+                          }
+                          ref.read(buildProvider.notifier).addComponent(selected);
+                        }
+                      },
+                      isMobile: isMobile,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Clears the current build, with a confirmation dialog if it's not empty.
@@ -450,9 +505,6 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       debugPrint('_showPostBuildDialog: Widget not mounted, cannot show dialog');
       return null;
     }
-    
-    // Store a reference to the current context for navigation
-    final BuildContext? currentContext = mounted ? context : null;
     
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -757,7 +809,12 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         debugPrint('_showPostBuildDialog: Build published successfully');
       } catch (e) {
         debugPrint('_showPostBuildDialog: Error publishing build: $e');
-        rethrow;
+        _showSnackBar(
+          message: 'Failed to publish build: ${e.toString()}',
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        );
+        return null;
       }
 
       if (!mounted) {
@@ -765,117 +822,26 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         return null;
       }
 
-      // 4. Verify the build was published by fetching it
-      debugPrint('Verifying build was published...');
-      try {
-        final buildService = ref.read(buildServiceProvider);
-        final publishedBuild = await buildService.getBuildById(newBuildId);
-        debugPrint('Build status after publish: ${publishedBuild.status}');
-        if (publishedBuild.status != 'PUBLISHED') {
-          debugPrint('ERROR: Build status is ${publishedBuild.status}, expected PUBLISHED');
-          throw Exception('Build was not published correctly. Status: ${publishedBuild.status}');
-        }
-        debugPrint('Build verified as PUBLISHED');
-      } catch (e) {
-        debugPrint('Error verifying build: $e');
-        // Continue anyway - might be a temporary issue
-      }
-
-      if (!mounted) return null;
-
-      // 5. Invalidate and refresh the explore builds provider
-      debugPrint('Invalidating allBuildsProvider');
+      // 4. Invalidate providers to refresh explore builds
       ref.invalidate(allBuildsProvider);
-      
-      // Wait a moment for backend to process the status update
-      debugPrint('Waiting for backend to process...');
-      await Future.delayed(const Duration(milliseconds: 2500));
-      
-      if (!mounted) return null;
-
-      // Force refresh by reading the provider to ensure it fetches fresh data
-      debugPrint('Refreshing allBuildsProvider');
-      try {
-        // Clear any cached data first
-        ref.invalidate(allBuildsProvider);
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        final builds = await ref.read(allBuildsProvider.future);
-        debugPrint('Builds refreshed. Total builds: ${builds.length}');
-        
-        // Check if our build is in the list
-        final foundBuild = builds.any((build) => build.id == newBuildId);
-        debugPrint('Our build found in list: $foundBuild');
-        
-        if (foundBuild) {
-          debugPrint('SUCCESS: Published build found in list!');
-        } else {
-          debugPrint('WARNING: Published build not found in refreshed list');
-          debugPrint('Build IDs in list: ${builds.map((b) => b.id).toList()}');
-          // Try one more refresh after a delay
-          await Future.delayed(const Duration(milliseconds: 1000));
-          ref.invalidate(allBuildsProvider);
-        }
-      } catch (e, stackTrace) {
-        debugPrint('Error refreshing builds: $e');
-        debugPrint('Stack trace: $stackTrace');
-        // Even if refresh fails, continue - the page will refresh when navigated to
+      final userId = ref.read(authProvider).valueOrNull?.uid;
+      if (userId != null) {
+        ref.invalidate(userBuildsProvider(userId));
       }
 
-      if (!mounted) return null;
-
-      // Navigate to explore page - this will refresh the builds list
-      debugPrint('_showPostBuildDialog: Build published successfully, navigating to explore page');
-      
-      // Use a post-frame callback to ensure navigation happens after the current frame
-      if (mounted && currentContext != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && currentContext.mounted) {
-            try {
-              debugPrint('_showPostBuildDialog: Navigating to explore page');
-              currentContext.go('/explore');
-            } catch (e) {
-              debugPrint('_showPostBuildDialog: Navigation error: $e');
-              // Try alternative navigation method
-              try {
-                Navigator.of(currentContext).pushNamedAndRemoveUntil('/explore', (route) => false);
-              } catch (e2) {
-                debugPrint('_showPostBuildDialog: Alternative navigation also failed: $e2');
-              }
-            }
-          }
-        });
-      } else {
-        debugPrint('_showPostBuildDialog: Cannot navigate - context not available');
-      }
-      
+      // 5. Don't show snackbar here - widget might be disposed
+      // Success message will be shown in _publishBuild after dialog returns
       return newBuildId;
     } catch (e, stackTrace) {
       debugPrint('_showPostBuildDialog: Error publishing build: $e');
       debugPrint('_showPostBuildDialog: Stack trace: $stackTrace');
       
-      // Log the error - we can't show snackbar due to context issues
-      debugPrint('_showPostBuildDialog: ERROR - Failed to publish build: $e');
-      debugPrint('_showPostBuildDialog: Stack trace: $stackTrace');
-      
-      // Try to show error message if context is still available
-      if (mounted && currentContext != null && currentContext.mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (currentContext.mounted) {
-            try {
-              ScaffoldMessenger.of(currentContext).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to publish your build: ${e.toString()}'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 5),
-                ),
-              );
-            } catch (snackbarError) {
-              debugPrint('_showPostBuildDialog: Could not show error snackbar: $snackbarError');
-            }
-          }
-        });
-      }
+      // Show error message to user
+      _showSnackBar(
+        message: 'Failed to publish build: ${e.toString()}',
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+      );
       
       return null;
     }
@@ -889,11 +855,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final user = ref.read(authProvider).valueOrNull;
     if (user == null) {
       debugPrint('User not logged in');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in to publish your build.'),
-          backgroundColor: Colors.orange,
-        ),
+      _showSnackBar(
+        message: 'Please log in to publish your build.',
+        backgroundColor: Colors.orange,
       );
       return;
     }
@@ -903,11 +867,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final components = ref.read(buildProvider);
     if (_isBuildEmpty(components)) {
       debugPrint('Build is empty');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one component to your build before posting.'),
-          backgroundColor: Colors.orange,
-        ),
+      _showSnackBar(
+        message: 'Please add at least one component to your build before posting.',
+        backgroundColor: Colors.orange,
       );
       return;
     }
@@ -917,94 +879,14 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     debugPrint('Showing post build dialog...');
     final result = await _showPostBuildDialog();
     debugPrint('Post build dialog returned: $result');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final components = ref.watch(buildProvider);
-    final isMobile = MediaQuery.of(context).size.width < 700;
-
-    /// Watches the selected currency and gets its details for price conversion.
-    final selectedCurrency = ref.watch(currencyProvider);
-    final currencyData = currencyDetails[selectedCurrency]!;
-    final totalPrice = _totalPrice(components);
-    final convertedPrice = totalPrice * currencyData.exchangeRate;
-    final estimatedWattage = _estimatedWattage(components);
-
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: CustomDrawer(showProfileArea: true),
-      backgroundColor: theme.colorScheme.background,
-      body: Column(
-        children: [
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-
-              /// The main content column of the page.
-              child: Column(
-                children: [
-                  _TopBar(
-                    theme: theme,
-                    buildLink: buildLink,
-                    components: components,
-                    totalPrice: convertedPrice,
-                    currencyData: currencyData,
-                    estimatedWattage: estimatedWattage,
-                    onSave: _showSaveBuildDialog,
-                    onNew: _startNewBuild, // This remains the same
-                    onPost: _publishBuild, // Changed to publish function
-                    isMobile: isMobile,
-                  ),
-                  // The compatibility and price bar is only shown if the build is not empty.
-                  if (!_isBuildEmpty(components)) ...[
-                    const SizedBox(height: 16),
-                    _CompatibilityAndPriceBar(
-                      theme: theme,
-                      totalPrice: convertedPrice,
-                      currencyData: currencyData,
-                      statusMessage: _compatibilityStatus(components),
-                      isMobile: isMobile,
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _ComponentTable(
-                    theme: theme,
-                    components: components,
-                    onRemove: (index) {
-                      final componentType = components[index].type;
-                      ref.read(buildProvider.notifier).removeComponent(componentType);
-                    },
-                    onAdd: (index) async {
-                      /// Navigates to the PartPickerPage to let the user select a component.
-                      /// The result (the selected component) is returned via `Navigator.pop`.
-                      final BaseComponent? selectedComponent =
-                          await Navigator.push<BaseComponent>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PartPickerPage(
-                                componentType: components[index].type,
-                                currentBuild: components,
-                              ),
-                            ),
-                          );
-
-                      /// If a component was selected and the widget is still mounted, update the state.
-                      if (selectedComponent != null && mounted) {
-                        ref.read(buildProvider.notifier).addComponent(selectedComponent);
-                      }
-                    },
-                    isMobile: isMobile,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    
+    // Show success message if build was published successfully
+    if (result != null) {
+      _showSnackBar(
+        message: 'Build successfully published',
+        backgroundColor: Colors.green,
+      );
+    }
   }
 }
 
@@ -1021,6 +903,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onNew;
   final VoidCallback onPost;
   final bool isMobile; // Added isMobile
+  final void Function({required String message, Color? backgroundColor, Duration duration}) onShowSnackBar;
 
   const _TopBar({
     required this.theme,
@@ -1033,6 +916,7 @@ class _TopBar extends StatelessWidget {
     required this.onNew,
     required this.onPost,
     required this.isMobile, // Added isMobile
+    required this.onShowSnackBar,
   });
 
   /// Generates a Reddit-compatible markdown table of the current build.
@@ -1076,10 +960,8 @@ class _TopBar extends StatelessWidget {
                       icon: const Icon(Icons.link, size: 20),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: buildLink));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Build link copied to clipboard!'),
-                          ),
+                        onShowSnackBar(
+                          message: 'Build link copied to clipboard!',
                         );
                       },
                       tooltip: 'Copy build link',
@@ -1097,10 +979,8 @@ class _TopBar extends StatelessWidget {
                       onPressed: () {
                         final markup = _generateRedditMarkup();
                         Clipboard.setData(ClipboardData(text: markup));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Reddit Markup copied to clipboard!'),
-                          ),
+                        onShowSnackBar(
+                          message: 'Reddit Markup copied to clipboard!',
                         );
                       },
                       icon: const Icon(Icons.code),
@@ -1163,10 +1043,8 @@ class _TopBar extends StatelessWidget {
                   icon: const Icon(Icons.link, size: 20),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: buildLink));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Build link copied to clipboard!'),
-                      ),
+                    onShowSnackBar(
+                      message: 'Build link copied to clipboard!',
                     );
                   },
                   tooltip: 'Copy build link',
@@ -1180,10 +1058,8 @@ class _TopBar extends StatelessWidget {
                   onPressed: () {
                     final markup = _generateRedditMarkup();
                     Clipboard.setData(ClipboardData(text: markup));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reddit Markup copied to clipboard!'),
-                      ),
+                    onShowSnackBar(
+                      message: 'Reddit Markup copied to clipboard!',
                     );
                   },
                   icon: const Icon(Icons.code),
@@ -1668,3 +1544,4 @@ class _ComponentTable extends StatelessWidget {
     );
   }
 }
+
