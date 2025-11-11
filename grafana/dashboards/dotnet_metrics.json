@@ -1,0 +1,118 @@
+{
+  "id": null,
+  "title": ".NET Application Metrics",
+  "uid": "dotnet-app",
+  "tags": ["dotnet", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "HTTP Requests per Second",
+      "targets": [
+        {
+          "expr": "rate(http_requests_received_total[1m])",
+          "legendFormat": "{{method}} {{status_code}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "type": "graph",
+      "title": "Request Duration (ms)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "p95 duration"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 9, "w": 12, "h": 8 }
+    },
+    {
+      "type": "graph",
+      "title": "CPU Usage",
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total[1m])",
+          "legendFormat": "CPU seconds/sec"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "lines": true,
+      "fill": 1,
+      "linewidth": 2,
+      "points": false
+    },
+    {
+      "type": "graph",
+      "title": "Memory Usage (MB)",
+      "targets": [
+        {
+          "expr": "process_working_set_bytes / 1024 / 1024",
+          "legendFormat": "Working set (MB)"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 27, "w": 12, "h": 8 }
+    },
+    {
+      "type": "graph",
+      "title": "Non-Information Logs (rate/sec)",
+      "targets": [
+        {
+          "expr": "rate(kazabuild_logs_not_info_total[1m])",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "description": "Tracks how many logs are NOT informational (e.g., warnings, errors).",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "lines": true,
+      "fill": 1,
+      "linewidth": 2,
+      "points": false,
+      "yaxes": [
+        { "format": "ops", "label": "Logs/sec", "show": true },
+        { "show": false }
+      ],
+      "legend": { "show": true }
+    },
+    {
+      "type": "stat",
+      "title": "Current Banned Users",
+      "targets": [
+        {
+          "expr": "kazabuild_banned_users_total",
+          "legendFormat": "Banned users"
+        }
+      ],
+      "description": "Current number of banned (blocked) users.",
+      "gridPos": { "x": 12, "y": 9, "w": 6, "h": 6 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

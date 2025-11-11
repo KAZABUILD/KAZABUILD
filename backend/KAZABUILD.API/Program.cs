@@ -77,61 +77,27 @@ namespace KAZABUILD.API
             {
                 try
                 {
-                    //Check if the connection to the database can be established
-                    if (!await dbContext.Database.CanConnectAsync())
-                    {
-                        await logger.LogAsync(
-                            Guid.Empty,
-                            "Connect",
-                            "Database",
-                            "",
-                            Guid.Empty,
-                            PrivacyLevel.CRITICAL,
-                            $"Database connection failed."
-                        );
-                    }
-                    else
-                    {
-                        //Flush any stashed logs
-                        await logger.FlushStashedLogsAsync();
-
-                        break;
-                    }
-
+                    await dbContext.Database.MigrateAsync();
+                    //await logger.FlushStashedLogsAsync();
+                    Console.WriteLine("Database initialized successfully!");
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    await logger.LogAsync(
-                        Guid.Empty,
-                        "Connect",
-                        "Database",
-                        "",
-                        Guid.Empty,
-                        PrivacyLevel.CRITICAL,
-                        $"Database connection could not be established. Error message: {ex.Message}"
-                    );
+                    Console.WriteLine($"Database connection failed: {ex.Message}");
+                    Console.WriteLine($"Exception Type: {ex.GetType().Name}");
+                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                    // Log inner exception if exists
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                        Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
+                    }
+
+                    Console.WriteLine("Retrying in 5 seconds...");
+                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
-
-                //Wait for a while before trying to reconnect again
-                await Task.Delay(TimeSpan.FromSeconds(30));
-            }
-
-            //Apply migrations automatically
-            try
-            {
-                await dbContext.Database.MigrateAsync();
-            }
-            catch (Exception ex) //Catch any error related to migration
-            {
-                await logger.LogAsync(
-                    Guid.Empty,
-                    "Connect",
-                    "Database",
-                    "",
-                    Guid.Empty,
-                    PrivacyLevel.CRITICAL,
-                    $"An error occurred while migrating the database. Error message: {ex.Message}"
-                );
             }
 
             //Configure the HTTP request pipeline.
@@ -178,10 +144,10 @@ namespace KAZABUILD.API
             //Enable Prometheus HTTP request metrics middleware
             app.UseHttpMetrics();
 
-            //Expose the /metrics endpoint for Prometheus to scrape
-            app.UseMetricServer();
-
             app.MapControllers();
+
+            //Expose the /metrics endpoint for Prometheus to scrape
+            app.MapMetrics();
 
             //Get the hasher and admin user settings
             var hasher = scope.ServiceProvider.GetRequiredService<IHashingService>();

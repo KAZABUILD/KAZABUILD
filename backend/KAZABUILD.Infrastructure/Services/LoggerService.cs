@@ -6,6 +6,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
 using Serilog.Core;
 using System.Text.Json;
+using Prometheus;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -24,6 +25,15 @@ namespace KAZABUILD.Infrastructure.Services
         private readonly string _stashFilepath = Path.Combine(AppContext.BaseDirectory, "failed_logs.json");
         private readonly JsonSerializerOptions jsonSerializerOptions = new() { WriteIndented = true };
 
+        private static readonly Counter NotInfoLogsCounter = Metrics
+            .CreateCounter(
+                "kazabuild_logs_not_info_total",
+                "Total number of logs with severity not equal to INFORMATION",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "severity" }
+                });
+        
         /// <summary>
         /// Logs an event to the database.
         /// Additionally logs to a file and console as well.
@@ -95,6 +105,12 @@ namespace KAZABUILD.Infrastructure.Services
                 default:
                     _serilogLogger.LogInformation(message);
                     break;
+            }
+
+            //Increment Prometheus metric if not INFORMATION
+            if (severityLevel != PrivacyLevel.INFORMATION)
+            {
+                NotInfoLogsCounter.WithLabels(severityLevel.ToString()).Inc();
             }
         }
 
