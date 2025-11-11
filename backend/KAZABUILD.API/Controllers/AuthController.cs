@@ -292,7 +292,9 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -662,7 +664,9 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -885,7 +889,9 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.UserId == currentUserId && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
