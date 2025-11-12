@@ -486,4 +486,432 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get email => 'Email';
+
+  @override
+  String get noBuildsFound => 'Nie znaleziono buildów';
+
+  @override
+  String get tryAdjustingFilters =>
+      'Spróbuj dostosować filtry lub sprawdź ponownie później';
+
+  @override
+  String get errorLoadingBuilds => 'Błąd ładowania buildów';
+
+  @override
+  String get retry => 'Spróbuj ponownie';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get noImage => 'Brak Obrazu';
+
+  @override
+  String get clickToViewComponents => 'Kliknij, aby zobaczyć komponenty';
+
+  @override
+  String get components => 'Komponenty';
+
+  @override
+  String get comments => 'Komentarze';
+
+  @override
+  String get noImageAvailable => 'Brak Obrazu';
+
+  @override
+  String get postedOn => 'Opublikowano';
+
+  @override
+  String get wishlistBuild => 'Dodaj do Listy Życzeń';
+
+  @override
+  String get noComponentsListed => 'Brak wymienionych komponentów';
+
+  @override
+  String fromVendors(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sprzedawców',
+      one: 'sprzedawcy',
+    );
+    return 'od $count $_temp0';
+  }
+
+  @override
+  String get signInToComment => 'Zaloguj się, aby skomentować ten build';
+
+  @override
+  String get pleaseSignInToComment =>
+      'Proszę zalogować się, aby komentować. Użyj nawigacji, aby przejść do logowania.';
+
+  @override
+  String get writeComment => 'Napisz komentarz...';
+
+  @override
+  String get post => 'Opublikuj';
+
+  @override
+  String get pleaseSignInToCommentShort =>
+      'Proszę zalogować się, aby komentować';
+
+  @override
+  String get failedToLoadComments => 'Nie udało się załadować komentarzy';
+
+  @override
+  String get noCommentsYet =>
+      'Brak komentarzy. Bądź pierwszy, który skomentuje!';
+
+  @override
+  String get pleaseSignInToRate =>
+      'Proszę zalogować się, aby ocenić ten build.';
+
+  @override
+  String get pleaseSignInToRateBuilds =>
+      'Proszę zalogować się, aby oceniać buildy';
+
+  @override
+  String get failedToSubmitRating => 'Nie udało się przesłać oceny';
+
+  @override
+  String get removeRating => 'Usuń ocenę';
+
+  @override
+  String get rate => 'Oceń';
+
+  @override
+  String get yes => 'Tak';
+
+  @override
+  String get no => 'Nie';
+
+  @override
+  String get vendors => 'Sprzedawcy';
+
+  @override
+  String get similarBuilds => 'Podobne Buildy';
+
+  @override
+  String get series => 'Seria';
+
+  @override
+  String get socket => 'Gniazdo';
+
+  @override
+  String get chipset => 'Chipset';
+
+  @override
+  String get formFactor => 'Format';
+
+  @override
+  String get memoryType => 'Typ Pamięci';
+
+  @override
+  String get ramType => 'Typ RAM';
+
+  @override
+  String get capacity => 'Pojemność';
+
+  @override
+  String get speed => 'Prędkość';
+
+  @override
+  String get tdp => 'TDP';
+
+  @override
+  String get length => 'Długość';
+
+  @override
+  String get height => 'Wysokość';
+
+  @override
+  String get baseClock => 'Podstawowa Częstotliwość';
+
+  @override
+  String get boostClock => 'Boost Częstotliwość';
+
+  @override
+  String get coreCount => 'Liczba Rdzeni';
+
+  @override
+  String get threads => 'Wątki';
+
+  @override
+  String get vram => 'VRAM';
+
+  @override
+  String get microarchitecture => 'Mikroarchitektura';
+
+  @override
+  String get coreFamily => 'Rodzina Rdzeni';
+
+  @override
+  String get totalCores => 'Całkowita Liczba Rdzeni';
+
+  @override
+  String get pCores => 'Rdzenie P';
+
+  @override
+  String get eCores => 'Rdzenie E';
+
+  @override
+  String get l1Cache => 'Pamięć Podręczna L1';
+
+  @override
+  String get l2Cache => 'Pamięć Podręczna L2';
+
+  @override
+  String get l3Cache => 'Pamięć Podręczna L3';
+
+  @override
+  String get l4Cache => 'Pamięć Podręczna L4';
+
+  @override
+  String get lithography => 'Litografia';
+
+  @override
+  String get packaging => 'Opakowanie';
+
+  @override
+  String get includesCooler => 'Zawiera Chłodzenie';
+
+  @override
+  String get smtSupport => 'Wsparcie SMT';
+
+  @override
+  String get eccSupport => 'Wsparcie ECC';
+
+  @override
+  String get integratedGraphics => 'Zintegrowana Grafika';
+
+  @override
+  String get memoryClock => 'Częstotliwość Pamięci';
+
+  @override
+  String get memoryBusWidth => 'Szerokość Szyny Pamięci';
+
+  @override
+  String get slotWidth => 'Szerokość Gniazda';
+
+  @override
+  String get totalSlots => 'Całkowita Liczba Gniazd';
+
+  @override
+  String get coolingType => 'Typ Chłodzenia';
+
+  @override
+  String get frameSync => 'Synchronizacja Klatek';
+
+  @override
+  String get ramSlots => 'Gniazda RAM';
+
+  @override
+  String get maxRam => 'Maksymalna Pamięć RAM';
+
+  @override
+  String get cpuFanHeaders => 'Złącza Wentylatora CPU';
+
+  @override
+  String get caseFanHeaders => 'Złącza Wentylatora Obudowy';
+
+  @override
+  String get pumpHeaders => 'Złącza Pompy';
+
+  @override
+  String get audioChipset => 'Chipset Audio';
+
+  @override
+  String get maxAudioChannels => 'Maksymalna Liczba Kanałów Audio';
+
+  @override
+  String get raidSupport => 'Wsparcie RAID';
+
+  @override
+  String get biosFlashback => 'BIOS Flashback';
+
+  @override
+  String get clearCmos => 'Wyczyść CMOS';
+
+  @override
+  String get casLatency => 'Opóźnienie CAS';
+
+  @override
+  String get timings => 'Czasy';
+
+  @override
+  String get modules => 'Moduły';
+
+  @override
+  String get moduleCapacity => 'Pojemność Modułu';
+
+  @override
+  String get ecc => 'ECC';
+
+  @override
+  String get registered => 'Zarejestrowany';
+
+  @override
+  String get heatSpreader => 'Rozpraszacz Ciepła';
+
+  @override
+  String get rgb => 'RGB';
+
+  @override
+  String get voltage => 'Napięcie';
+
+  @override
+  String get interface => 'Interfejs';
+
+  @override
+  String get nvme => 'NVMe';
+
+  @override
+  String get wattage => 'Moc';
+
+  @override
+  String get efficiency => 'Wydajność';
+
+  @override
+  String get modularity => 'Modularność';
+
+  @override
+  String get fanless => 'Bezwentylatorowy';
+
+  @override
+  String get radiatorSize => 'Rozmiar Radiatora';
+
+  @override
+  String get fanSize => 'Rozmiar Wentylatora';
+
+  @override
+  String get fanQuantity => 'Liczba Wentylatorów';
+
+  @override
+  String get minFanSpeed => 'Minimalna Prędkość Wentylatora';
+
+  @override
+  String get maxFanSpeed => 'Maksymalna Prędkość Wentylatora';
+
+  @override
+  String get minNoise => 'Minimalny Hałas';
+
+  @override
+  String get maxNoise => 'Maksymalny Hałas';
+
+  @override
+  String get fanlessOperation => 'Praca Bezwentylatorowa';
+
+  @override
+  String get size => 'Rozmiar';
+
+  @override
+  String get quantity => 'Ilość';
+
+  @override
+  String get minAirflow => 'Minimalny Przepływ Powietrza';
+
+  @override
+  String get maxAirflow => 'Maksymalny Przepływ Powietrza';
+
+  @override
+  String get pwm => 'PWM';
+
+  @override
+  String get ledType => 'Typ LED';
+
+  @override
+  String get connector => 'Złącze';
+
+  @override
+  String get controller => 'Kontroler';
+
+  @override
+  String get staticPressure => 'Ciśnienie Statyczne';
+
+  @override
+  String get flowDirection => 'Kierunek Przepływu';
+
+  @override
+  String get powerSupplyShrouded => 'Zasilacz Osłonięty';
+
+  @override
+  String get includedPsu => 'Zasilacz Wbudowany';
+
+  @override
+  String get transparentSidePanel => 'Przezroczysta Boczna Płyta';
+
+  @override
+  String get sidePanelType => 'Typ Bocznej Płyty';
+
+  @override
+  String get maxGpuLength => 'Maksymalna Długość GPU';
+
+  @override
+  String get maxCpuCoolerHeight => 'Maksymalna Wysokość Chłodzenia CPU';
+
+  @override
+  String get screenSize => 'Rozmiar Ekranu';
+
+  @override
+  String get resolution => 'Rozdzielczość';
+
+  @override
+  String get refreshRate => 'Częstotliwość Odświeżania';
+
+  @override
+  String get panelType => 'Typ Panelu';
+
+  @override
+  String get responseTime => 'Czas Reakcji';
+
+  @override
+  String get viewingAngle => 'Kąt Widzenia';
+
+  @override
+  String get aspectRatio => 'Proporcje';
+
+  @override
+  String get maxBrightness => 'Maksymalna Jasność';
+
+  @override
+  String get hdr => 'HDR';
+
+  @override
+  String get adaptiveSync => 'Adaptacyjna Synchronizacja';
+
+  @override
+  String get sata6Gbs => 'SATA 6 Gb/s';
+
+  @override
+  String get sata3Gbs => 'SATA 3 Gb/s';
+
+  @override
+  String get u2Ports => 'Porty U.2';
+
+  @override
+  String get wifi => 'Wi-Fi';
+
+  @override
+  String get argb5vHeaders => 'Złącza ARGB 5V';
+
+  @override
+  String get rgb12vHeaders => 'Złącza RGB 12V';
+
+  @override
+  String get internal35BayAmount => 'Zasobniki 3.5\"';
+
+  @override
+  String get internal25BayAmount => 'Zasobniki 2.5\"';
+
+  @override
+  String get external525BayAmount => 'Zasobniki Zewnętrzne 5.25\"';
+
+  @override
+  String get external35BayAmount => 'Zasobniki Zewnętrzne 3.5\"';
+
+  @override
+  String get waterCooled => 'Chłodzenie Wodne';
+
+  @override
+  String get airCooled => 'Chłodzenie Powietrzne';
 }

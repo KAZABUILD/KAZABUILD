@@ -228,14 +228,14 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
-                                          'No builds found',
+                                          AppLocalizations.of(context)!.noBuildsFound,
                                           style: theme.textTheme.titleLarge?.copyWith(
                                             color: theme.colorScheme.onSurface.withOpacity(0.7),
                                           ),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          'Try adjusting your filters or check back later',
+                                          AppLocalizations.of(context)!.tryAdjustingFilters,
                                           style: theme.textTheme.bodyMedium?.copyWith(
                                             color: theme.colorScheme.onSurface.withOpacity(0.5),
                                           ),
@@ -276,7 +276,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
-                                        'Error loading builds',
+                                        AppLocalizations.of(context)!.errorLoadingBuilds,
                                         style: theme.textTheme.titleLarge?.copyWith(
                                           color: theme.colorScheme.error,
                                         ),
@@ -295,7 +295,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                           ref.invalidate(allBuildsProvider);
                                         },
                                         icon: const Icon(Icons.refresh),
-                                        label: const Text('Retry'),
+                                        label: Text(AppLocalizations.of(context)!.retry),
                                       ),
                                     ],
                                   ),
@@ -583,7 +583,7 @@ class _FilterPanel extends ConsumerWidget {
                   // Status Filter
                   if (allStatuses.isNotEmpty) ...[
                     Text(
-                      'Status',
+                      AppLocalizations.of(context)!.status,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -614,7 +614,7 @@ class _FilterPanel extends ConsumerWidget {
                   // Tags Filter - Show all tags from database
                   if (allTagNames.isNotEmpty) ...[
                     Text(
-                      'Tags',
+                      AppLocalizations.of(context)!.tags,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -664,7 +664,7 @@ class _FilterPanel extends ConsumerWidget {
           error: (error, stack) => Container(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Error loading tags: $error',
+              '${AppLocalizations.of(context)!.errorLoadingTags}: $error',
               style: TextStyle(color: theme.colorScheme.error),
             ),
           ),
@@ -1062,33 +1062,15 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.surfaceVariant.withOpacity(0.3),
-            theme.colorScheme.surfaceVariant.withOpacity(0.1),
-          ],
-        ),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.computer,
-              size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No Image',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
+      child: Image.network(
+        '$apiBaseUrl/defaults/kaza.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to empty container if default image fails
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -1182,7 +1164,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                   // Components are not shown on explore page to avoid 429 errors
                   // Click on the card to view components on the detail page
                   Text(
-                    'Click to view components',
+                    AppLocalizations.of(context)!.clickToViewComponents,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: theme.colorScheme.onSurface.withOpacity(0.6),

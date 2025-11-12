@@ -35,7 +35,7 @@ Source: frontend
 
 [00005] User cannot open any link in a new card in the browser.
 Type: missing feature
-Status: pending
+Status: FIXED
 Source: frontend
 Details: The user should have the option to easily open any link on the website on another card.
 
@@ -52,12 +52,12 @@ Details: The 3d model should be immutable.
 
 [00008] Similar builds are getting cut off on build pages.
 Type: error
-Status: pending
+Status: FIXED
 Source: frontend
 
 [00009] The add new comment box should be on top of a comment section.
 Type: incorrect implementation
-Status: pending
+Status: FIXED
 Source: frontend
 
 [00010] The dark color scheme is difficult to read in many parts of the website.
@@ -72,29 +72,29 @@ Source: frontend
 
 [00012] The user cannot interact with components on the build page.
 Type: incorrect implementation
-Status: pending
+Status: FIXED
 Source: frontend
 
 [00013] The "Follow Build" button shouldn't be present in the build page.
 Type: incorrect implementation/error
-Status: pending
+Status: FIXED
 Source: frontend
 Details: There is no such feature as following builds in the buildInteraction model.
 
 [00014] Changing the language doesn't change the text on the builds page.
 Type: incorrect implementation/error
-Status: pending
+Status: FIXED
 Source: frontend
 
 [00015] The default image is incorrect.
 Type: incorrect implementation
-Status: pending
+Status: FIXED
 Source: frontend
 Details: Default images should not have any text in them and should scale to the size of the displayed image.
 
 [00016] The forum post loading takes forever.
 Type: incorrect implementation
-Status: pending
+Status: FIXED
 Source: frontend
 Details: Comments are getting queried one by one causing the application to not load within a reasonable time frame.
 

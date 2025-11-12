@@ -484,4 +484,431 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get email => 'E-posta';
+
+  @override
+  String get noBuildsFound => 'Build bulunamadı';
+
+  @override
+  String get tryAdjustingFilters =>
+      'Filtrelerinizi ayarlamayı deneyin veya daha sonra tekrar kontrol edin';
+
+  @override
+  String get errorLoadingBuilds => 'Build\'ler yüklenirken hata';
+
+  @override
+  String get retry => 'Tekrar Dene';
+
+  @override
+  String get status => 'Durum';
+
+  @override
+  String get noImage => 'Resim Yok';
+
+  @override
+  String get clickToViewComponents => 'Bileşenleri görmek için tıklayın';
+
+  @override
+  String get components => 'Bileşenler';
+
+  @override
+  String get comments => 'Yorumlar';
+
+  @override
+  String get noImageAvailable => 'Resim Mevcut Değil';
+
+  @override
+  String get postedOn => 'Yayınlandı';
+
+  @override
+  String get wishlistBuild => 'Build\'i İstek Listesine Ekle';
+
+  @override
+  String get noComponentsListed => 'Listelenen bileşen yok';
+
+  @override
+  String fromVendors(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'satıcıdan',
+      one: 'satıcıdan',
+    );
+    return '$count $_temp0';
+  }
+
+  @override
+  String get signInToComment => 'Bu build\'e yorum yapmak için giriş yapın';
+
+  @override
+  String get pleaseSignInToComment =>
+      'Lütfen yorum yapmak için giriş yapın. Giriş yapmak için navigasyonu kullanın.';
+
+  @override
+  String get writeComment => 'Yorum yazın...';
+
+  @override
+  String get post => 'Gönder';
+
+  @override
+  String get pleaseSignInToCommentShort =>
+      'Lütfen yorum yapmak için giriş yapın';
+
+  @override
+  String get failedToLoadComments => 'Yorumlar yüklenemedi';
+
+  @override
+  String get noCommentsYet => 'Henüz yorum yok. İlk yorumu siz yapın!';
+
+  @override
+  String get pleaseSignInToRate =>
+      'Lütfen bu build\'i değerlendirmek için giriş yapın.';
+
+  @override
+  String get pleaseSignInToRateBuilds =>
+      'Lütfen build\'leri değerlendirmek için giriş yapın';
+
+  @override
+  String get failedToSubmitRating => 'Değerlendirme gönderilemedi';
+
+  @override
+  String get removeRating => 'Değerlendirmeyi kaldır';
+
+  @override
+  String get rate => 'Değerlendir';
+
+  @override
+  String get yes => 'Evet';
+
+  @override
+  String get no => 'Hayır';
+
+  @override
+  String get vendors => 'Satıcılar';
+
+  @override
+  String get similarBuilds => 'Benzer Build\'ler';
+
+  @override
+  String get series => 'Seri';
+
+  @override
+  String get socket => 'Soket';
+
+  @override
+  String get chipset => 'Yonga Seti';
+
+  @override
+  String get formFactor => 'Form Faktörü';
+
+  @override
+  String get memoryType => 'Bellek Türü';
+
+  @override
+  String get ramType => 'RAM Türü';
+
+  @override
+  String get capacity => 'Kapasite';
+
+  @override
+  String get speed => 'Hız';
+
+  @override
+  String get tdp => 'TDP';
+
+  @override
+  String get length => 'Uzunluk';
+
+  @override
+  String get height => 'Yükseklik';
+
+  @override
+  String get baseClock => 'Temel Saat Hızı';
+
+  @override
+  String get boostClock => 'Boost Saat Hızı';
+
+  @override
+  String get coreCount => 'Çekirdek Sayısı';
+
+  @override
+  String get threads => 'İş Parçacığı';
+
+  @override
+  String get vram => 'VRAM';
+
+  @override
+  String get microarchitecture => 'Mikromimari';
+
+  @override
+  String get coreFamily => 'Çekirdek Ailesi';
+
+  @override
+  String get totalCores => 'Toplam Çekirdek';
+
+  @override
+  String get pCores => 'P-Çekirdek';
+
+  @override
+  String get eCores => 'E-Çekirdek';
+
+  @override
+  String get l1Cache => 'L1 Önbellek';
+
+  @override
+  String get l2Cache => 'L2 Önbellek';
+
+  @override
+  String get l3Cache => 'L3 Önbellek';
+
+  @override
+  String get l4Cache => 'L4 Önbellek';
+
+  @override
+  String get lithography => 'Litografi';
+
+  @override
+  String get packaging => 'Paketleme';
+
+  @override
+  String get includesCooler => 'Soğutucu Dahil';
+
+  @override
+  String get smtSupport => 'SMT Desteği';
+
+  @override
+  String get eccSupport => 'ECC Desteği';
+
+  @override
+  String get integratedGraphics => 'Entegre Grafik';
+
+  @override
+  String get memoryClock => 'Bellek Saat Hızı';
+
+  @override
+  String get memoryBusWidth => 'Bellek Veri Yolu Genişliği';
+
+  @override
+  String get slotWidth => 'Yuva Genişliği';
+
+  @override
+  String get totalSlots => 'Toplam Yuva';
+
+  @override
+  String get coolingType => 'Soğutma Türü';
+
+  @override
+  String get frameSync => 'Kare Senkronizasyonu';
+
+  @override
+  String get ramSlots => 'RAM Yuvaları';
+
+  @override
+  String get maxRam => 'Maksimum RAM';
+
+  @override
+  String get cpuFanHeaders => 'CPU Fan Başlıkları';
+
+  @override
+  String get caseFanHeaders => 'Kasa Fan Başlıkları';
+
+  @override
+  String get pumpHeaders => 'Pompa Başlıkları';
+
+  @override
+  String get audioChipset => 'Ses Yonga Seti';
+
+  @override
+  String get maxAudioChannels => 'Maksimum Ses Kanalları';
+
+  @override
+  String get raidSupport => 'RAID Desteği';
+
+  @override
+  String get biosFlashback => 'BIOS Flashback';
+
+  @override
+  String get clearCmos => 'CMOS Temizle';
+
+  @override
+  String get casLatency => 'CAS Gecikmesi';
+
+  @override
+  String get timings => 'Zamanlamalar';
+
+  @override
+  String get modules => 'Modüller';
+
+  @override
+  String get moduleCapacity => 'Modül Kapasitesi';
+
+  @override
+  String get ecc => 'ECC';
+
+  @override
+  String get registered => 'Kayıtlı';
+
+  @override
+  String get heatSpreader => 'Isı Yayıcı';
+
+  @override
+  String get rgb => 'RGB';
+
+  @override
+  String get voltage => 'Voltaj';
+
+  @override
+  String get interface => 'Arayüz';
+
+  @override
+  String get nvme => 'NVMe';
+
+  @override
+  String get wattage => 'Güç';
+
+  @override
+  String get efficiency => 'Verimlilik';
+
+  @override
+  String get modularity => 'Modülerlik';
+
+  @override
+  String get fanless => 'Fansız';
+
+  @override
+  String get radiatorSize => 'Radyatör Boyutu';
+
+  @override
+  String get fanSize => 'Fan Boyutu';
+
+  @override
+  String get fanQuantity => 'Fan Miktarı';
+
+  @override
+  String get minFanSpeed => 'Min Fan Hızı';
+
+  @override
+  String get maxFanSpeed => 'Max Fan Hızı';
+
+  @override
+  String get minNoise => 'Min Gürültü';
+
+  @override
+  String get maxNoise => 'Max Gürültü';
+
+  @override
+  String get fanlessOperation => 'Fansız Çalışma';
+
+  @override
+  String get size => 'Boyut';
+
+  @override
+  String get quantity => 'Miktar';
+
+  @override
+  String get minAirflow => 'Min Hava Akışı';
+
+  @override
+  String get maxAirflow => 'Max Hava Akışı';
+
+  @override
+  String get pwm => 'PWM';
+
+  @override
+  String get ledType => 'LED Türü';
+
+  @override
+  String get connector => 'Konnektör';
+
+  @override
+  String get controller => 'Kontrolcü';
+
+  @override
+  String get staticPressure => 'Statik Basınç';
+
+  @override
+  String get flowDirection => 'Akış Yönü';
+
+  @override
+  String get powerSupplyShrouded => 'Güç Kaynağı Korumalı';
+
+  @override
+  String get includedPsu => 'Dahil PSU';
+
+  @override
+  String get transparentSidePanel => 'Şeffaf Yan Panel';
+
+  @override
+  String get sidePanelType => 'Yan Panel Türü';
+
+  @override
+  String get maxGpuLength => 'Maksimum GPU Uzunluğu';
+
+  @override
+  String get maxCpuCoolerHeight => 'Maksimum CPU Soğutucu Yüksekliği';
+
+  @override
+  String get screenSize => 'Ekran Boyutu';
+
+  @override
+  String get resolution => 'Çözünürlük';
+
+  @override
+  String get refreshRate => 'Yenileme Hızı';
+
+  @override
+  String get panelType => 'Panel Türü';
+
+  @override
+  String get responseTime => 'Yanıt Süresi';
+
+  @override
+  String get viewingAngle => 'Görüş Açısı';
+
+  @override
+  String get aspectRatio => 'En-Boy Oranı';
+
+  @override
+  String get maxBrightness => 'Maksimum Parlaklık';
+
+  @override
+  String get hdr => 'HDR';
+
+  @override
+  String get adaptiveSync => 'Adaptif Senkronizasyon';
+
+  @override
+  String get sata6Gbs => 'SATA 6 Gb/s';
+
+  @override
+  String get sata3Gbs => 'SATA 3 Gb/s';
+
+  @override
+  String get u2Ports => 'U.2 Portları';
+
+  @override
+  String get wifi => 'Wi-Fi';
+
+  @override
+  String get argb5vHeaders => 'ARGB 5V Başlıkları';
+
+  @override
+  String get rgb12vHeaders => 'RGB 12V Başlıkları';
+
+  @override
+  String get internal35BayAmount => '3.5\" Bölmeler';
+
+  @override
+  String get internal25BayAmount => '2.5\" Bölmeler';
+
+  @override
+  String get external525BayAmount => '5.25\" Harici Bölmeler';
+
+  @override
+  String get external35BayAmount => '3.5\" Harici Bölmeler';
+
+  @override
+  String get waterCooled => 'Su Soğutmalı';
+
+  @override
+  String get airCooled => 'Hava Soğutmalı';
 }

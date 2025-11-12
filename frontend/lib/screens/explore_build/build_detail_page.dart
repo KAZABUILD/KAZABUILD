@@ -19,6 +19,7 @@ import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/screens/explore_build/similar_builds_section.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A page that displays the full details of a specific [CommunityBuild].
 class BuildDetailPage extends ConsumerWidget {
@@ -43,7 +44,7 @@ class BuildDetailPage extends ConsumerWidget {
             child: buildAsyncValue.when(
               data: (build) => _buildContentView(context, build),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
+              error: (err, stack) => Center(child: Text('${AppLocalizations.of(context)!.errorLoadingBuilds}: $err')),
             ),
           ),
         ],
@@ -83,7 +84,7 @@ class BuildDetailPage extends ConsumerWidget {
               // Components section
               if (build.components.isNotEmpty) ...[
                 Text(
-                  'Components',
+                  AppLocalizations.of(context)!.components,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -95,7 +96,7 @@ class BuildDetailPage extends ConsumerWidget {
               // Tags section
               if (build.tags.isNotEmpty) ...[
                 Text(
-                  'Tags',
+                  AppLocalizations.of(context)!.tags,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -104,16 +105,17 @@ class BuildDetailPage extends ConsumerWidget {
                 _TagsSection(tags: build.tags),
                 const SizedBox(height: 32),
               ],
-              // Similar builds section
-              if (build.tags.isNotEmpty)
-                SimilarBuildsSection(buildId: build.id, tags: build.tags),
-              if (build.tags.isNotEmpty) const SizedBox(height: 32),
+              // Comments section
               Text(
-                'Comments:',
+                '${AppLocalizations.of(context)!.comments}:',
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
               _CommentsSection(buildId: build.id),
+              const SizedBox(height: 32),
+              // Similar builds section
+              if (build.tags.isNotEmpty)
+                SimilarBuildsSection(buildId: build.id, tags: build.tags),
             ],
           ),
         ),
@@ -195,34 +197,16 @@ class BuildDetailPage extends ConsumerWidget {
       width: double.infinity,
       height: 400,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.surfaceVariant.withOpacity(0.3),
-            theme.colorScheme.surfaceVariant.withOpacity(0.1),
-          ],
-        ),
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.computer,
-              size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No Image Available',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
+      child: Image.network(
+        '$apiBaseUrl/defaults/kaza.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to empty container if default image fails
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -245,13 +229,10 @@ class BuildDetailPage extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
         // TODO: Add 'Posted on' date when available from backend
-        Text('Posted on: ${DateFormat.yMMMMd().format(DateTime.now())}', style: theme.textTheme.bodySmall),
+        Text('${AppLocalizations.of(context)!.postedOn}: ${DateFormat.yMMMMd().format(DateTime.now())}', style: theme.textTheme.bodySmall),
         const Spacer(),
         // TODO: Implement "Wishlist" functionality.
-        OutlinedButton(onPressed: () {}, child: const Text('Wishlist Build')),
-        const SizedBox(width: 12),
-        // TODO: Implement "Follow" functionality.
-        ElevatedButton(onPressed: () {}, child: const Text('Follow Builds')),
+        OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
       ],
     );
   }
@@ -334,33 +315,34 @@ class _TagsSection extends StatelessWidget {
 }
 
 /// Widget that displays the list of components in a build
-class _ComponentsSection extends StatelessWidget {
+class _ComponentsSection extends ConsumerWidget {
   final List<BaseComponent> components;
   
   const _ComponentsSection({required this.components});
 
-  String _getComponentTypeName(ComponentType type) {
+  String _getComponentTypeName(BuildContext context, ComponentType type) {
+    final l10n = AppLocalizations.of(context)!;
     switch (type) {
       case ComponentType.cpu:
-        return 'CPU';
+        return l10n.cpu;
       case ComponentType.gpu:
-        return 'GPU';
+        return l10n.gpu;
       case ComponentType.motherboard:
-        return 'Motherboard';
+        return l10n.motherboard;
       case ComponentType.ram:
-        return 'RAM';
+        return l10n.memoryRam;
       case ComponentType.storage:
-        return 'Storage';
+        return l10n.storage;
       case ComponentType.psu:
-        return 'Power Supply';
+        return l10n.powerSupply;
       case ComponentType.cooler:
-        return 'Cooler';
+        return l10n.cooler;
       case ComponentType.caseFan:
-        return 'Case Fan';
+        return l10n.caseFan;
       case ComponentType.pcCase:
-        return 'PC Case';
+        return l10n.pcCase;
       case ComponentType.monitor:
-        return 'Monitor';
+        return l10n.monitor;
     }
   }
 
@@ -389,8 +371,540 @@ class _ComponentsSection extends StatelessWidget {
     }
   }
 
+  void _showComponentDetails(BuildContext context, BaseComponent component) {
+    final theme = Theme.of(context);
+    final lowestPrice = component.prices.isNotEmpty
+        ? component.prices
+            .map((p) => p.price)
+            .reduce((a, b) => a < b ? a : b)
+        : null;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                component.name,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Basic info
+              _buildInfoRow(context, theme, AppLocalizations.of(context)!.manufacturer, component.manufacturer),
+              _buildInfoRow(context, theme, AppLocalizations.of(context)!.type, _getComponentTypeName(context, component.type)),
+              if (lowestPrice != null)
+                _buildInfoRow(
+                  context,
+                  theme,
+                  AppLocalizations.of(context)!.price,
+                  '\$${lowestPrice.toStringAsFixed(2)}',
+                  isHighlighted: true,
+                ),
+              if (component.prices.isNotEmpty)
+                _buildInfoRow(
+                  context,
+                  theme,
+                  AppLocalizations.of(context)!.vendors,
+                  AppLocalizations.of(context)!.fromVendors(component.prices.length),
+                ),
+              if (component.release != null)
+                _buildInfoRow(
+                  context,
+                  theme,
+                  AppLocalizations.of(context)!.releaseDate,
+                  DateFormat.yMMMMd().format(component.release!),
+                ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              
+              // Component-specific details
+              ..._buildComponentSpecificDetails(context, theme, component),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(AppLocalizations.of(context)!.close),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildComponentSpecificDetails(BuildContext context, ThemeData theme, BaseComponent component) {
+    switch (component.type) {
+      case ComponentType.cpu:
+        if (component is CPUComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.cpu} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Series', component.series),
+            _buildInfoRow(context, theme, 'Socket', component.socketType),
+            _buildInfoRow(context, theme, 'Microarchitecture', component.microarchitecture),
+            _buildInfoRow(context, theme, 'Core Family', component.coreFamily),
+            _buildInfoRow(context, theme, 'Total Cores', '${component.coreTotal}'),
+            if (component.performanceAmount != null)
+              _buildInfoRow(context, theme, 'P-Cores', '${component.performanceAmount}'),
+            if (component.efficiencyAmount != null)
+              _buildInfoRow(context, theme, 'E-Cores', '${component.efficiencyAmount}'),
+            _buildInfoRow(context, theme, 'Threads', '${component.threadsAmount}'),
+            if (component.basePerformanceSpeed != null)
+              _buildInfoRow(context, theme, 'Base Clock (P-Core)', '${component.basePerformanceSpeed} GHz'),
+            if (component.boostPerformanceSpeed != null)
+              _buildInfoRow(context, theme, 'Boost Clock (P-Core)', '${component.boostPerformanceSpeed} GHz'),
+            if (component.baseEfficiencySpeed != null)
+              _buildInfoRow(context, theme, 'Base Clock (E-Core)', '${component.baseEfficiencySpeed} GHz'),
+            if (component.boostEfficiencySpeed != null)
+              _buildInfoRow(context, theme, 'Boost Clock (E-Core)', '${component.boostEfficiencySpeed} GHz'),
+            if (component.l1 != null) _buildInfoRow(context, theme, 'L1 Cache', '${component.l1} MB'),
+            if (component.l2 != null) _buildInfoRow(context, theme, 'L2 Cache', '${component.l2} MB'),
+            if (component.l3 != null) _buildInfoRow(context, theme, 'L3 Cache', '${component.l3} MB'),
+            if (component.l4 != null) _buildInfoRow(context, theme, 'L4 Cache', '${component.l4} MB'),
+            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
+            _buildInfoRow(context, theme, 'Lithography', component.lithography),
+            _buildInfoRow(context, theme, 'Memory Type', component.memoryType),
+            _buildInfoRow(context, theme, 'Packaging', component.packagingType),
+            _buildInfoRow(context, theme, 'Includes Cooler', component.includesCooler ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'SMT Support', component.supportsSimultaneousMultithreading ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'ECC Support', component.supportsECC ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            if (component.graphics.isNotEmpty && component.graphics != 'N/A')
+              _buildInfoRow(context, theme, 'Integrated Graphics', component.graphics),
+          ];
+        }
+        break;
+      case ComponentType.gpu:
+        if (component is GPUComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.gpu} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Chipset', component.chipset),
+            _buildInfoRow(context, theme, 'VRAM', '${component.videoMemoryAmount.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Memory Type', component.videoMemoryType),
+            _buildInfoRow(context, theme, 'Base Clock', '${component.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Boost Clock', '${component.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Core Count', '${component.coreCount}'),
+            _buildInfoRow(context, theme, 'Memory Clock', '${component.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'Memory Bus Width', '${component.memoryBusWidth} bit'),
+            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
+            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Slot Width', '${component.caseExpansionSlotWidth} slots'),
+            _buildInfoRow(context, theme, 'Total Slots', '${component.totalSlotAmount}'),
+            _buildInfoRow(context, theme, 'Cooling Type', component.coolingType),
+            _buildInfoRow(context, theme, 'Frame Sync', component.frameSync),
+          ];
+        }
+        break;
+      case ComponentType.motherboard:
+        if (component is MotherboardComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.motherboard} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Socket', component.socketType),
+            _buildInfoRow(context, theme, 'Chipset', component.chipsetType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'RAM Type', component.ramType),
+            _buildInfoRow(context, theme, 'RAM Slots', '${component.ramSlotsAmount}'),
+            _buildInfoRow(context, theme, 'Max RAM', '${component.maxRAMAmount} GB'),
+            _buildInfoRow(context, theme, 'SATA 6 Gb/s', '${component.sata6GBsAmount}'),
+            _buildInfoRow(context, theme, 'SATA 3 Gb/s', '${component.sata3GBsAmount}'),
+            _buildInfoRow(context, theme, 'U.2 Ports', '${component.u2PortAmount}'),
+            _buildInfoRow(context, theme, 'Wi-Fi', component.wirelessNetworkingStandard),
+            if (component.cpuFanHeaderAmount != null)
+              _buildInfoRow(context, theme, 'CPU Fan Headers', '${component.cpuFanHeaderAmount}'),
+            if (component.caseFanHeaderAmount != null)
+              _buildInfoRow(context, theme, 'Case Fan Headers', '${component.caseFanHeaderAmount}'),
+            if (component.pumpHeaderAmount != null)
+              _buildInfoRow(context, theme, 'Pump Headers', '${component.pumpHeaderAmount}'),
+            if (component.argb5vHeaderAmount != null)
+              _buildInfoRow(context, theme, 'ARGB 5V Headers', '${component.argb5vHeaderAmount}'),
+            if (component.rgb12vHeaderAmount != null)
+              _buildInfoRow(context, theme, 'RGB 12V Headers', '${component.rgb12vHeaderAmount}'),
+            _buildInfoRow(context, theme, 'Audio Chipset', component.audioChipset),
+            _buildInfoRow(context, theme, 'Max Audio Channels', '${component.maxAudioChannels}'),
+            _buildInfoRow(context, theme, 'ECC Support', component.hasECCSupport ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'RAID Support', component.hasRAIDSupport ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'BIOS Flashback', component.hasFlashback ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'Clear CMOS', component.hasCMOS ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+          ];
+        }
+        break;
+      case ComponentType.ram:
+        if (component is MemoryComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.memoryRam} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Type', component.ramType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Speed', '${component.speed.toStringAsFixed(0)} MHz'),
+            _buildInfoRow(context, theme, 'CAS Latency', '${component.casLatency}'),
+            if (component.timings != null)
+              _buildInfoRow(context, theme, 'Timings', component.timings!),
+            _buildInfoRow(context, theme, 'Modules', '${component.moduleQuantity}'),
+            _buildInfoRow(context, theme, 'Module Capacity', '${component.moduleCapacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'ECC', component.ecc),
+            _buildInfoRow(context, theme, 'Registered', component.registeredType),
+            _buildInfoRow(context, theme, 'Heat Spreader', component.haveHeatSpreader ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'RGB', component.haveRGB ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Voltage', '${component.voltage}V'),
+          ];
+        }
+        break;
+      case ComponentType.storage:
+        if (component is StorageComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.storage} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Series', component.series),
+            _buildInfoRow(context, theme, 'Type', component.driveType),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(context, theme, 'Interface', component.interface),
+            _buildInfoRow(context, theme, 'NVMe', component.hasNVMe ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+          ];
+        }
+        break;
+      case ComponentType.psu:
+        if (component is PowerSupplyComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.powerSupply} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Wattage', '${component.powerOutput.toStringAsFixed(0)}W'),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            if (component.efficiencyRating != null)
+              _buildInfoRow(context, theme, 'Efficiency', component.efficiencyRating!),
+            _buildInfoRow(context, theme, 'Modularity', component.modularityType),
+            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Fanless', component.isFanless ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+          ];
+        }
+        break;
+      case ComponentType.cooler:
+        if (component is CoolerComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.cooler} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+              _buildInfoRow(context, theme, 'Type', component.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
+            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            if (component.radiatorSize != null)
+              _buildInfoRow(context, theme, 'Radiator Size', '${component.radiatorSize!.toStringAsFixed(0)} mm'),
+            if (component.fanSize != null)
+              _buildInfoRow(context, theme, 'Fan Size', '${component.fanSize!.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Fan Quantity', '${component.fanQuantity}'),
+            if (component.minFanRotationSpeed != null)
+              _buildInfoRow(context, theme, 'Min Fan Speed', '${component.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+            if (component.maxFanRotationSpeed != null)
+              _buildInfoRow(context, theme, 'Max Fan Speed', '${component.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+            if (component.minNoiseLevel != null)
+              _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel!.toStringAsFixed(1)} dBA'),
+            if (component.maxNoiseLevel != null)
+              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+            _buildInfoRow(context, theme, 'Fanless Operation', component.canOperateFanless ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+          ];
+        }
+        break;
+      case ComponentType.caseFan:
+        if (component is CaseFanComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.caseFan} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Size', '${component.size.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Quantity', '${component.quantity}'),
+            _buildInfoRow(context, theme, 'Min Airflow', '${component.minAirflow.toStringAsFixed(0)} CFM'),
+            if (component.maxAirflow != null)
+              _buildInfoRow(context, theme, 'Max Airflow', '${component.maxAirflow!.toStringAsFixed(0)} CFM'),
+            _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel.toStringAsFixed(1)} dBA'),
+            if (component.maxNoiseLevel != null)
+              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+            _buildInfoRow(context, theme, 'PWM', component.pulseWidthModulation ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            if (component.ledType != null)
+              _buildInfoRow(context, theme, 'LED Type', component.ledType!),
+            if (component.connectorType != null)
+              _buildInfoRow(context, theme, 'Connector', component.connectorType!),
+            _buildInfoRow(context, theme, 'Controller', component.controllerType),
+            _buildInfoRow(context, theme, 'Static Pressure', '${component.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
+            _buildInfoRow(context, theme, 'Flow Direction', component.flowDirection),
+          ];
+        }
+        break;
+      case ComponentType.pcCase:
+        if (component is CaseComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.pcCase} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
+            _buildInfoRow(context, theme, 'Power Supply Shrouded', component.powerSupplyShrouded ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            if (component.powerSupplyAmount != null)
+              _buildInfoRow(context, theme, 'Included PSU', '${component.powerSupplyAmount!.toStringAsFixed(0)}W'),
+            _buildInfoRow(context, theme, 'Transparent Side Panel', component.hasTransparentSidePanel ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            if (component.sidePanelType != null)
+              _buildInfoRow(context, theme, 'Side Panel Type', component.sidePanelType!),
+            _buildInfoRow(context, theme, 'Max GPU Length', '${component.maxVideoCardLength.toStringAsFixed(0)} mm'),
+            _buildInfoRow(context, theme, 'Max CPU Cooler Height', '${component.maxCPUCoolerHeight} mm'),
+            _buildInfoRow(context, theme, '3.5" Bays', '${component.internal35BayAmount}'),
+            _buildInfoRow(context, theme, '2.5" Bays', '${component.internal25BayAmount}'),
+            _buildInfoRow(context, theme, '5.25" Bays', '${component.external525BayAmount}'),
+            _buildInfoRow(context, theme, '3.5" External Bays', '${component.external35BayAmount}'),
+          ];
+        }
+        break;
+      case ComponentType.monitor:
+        if (component is MonitorComponent) {
+          return [
+            Text(
+              '${AppLocalizations.of(context)!.monitor} ${AppLocalizations.of(context)!.components}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(context, theme, 'Screen Size', '${component.screenSize.toStringAsFixed(1)}"'),
+            _buildInfoRow(context, theme, 'Resolution', '${component.horizontalResolution}x${component.verticalResolution}'),
+            _buildInfoRow(context, theme, 'Refresh Rate', '${component.maxRefreshRate.toStringAsFixed(0)} Hz'),
+            _buildInfoRow(context, theme, 'Panel Type', component.panelType),
+            _buildInfoRow(context, theme, 'Response Time', '${component.responseTime.toStringAsFixed(1)} ms'),
+            _buildInfoRow(context, theme, 'Viewing Angle', component.viewingAngle),
+            _buildInfoRow(context, theme, 'Aspect Ratio', component.aspectRatio),
+            if (component.maxBrightness != null)
+              _buildInfoRow(context, theme, 'Max Brightness', '${component.maxBrightness!.toStringAsFixed(0)} nits'),
+            if (component.highDynamicRangeType != null)
+              _buildInfoRow(context, theme, 'HDR', component.highDynamicRangeType!),
+            _buildInfoRow(context, theme, 'Adaptive Sync', component.adaptiveSyncType),
+          ];
+        }
+        break;
+    }
+    return [];
+  }
+
+  Widget _buildInfoRow(BuildContext context, ThemeData theme, String label, String value, {bool isHighlighted = false}) {
+    // Helper method to get localized label
+    String getLocalizedLabel(String label) {
+      final l10n = AppLocalizations.of(context)!;
+      // Map English labels to localization keys
+      switch (label) {
+        case 'Series': return l10n.series;
+        case 'Socket': return l10n.socket;
+        case 'Chipset': return l10n.chipset;
+        case 'Form Factor': return l10n.formFactor;
+        case 'Memory Type': return l10n.memoryType;
+        case 'RAM Type': return l10n.ramType;
+        case 'Capacity': return l10n.capacity;
+        case 'Speed': return l10n.speed;
+        case 'TDP': return l10n.tdp;
+        case 'Length': return l10n.length;
+        case 'Height': return l10n.height;
+        case 'Base Clock': return l10n.baseClock;
+        case 'Boost Clock': return l10n.boostClock;
+        case 'Core Count': return l10n.coreCount;
+        case 'Threads': return l10n.threads;
+        case 'VRAM': return l10n.vram;
+        case 'Microarchitecture': return l10n.microarchitecture;
+        case 'Core Family': return l10n.coreFamily;
+        case 'Total Cores': return l10n.totalCores;
+        case 'P-Cores': return l10n.pCores;
+        case 'E-Cores': return l10n.eCores;
+        case 'L1 Cache': return l10n.l1Cache;
+        case 'L2 Cache': return l10n.l2Cache;
+        case 'L3 Cache': return l10n.l3Cache;
+        case 'L4 Cache': return l10n.l4Cache;
+        case 'Lithography': return l10n.lithography;
+        case 'Packaging': return l10n.packaging;
+        case 'Includes Cooler': return l10n.includesCooler;
+        case 'SMT Support': return l10n.smtSupport;
+        case 'ECC Support': return l10n.eccSupport;
+        case 'Integrated Graphics': return l10n.integratedGraphics;
+        case 'Memory Clock': return l10n.memoryClock;
+        case 'Memory Bus Width': return l10n.memoryBusWidth;
+        case 'Slot Width': return l10n.slotWidth;
+        case 'Total Slots': return l10n.totalSlots;
+        case 'Cooling Type': return l10n.coolingType;
+        case 'Frame Sync': return l10n.frameSync;
+        case 'RAM Slots': return l10n.ramSlots;
+        case 'Max RAM': return l10n.maxRam;
+        case 'CPU Fan Headers': return l10n.cpuFanHeaders;
+        case 'Case Fan Headers': return l10n.caseFanHeaders;
+        case 'Pump Headers': return l10n.pumpHeaders;
+        case 'ARGB 5V Headers': return l10n.argb5vHeaders;
+        case 'RGB 12V Headers': return l10n.rgb12vHeaders;
+        case 'Audio Chipset': return l10n.audioChipset;
+        case 'Max Audio Channels': return l10n.maxAudioChannels;
+        case 'RAID Support': return l10n.raidSupport;
+        case 'BIOS Flashback': return l10n.biosFlashback;
+        case 'Clear CMOS': return l10n.clearCmos;
+        case 'CAS Latency': return l10n.casLatency;
+        case 'Timings': return l10n.timings;
+        case 'Modules': return l10n.modules;
+        case 'Module Capacity': return l10n.moduleCapacity;
+        case 'ECC': return l10n.ecc;
+        case 'Registered': return l10n.registered;
+        case 'Heat Spreader': return l10n.heatSpreader;
+        case 'RGB': return l10n.rgb;
+        case 'Voltage': return l10n.voltage;
+        case 'Interface': return l10n.interface;
+        case 'NVMe': return l10n.nvme;
+        case 'Wattage': return l10n.wattage;
+        case 'Efficiency': return l10n.efficiency;
+        case 'Modularity': return l10n.modularity;
+        case 'Fanless': return l10n.fanless;
+        case 'Radiator Size': return l10n.radiatorSize;
+        case 'Fan Size': return l10n.fanSize;
+        case 'Fan Quantity': return l10n.fanQuantity;
+        case 'Min Fan Speed': return l10n.minFanSpeed;
+        case 'Max Fan Speed': return l10n.maxFanSpeed;
+        case 'Min Noise': return l10n.minNoise;
+        case 'Max Noise': return l10n.maxNoise;
+        case 'Fanless Operation': return l10n.fanlessOperation;
+        case 'Size': return l10n.size;
+        case 'Quantity': return l10n.quantity;
+        case 'Min Airflow': return l10n.minAirflow;
+        case 'Max Airflow': return l10n.maxAirflow;
+        case 'PWM': return l10n.pwm;
+        case 'LED Type': return l10n.ledType;
+        case 'Connector': return l10n.connector;
+        case 'Controller': return l10n.controller;
+        case 'Static Pressure': return l10n.staticPressure;
+        case 'Flow Direction': return l10n.flowDirection;
+        case 'Power Supply Shrouded': return l10n.powerSupplyShrouded;
+        case 'Included PSU': return l10n.includedPsu;
+        case 'Transparent Side Panel': return l10n.transparentSidePanel;
+        case 'Side Panel Type': return l10n.sidePanelType;
+        case 'Max GPU Length': return l10n.maxGpuLength;
+        case 'Max CPU Cooler Height': return l10n.maxCpuCoolerHeight;
+        case 'Screen Size': return l10n.screenSize;
+        case 'Resolution': return l10n.resolution;
+        case 'Refresh Rate': return l10n.refreshRate;
+        case 'Panel Type': return l10n.panelType;
+        case 'Response Time': return l10n.responseTime;
+        case 'Viewing Angle': return l10n.viewingAngle;
+        case 'Aspect Ratio': return l10n.aspectRatio;
+        case 'Max Brightness': return l10n.maxBrightness;
+        case 'HDR': return l10n.hdr;
+        case 'Adaptive Sync': return l10n.adaptiveSync;
+        case 'SATA 6 Gb/s': return l10n.sata6Gbs;
+        case 'SATA 3 Gb/s': return l10n.sata3Gbs;
+        case 'U.2 Ports': return l10n.u2Ports;
+        case 'Wi-Fi': return l10n.wifi;
+        case '3.5" Bays': return l10n.internal35BayAmount;
+        case '2.5" Bays': return l10n.internal25BayAmount;
+        case '5.25" Bays': return l10n.external525BayAmount;
+        case '3.5" External Bays': return l10n.external35BayAmount;
+        case 'Water Cooled': return l10n.waterCooled;
+        case 'Air Cooled': return l10n.airCooled;
+        case 'Type': return l10n.type;
+        case 'Price': return l10n.price;
+        case 'Release Date': return l10n.releaseDate;
+        case 'Manufacturer': return l10n.manufacturer;
+        case 'Vendors': return l10n.vendors;
+        case 'Base Clock (P-Core)': return '${l10n.baseClock} (${l10n.pCores})';
+        case 'Boost Clock (P-Core)': return '${l10n.boostClock} (${l10n.pCores})';
+        case 'Base Clock (E-Core)': return '${l10n.baseClock} (${l10n.eCores})';
+        case 'Boost Clock (E-Core)': return '${l10n.boostClock} (${l10n.eCores})';
+        default: return label; // Return original if not found
+      }
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '${getLocalizedLabel(label)}:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                color: isHighlighted ? theme.colorScheme.primary : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     
     return Container(
@@ -410,7 +924,7 @@ class _ComponentsSection extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  'No components listed',
+                  AppLocalizations.of(context)!.noComponentsListed,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
@@ -425,14 +939,17 @@ class _ComponentsSection extends StatelessWidget {
                       .reduce((a, b) => a < b ? a : b)
                   : null;
               
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
+              return InkWell(
+                onTap: () => _showComponentDetails(context, component),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
@@ -461,7 +978,7 @@ class _ComponentsSection extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  _getComponentTypeName(component.type),
+                                  _getComponentTypeName(context, component.type),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
@@ -502,7 +1019,7 @@ class _ComponentsSection extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'from ${component.prices.length} vendor${component.prices.length != 1 ? 's' : ''}',
+                              AppLocalizations.of(context)!.fromVendors(component.prices.length),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 10,
                                 color: theme.colorScheme.onSurface.withOpacity(0.5),
@@ -513,7 +1030,8 @@ class _ComponentsSection extends StatelessWidget {
                       ),
                   ],
                 ),
-              );
+              ),
+            );
             }).toList(),
         ],
       ),
@@ -577,7 +1095,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     if (currentUser == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to rate this build.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToRate)),
         );
       }
       return;
@@ -637,7 +1155,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
             _userRating = previousUserRating;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please sign in to rate builds')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToRateBuilds)),
           );
         }
         return;
@@ -713,8 +1231,8 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
               ),
               onPressed: _submitting ? null : () => _submit(starIndex.toDouble()),
               tooltip: isCurrentRating 
-                  ? 'Remove rating' 
-                  : 'Rate $starIndex',
+                  ? AppLocalizations.of(context)!.removeRating
+                  : '${AppLocalizations.of(context)!.rate} $starIndex',
             );
           }),
         ),
@@ -748,6 +1266,105 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        // Comment input box at the top
+        if (!isLoggedIn)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(Icons.lock_outline, color: theme.colorScheme.outline),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context)!.signInToComment,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Show a message directing user to sign in
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context)!.pleaseSignInToComment),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  child: Text(AppLocalizations.of(context)!.signIn),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                UserImageUtils.buildUserAvatar(
+                  username: userAsync.valueOrNull?.username,
+                  userId: userAsync.valueOrNull?.uid,
+                  radius: 16,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context)!.writeComment,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _posting
+                      ? null
+                      : () async {
+                          final text = _controller.text.trim();
+                          if (text.isEmpty) return;
+                          setState(() => _posting = true);
+                        try {
+                          final user = userAsync.valueOrNull;
+                          if (user == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
+                            );
+                            return;
+                          }
+                          final authorName = user.username;
+                          await ref.read(buildCommentsProvider(widget.buildId).notifier).add(authorName, text, user.uid);
+                          _controller.clear();
+                        } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to post comment: $e')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _posting = false);
+                          }
+                        },
+                  child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(AppLocalizations.of(context)!.post),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+        // Comments list below the input box
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -757,12 +1374,12 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
           child: commentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(
-              child: Text('Failed to load comments', style: theme.textTheme.bodyMedium),
+              child: Text(AppLocalizations.of(context)!.failedToLoadComments, style: theme.textTheme.bodyMedium),
             ),
             data: (comments) {
               if (comments.isEmpty) {
                 return Center(
-                  child: Text('No comments yet. Be the first to comment!', style: theme.textTheme.bodyMedium),
+                  child: Text(AppLocalizations.of(context)!.noCommentsYet, style: theme.textTheme.bodyMedium),
                 );
               }
               return ListView.separated(
@@ -803,96 +1420,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             },
           ),
         ),
-        const SizedBox(height: 16),
-        if (!isLoggedIn)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(Icons.lock_outline, color: theme.colorScheme.outline),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Sign in to comment on this build',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    // Show a message directing user to sign in
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please sign in to comment. Use the navigation to go to login.'),
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  },
-                  child: const Text('Sign In'),
-                ),
-              ],
-            ),
-          )
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              UserImageUtils.buildUserAvatar(
-                username: userAsync.valueOrNull?.username,
-                userId: userAsync.valueOrNull?.uid,
-                radius: 16,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'Write a comment...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: _posting
-                    ? null
-                    : () async {
-                        final text = _controller.text.trim();
-                        if (text.isEmpty) return;
-                        setState(() => _posting = true);
-                      try {
-                        final user = userAsync.valueOrNull;
-                        if (user == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please sign in to comment')),
-                          );
-                          return;
-                        }
-                        final authorName = user.username;
-                        await ref.read(buildCommentsProvider(widget.buildId).notifier).add(authorName, text, user.uid);
-                        _controller.clear();
-                      } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to post comment: $e')),
-                            );
-                          }
-                        } finally {
-                          if (mounted) setState(() => _posting = false);
-                        }
-                      },
-                child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Post'),
-              ),
-            ],
-          ),
-        ],
+      ],
     );
   }
 }

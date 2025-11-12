@@ -12,21 +12,61 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/forum_model.dart';
+import 'package:frontend/widgets/linkable_text.dart';
 
 import 'package:intl/intl.dart';
 
+/// Parameters for paginated comments fetching.
+class PostCommentsParams {
+  final String postId;
+  final int page;
+  final int pageSize;
+
+  PostCommentsParams({
+    required this.postId,
+    this.page = 1,
+    this.pageSize = 20,
+  });
+
+  PostCommentsParams copyWith({
+    String? postId,
+    int? page,
+    int? pageSize,
+  }) {
+    return PostCommentsParams(
+      postId: postId ?? this.postId,
+      page: page ?? this.page,
+      pageSize: pageSize ?? this.pageSize,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PostCommentsParams &&
+        other.postId == postId &&
+        other.page == page &&
+        other.pageSize == pageSize;
+  }
+
+  @override
+  int get hashCode => Object.hash(postId, page, pageSize);
+}
+
+/// A provider that fetches paginated comments for a forum post.
+final postCommentsProvider = FutureProvider.family<List<PostReply>, PostCommentsParams>((ref, params) async {
+  final forumService = ref.read(forumServiceProvider);
+  return await forumService.getPostComments(params.postId, page: params.page, pageSize: params.pageSize);
+});
+
 /// A provider that fetches the details of a single forum post by its ID.
-///
-/// Fetches the post and then separately fetches its comments/replies.
+/// This now only fetches the post, not the comments (comments are paginated separately).
 final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId) async {
-  final forumService = ref.read(forumServiceProvider); // Use read for initial fetch
-  // Fetch the post first
+  final forumService = ref.read(forumServiceProvider);
+  // Fetch the post only (comments are loaded separately with pagination)
   final post = await forumService.getPostById(postId);
   
-  // Then fetch the comments/replies separately (backend doesn't include them in the post response)
-  final comments = await forumService.getPostComments(postId);
-  
-  // Return the post with the fetched comments
+  // Return the post without comments (they'll be loaded separately)
   return ForumPost(
     id: post.id,
     title: post.title,
@@ -34,8 +74,8 @@ final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId
     topic: post.topic,
     content: post.content,
     createdAt: post.createdAt,
-    replies: comments,
-    replyCount: comments.length, // Use actual comments count from detail fetch
+    replies: const [], // Comments are loaded separately with pagination
+    replyCount: 0, // Not fetching count to avoid loading all comments
     acceptedReplyId: post.acceptedReplyId,
     tags: post.tags,
     build: post.build,
@@ -85,6 +125,21 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
     with TickerProviderStateMixin {
   /// The main animation controller for staggering the appearance of the page elements.
   late AnimationController _controller;
+  
+  /// Current page for comments pagination
+  int _currentPage = 1;
+  
+  /// Page size for comments
+  static const int _pageSize = 20;
+  
+  /// All loaded comments (accumulated across pages)
+  final List<PostReply> _allComments = [];
+  
+  /// Whether more comments are available
+  bool _hasMoreComments = true;
+  
+  /// Whether comments are currently loading
+  bool _isLoadingComments = false;
 
   @override
   void initState() {
@@ -94,6 +149,8 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
       duration: const Duration(milliseconds: 1000),
     );
     _controller.forward();
+    // Load first page of comments
+    _loadComments();
   }
 
   @override
@@ -101,6 +158,42 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
     // Clean up the controller to prevent memory leaks.
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Loads the next page of comments
+  Future<void> _loadComments() async {
+    if (_isLoadingComments || !_hasMoreComments) return;
+    
+    setState(() => _isLoadingComments = true);
+    
+    try {
+      final postId = widget.postId ?? widget.post?.id;
+      if (postId == null) return;
+      
+      final params = PostCommentsParams(postId: postId, page: _currentPage, pageSize: _pageSize);
+      final comments = await ref.read(postCommentsProvider(params).future);
+      
+      setState(() {
+        if (comments.isEmpty) {
+          _hasMoreComments = false;
+        } else {
+          _allComments.addAll(comments);
+          _currentPage++;
+          // If we got fewer comments than pageSize, there are no more
+          if (comments.length < _pageSize) {
+            _hasMoreComments = false;
+          }
+        }
+        _isLoadingComments = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingComments = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading comments: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -119,7 +212,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
       );
     }
     
-    // Fetch the latest post data with replies from the provider
+    // Fetch the latest post data from the provider
     final postAsync = ref.watch(postDetailProvider(postId));
     
     return Scaffold(
@@ -151,7 +244,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                     ),
                   ),
 
-                  /// A header to show the number of replies.
+                  /// A header to show replies section title.
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -159,7 +252,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                         vertical: 8,
                       ),
                       child: Text(
-                        '${post.replies.length} Replies',
+                        'Replies',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -169,7 +262,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                   ),
 
                   /// If there are no replies, show a placeholder message.
-                  if (post.replies.isEmpty)
+                  if (_allComments.isEmpty && !_isLoadingComments)
                     const SliverToBoxAdapter(
                       child: Center(
                         child: Padding(
@@ -184,14 +277,29 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                   else
                     /// Otherwise, build a list of reply cards with staggered animations.
                     SliverList.builder(
-                      itemCount: post.replies.length,
+                      itemCount: _allComments.length + (_hasMoreComments ? 1 : 0),
                       itemBuilder: (context, index) {
+                        // Show "Load More" button at the end if there are more comments
+                        if (index == _allComments.length) {
+                          return Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Center(
+                              child: _isLoadingComments
+                                  ? const CircularProgressIndicator()
+                                  : ElevatedButton(
+                                      onPressed: _loadComments,
+                                      child: const Text('Load More Comments'),
+                                    ),
+                            ),
+                          );
+                        }
+                        
                         final animation = CurvedAnimation(
                           parent: _controller,
 
                           /// Each reply card animates in slightly after the previous one.
                           curve: Interval(
-                            0.3 + (0.6 * index / post.replies.length),
+                            0.3 + (0.6 * index / (_allComments.length + 1)),
                             1.0,
                             curve: Curves.easeOut,
                           ),
@@ -203,7 +311,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                               begin: const Offset(0, 0.1),
                               end: Offset.zero,
                             ).animate(animation),
-                            child: _ReplyCard(reply: post.replies[index]),
+                            child: _ReplyCard(reply: _allComments[index]),
                           ),
                         );
                       },
@@ -216,9 +324,16 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
             _ReplyInputSection(
               post: post,
               onReplySubmitted: () {
-                // Invalidate the provider to refetch the post with new replies
-                // This will be called after a successful reply submission
+                // Reset comments and reload from page 1
+                setState(() {
+                  _allComments.clear();
+                  _currentPage = 1;
+                  _hasMoreComments = true;
+                });
+                // Invalidate the provider to refetch the post
                 ref.invalidate(postDetailProvider(postId));
+                // Reload comments
+                _loadComments();
               },
             ),
           ],
@@ -349,9 +464,9 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
 
               const Divider(height: 28),
 
-              /// The main content of the post.
-              Text(
-                post.content,
+              /// The main content of the post with clickable links.
+              LinkableText(
+                text: post.content,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   height: 1.6,
                   color: theme.colorScheme.onSurface,
@@ -530,9 +645,9 @@ class _ReplyCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                /// The content of the reply.
-                Text(
-                  reply.content,
+                /// The content of the reply with clickable links.
+                LinkableText(
+                  text: reply.content,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     height: 1.5,
                     color: theme.colorScheme.onSurface,

@@ -62,17 +62,29 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   /// The currently selected option for sorting posts.
   String? _selectedSortOption;
 
-  /// Current page number for pagination.
+  /// Current page number for pagination (for infinite scroll).
   int _currentPage = 1;
 
   /// Number of posts per page.
-  static const int _pageSize = 10;
+  static const int _pageSize = 20;
 
   /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
   
   /// Timer for debouncing search input
   Timer? _searchDebounce;
+
+  /// All loaded posts (accumulated across pages for infinite scroll)
+  final List<ForumPost> _allPosts = [];
+  
+  /// Whether more posts are available to load
+  bool _hasMorePosts = true;
+  
+  /// Whether posts are currently loading
+  bool _isLoadingPosts = false;
+  
+  /// ScrollController to detect when user scrolls to bottom
+  final ScrollController _scrollController = ScrollController();
 
   /// Returns localized categories list
   List<String> _getCategories(BuildContext context) {
@@ -94,9 +106,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
     ];
   }
 
-  /// Controller for the main [CustomScrollView] to manage scroll-related effects if needed.
-  final ScrollController _scrollController = ScrollController();
-
   @override
   void initState() {
     super.initState();
@@ -110,10 +119,84 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
           setState(() {
             _searchQuery = _searchController.text.trim();
             _currentPage = 1; // Reset to first page when search changes
+            _allPosts.clear(); // Clear existing posts
+            _hasMorePosts = true; // Reset hasMorePosts
           });
+          _loadPosts(); // Reload posts
         }
       });
     });
+    
+    // Add scroll listener for infinite scroll
+    _scrollController.addListener(_onScroll);
+    
+    // Load first page of posts after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPosts();
+    });
+  }
+  
+  /// Loads the next page of posts for infinite scroll
+  Future<void> _loadPosts() async {
+    if (_isLoadingPosts || !_hasMorePosts) return;
+    
+    setState(() => _isLoadingPosts = true);
+    
+    try {
+      final allText = AppLocalizations.of(context)!.all;
+      final selectedCat = _selectedCategory ?? allText;
+      final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
+      
+      final forumService = ref.read(forumServiceProvider);
+      final filter = {
+        'Paging': true,
+        'Page': _currentPage,
+        'PageLength': _pageSize,
+        'SortDirection': selectedSort == 'Newest' ? 'desc' : 'asc',
+        'OrderBy': 'PostedAt',
+      };
+      
+      if (selectedCat != allText && _selectedCategory != null) {
+        filter['Topic'] = [_selectedCategory];
+      }
+      
+      if (_searchQuery.isNotEmpty) {
+        filter['Query'] = _searchQuery.trim();
+      }
+      
+      final posts = await forumService.getPosts(filter);
+      
+      setState(() {
+        if (posts.isEmpty) {
+          _hasMorePosts = false;
+        } else {
+          _allPosts.addAll(posts);
+          _currentPage++;
+          // If we got fewer posts than pageSize, there are no more
+          if (posts.length < _pageSize) {
+            _hasMorePosts = false;
+          }
+        }
+        _isLoadingPosts = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingPosts = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading posts: $e')),
+        );
+      }
+    }
+  }
+  
+  /// Called when user scrolls - checks if we need to load more posts
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      // User is within 200 pixels of bottom, load more
+      _loadPosts();
+    }
   }
   
   @override
@@ -121,6 +204,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
     // Clean up controllers to prevent memory leaks.
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -133,17 +217,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
     final allText = AppLocalizations.of(context)!.all;
     final selectedCat = _selectedCategory ?? allText;
     final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
-    
-    // Build pagination parameters - memoize to prevent unnecessary rebuilds
-    final postsParams = ForumPostsParams(
-      page: _currentPage,
-      pageSize: _pageSize,
-      category: selectedCat == allText ? null : _selectedCategory,
-      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
-      sortOption: selectedSort,
-    );
-    
-    final postsAsync = ref.watch(forumPostsProvider(postsParams));
 
 
     return Scaffold(
@@ -172,7 +245,10 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                       setState(() {
                         _selectedCategory = category;
                         _currentPage = 1; // Reset to first page when category changes
+                        _allPosts.clear(); // Clear existing posts
+                        _hasMorePosts = true; // Reset hasMorePosts
                       });
+                      _loadPosts(); // Reload posts
                     },
                     sortOptions: _getSortOptions(context),
                     selectedSortOption: selectedSort,
@@ -180,152 +256,83 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
                       setState(() {
                         _selectedSortOption = option;
                         _currentPage = 1; // Reset to first page when sort changes
+                        _allPosts.clear(); // Clear existing posts
+                        _hasMorePosts = true; // Reset hasMorePosts
                       });
+                      _loadPosts(); // Reload posts
                     },
                   ),
                 ),
-                postsAsync.when(
-                  loading: () => const SliverFillRemaining(
+                // Show loading indicator only on initial load
+                if (_allPosts.isEmpty && _isLoadingPosts)
+                  const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (err, stack) => SliverFillRemaining(
-                    child: Center(child: Text('${AppLocalizations.of(context)!.error}: $err')),
-                  ),
-                  data: (posts) {
-                    // Determine if there are more pages
-                    final hasMorePages = posts.length == _pageSize;
-                    final hasPreviousPage = _currentPage > 1;
-                    
-                    // If no posts found, show empty state
-                    if (posts.isEmpty) {
-                      return SliverFillRemaining(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.forum_outlined,
-                                size: 64,
-                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                AppLocalizations.of(context)!.noPostsFound,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Try adjusting your filters or search query',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
-                                ),
-                              ),
-                            ],
+                  )
+                // Show empty state if no posts found
+                else if (_allPosts.isEmpty && !_isLoadingPosts)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.forum_outlined,
+                            size: 64,
+                            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
-                        ),
-                      );
-                    }
-                    
-                    return SliverPadding(
-                      padding: const EdgeInsets.all(16.0),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            // If this is the last item, add pagination controls
-                            if (index == posts.length) {
-                              return _buildPaginationControls(
-                                theme,
-                                hasPreviousPage,
-                                hasMorePages,
-                              );
-                            }
-                            
-                            return AnimationConfiguration.staggeredList(
-                              position: index,
-                              duration: const Duration(milliseconds: 375),
-                              child: SlideAnimation(
-                                verticalOffset: 50.0,
-                                child: FadeInAnimation(
-                                  child: _ModernPostCard(
-                                      post: posts[index]),
-                                ),
-                              ),
-                            );
-                          },
-                          childCount: posts.length + 1, // +1 for pagination controls
-                        ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppLocalizations.of(context)!.noPostsFound,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your filters or search query',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  )
+                // Show posts list with infinite scroll
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16.0),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          // Show loading indicator at the end if loading more
+                          if (index == _allPosts.length) {
+                            return _isLoadingPosts
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  )
+                                : const SizedBox.shrink();
+                          }
+                          
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            duration: const Duration(milliseconds: 375),
+                            child: SlideAnimation(
+                              verticalOffset: 50.0,
+                              child: FadeInAnimation(
+                                child: _ModernPostCard(
+                                    post: _allPosts[index]),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: _allPosts.length + (_isLoadingPosts ? 1 : 0),
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Builds pagination controls at the bottom of the post list.
-  Widget _buildPaginationControls(
-    ThemeData theme,
-    bool hasPreviousPage,
-    bool hasMorePages,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Previous page button
-          IconButton(
-            onPressed: hasPreviousPage
-                ? () {
-                    setState(() {
-                      _currentPage--;
-                    });
-                    // Scroll to top when changing pages
-                    _scrollController.animateTo(
-                      0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.chevron_left),
-            tooltip: 'Previous page',
-          ),
-          
-          // Page number display
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              'Page $_currentPage',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          
-          // Next page button
-          IconButton(
-            onPressed: hasMorePages
-                ? () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                    // Scroll to top when changing pages
-                    _scrollController.animateTo(
-                      0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                : null,
-            icon: const Icon(Icons.chevron_right),
-            tooltip: 'Next page',
           ),
         ],
       ),
@@ -991,12 +998,10 @@ class _ModernPostCardState extends ConsumerState<_ModernPostCard>
                               ),
                               const Spacer(),
 
-                              /// Chips for displaying view and reply counts.
+                              /// Chips for displaying replies.
                               _StatChip(
                                 Icons.comment_outlined,
-                                widget.post.replyCount == 1 
-                                    ? '1 Reply' 
-                                    : '${widget.post.replyCount} Replies',
+                                'Replies',
                               ),
                             ],
                           ),
