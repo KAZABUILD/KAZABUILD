@@ -18,7 +18,7 @@
 
 [00002] The build loading takes forever.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Tags are getting queried one by one causing the application to not load within a reasonable time frame.
 
@@ -41,7 +41,7 @@
 
 [00006] About us section is missing pictures and the navigation bar.
 - Type: error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00007] The 3d model display allows user interaction.

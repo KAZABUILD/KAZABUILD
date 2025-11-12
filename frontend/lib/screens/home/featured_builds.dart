@@ -203,6 +203,7 @@ class _BuildCard extends StatelessWidget {
                           horizontal: 40,
                           vertical: 15,
                         ),
+
                       ),
                       child: const Text('View Details'),
                     ),
@@ -216,3 +217,4 @@ class _BuildCard extends StatelessWidget {
     );
   }
 }
+

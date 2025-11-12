@@ -110,6 +110,7 @@ class CustomNavigationBar extends ConsumerWidget {
               _NavButton(title: AppLocalizations.of(context)!.exploreBuilds, route: '/explore'),
               _NavButton(title: AppLocalizations.of(context)!.guides,route: '/guides'),
               _NavButton(title: AppLocalizations.of(context)!.forums, route: '/forums'),
+              _NavButton(title: AppLocalizations.of(context)!.aboutUs, route: '/about'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -317,6 +318,14 @@ class CustomDrawer extends ConsumerWidget {
             onTap: () {
               Navigator.pop(context);
               context.go('/forums');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(AppLocalizations.of(context)!.aboutUs),
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/about');
             },
           ),
           const Divider(),

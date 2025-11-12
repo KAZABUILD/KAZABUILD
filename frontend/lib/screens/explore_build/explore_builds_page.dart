@@ -74,7 +74,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   List<Build> _filterAndSortBuilds(List<Build> builds) {
     var filtered = builds;
 
-    // Apply search filter - search in name, author, tags, and description
+    // Apply search filter - search in name, author, and description (tags are not fetched)
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase().trim();
       filtered = filtered.where((build) {
@@ -84,22 +84,11 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
         // Search in author username
         final authorMatch = build.author?.username.toLowerCase().contains(query) ?? false;
         
-        // Search in tags - check if any tag contains the query (tags are case-insensitive)
-        final tagMatch = build.tags.isNotEmpty && 
-                         build.tags.any((tag) => tag.toLowerCase().trim().contains(query));
-        
         // Search in description
         final descriptionMatch = build.description?.toLowerCase().contains(query) ?? false;
         
         // Return true if any field matches
-        final matches = nameMatch || authorMatch || tagMatch || descriptionMatch;
-        
-        // Debug logging for tag matches
-        if (kDebugMode && matches && tagMatch) {
-          print('🔍 Search match found by TAG: "$query" in build "${build.name}" (tags: ${build.tags.join(", ")})');
-        }
-        
-        return matches;
+        return nameMatch || authorMatch || descriptionMatch;
       }).toList();
     }
 
@@ -110,12 +99,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
       }).toList();
     }
 
-    // Apply tag filter
-    if (_selectedTags.isNotEmpty) {
-      filtered = filtered.where((build) {
-        return build.tags.any((tag) => _selectedTags.contains(tag));
-      }).toList();
-    }
+    // Tag filter removed - tags are not fetched for explore builds page
 
     // Apply sorting
     switch (_sortBy) {
@@ -542,7 +526,6 @@ class _FilterPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final buildsAsync = ref.watch(allBuildsProvider);
-    final tagsAsync = ref.watch(tagsProvider);
 
     return buildsAsync.when(
       data: (builds) {
@@ -552,121 +535,71 @@ class _FilterPanel extends ConsumerWidget {
           allStatuses.add(build.status);
         }
 
-        return tagsAsync.when(
-          data: (tags) {
-            // Get all tag names from API (database seeds)
-            final allTagNames = tags.map((tag) => tag.name).toList();
-
-            return Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.filters,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Status Filter
-                  if (allStatuses.isNotEmpty) ...[
-                    Text(
-                      AppLocalizations.of(context)!.status,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: allStatuses.map((status) {
-                        final isSelected = selectedStatuses.contains(status);
-                        return FilterChip(
-                          label: Text(status),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            final newStatuses = Set<String>.from(selectedStatuses);
-                            if (selected) {
-                              newStatuses.add(status);
-                            } else {
-                              newStatuses.remove(status);
-                            }
-                            onStatusesChanged(newStatuses);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  // Tags Filter - Show all tags from database
-                  if (allTagNames.isNotEmpty) ...[
-                    Text(
-                      AppLocalizations.of(context)!.tags,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: allTagNames.map((tagName) {
-                        final isSelected = selectedTags.contains(tagName);
-                        return FilterChip(
-                          label: Text(tagName),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            final newTags = Set<String>.from(selectedTags);
-                            if (selected) {
-                              newTags.add(tagName);
-                            } else {
-                              newTags.remove(tagName);
-                            }
-                            onTagsChanged(newTags);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                  // Clear Filters Button
-                  if (selectedTags.isNotEmpty || selectedStatuses.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    TextButton.icon(
-                      onPressed: () {
-                        onTagsChanged({});
-                        onStatusesChanged({});
-                      },
-                      icon: const Icon(Icons.clear_all),
-                      label: Text(AppLocalizations.of(context)!.clearAllFilters),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-          loading: () => Container(
-            padding: const EdgeInsets.all(16),
-            child: const CircularProgressIndicator(),
+            ],
           ),
-          error: (error, stack) => Container(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              '${AppLocalizations.of(context)!.errorLoadingTags}: $error',
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.filters,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Status Filter
+              if (allStatuses.isNotEmpty) ...[
+                Text(
+                  AppLocalizations.of(context)!.status,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: allStatuses.map((status) {
+                    final isSelected = selectedStatuses.contains(status);
+                    return FilterChip(
+                      label: Text(status),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        final newStatuses = Set<String>.from(selectedStatuses);
+                        if (selected) {
+                          newStatuses.add(status);
+                        } else {
+                          newStatuses.remove(status);
+                        }
+                        onStatusesChanged(newStatuses);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+              // Clear Filters Button
+              if (selectedStatuses.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    onStatusesChanged({});
+                  },
+                  icon: const Icon(Icons.clear_all),
+                  label: Text(AppLocalizations.of(context)!.clearAllFilters),
+                ),
+              ],
+            ],
           ),
         );
       },
@@ -1176,7 +1109,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: widget.buildData.tags.take(3).map((tag) {
+                      children: widget.buildData.tags.take(10).map((tag) {
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
