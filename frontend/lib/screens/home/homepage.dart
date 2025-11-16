@@ -45,14 +45,15 @@ class _HomePageState extends ConsumerState<HomePage> {
           Expanded(
             // Makes the main content area scrollable.
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
                   const HomeBody(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 80),
                   const FeaturedBuilds(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 80),
                   const PartCategoriesSection(),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 80),
                   const LastBar(),
                 ],
               ),

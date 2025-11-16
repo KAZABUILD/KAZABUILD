@@ -91,9 +91,36 @@ class AuthService {
   }
 
   /// Sends a request to confirm the password reset with a new password.
-  Future<Response> confirmResetPassword(String token, String newPassword) {
+  Future<Response> confirmResetPassword(String token, String newPassword) async {
     // Makes a POST request to the /Auth/confirm-reset-password endpoint.
-    return _dio.post('$apiBaseUrl/Auth/confirm-reset-password', data: {'token': token, 'newPassword': newPassword});
+    // Backend redirects on success/failure, so we need to handle redirects
+    try {
+      final response = await _dio.post(
+        '$apiBaseUrl/Auth/confirm-reset-password', 
+        data: {'token': token, 'newPassword': newPassword},
+        options: Options(
+          followRedirects: false,
+          maxRedirects: 0, // Don't follow any redirects
+          validateStatus: (status) {
+            // Accept 200-299 and 302 as valid status codes
+            return status != null && (status >= 200 && status < 300 || status == 302);
+          },
+        ),
+      );
+      return response;
+    } on DioException catch (e) {
+      // If we get a 302 redirect, that's actually expected (backend redirects to frontend)
+      if (e.response?.statusCode == 302) {
+        // Create a fake response with 302 status
+        return Response<dynamic>(
+          requestOptions: e.requestOptions,
+          statusCode: 302,
+          headers: e.response?.headers,
+          data: null,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Sends a request to confirm user registration with a token.
@@ -394,11 +421,26 @@ class AppUser {
       photoURL = json['imageId']?.toString() ?? json['ImageId']?.toString();
     }
     
+    // Handle username - guest users might not have 'login' field, use displayName as fallback
+    final loginValue = json['login'] ?? json['Login'];
+    final displayNameValue = json['displayName'] ?? json['DisplayName'];
+    final username = loginValue ?? displayNameValue ?? 'User';
+    
+    // Handle email - guest users might not have email field
+    final emailValue = json['email'] ?? json['Email'] ?? '';
+    
+    // Handle uid - must be present, convert to string if needed
+    final uidValue = json['id'] ?? json['Id'];
+    if (uidValue == null) {
+      log('AppUser.fromJson: Missing id field, cannot create user');
+      throw Exception('User ID is required but missing in response');
+    }
+    
     return AppUser(
-      uid: json['id'] ?? json['Id'],
-      username: json['login'] ?? json['Login'],
-      displayName: json['displayName'] ?? json['DisplayName'] ?? json['login'] ?? json['Login'],
-      email: json['email'] ?? json['Email'],
+      uid: uidValue.toString(),
+      username: username,
+      displayName: displayNameValue ?? username,
+      email: emailValue,
       photoURL: photoURL,
       bio: json['description'] ?? json['Description'],
       phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'],
@@ -625,12 +667,137 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     // This operation also doesn't change the global auth state directly.
     try {
       final response = await _authService.confirmResetPassword(token, newPassword);
-      // The backend redirects on success, but dio will get a 200 OK with the response data.
-      // We'll use a static message as the backend doesn't return a JSON body on this one.
-      return response.data['message'] ?? 'Password has been reset successfully! You can now log in.';
+      
+      log('🔵 Password reset response status: ${response.statusCode}');
+      log('🔵 Password reset response headers: ${response.headers}');
+      
+      // Backend returns 302 redirect on both success and error
+      // Check the redirect location to determine success or failure
+      if (response.statusCode == 302) {
+        // Try different ways to get location header
+        final location = response.headers.value('location') ?? 
+                        response.headers.value('Location') ??
+                        response.headers.map['location']?.first ??
+                        response.headers.map['Location']?.first;
+        log('🔵 Password reset redirect location: $location');
+        
+        if (location != null) {
+          // Parse URL to extract path and query parameters (ignore scheme http/https)
+          String locationToCheck = location;
+          try {
+            final uri = Uri.parse(location);
+            // Extract path and query string, ignore scheme
+            locationToCheck = '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+            log('🔵 Parsed location (path + query): $locationToCheck');
+          } catch (e) {
+            log('⚠️ Could not parse location URL: $e');
+            // Fallback to original location
+            locationToCheck = location;
+          }
+          
+          final locationLower = locationToCheck.toLowerCase();
+          // Check if redirect contains error parameter (these are errors)
+          if (locationLower.contains('error=invalidtoken') || locationLower.contains('?error=invalidtoken')) {
+            throw Exception('Invalid or expired reset token. Please request a new password reset link.');
+          } else if (locationLower.contains('error=expiredtoken') || locationLower.contains('?error=expiredtoken')) {
+            throw Exception('This reset link has expired. Please request a new password reset link.');
+          } else if (locationLower.contains('error=')) {
+            // Any other error parameter
+            throw Exception('An error occurred while resetting your password. Please try again.');
+          } else if (locationLower.contains('/login') || locationLower.contains('login')) {
+            // Success - redirecting to login page
+            return 'Password has been reset successfully! You can now log in.';
+          } else if ((locationLower.contains('userid=') || locationLower.contains('confirm-reset-password')) && !locationLower.contains('error=')) {
+            // Backend redirects to confirm-reset-password with userId on success
+            // This means password was reset successfully
+            log('✅ Password reset successful - redirect contains userId or confirm-reset-password');
+            return 'Password has been reset successfully! You can now log in.';
+          }
+        }
+      }
+      
+      // Fallback success message
+      log('✅ Password reset successful - fallback');
+      return 'Password has been reset successfully! You can now log in.';
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'An unknown error occurred. The token might be invalid or expired.';
-      throw errorMessage;
+      log('🔴 DioException: type=${e.type}, statusCode=${e.response?.statusCode}, message=${e.message}');
+      log('🔴 Response headers: ${e.response?.headers}');
+      log('🔴 Response headers map: ${e.response?.headers.map}');
+      
+      // Check if it's a redirect error (302)
+      // Dio might throw exception even with followRedirects: false
+      if (e.response?.statusCode == 302 || e.type == DioExceptionType.badResponse) {
+        // Try different ways to get location header
+        String? location;
+        try {
+          location = e.response?.headers.value('location') ?? 
+                    e.response?.headers.value('Location') ??
+                    e.response?.headers.map['location']?.first ??
+                    e.response?.headers.map['Location']?.first ??
+                    e.response?.headers.map['location']?.firstOrNull ??
+                    e.response?.headers.map['Location']?.firstOrNull;
+        } catch (ex) {
+          log('⚠️ Error getting location header: $ex');
+        }
+        
+        log('🔵 Password reset redirect location (from exception): $location');
+        
+        if (location != null && location.isNotEmpty) {
+          // Parse URL to extract path and query parameters (ignore scheme http/https)
+          String locationToCheck = location;
+          try {
+            final uri = Uri.parse(location);
+            // Extract path and query string, ignore scheme
+            locationToCheck = '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+            log('🔵 Parsed location from exception (path + query): $locationToCheck');
+          } catch (parseEx) {
+            log('⚠️ Could not parse location URL from exception: $parseEx');
+            // Fallback to original location
+            locationToCheck = location;
+          }
+          
+          final locationLower = locationToCheck.toLowerCase();
+          if (locationLower.contains('error=invalidtoken') || locationLower.contains('?error=invalidtoken')) {
+            throw Exception('Invalid or expired reset token. Please request a new password reset link.');
+          } else if (locationLower.contains('error=expiredtoken') || locationLower.contains('?error=expiredtoken')) {
+            throw Exception('This reset link has expired. Please request a new password reset link.');
+          } else if (locationLower.contains('error=')) {
+            // Any other error parameter
+            throw Exception('An error occurred while resetting your password. Please try again.');
+          } else if (locationLower.contains('/login') || locationLower.contains('login')) {
+            // Success - redirecting to login page
+            log('✅ Password reset successful - redirect to login');
+            return 'Password has been reset successfully! You can now log in.';
+          } else if ((locationLower.contains('userid=') || locationLower.contains('confirm-reset-password')) && !locationLower.contains('error=')) {
+            // Backend redirects to confirm-reset-password with userId on success
+            // This means password was reset successfully
+            log('✅ Password reset successful - redirect contains userId or confirm-reset-password');
+            return 'Password has been reset successfully! You can now log in.';
+          }
+        }
+        
+        // If we have a 302 but no location header, or location doesn't match known patterns
+        // Assume success if status is 302 (backend processed the request)
+        if (e.response?.statusCode == 302) {
+          log('✅ Password reset successful - 302 status code (assuming success)');
+          return 'Password has been reset successfully! You can now log in.';
+        }
+      }
+      
+      // If we get here and it's a 302, we already handled it above
+      // So this must be a different error
+      final errorMessage = e.response?.data?['message'] ?? 
+                          ((e.message != null && (e.message!.contains('InvalidToken') || e.message!.contains('ExpiredToken')))
+                            ? 'Invalid or expired reset token. Please request a new password reset link.'
+                            : 'An error occurred while resetting your password. Please try again.');
+      throw Exception(errorMessage);
+    } catch (e) {
+      log('🔴 Exception in confirmPasswordReset: $e');
+      // Re-throw if it's already an Exception
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('An unknown error occurred: ${e.toString()}');
     }
   }
 
