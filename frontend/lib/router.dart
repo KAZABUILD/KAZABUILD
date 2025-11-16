@@ -47,6 +47,8 @@ import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
 import 'package:frontend/screens/info/faq_page.dart';
+import 'package:frontend/screens/messages/messages_page.dart';
+import 'package:frontend/screens/messages/message_detail_page.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -382,6 +384,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/faq',
         name: 'faq',
         builder: (context, state) => const FaqPage(),
+      ),
+      GoRoute(
+        path: '/messages',
+        name: 'messages',
+        builder: (context, state) => const MessagesPage(),
+      ),
+      GoRoute(
+        path: '/messages/:userId',
+        name: 'message-detail',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          if (userId == null) {
+            return const MessagesPage();
+          }
+          return MessageDetailPage(otherUserId: userId);
+        },
       ),
     ],
 
