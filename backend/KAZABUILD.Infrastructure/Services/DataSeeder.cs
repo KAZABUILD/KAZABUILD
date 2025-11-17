@@ -386,7 +386,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(n => n.LastEditedAt, (f, n) => f.Date.Between(n.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(n => n.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
-        private static readonly string[] topics = ["Troubleshoot", "Build Advice", "Show Off Your Build", "General Discussion"];
+        private static readonly string[] topics = ["Troubleshooting", "Build Advice", "Show Off Your Build", "General Discussion"];
         private Faker<ForumPost> GetForumPostFaker(List<Guid> creatorIds) => new Faker<ForumPost>("en")
             .RuleFor(p => p.Id, f => Guid.NewGuid())
             .RuleFor(p => p.CreatorId, f => f.PickRandom(creatorIds))

@@ -24,10 +24,7 @@ namespace KAZABUILD.Application.DTOs.Image
         /// <summary>
         /// Whether the paging should be used.
         /// </summary>
-        public bool Paging = false;
-
-        /// <summary>
-        /// Which page should be gotten if paging enabled.
+        public bool Paging { get; set; } = false;
 
         /// <summary>
         /// Which page should be gotten if paging enabled.
