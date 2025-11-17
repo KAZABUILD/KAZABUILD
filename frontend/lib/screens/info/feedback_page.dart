@@ -6,6 +6,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/home/homepage.dart';
+import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/widgets/last_bar.dart';
 
 /// The main stateful widget for the feedback page.
 class FeedbackPage extends StatefulWidget {
@@ -23,6 +25,10 @@ class _FeedbackPageState extends State<FeedbackPage>
     with SingleTickerProviderStateMixin {
   /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
+
+  /// A global key to manage the [Scaffold] state, primarily used for
+  /// programmatically opening the [CustomDrawer] on mobile layouts.
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// The animation controller that drives all the animations on this page.
   late AnimationController _controller;
@@ -80,10 +86,8 @@ class _FeedbackPageState extends State<FeedbackPage>
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Submit Feedback'),
-        backgroundColor: theme.colorScheme.surface,
-      ),
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
 
       /// The main container with a subtle gradient background for visual appeal.
@@ -99,124 +103,163 @@ class _FeedbackPageState extends State<FeedbackPage>
             end: Alignment.bottomRight,
           ),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: Form(
-                key: _formKey,
-                // The main column that holds all form elements.
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    /// Page title, animated.
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.0, 0.4, curve: Curves.easeOut),
-                      child: Text(
-                        'We Value Your Feedback',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    /// Instructional text, animated.
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
-                      child: Text(
-                        'Help us improve Kaza Build by sharing your thoughts or reporting a bug.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    /// Form fields, each with a staggered animation for a sequential appearance.
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
-                      child: _buildTextFormField(
-                        label: 'Name',
-                        hint: 'Enter your name',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
-                      child: _buildTextFormField(
-                        label: 'Email',
-                        hint: 'Enter your registered email',
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'This field cannot be empty.';
-                          }
-                          if (!emailRegex.hasMatch(value)) {
-                            return 'Please enter a valid email format.';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.4, 0.8, curve: Curves.easeOut),
-                      child: _buildTextFormField(
-                        label: 'Subject',
-                        hint: 'What is this about?',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.5, 0.9, curve: Curves.easeOut),
-                      child: _buildTextFormField(
-                        label: 'Message',
-                        hint: 'Describe your feedback in detail...',
-                        maxLines: 5,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildAnimatedWidget(
-                      interval: const Interval(0.6, 1.0, curve: Curves.easeOut),
-                      child: _SubmitButton(
-                        onPressed: () {
-                          /// Validate the form before proceeding.
-                          if (_formKey.currentState!.validate()) {
-                            // TODO: Implement a real API call to send the feedback data to a backend service.
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              // Show a success message to the user.
-                              const SnackBar(
-                                content: Text(
-                                  'Your message has been sent successfully!',
-                                ),
-                                backgroundColor: Colors.green,
+        child: Column(
+          children: [
+            // The main navigation bar, which is responsive.
+            CustomNavigationBar(scaffoldKey: _scaffoldKey),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32.0),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: Form(
+                      key: _formKey,
+                      // The main column that holds all form elements.
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          /// Page title, animated.
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.0,
+                              0.4,
+                              curve: Curves.easeOut,
+                            ),
+                            child: Text(
+                              'We Value Your Feedback',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                            /// After a short delay, navigate back to the homepage.
-                            Future.delayed(
-                              const Duration(milliseconds: 1500),
-                              () {
-                                if (context.mounted) {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                      builder: (context) => const HomePage(),
+                          /// Instructional text, animated.
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.1,
+                              0.5,
+                              curve: Curves.easeOut,
+                            ),
+                            child: Text(
+                              'Help us improve Kaza Build by sharing your thoughts or reporting a bug.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+
+                          /// Form fields, each with a staggered animation for a sequential appearance.
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.2,
+                              0.6,
+                              curve: Curves.easeOut,
+                            ),
+                            child: _buildTextFormField(
+                              label: 'Name',
+                              hint: 'Enter your name',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.3,
+                              0.7,
+                              curve: Curves.easeOut,
+                            ),
+                            child: _buildTextFormField(
+                              label: 'Email',
+                              hint: 'Enter your registered email',
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'This field cannot be empty.';
+                                }
+                                if (!emailRegex.hasMatch(value)) {
+                                  return 'Please enter a valid email format.';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.4,
+                              0.8,
+                              curve: Curves.easeOut,
+                            ),
+                            child: _buildTextFormField(
+                              label: 'Subject',
+                              hint: 'What is this about?',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.5,
+                              0.9,
+                              curve: Curves.easeOut,
+                            ),
+                            child: _buildTextFormField(
+                              label: 'Message',
+                              hint: 'Describe your feedback in detail...',
+                              maxLines: 5,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          _buildAnimatedWidget(
+                            interval: const Interval(
+                              0.6,
+                              1.0,
+                              curve: Curves.easeOut,
+                            ),
+                            child: _SubmitButton(
+                              onPressed: () {
+                                /// Validate the form before proceeding.
+                                if (_formKey.currentState!.validate()) {
+                                  // TODO: Implement a real API call to send the feedback data to a backend service.
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    // Show a success message to the user.
+                                    const SnackBar(
+                                      content: Text(
+                                        'Your message has been sent successfully!',
+                                      ),
+                                      backgroundColor: Colors.green,
                                     ),
-                                    (Route<dynamic> route) => false,
+                                  );
+
+                                  /// After a short delay, navigate back to the homepage.
+                                  Future.delayed(
+                                    const Duration(milliseconds: 1500),
+                                    () {
+                                      if (context.mounted) {
+                                        Navigator.of(
+                                          context,
+                                        ).pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const HomePage(),
+                                          ),
+                                          (Route<dynamic> route) => false,
+                                        );
+                                      }
+                                    },
                                   );
                                 }
                               },
-                            );
-                          }
-                        },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

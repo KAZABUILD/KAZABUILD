@@ -911,4 +911,30 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get airCooled => 'Hava Soğutmalı';
+
+  @override
+  String get heroTitle =>
+      'Nereden başlayacağınızdan emin değil misiniz?\nbaşlamak için bu kısa quizi yapın';
+
+  @override
+  String get heroDescription =>
+      'Build nesilleri, uyumluluk, fiyat dönüşümü, topluluk build\'leri ve forum tartışmaları özelliklerini sunuyoruz';
+
+  @override
+  String get buildGenerations => 'build nesilleri';
+
+  @override
+  String get compatibility => 'uyumluluk';
+
+  @override
+  String get priceConversion => 'fiyat dönüşümü';
+
+  @override
+  String get communityBuilds => 'topluluk build\'leri';
+
+  @override
+  String get forumDiscussions => 'forum tartışmaları';
+
+  @override
+  String get appName => 'KAZABUILD';
 }

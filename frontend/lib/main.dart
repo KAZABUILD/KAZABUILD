@@ -46,7 +46,7 @@ class MyApp extends ConsumerWidget {
     // MaterialApp is the root of the app's UI, providing routing, theming,
     // localization, and other core functionalities.
     return MaterialApp.router(
-      title: 'Kaza Build',
+      title: 'KazaBuild',
 
       // Defines the theme to use when the app is in light mode.
       theme: AppTheme.lightTheme,

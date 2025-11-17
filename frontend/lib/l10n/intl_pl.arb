@@ -578,5 +578,21 @@
   "@waterCooled": {},
   "waterCooled": "Chłodzenie Wodne",
   "@airCooled": {},
-  "airCooled": "Chłodzenie Powietrzne"
+  "airCooled": "Chłodzenie Powietrzne",
+  "@heroTitle": {},
+  "heroTitle": "Nie wiesz od czego zacząć?\npo prostu rozwiąż ten krótki quiz, aby rozpocząć",
+  "@heroDescription": {},
+  "heroDescription": "Oferujemy generacje buildów, kompatybilność, konwersję cen, buildy społeczności i dyskusje na forum",
+  "@buildGenerations": {},
+  "buildGenerations": "generacje buildów",
+  "@compatibility": {},
+  "compatibility": "kompatybilność",
+  "@priceConversion": {},
+  "priceConversion": "konwersję cen",
+  "@communityBuilds": {},
+  "communityBuilds": "buildy społeczności",
+  "@forumDiscussions": {},
+  "forumDiscussions": "dyskusje na forum",
+  "@appName": {},
+  "appName": "KAZABUILD"
 }

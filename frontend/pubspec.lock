@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.4.1"
+  animated_gradient_text:
+    dependency: "direct main"
+    description:
+      name: animated_gradient_text
+      sha256: f329b8a5b2118945af4cae36edf2b80d03430e99009d54308b735e64d082b64e
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   archive:
     dependency: transitive
     description:

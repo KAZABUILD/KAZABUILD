@@ -1815,6 +1815,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Air Cooled'**
   String get airCooled;
+
+  /// No description provided for @heroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sure where to start?\njust take this short quiz to get started'**
+  String get heroTitle;
+
+  /// No description provided for @heroDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'We feature build generations, compatibility, price conversion, community builds, and forum discussions'**
+  String get heroDescription;
+
+  /// No description provided for @buildGenerations.
+  ///
+  /// In en, this message translates to:
+  /// **'build generations'**
+  String get buildGenerations;
+
+  /// No description provided for @compatibility.
+  ///
+  /// In en, this message translates to:
+  /// **'compatibility'**
+  String get compatibility;
+
+  /// No description provided for @priceConversion.
+  ///
+  /// In en, this message translates to:
+  /// **'price conversion'**
+  String get priceConversion;
+
+  /// No description provided for @communityBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'community builds'**
+  String get communityBuilds;
+
+  /// No description provided for @forumDiscussions.
+  ///
+  /// In en, this message translates to:
+  /// **'forum discussions'**
+  String get forumDiscussions;
+
+  /// No description provided for @appName.
+  ///
+  /// In en, this message translates to:
+  /// **'KAZABUILD'**
+  String get appName;
 }
 
 class _AppLocalizationsDelegate

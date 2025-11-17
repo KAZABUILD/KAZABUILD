@@ -578,5 +578,21 @@
   "@waterCooled": {},
   "waterCooled": "Water Cooled",
   "@airCooled": {},
-  "airCooled": "Air Cooled"
+  "airCooled": "Air Cooled",
+  "@heroTitle": {},
+  "heroTitle": "Not sure where to start?\njust take this short quiz to get started",
+  "@heroDescription": {},
+  "heroDescription": "We feature build generations, compatibility, price conversion, community builds, and forum discussions",
+  "@buildGenerations": {},
+  "buildGenerations": "build generations",
+  "@compatibility": {},
+  "compatibility": "compatibility",
+  "@priceConversion": {},
+  "priceConversion": "price conversion",
+  "@communityBuilds": {},
+  "communityBuilds": "community builds",
+  "@forumDiscussions": {},
+  "forumDiscussions": "forum discussions",
+  "@appName": {},
+  "appName": "KAZABUILD"
 }
