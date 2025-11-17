@@ -1094,17 +1094,6 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                       ],
                     ),
                   const SizedBox(height: 8),
-                  // Components are not shown on explore page to avoid 429 errors
-                  // Click on the card to view components on the detail page
-                  Text(
-                    AppLocalizations.of(context)!.clickToViewComponents,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   if (widget.buildData.tags.isNotEmpty) ...[
                     Wrap(
                       spacing: 6,

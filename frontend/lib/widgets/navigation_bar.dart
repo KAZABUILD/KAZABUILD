@@ -16,6 +16,7 @@ import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/widgets/theme_provider.dart';
+import 'package:frontend/models/notification_provider.dart';
 
 /// A simple data class to represent a PC part in the dropdown menu.
 class PcPart {
@@ -122,6 +123,23 @@ class CustomNavigationBar extends ConsumerWidget {
           /// The right-hand side of the bar with user profile and other actions.
           Row(
             children: [
+              // Notification button (only for logged-in users)
+              Consumer(
+                builder: (context, ref, child) {
+                  final authState = ref.watch(authProvider);
+                  return authState.when(
+                    data: (user) {
+                      if (user != null) {
+                        return const _NotificationButton();
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
               if (showProfileArea) ...[
                 authState.when(
                   data: (user) => user == null
@@ -1220,6 +1238,98 @@ class _DropdownItemState extends State<_DropdownItem> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A notification button widget that displays a bell icon with a badge showing unread count.
+class _NotificationButton extends ConsumerWidget {
+  const _NotificationButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
+
+    return unreadCountAsync.when(
+      data: (unreadCount) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              context.go('/notifications');
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    Icons.notifications_outlined,
+                    size: 24,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Center(
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 40,
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, __) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            context.go('/notifications');
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Icon(
+              Icons.notifications_outlined,
+              size: 24,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
       ),

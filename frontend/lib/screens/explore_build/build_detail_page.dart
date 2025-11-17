@@ -20,6 +20,33 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/screens/explore_build/similar_builds_section.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+/// Provider to fetch user details based on their ID
+final buildUserProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+  try {
+    final authService = ref.read(authServiceProvider);
+    final userResponse = await authService.getUserById(userId);
+    
+    if (userResponse.statusCode == 200 && userResponse.data != null) {
+      try {
+        final user = AppUser.fromJson(userResponse.data);
+        return user;
+      } catch (parseError) {
+        debugPrint('Error parsing user $userId: $parseError');
+        return null;
+      }
+    }
+    return null;
+  } on DioException catch (e) {
+    debugPrint('Error fetching user $userId: ${e.response?.statusCode}');
+    return null;
+  } catch (e) {
+    debugPrint('Unexpected error fetching user $userId: $e');
+    return null;
+  }
+});
 
 /// A page that displays the full details of a specific [CommunityBuild].
 class BuildDetailPage extends ConsumerWidget {
@@ -42,7 +69,7 @@ class BuildDetailPage extends ConsumerWidget {
           const CustomNavigationBar(),
           Expanded(
             child: buildAsyncValue.when(
-              data: (build) => _buildContentView(context, build),
+              data: (build) => _buildContentView(context, ref, build),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(child: Text('${AppLocalizations.of(context)!.errorLoadingBuilds}: $err')),
             ),
@@ -52,7 +79,7 @@ class BuildDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildContentView(BuildContext context, Build build) {
+  Widget _buildContentView(BuildContext context, WidgetRef ref, Build build) {
     final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
@@ -64,7 +91,7 @@ class BuildDetailPage extends ConsumerWidget {
             children: <Widget>[
               _buildBuildImage(context, theme, build),
               const SizedBox(height: 24),
-              _buildMetaInfo(context, theme, build),
+              _buildMetaInfo(context, ref, theme, build),
               const SizedBox(height: 16),
               _buildTitleAndRating(theme, build),
               const SizedBox(height: 24),
@@ -212,28 +239,72 @@ class BuildDetailPage extends ConsumerWidget {
   }
 
   /// Builds the row containing metadata about the build, such as the author and post date.
-  Widget _buildMetaInfo(BuildContext context, ThemeData theme, Build build) {
-    return Row(
-      children: <Widget>[
-        if (build.author != null) ...[
-          UserImageUtils.buildUserAvatar(
-            imageUrl: build.author!.photoURL,
-            username: build.author!.username,
-            userId: build.author!.uid,
-            radius: 12,
+  Widget _buildMetaInfo(BuildContext context, WidgetRef ref, ThemeData theme, Build build) {
+    // If author is not included in build, fetch it using userId
+    final authorAsync = build.author != null 
+        ? AsyncValue.data(build.author) 
+        : ref.watch(buildUserProvider(build.userId));
+
+    return authorAsync.when(
+      data: (author) {
+        return Row(
+          children: <Widget>[
+            if (author != null) ...[
+              UserImageUtils.buildUserAvatar(
+                imageUrl: author.photoURL,
+                username: author.username,
+                userId: author.uid,
+                radius: 12,
+              ),
+              const SizedBox(width: 8),
+              Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
+              const SizedBox(width: 8),
+              Text('•', style: theme.textTheme.bodySmall),
+              const SizedBox(width: 8),
+            ],
+            // TODO: Add 'Posted on' date when available from backend
+            Text(
+              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
+              style: theme.textTheme.bodySmall,
+            ),
+            const Spacer(),
+            // TODO: Implement "Wishlist" functionality.
+            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
+          ],
+        );
+      },
+      loading: () => Row(
+        children: <Widget>[
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 8),
-          Text(build.author!.username, style: theme.textTheme.bodyMedium),
+          Text(
+            '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
+            style: theme.textTheme.bodySmall,
+          ),
+          const Spacer(),
+          OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
+        ],
+      ),
+      error: (error, stack) => Row(
+        children: <Widget>[
+          Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
+          const SizedBox(width: 8),
+          Text('Unknown User', style: theme.textTheme.bodyMedium),
           const SizedBox(width: 8),
           Text('•', style: theme.textTheme.bodySmall),
           const SizedBox(width: 8),
+          Text(
+            '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
+            style: theme.textTheme.bodySmall,
+          ),
+          const Spacer(),
+          OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
         ],
-        // TODO: Add 'Posted on' date when available from backend
-        Text('${AppLocalizations.of(context)!.postedOn}: ${DateFormat.yMMMMd().format(DateTime.now())}', style: theme.textTheme.bodySmall),
-        const Spacer(),
-        // TODO: Implement "Wishlist" functionality.
-        OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-      ],
+      ),
     );
   }
 

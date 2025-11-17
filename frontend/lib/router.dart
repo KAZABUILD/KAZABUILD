@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/models/user_role.dart';
 import 'dart:html' as html;
 import 'package:frontend/screens/auth/change_password_page.dart';
 import 'package:frontend/screens/auth/confirm_register_page.dart';
@@ -49,6 +48,7 @@ import 'package:frontend/screens/info/feedback_page.dart';
 import 'package:frontend/screens/info/faq_page.dart';
 import 'package:frontend/screens/messages/messages_page.dart';
 import 'package:frontend/screens/messages/message_detail_page.dart';
+import 'package:frontend/screens/notifications/notifications_page.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -434,6 +434,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return MessageDetailPage(otherUserId: userId);
         },
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
       ),
     ],
 

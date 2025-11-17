@@ -159,7 +159,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
       // Delete the message
       await ref.read(messageProvider.notifier).deleteMessage(messageId);
       
-      // Invalidate the specific messages provider to refresh the detail page list
+      // Invalidate both sent and received messages providers to refresh the detail page list
       final sentMessagesParams = MessagesParams(
         senderId: currentUser.uid,
         receiverId: widget.otherUserId,
@@ -167,16 +167,31 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
         orderBy: 'SentAt',
         pageSize: 1000,
       );
+      final receivedMessagesParams = MessagesParams(
+        senderId: widget.otherUserId,
+        receiverId: currentUser.uid,
+        sortDirection: 'asc',
+        orderBy: 'SentAt',
+        pageSize: 1000,
+      );
       ref.invalidate(messagesProvider(sentMessagesParams));
+      ref.invalidate(messagesProvider(receivedMessagesParams));
       
-      // Also invalidate the messages list page provider to refresh conversations
-      final messagesListParams = MessagesParams(
+      // Also invalidate the messages list page providers to refresh conversations
+      final sentMessagesListParams = MessagesParams(
         senderId: currentUser.uid,
         sortDirection: 'desc',
         orderBy: 'SentAt',
         pageSize: 1000,
       );
-      ref.invalidate(messagesProvider(messagesListParams));
+      final receivedMessagesListParams = MessagesParams(
+        receiverId: currentUser.uid,
+        sortDirection: 'desc',
+        orderBy: 'SentAt',
+        pageSize: 1000,
+      );
+      ref.invalidate(messagesProvider(sentMessagesListParams));
+      ref.invalidate(messagesProvider(receivedMessagesListParams));
 
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -277,18 +292,25 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
 
                 return otherUserAsync.when(
                   data: (otherUser) {
-                    // Backend only returns messages where current user is sender (line 502)
-                    // So we can only fetch messages sent by current user to other user
-                    // We cannot fetch messages sent by other user to current user
+                    // Fetch both sent and received messages for this conversation
                     final sentMessagesParams = MessagesParams(
                       senderId: currentUser.uid,
-                      receiverId: widget.otherUserId, // Filter to this conversation
+                      receiverId: widget.otherUserId, // Messages sent by current user to other user
+                      sortDirection: 'asc',
+                      orderBy: 'SentAt',
+                      pageSize: 1000,
+                    );
+
+                    final receivedMessagesParams = MessagesParams(
+                      senderId: widget.otherUserId, // Messages sent by other user
+                      receiverId: currentUser.uid, // to current user
                       sortDirection: 'asc',
                       orderBy: 'SentAt',
                       pageSize: 1000,
                     );
 
                     final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
+                    final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
 
                     return Column(
                       children: [
@@ -359,11 +381,12 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                         Expanded(
                           child: sentMessagesAsync.when(
                             data: (sentMessages) {
-                              // Backend only returns messages sent by current user
-                              // So we only show messages in this conversation
-                              final allMessages = sentMessages.toList();
-                              allMessages.sort((a, b) =>
-                                  a.createdAt.compareTo(b.createdAt));
+                              return receivedMessagesAsync.when(
+                                data: (receivedMessages) {
+                                  // Combine both sent and received messages
+                                  final allMessages = [...sentMessages, ...receivedMessages];
+                                  allMessages.sort((a, b) =>
+                                      a.createdAt.compareTo(b.createdAt));
 
                               if (allMessages.isEmpty) {
                                 return Center(
@@ -521,11 +544,77 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                   );
                                 },
                               );
+                                },
+                                loading: () =>
+                                    const Center(child: CircularProgressIndicator()),
+                                error: (error, stack) => Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Error loading received messages',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        error.toString(),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          ref.invalidate(messagesProvider(receivedMessagesParams));
+                                        },
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
                             },
                             loading: () =>
                                 const Center(child: CircularProgressIndicator()),
                             error: (error, stack) => Center(
-                              child: Text('Error loading messages: $error'),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Error loading sent messages',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    error.toString(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      ref.invalidate(messagesProvider(sentMessagesParams));
+                                      ref.invalidate(messagesProvider(receivedMessagesParams));
+                                    },
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

@@ -57,12 +57,11 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   String _searchQuery = '';
   String? _selectedSortOption;
   int _currentPage = 1;
-  static const int _pageSize = 20;
+  static const int _pageSize = 10;
+  int? _totalPages;
+  bool _isCheckingTotalPages = false;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
-  final List<ForumPost> _allPosts = [];
-  bool _hasMorePosts = true;
-  bool _isLoadingPosts = false;
   final ScrollController _scrollController = ScrollController();
   late AnimationController _headerAnimationController;
   late AnimationController _backgroundAnimationController;
@@ -94,77 +93,28 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
           setState(() {
             _searchQuery = _searchController.text.trim();
             _currentPage = 1;
-            _allPosts.clear();
-            _hasMorePosts = true;
+            _totalPages = null;
           });
-          _loadPosts();
         }
       });
     });
+  }
+  
+  void _goToPage(int page) {
+    if (page < 1) return;
+    if (_totalPages != null && page > _totalPages!) return;
     
-    _scrollController.addListener(_onScroll);
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPosts();
+    setState(() {
+      _currentPage = page;
     });
-  }
-  
-  Future<void> _loadPosts() async {
-    if (_isLoadingPosts || !_hasMorePosts) return;
     
-    setState(() => _isLoadingPosts = true);
-    
-    try {
-      final allText = AppLocalizations.of(context)!.all;
-      final selectedCat = _selectedCategory ?? allText;
-      final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
-      
-      final forumService = ref.read(forumServiceProvider);
-      final filter = {
-        'Paging': true,
-        'Page': _currentPage,
-        'PageLength': _pageSize,
-        'SortDirection': selectedSort == 'Newest' ? 'desc' : 'asc',
-        'OrderBy': 'PostedAt',
-      };
-      
-      if (selectedCat != allText && _selectedCategory != null) {
-        filter['Topic'] = [_selectedCategory];
-      }
-      
-      if (_searchQuery.isNotEmpty) {
-        filter['Query'] = _searchQuery.trim();
-      }
-      
-      final posts = await forumService.getPosts(filter);
-      
-      setState(() {
-        if (posts.isEmpty) {
-          _hasMorePosts = false;
-        } else {
-          _allPosts.addAll(posts);
-          _currentPage++;
-          if (posts.length < _pageSize) {
-            _hasMorePosts = false;
-          }
-        }
-        _isLoadingPosts = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingPosts = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading posts: $e')),
-        );
-      }
-    }
-  }
-  
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 200) {
-      _loadPosts();
+    // Scroll to top smoothly
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
   
@@ -172,7 +122,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _headerAnimationController.dispose();
     _backgroundAnimationController.dispose();
@@ -187,6 +136,236 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   List<String> _getSortOptions(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return [l10n.newest, l10n.oldest];
+  }
+
+  Future<void> _checkTotalPages() async {
+    if (_isCheckingTotalPages || _totalPages != null) return;
+    
+    _isCheckingTotalPages = true;
+    
+    try {
+      final allText = AppLocalizations.of(context)!.all;
+      final selectedCat = _selectedCategory ?? allText;
+      final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
+      
+      final forumService = ref.read(forumServiceProvider);
+      
+      // Start checking from page 2
+      int checkPage = 2;
+      bool foundLastPage = false;
+      
+      while (!foundLastPage && checkPage <= 100) { // Limit to 100 pages max
+        final filter = {
+          'Paging': true,
+          'Page': checkPage,
+          'PageLength': _pageSize,
+          'SortDirection': selectedSort == 'Newest' ? 'desc' : 'asc',
+          'OrderBy': 'PostedAt',
+        };
+        
+        if (selectedCat != allText && _selectedCategory != null) {
+          filter['Topic'] = [_selectedCategory];
+        }
+        
+        if (_searchQuery.isNotEmpty) {
+          filter['Query'] = _searchQuery.trim();
+        }
+        
+        final posts = await forumService.getPosts(filter);
+        
+        if (posts.isEmpty) {
+          // Empty page means previous page was the last page
+          foundLastPage = true;
+          if (mounted) {
+            setState(() {
+              _totalPages = checkPage - 1;
+            });
+          }
+        } else if (posts.length < _pageSize) {
+          // We got fewer posts than page size (but not empty), so this is the last page
+          foundLastPage = true;
+          if (mounted) {
+            setState(() {
+              _totalPages = checkPage;
+            });
+          }
+        } else {
+          // Full page, continue checking
+          if (mounted) {
+            setState(() {
+              _totalPages = checkPage + 1; // At least one more page
+            });
+          }
+          checkPage++;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking total pages: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingTotalPages = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildPostsList(bool isDarkMode, ThemeData theme) {
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
+
+    final params = ForumPostsParams(
+      page: _currentPage,
+      pageSize: _pageSize,
+      category: selectedCat != allText ? _selectedCategory : null,
+      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+      sortOption: selectedSort,
+    );
+
+    final postsAsync = ref.watch(forumPostsProvider(params));
+
+    return postsAsync.when(
+      data: (posts) {
+        // Update total pages based on the number of posts received
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (posts.isEmpty && _currentPage > 1) {
+            // Empty page means previous page was the last page
+            setState(() {
+              _totalPages = _currentPage - 1;
+            });
+          } else if (posts.length < _pageSize && posts.isNotEmpty) {
+            // We got fewer posts than page size (but not empty), so this is the last page
+            setState(() {
+              _totalPages = _currentPage;
+            });
+          } else if (posts.length == _pageSize && _currentPage == 1 && _totalPages == null) {
+            // First page has full results, start checking total pages
+            _checkTotalPages();
+          } else if (posts.length == _pageSize && _totalPages != null && _currentPage >= _totalPages!) {
+            // We're on what we thought was the last page, but got full results
+            // Check if there are more pages
+            _checkTotalPages();
+          }
+        });
+
+        if (posts.isEmpty) {
+          return SliverFillRemaining(
+            child: _WOWEmptyState(isDarkMode: isDarkMode, theme: theme),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return AnimationConfiguration.staggeredList(
+                  position: index,
+                  duration: const Duration(milliseconds: 500),
+                  child: SlideAnimation(
+                    verticalOffset: 80.0,
+                    child: FadeInAnimation(
+                      child: _WOWPremiumPostCard(
+                        post: posts[index],
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                  ),
+                );
+              },
+              childCount: posts.length,
+            ),
+          ),
+        );
+      },
+      loading: () => const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading posts',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error.toString(),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(forumPostsProvider(params));
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(bool isDarkMode, ThemeData theme) {
+    // Show pagination if we have at least 2 pages (or if current page > 1, meaning we know there are more)
+    // Also show if totalPages is set and > 1
+    final shouldShowPagination = (_totalPages != null && _totalPages! > 1) || _currentPage > 1;
+    
+    if (!shouldShowPagination) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+    
+    // If totalPages is null but we're on page > 1, estimate it as currentPage + 1
+    final totalPages = _totalPages ?? (_currentPage + 1);
+    final currentPage = _currentPage;
+
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // Previous button
+            _PaginationButton(
+              icon: Icons.chevron_left,
+              onTap: currentPage > 1 ? () => _goToPage(currentPage - 1) : null,
+              isDarkMode: isDarkMode,
+              theme: theme,
+            ),
+            
+            // All page numbers from 1 to totalPages
+            for (int i = 1; i <= totalPages; i++) ...[
+              _PaginationNumberButton(
+                page: i,
+                isSelected: currentPage == i,
+                onTap: () => _goToPage(i),
+                isDarkMode: isDarkMode,
+                theme: theme,
+              ),
+            ],
+            
+            // Next button
+            _PaginationButton(
+              icon: Icons.chevron_right,
+              onTap: currentPage < totalPages ? () => _goToPage(currentPage + 1) : null,
+              isDarkMode: isDarkMode,
+              theme: theme,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -239,10 +418,8 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                           setState(() {
                             _selectedCategory = category;
                             _currentPage = 1;
-                            _allPosts.clear();
-                            _hasMorePosts = true;
+                            _totalPages = null;
                           });
-                          _loadPosts();
                         },
                         sortOptions: _getSortOptions(context),
                         selectedSortOption: selectedSort,
@@ -250,56 +427,18 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                           setState(() {
                             _selectedSortOption = option;
                             _currentPage = 1;
-                            _allPosts.clear();
-                            _hasMorePosts = true;
+                            _totalPages = null;
                           });
-                          _loadPosts();
                         },
                         isDarkMode: isDarkMode,
                         theme: theme,
                       ),
                     ),
-                    if (_allPosts.isEmpty && _isLoadingPosts)
-                      const SliverFillRemaining(
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (_allPosts.isEmpty && !_isLoadingPosts)
-                      SliverFillRemaining(
-                        child: _WOWEmptyState(isDarkMode: isDarkMode, theme: theme),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              if (index == _allPosts.length) {
-                                return _isLoadingPosts
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(32.0),
-                                        child: Center(child: CircularProgressIndicator()),
-                                      )
-                                    : const SizedBox.shrink();
-                              }
-                              
-                              return AnimationConfiguration.staggeredList(
-                                position: index,
-                                duration: const Duration(milliseconds: 500),
-                                child: SlideAnimation(
-                                  verticalOffset: 80.0,
-                                  child: FadeInAnimation(
-                                    child: _WOWPremiumPostCard(
-                                      post: _allPosts[index],
-                                      isDarkMode: isDarkMode,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                            childCount: _allPosts.length + (_isLoadingPosts ? 1 : 0),
-                          ),
-                        ),
-                      ),
+                    // Posts list using provider
+                    _buildPostsList(isDarkMode, theme),
+                    
+                    // Pagination controls
+                    _buildPaginationControls(isDarkMode, theme),
                   ],
                 ),
               ),
@@ -1435,5 +1574,176 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
       default:
         return isDarkMode ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue;
     }
+  }
+}
+
+/// Pagination Button (Previous/Next)
+class _PaginationButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _PaginationButton({
+    required this.icon,
+    this.onTap,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onTap != null;
+    
+    return MouseRegion(
+      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          gradient: isEnabled
+              ? LinearGradient(
+                  colors: isDarkMode
+                      ? [
+                          AppColorsDark.buttonPurple,
+                          AppColorsDark.buttonBlue,
+                        ]
+                      : [
+                          AppColorsLight.buttonPurple,
+                          AppColorsLight.buttonBlue,
+                        ],
+                )
+              : null,
+          color: !isEnabled
+              ? theme.colorScheme.surfaceVariant.withValues(alpha: 0.5)
+              : null,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isEnabled
+                ? (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                    .withValues(alpha: 0.5)
+                : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+          boxShadow: isEnabled
+              ? [
+                  BoxShadow(
+                    color: (isDarkMode
+                            ? AppColorsDark.buttonPurple
+                            : AppColorsLight.buttonPurple)
+                        .withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          icon,
+          color: isEnabled
+              ? Colors.white
+              : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          size: 20,
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+/// Pagination Number Button
+class _PaginationNumberButton extends StatefulWidget {
+  final int page;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _PaginationNumberButton({
+    required this.page,
+    required this.isSelected,
+    required this.onTap,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  State<_PaginationNumberButton> createState() => _PaginationNumberButtonState();
+}
+
+class _PaginationNumberButtonState extends State<_PaginationNumberButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = widget.isSelected;
+    final isDarkMode = widget.isDarkMode;
+    final theme = widget.theme;
+    
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            gradient: isSelected || _isHovered
+                ? LinearGradient(
+                    colors: isDarkMode
+                        ? [
+                            AppColorsDark.buttonPurple,
+                            AppColorsDark.buttonBlue,
+                          ]
+                        : [
+                            AppColorsLight.buttonPurple,
+                            AppColorsLight.buttonBlue,
+                          ],
+                  )
+                : null,
+            color: !isSelected && !_isHovered
+                ? theme.colorScheme.surface.withValues(alpha: 0.8)
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected || _isHovered
+                  ? Colors.transparent
+                  : (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                      .withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow: (isSelected || _isHovered)
+                ? [
+                    BoxShadow(
+                      color: (isDarkMode
+                              ? AppColorsDark.buttonPurple
+                              : AppColorsLight.buttonPurple)
+                          .withValues(alpha: _isHovered && !isSelected ? 0.3 : 0.4),
+                      blurRadius: _isHovered && !isSelected ? 8 : 12,
+                      spreadRadius: _isHovered && !isSelected ? 1 : 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Text(
+              '${widget.page}',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: isSelected || _isHovered
+                    ? Colors.white
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

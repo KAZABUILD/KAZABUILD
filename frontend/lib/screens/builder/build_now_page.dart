@@ -96,45 +96,55 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
       'status': 'DRAFT',
     });
 
-    // 2. Add each selected component to the newly created build.
+    // 2. Add each selected component to the newly created build in parallel
     final selectedComponents = state.where((slot) => slot.selectedProduct != null).toList();
     debugPrint('saveBuild: Found ${selectedComponents.length} selected components in state');
     
-    for (final componentSlot in selectedComponents) {
-      final component = componentSlot.selectedProduct!;
-      final componentId = component.id;
+    if (selectedComponents.isNotEmpty) {
+      final componentFutures = selectedComponents.map((componentSlot) async {
+        final component = componentSlot.selectedProduct!;
+        final componentId = component.id;
+        
+        debugPrint('saveBuild: Processing component ${component.name} (ID: $componentId, Type: ${component.type})');
+        
+        if (componentId.isEmpty) {
+          debugPrint('saveBuild: ERROR - Component ${component.name} has empty ID! Skipping.');
+          return;
+        }
+        
+        try {
+          await buildService.addComponentToBuild(
+            newBuildId,
+            componentId,
+            1,
+          );
+          debugPrint('saveBuild: Successfully added component ${component.name} to build');
+        } catch (e) {
+          debugPrint('saveBuild: ERROR adding component ${component.name} to build: $e');
+          // Don't throw - continue with other components
+        }
+      }).toList();
       
-      debugPrint('saveBuild: Processing component ${component.name} (ID: $componentId, Type: ${component.type})');
-      
-      if (componentId.isEmpty) {
-        debugPrint('saveBuild: ERROR - Component ${component.name} has empty ID! Skipping.');
-        continue;
-      }
-      
-      try {
-        await buildService.addComponentToBuild(
-          newBuildId,
-          componentId,
-          1,
-        );
-        debugPrint('saveBuild: Successfully added component ${component.name} to build');
-      } catch (e) {
-        debugPrint('saveBuild: ERROR adding component ${component.name} to build: $e');
-      }
+      // Wait for all components to be added in parallel
+      await Future.wait(componentFutures, eagerError: false);
     }
 
-    // 3. Add tags to the build if provided
+    // 3. Add tags to the build if provided (in parallel)
     if (tagIds != null && tagIds.isNotEmpty) {
-      for (final tagName in tagIds) {
+      final tagFutures = tagIds.map((tagName) async {
         try {
           final tagId = await buildService.findTagIdByName(tagName);
           if (tagId != null) {
             await buildService.addTagToBuild(newBuildId, tagId);
           }
         } catch (e) {
+          debugPrint('saveBuild: ERROR adding tag $tagName to build: $e');
           // Continue with other tags even if one fails
         }
-      }
+      }).toList();
+      
+      // Wait for all tags to be added in parallel
+      await Future.wait(tagFutures, eagerError: false);
     }
 
     return newBuildId;

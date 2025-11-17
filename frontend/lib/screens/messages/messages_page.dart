@@ -218,9 +218,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                   );
                 }
 
-                // Backend only returns messages where current user is sender
-                // So we fetch all messages sent by current user (without receiverId filter)
-                // Then we group them by receiverId to show conversations
+                // Fetch both sent and received messages to show all conversations
                 final sentMessagesParams = MessagesParams(
                   senderId: user.uid,
                   sortDirection: 'desc',
@@ -228,46 +226,70 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                   pageSize: 1000, // Get all messages to group conversations
                 );
 
+                final receivedMessagesParams = MessagesParams(
+                  receiverId: user.uid,
+                  sortDirection: 'desc',
+                  orderBy: 'SentAt',
+                  pageSize: 1000, // Get all messages to group conversations
+                );
+
                 final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
+                final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
 
                 return sentMessagesAsync.when(
                   data: (sentMessages) {
-                    // Filter by search query if provided
-                    final filteredMessages = _searchQuery.isNotEmpty
-                        ? sentMessages.where((m) => 
-                            m.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                            (m.title != null && m.title!.toLowerCase().contains(_searchQuery.toLowerCase()))
-                          ).toList()
-                        : sentMessages;
-                    
-                    // Group messages into conversations based on receiverId
-                    final conversations = <String, Conversation>{};
-                    
-                    for (final message in filteredMessages) {
-                      final otherUserId = message.receiverId;
-                      
-                      if (!conversations.containsKey(otherUserId)) {
-                        conversations[otherUserId] = Conversation(
-                          otherUserId: otherUserId,
-                          otherUser: null, // Will be fetched separately
-                          lastMessage: message,
-                          unreadCount: 0,
-                        );
-                      } else {
-                        final conversation = conversations[otherUserId]!;
-                        if (conversation.lastMessage == null ||
-                            message.createdAt.isAfter(conversation.lastMessage!.createdAt)) {
-                          conversations[otherUserId] = Conversation(
-                            otherUserId: otherUserId,
-                            otherUser: conversation.otherUser,
-                            lastMessage: message,
-                            unreadCount: conversation.unreadCount,
-                          );
+                    return receivedMessagesAsync.when(
+                      data: (receivedMessages) {
+                        // Combine both sent and received messages
+                        final allMessages = [...sentMessages, ...receivedMessages];
+                        
+                        // Filter by search query if provided
+                        final filteredMessages = _searchQuery.isNotEmpty
+                            ? allMessages.where((m) => 
+                                m.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                (m.title != null && m.title!.toLowerCase().contains(_searchQuery.toLowerCase()))
+                              ).toList()
+                            : allMessages;
+                        
+                        // Group messages into conversations
+                        // For sent messages: otherUserId = receiverId
+                        // For received messages: otherUserId = senderId
+                        final conversations = <String, Conversation>{};
+                        final unreadCounts = <String, int>{};
+                        
+                        for (final message in filteredMessages) {
+                          // Determine the other user ID based on whether current user is sender or receiver
+                          final otherUserId = message.senderId == user.uid 
+                              ? message.receiverId 
+                              : message.senderId;
+                          
+                          // Count unread messages where current user is receiver
+                          if (message.receiverId == user.uid && !message.isRead) {
+                            unreadCounts[otherUserId] = (unreadCounts[otherUserId] ?? 0) + 1;
+                          }
+                          
+                          if (!conversations.containsKey(otherUserId)) {
+                            conversations[otherUserId] = Conversation(
+                              otherUserId: otherUserId,
+                              otherUser: null, // Will be fetched separately
+                              lastMessage: message,
+                              unreadCount: unreadCounts[otherUserId] ?? 0,
+                            );
+                          } else {
+                            final conversation = conversations[otherUserId]!;
+                            if (conversation.lastMessage == null ||
+                                message.createdAt.isAfter(conversation.lastMessage!.createdAt)) {
+                              conversations[otherUserId] = Conversation(
+                                otherUserId: otherUserId,
+                                otherUser: conversation.otherUser,
+                                lastMessage: message,
+                                unreadCount: unreadCounts[otherUserId] ?? 0,
+                              );
+                            }
+                          }
                         }
-                      }
-                    }
-                    
-                    final conversationList = conversations.values.toList();
+                        
+                        final conversationList = conversations.values.toList();
 
                         // Sort by last message time (newest first)
                         conversationList.sort((a, b) {
@@ -526,6 +548,42 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                             ),
                           ],
                         );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading received messages',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              error.toString(),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                ref.invalidate(messagesProvider(sentMessagesParams));
+                                ref.invalidate(messagesProvider(receivedMessagesParams));
+                              },
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(
@@ -535,7 +593,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                         const Icon(Icons.error_outline, size: 64, color: Colors.red),
                         const SizedBox(height: 16),
                         Text(
-                          'Error loading messages',
+                          'Error loading sent messages',
                           style: TextStyle(
                             fontSize: 18,
                             color: colorScheme.onSurface,
@@ -554,6 +612,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                         ElevatedButton(
                           onPressed: () {
                             ref.invalidate(messagesProvider(sentMessagesParams));
+                            ref.invalidate(messagesProvider(receivedMessagesParams));
                           },
                           child: const Text('Retry'),
                         ),
