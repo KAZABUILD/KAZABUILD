@@ -45,6 +45,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add Ip blocklist automatic unban service
             services.AddHostedService<UnbanUserService>();
 
+            //Add system metrics service for CPU, Memory, and Network monitoring
+            services.AddHostedService<SystemMetricsService>();
+
             //Add the RabbitMQ queue service
             services.Configure<RabbitMQSettings>(config.GetSection("RabbitMq"));
             services.AddSingleton<IRabbitMqConnection, RabbitMQConnection>();
