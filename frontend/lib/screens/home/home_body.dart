@@ -12,7 +12,6 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localization.dart';
-import '../../core/constants/app_color.dart';
 
 /// The main content widget for the homepage.
 class HomeBody extends StatefulWidget {
@@ -22,31 +21,20 @@ class HomeBody extends StatefulWidget {
   State<HomeBody> createState() => _HomeBodyState();
 }
 
-class _HomeBodyState extends State<HomeBody> with SingleTickerProviderStateMixin {
+class _HomeBodyState extends State<HomeBody> {
   late Flutter3DController _controller;
   bool _isRotating = false;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = Flutter3DController();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    );
-    _fadeController.forward();
 
     // Listen for when the model is fully loaded, then start slow rotation.
     _controller.onModelLoaded.addListener(() {
       if (_controller.onModelLoaded.value == true) {
         debugPrint('3D model loaded, starting slow rotation...');
-        _controller.startRotation(rotationSpeed: 20);
+        _controller.startRotation(rotationSpeed: 30);
         _isRotating = true;
       }
     });
@@ -55,52 +43,67 @@ class _HomeBodyState extends State<HomeBody> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _controller.stopRotation();
-    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1400),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 1080;
-              final heroText = _HeroTextBlock(
-                quizLabel: AppLocalizations.of(context)!.takeQuiz,
-                buildLabel: AppLocalizations.of(context)!.startBuild,
-                onQuizTap: () => context.go('/quiz'),
-                onBuildTap: () => context.go('/build-now'),
-              );
-              final heroVisual = _HeroVisual(
-                controller: _controller,
-                isRotating: _isRotating,
-              );
-
-              if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: heroText),
-                    const SizedBox(width: 64),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: heroVisual,
-                      ),
-                    ),
-                  ],
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment(0.0, 1.0),
+          colors: [
+            Color(0xFF2D1B4E),
+            Color(0xFF1F0E3B),
+            Color(0xFF0F0519),
+            Color(0xFF090616),
+          ],
+          stops: [0.0, 0.4, 0.7, 1.0],
+        ),
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 1080;
+                final heroText = _HeroTextBlock(
+                  quizLabel: AppLocalizations.of(context)!.takeQuiz,
+                  buildLabel: AppLocalizations.of(context)!.startBuild,
+                  onQuizTap: () => context.go('/quiz'),
+                  onBuildTap: () => context.go('/build-now'),
                 );
-              }
+                final heroVisual = _HeroVisual(
+                  controller: _controller,
+                  isRotating: _isRotating,
+                );
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [heroText, const SizedBox(height: 48), heroVisual],
-              );
-            },
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: heroText),
+                      const SizedBox(width: 64),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: heroVisual,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [heroText, const SizedBox(height: 48), heroVisual],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -108,8 +111,10 @@ class _HomeBodyState extends State<HomeBody> with SingleTickerProviderStateMixin
   }
 }
 
-/// Premium CTA button with gradient and hover effects
-class _PremiumCTAButton extends StatefulWidget {
+/// A private, reusable button widget styled specifically for the homepage's
+/// main call-to-action buttons.
+class _CustomStartButton extends StatelessWidget {
+  /// The text to display on the button.
   final String label;
   final VoidCallback onPressed;
   final Gradient? gradient;
@@ -137,10 +142,10 @@ class _PremiumCTAButton extends StatefulWidget {
         foregroundColor: Colors.white,
         shadowColor: hasGradient
             ? Colors.transparent
-            : Colors.black.withOpacity(0.35),
+            : Colors.black.withValues(alpha: 0.35),
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
         textStyle: const TextStyle(
-          fontSize: 24,
+          fontSize: 16,
           fontWeight: FontWeight.w700,
           fontFamily: 'Quantico',
         ),
@@ -161,7 +166,7 @@ class _PremiumCTAButton extends StatefulWidget {
           boxShadow: hasGradient
               ? [
                   BoxShadow(
-                    color: const Color(0xFF7F4CFF).withOpacity(0.45),
+                    color: const Color(0xFF7F4CFF).withValues(alpha: 0.45),
                     blurRadius: 25,
                     offset: const Offset(0, 18),
                   ),
@@ -277,7 +282,7 @@ class _HeroTextBlock extends StatelessWidget {
                 fontFamily: 'Quantico',
               ) ??
               const TextStyle(
-                fontSize: 64,
+                fontSize: 48,
                 fontWeight: FontWeight.w800,
                 height: 1.1,
                 fontFamily: 'Quantico',

@@ -336,7 +336,7 @@ class _AnimatedBackgroundPainter extends CustomPainter {
       paint.shader = RadialGradient(
         colors: [
           (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
-              .withOpacity(0.15),
+              .withValues(alpha: 0.15),
           Colors.transparent,
         ],
       ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 300));
@@ -376,12 +376,12 @@ class _WOWPremiumHeader extends StatelessWidget {
                   ? [
                       AppColorsDark.backgroundSecondary,
                       AppColorsDark.backgroundPrimary,
-                      AppColorsDark.backgroundSecondary.withOpacity(0.7),
+                      AppColorsDark.backgroundSecondary.withValues(alpha: 0.7),
                     ]
                   : [
-                      AppColorsLight.backgroundSecondary.withOpacity(0.5),
+                      AppColorsLight.backgroundSecondary.withValues(alpha: 0.5),
                       AppColorsLight.backgroundPrimary,
-                      AppColorsLight.backgroundSecondary.withOpacity(0.4),
+                      AppColorsLight.backgroundSecondary.withValues(alpha: 0.4),
                     ],
               stops: const [0.0, 0.5, 1.0],
             ),
@@ -400,24 +400,24 @@ class _WOWPremiumHeader extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: isDarkMode
                             ? [
-                                AppColorsDark.textNeon.withOpacity(0.3),
-                                AppColorsDark.textPurple.withOpacity(0.3),
+                                AppColorsDark.textNeon.withValues(alpha: 0.3),
+                                AppColorsDark.textPurple.withValues(alpha: 0.3),
                               ]
                             : [
-                                AppColorsLight.textNeon.withOpacity(0.3),
-                                AppColorsLight.textPurple.withOpacity(0.3),
+                                AppColorsLight.textNeon.withValues(alpha: 0.3),
+                                AppColorsLight.textPurple.withValues(alpha: 0.3),
                               ],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),
@@ -479,7 +479,7 @@ class _WOWPremiumHeader extends StatelessWidget {
                     'Connect, share, and learn from fellow PC building enthusiasts',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 16,
-                      color: theme.colorScheme.onSurface.withOpacity(0.9),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
                       height: 1.4,
                       fontWeight: FontWeight.w400,
                       letterSpacing: 0.3,
@@ -604,7 +604,7 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
                       color: (widget.isDarkMode
                               ? AppColorsDark.buttonPurple
                               : AppColorsLight.buttonPurple)
-                          .withOpacity(_glowAnimation.value * (_isHovered ? 0.8 : 0.5)),
+                          .withValues(alpha: _glowAnimation.value * (_isHovered ? 0.8 : 0.5)),
                       blurRadius: _isHovered ? 30 : 20,
                       spreadRadius: _isHovered ? 4 : 2,
                       offset: Offset(0, _isHovered ? 8 : 4),
@@ -613,7 +613,7 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
                       color: (widget.isDarkMode
                               ? AppColorsDark.buttonBlue
                               : AppColorsLight.buttonBlue)
-                          .withOpacity(_glowAnimation.value * 0.4),
+                          .withValues(alpha: _glowAnimation.value * 0.4),
                       blurRadius: _isHovered ? 50 : 30,
                       spreadRadius: _isHovered ? 8 : 4,
                       offset: Offset(0, _isHovered ? 12 : 8),
@@ -678,11 +678,11 @@ class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
     return Container(
       decoration: BoxDecoration(
         color: isDarkMode
-            ? AppColorsDark.backgroundSecondary.withOpacity(0.98)
-            : AppColorsLight.backgroundPrimary.withOpacity(0.98),
+            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.98)
+            : AppColorsLight.backgroundPrimary.withValues(alpha: 0.98),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 30,
             offset: const Offset(0, 6),
           ),
@@ -698,25 +698,25 @@ class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.surface.withOpacity(0.9),
-                  theme.colorScheme.surface.withOpacity(0.7),
+                  theme.colorScheme.surface.withValues(alpha: 0.9),
+                  theme.colorScheme.surface.withValues(alpha: 0.7),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                    .withOpacity(0.4),
+                    .withValues(alpha: 0.4),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   spreadRadius: 0,
                 ),
                 BoxShadow(
                   color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   blurRadius: 15,
                   spreadRadius: 1,
                 ),
@@ -731,7 +731,7 @@ class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
               decoration: InputDecoration(
                 hintText: 'Search discussions...',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   fontSize: 15,
                 ),
                 prefixIcon: Icon(
@@ -777,14 +777,14 @@ class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      theme.colorScheme.surface.withOpacity(0.9),
-                      theme.colorScheme.surface.withOpacity(0.7),
+                      theme.colorScheme.surface.withValues(alpha: 0.9),
+                      theme.colorScheme.surface.withValues(alpha: 0.7),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                        .withOpacity(0.4),
+                        .withValues(alpha: 0.4),
                     width: 1.5,
                   ),
                 ),
@@ -898,7 +898,7 @@ class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
                   : null,
               color: widget.isSelected
                   ? null
-                  : widget.theme.colorScheme.surface.withOpacity(0.8),
+                  : widget.theme.colorScheme.surface.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: widget.isSelected
@@ -906,7 +906,7 @@ class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
                     : (widget.isDarkMode
                             ? AppColorsDark.textNeon
                             : AppColorsLight.textNeon)
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                 width: 2,
               ),
               boxShadow: widget.isSelected
@@ -915,7 +915,7 @@ class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
                         color: (widget.isDarkMode
                                 ? AppColorsDark.buttonPurple
                                 : AppColorsLight.buttonPurple)
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                         blurRadius: 15,
                         spreadRadius: 2,
                       ),
@@ -961,15 +961,15 @@ class _WOWEmptyState extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.surface.withOpacity(0.5),
-                  theme.colorScheme.surface.withOpacity(0.3),
+                  theme.colorScheme.surface.withValues(alpha: 0.5),
+                  theme.colorScheme.surface.withValues(alpha: 0.3),
                 ],
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                      .withOpacity(0.2),
+                      .withValues(alpha: 0.2),
                   blurRadius: 40,
                   spreadRadius: 5,
                 ),
@@ -979,7 +979,7 @@ class _WOWEmptyState extends StatelessWidget {
               Icons.forum_outlined,
               size: 100,
               color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                  .withOpacity(0.7),
+                  .withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 48),
@@ -995,7 +995,7 @@ class _WOWEmptyState extends StatelessWidget {
           Text(
             'Try adjusting your filters or search query',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               fontSize: 20,
             ),
           ),
@@ -1073,8 +1073,8 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    theme.colorScheme.surface.withOpacity(0.98),
-                    theme.colorScheme.surface.withOpacity(0.95),
+                    theme.colorScheme.surface.withValues(alpha: 0.98),
+                    theme.colorScheme.surface.withValues(alpha: 0.95),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
@@ -1083,7 +1083,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                       ? (widget.isDarkMode
                               ? AppColorsDark.textNeon
                               : AppColorsLight.textNeon)
-                          .withOpacity(0.6)
+                          .withValues(alpha: 0.6)
                       : Colors.transparent,
                   width: 2,
                 ),
@@ -1093,8 +1093,8 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                         ? (widget.isDarkMode
                                 ? AppColorsDark.textPurple
                                 : AppColorsLight.textPurple)
-                            .withOpacity(0.4 * _glowAnimation.value)
-                        : Colors.black.withOpacity(0.15),
+                            .withValues(alpha: 0.4 * _glowAnimation.value)
+                        : Colors.black.withValues(alpha: 0.15),
                     blurRadius: _isHovered ? 30 * _glowAnimation.value : 20,
                     spreadRadius: _isHovered ? 5 * _glowAnimation.value : 0,
                     offset: Offset(0, _isHovered ? 10 * _glowAnimation.value : 5),
@@ -1141,7 +1141,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                     color: (widget.isDarkMode
                                             ? AppColorsDark.buttonPurple
                                             : AppColorsLight.buttonPurple)
-                                        .withOpacity(0.5),
+                                        .withValues(alpha: 0.5),
                                     blurRadius: 15,
                                     spreadRadius: 2,
                                   ),
@@ -1244,7 +1244,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                           color: _getCategoryColor(
                                             widget.post.topic,
                                             widget.isDarkMode,
-                                          ).withOpacity(0.5),
+                                          ).withValues(alpha: 0.5),
                                           blurRadius: 12,
                                           spreadRadius: 2,
                                         ),
@@ -1271,8 +1271,8 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        theme.colorScheme.surfaceVariant.withOpacity(0.4),
-                                        theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                                        theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
+                                        theme.colorScheme.surfaceVariant.withValues(alpha: 0.2),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(16),
@@ -1280,7 +1280,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                   child: Text(
                                     widget.post.content,
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
                                       height: 1.6,
                                       fontSize: 15,
                                     ),
@@ -1307,12 +1307,12 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                               gradient: LinearGradient(
                                                 colors: widget.isDarkMode
                                                     ? [
-                                                        AppColorsDark.buttonPurple.withOpacity(0.4),
-                                                        AppColorsDark.buttonBlue.withOpacity(0.4),
+                                                        AppColorsDark.buttonPurple.withValues(alpha: 0.4),
+                                                        AppColorsDark.buttonBlue.withValues(alpha: 0.4),
                                                       ]
                                                     : [
-                                                        AppColorsLight.buttonPurple.withOpacity(0.4),
-                                                        AppColorsLight.buttonBlue.withOpacity(0.4),
+                                                        AppColorsLight.buttonPurple.withValues(alpha: 0.4),
+                                                        AppColorsLight.buttonBlue.withValues(alpha: 0.4),
                                                       ],
                                               ),
                                               shape: BoxShape.circle,
@@ -1346,7 +1346,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                               Text(
                                                 DateFormat('MMM dd, yyyy').format(widget.post.createdAt),
                                                 style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurface.withOpacity(0.65),
+                                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -1370,8 +1370,8 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [
-                                          theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                                          theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                          theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+                                          theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                                         ],
                                       ),
                                       borderRadius: BorderRadius.circular(14),
@@ -1418,7 +1418,7 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
 
   List<Color> _getCategoryGradient(String category, bool isDarkMode) {
     final color = _getCategoryColor(category, isDarkMode);
-    return [color, color.withOpacity(0.8)];
+    return [color, color.withValues(alpha: 0.8)];
   }
 
   Color _getCategoryColor(String category, bool isDarkMode) {

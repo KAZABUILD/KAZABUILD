@@ -2373,7 +2373,7 @@ class _ProductListHeader extends StatelessWidget {
 /// An abstract base class for all product row widgets to reduce code duplication.
 abstract class _ProductRow extends ConsumerWidget {
   final BaseComponent product;
-  const _ProductRow({super.key, required this.product});
+  const _ProductRow({required this.product});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2382,13 +2382,25 @@ abstract class _ProductRow extends ConsumerWidget {
       color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: buildRow(context, ref),
+      child: InkWell(
+        onTap: () => _showSpecsDialog(context, product),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: buildRow(context, ref),
+          ),
         ),
       ),
+    );
+  }
+
+  /// Shows a dialog with all specifications for the component
+  void _showSpecsDialog(BuildContext context, BaseComponent component) {
+    showDialog(
+      context: context,
+      builder: (context) => _ComponentSpecsDialog(component: component),
     );
   }
 
@@ -2454,7 +2466,7 @@ abstract class _ProductRow extends ConsumerWidget {
     // return Container(
     //   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     //   decoration: BoxDecoration(
-    //     color: Colors.green.withOpacity(0.9),
+    //     color: Colors.green.withValues(alpha: 0.9),
     //     borderRadius: BorderRadius.circular(8),
     //   ),
     //   child: Row(
@@ -2787,5 +2799,542 @@ class _RatingStars extends StatelessWidget {
         }
       }),
     );
+  }
+}
+
+/// A dialog widget that displays all specifications for a component
+class _ComponentSpecsDialog extends StatelessWidget {
+  final BaseComponent component;
+  const _ComponentSpecsDialog({required this.component});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Image.network(
+                    component.imageUrl,
+                    width: 60,
+                    height: 60,
+                    errorBuilder: (c, o, s) => Icon(
+                      Icons.broken_image,
+                      size: 60,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          component.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          component.manufacturer,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildSpecsContent(context, theme),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecsContent(BuildContext context, ThemeData theme) {
+    switch (component.type) {
+      case ComponentType.cpu:
+        return _buildCpuSpecs(component as CPUComponent, theme);
+      case ComponentType.gpu:
+        return _buildGpuSpecs(component as GPUComponent, theme);
+      case ComponentType.motherboard:
+        return _buildMotherboardSpecs(component as MotherboardComponent, theme);
+      case ComponentType.ram:
+        return _buildRamSpecs(component as MemoryComponent, theme);
+      case ComponentType.storage:
+        return _buildStorageSpecs(component as StorageComponent, theme);
+      case ComponentType.psu:
+        return _buildPsuSpecs(component as PowerSupplyComponent, theme);
+      case ComponentType.pcCase:
+        return _buildCaseSpecs(component as CaseComponent, theme);
+      case ComponentType.cooler:
+        return _buildCoolerSpecs(component as CoolerComponent, theme);
+      case ComponentType.caseFan:
+        return _buildCaseFanSpecs(component as CaseFanComponent, theme);
+      case ComponentType.monitor:
+        return _buildMonitorSpecs(component as MonitorComponent, theme);
+      default:
+        return _buildGenericSpecs(component, theme);
+    }
+  }
+
+  Widget _buildSpecSection(String title, List<MapEntry<String, String>> specs, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...specs.map((entry) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 180,
+                child: Text(
+                  entry.key,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  entry.value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildCpuSpecs(CPUComponent cpu, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final performanceSpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Series', cpu.series),
+      MapEntry('Microarchitecture', cpu.microarchitecture),
+      MapEntry('Core Family', cpu.coreFamily),
+      MapEntry('Socket Type', cpu.socketType),
+      MapEntry('Total Cores', cpu.coreTotal.toString()),
+      if (cpu.performanceAmount != null)
+        MapEntry('Performance Cores', cpu.performanceAmount.toString()),
+      if (cpu.efficiencyAmount != null)
+        MapEntry('Efficiency Cores', cpu.efficiencyAmount.toString()),
+      MapEntry('Total Threads', cpu.threadsAmount.toString()),
+      MapEntry('Includes Cooler', cpu.includesCooler ? 'Yes' : 'No'),
+      MapEntry('Lithography', cpu.lithography),
+      MapEntry('SMT Support', cpu.supportsSimultaneousMultithreading ? 'Yes' : 'No'),
+      MapEntry('Memory Type', cpu.memoryType),
+      MapEntry('Packaging', cpu.packagingType),
+      MapEntry('ECC Support', cpu.supportsECC ? 'Yes' : 'No'),
+      MapEntry('TDP', '${cpu.thermalDesignPower.toStringAsFixed(0)}W'),
+      MapEntry('Integrated Graphics', cpu.graphics),
+    ]);
+
+    performanceSpecs.addAll([
+      if (cpu.basePerformanceSpeed != null)
+        MapEntry('Base Clock (P-cores)', '${cpu.basePerformanceSpeed} GHz'),
+      if (cpu.boostPerformanceSpeed != null)
+        MapEntry('Boost Clock (P-cores)', '${cpu.boostPerformanceSpeed} GHz'),
+      if (cpu.baseEfficiencySpeed != null)
+        MapEntry('Base Clock (E-cores)', '${cpu.baseEfficiencySpeed} GHz'),
+      if (cpu.boostEfficiencySpeed != null)
+        MapEntry('Boost Clock (E-cores)', '${cpu.boostEfficiencySpeed} GHz'),
+      if (cpu.l1 != null) MapEntry('L1 Cache', '${cpu.l1} MB'),
+      if (cpu.l2 != null) MapEntry('L2 Cache', '${cpu.l2} MB'),
+      if (cpu.l3 != null) MapEntry('L3 Cache', '${cpu.l3} MB'),
+      if (cpu.l4 != null) MapEntry('L4 Cache', '${cpu.l4} MB'),
+      if (cpu.release != null)
+        MapEntry('Release Date', cpu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('General Information', generalSpecs, theme),
+        if (performanceSpecs.isNotEmpty)
+          _buildSpecSection('Performance', performanceSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildGpuSpecs(GPUComponent gpu, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Chipset', gpu.chipset),
+      MapEntry('VRAM', '${gpu.videoMemoryAmount.toStringAsFixed(0)} GB'),
+      MapEntry('Memory Type', gpu.videoMemoryType),
+      MapEntry('Base Clock', '${gpu.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Boost Clock', '${gpu.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Core Count', gpu.coreCount.toString()),
+      MapEntry('Memory Clock', '${gpu.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Memory Bus Width', '${gpu.memoryBusWidth} bits'),
+      MapEntry('Frame Sync', gpu.frameSync),
+      MapEntry('Length', '${gpu.length.toStringAsFixed(0)} mm'),
+      MapEntry('TDP', '${gpu.thermalDesignPower.toStringAsFixed(0)}W'),
+      MapEntry('Slot Width', '${gpu.caseExpansionSlotWidth} slots'),
+      MapEntry('Total Slots', gpu.totalSlotAmount.toString()),
+      MapEntry('Cooling Type', gpu.coolingType),
+      if (gpu.release != null)
+        MapEntry('Release Date', gpu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('GPU Specifications', specs, theme);
+  }
+
+  Widget _buildMotherboardSpecs(MotherboardComponent mb, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final connectivitySpecs = <MapEntry<String, String>>[];
+    final headersSpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Socket Type', mb.socketType),
+      MapEntry('Form Factor', mb.formFactor),
+      MapEntry('Chipset', mb.chipsetType),
+      MapEntry('RAM Type', mb.ramType),
+      MapEntry('RAM Slots', mb.ramSlotsAmount.toString()),
+      MapEntry('Max RAM', '${mb.maxRAMAmount} GB'),
+      MapEntry('Audio Chipset', mb.audioChipset),
+      MapEntry('Max Audio Channels', mb.maxAudioChannels.toString()),
+    ]);
+
+    connectivitySpecs.addAll([
+      MapEntry('SATA 6 Gb/s Ports', mb.sata6GBsAmount.toString()),
+      MapEntry('SATA 3 Gb/s Ports', mb.sata3GBsAmount.toString()),
+      MapEntry('U.2 Ports', mb.u2PortAmount.toString()),
+      MapEntry('Wireless Standard', mb.wirelessNetworkingStandard),
+      if (mb.mainPowerType != null)
+        MapEntry('Main Power Connector', mb.mainPowerType!),
+    ]);
+
+    headersSpecs.addAll([
+      if (mb.cpuFanHeaderAmount != null)
+        MapEntry('CPU Fan Headers', mb.cpuFanHeaderAmount.toString()),
+      if (mb.caseFanHeaderAmount != null)
+        MapEntry('Case Fan Headers', mb.caseFanHeaderAmount.toString()),
+      if (mb.pumpHeaderAmount != null)
+        MapEntry('Pump Headers', mb.pumpHeaderAmount.toString()),
+      if (mb.cpuOptionalFanHeaderAmount != null)
+        MapEntry('Optional CPU Fan Headers', mb.cpuOptionalFanHeaderAmount.toString()),
+      if (mb.argb5vHeaderAmount != null)
+        MapEntry('ARGB 5V Headers', mb.argb5vHeaderAmount.toString()),
+      if (mb.rgb12vHeaderAmount != null)
+        MapEntry('RGB 12V Headers', mb.rgb12vHeaderAmount.toString()),
+      if (mb.temperatureSensorHeaderAmount != null)
+        MapEntry('Temperature Sensor Headers', mb.temperatureSensorHeaderAmount.toString()),
+      if (mb.thunderboltHeaderAmount != null)
+        MapEntry('Thunderbolt Headers', mb.thunderboltHeaderAmount.toString()),
+      if (mb.comPortHeaderAmount != null)
+        MapEntry('COM Port Headers', mb.comPortHeaderAmount.toString()),
+      MapEntry('Power Button Header', mb.hasPowerButtonHeader ? 'Yes' : 'No'),
+      MapEntry('Reset Button Header', mb.hasResetButtonHeader ? 'Yes' : 'No'),
+      MapEntry('Power LED Header', mb.hasPowerLEDHeader ? 'Yes' : 'No'),
+      MapEntry('HDD LED Header', mb.hasHDDLEDHeader ? 'Yes' : 'No'),
+    ]);
+
+    final featuresSpecs = <MapEntry<String, String>>[
+      MapEntry('ECC Support', mb.hasECCSupport ? 'Yes' : 'No'),
+      MapEntry('RAID Support', mb.hasRAIDSupport ? 'Yes' : 'No'),
+      MapEntry('BIOS Flashback', mb.hasFlashback ? 'Yes' : 'No'),
+      MapEntry('Clear CMOS', mb.hasCMOS ? 'Yes' : 'No'),
+      if (mb.release != null)
+        MapEntry('Release Date', mb.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ];
+
+    return Column(
+      children: [
+        _buildSpecSection('General', generalSpecs, theme),
+        _buildSpecSection('Connectivity', connectivitySpecs, theme),
+        _buildSpecSection('Headers & Connectors', headersSpecs, theme),
+        _buildSpecSection('Features', featuresSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildRamSpecs(MemoryComponent ram, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Speed', '${ram.speed.toStringAsFixed(0)} MHz'),
+      MapEntry('Type', ram.ramType),
+      MapEntry('Form Factor', ram.formFactor),
+      MapEntry('Total Capacity', '${ram.capacity.toStringAsFixed(0)} GB'),
+      MapEntry('CAS Latency', ram.casLatency.toStringAsFixed(0)),
+      if (ram.timings != null) MapEntry('Timings', ram.timings!),
+      MapEntry('Module Quantity', ram.moduleQuantity.toString()),
+      MapEntry('Module Capacity', '${ram.moduleCapacity.toStringAsFixed(0)} GB'),
+      MapEntry('ECC', ram.ecc.toString()),
+      MapEntry('Registered Type', ram.registeredType),
+      MapEntry('Heat Spreader', ram.haveHeatSpreader ? 'Yes' : 'No'),
+      MapEntry('RGB', ram.haveRGB ? 'Yes' : 'No'),
+      MapEntry('Height', '${ram.height.toStringAsFixed(0)} mm'),
+      MapEntry('Voltage', '${ram.voltage.toStringAsFixed(2)}V'),
+      if (ram.release != null)
+        MapEntry('Release Date', ram.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Memory Specifications', specs, theme);
+  }
+
+  Widget _buildStorageSpecs(StorageComponent storage, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Series', storage.series),
+      MapEntry('Capacity', '${storage.capacity.toStringAsFixed(0)} GB'),
+      MapEntry('Type', storage.driveType),
+      MapEntry('Form Factor', storage.formFactor),
+      MapEntry('Interface', storage.interface),
+      MapEntry('NVMe', storage.hasNVMe ? 'Yes' : 'No'),
+      if (storage.release != null)
+        MapEntry('Release Date', storage.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Storage Specifications', specs, theme);
+  }
+
+  Widget _buildPsuSpecs(PowerSupplyComponent psu, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Power Output', '${psu.powerOutput.toStringAsFixed(0)}W'),
+      MapEntry('Form Factor', psu.formFactor),
+      if (psu.efficiencyRating != null)
+        MapEntry('Efficiency Rating', psu.efficiencyRating!),
+      MapEntry('Modularity', psu.modularityType),
+      MapEntry('Length', '${psu.length.toStringAsFixed(0)} mm'),
+      MapEntry('Fanless Mode', psu.isFanless ? 'Yes' : 'No'),
+      if (psu.release != null)
+        MapEntry('Release Date', psu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Power Supply Specifications', specs, theme);
+  }
+
+  Widget _buildCaseSpecs(CaseComponent case_, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final dimensionsSpecs = <MapEntry<String, String>>[];
+    final compatibilitySpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Form Factor', case_.formFactor),
+      MapEntry('Power Supply Shrouded', case_.powerSupplyShrouded ? 'Yes' : 'No'),
+      if (case_.powerSupplyAmount != null)
+        MapEntry('Included PSU', '${case_.powerSupplyAmount!.toStringAsFixed(0)}W'),
+      MapEntry('Transparent Side Panel', case_.hasTransparentSidePanel ? 'Yes' : 'No'),
+      if (case_.sidePanelType != null)
+        MapEntry('Side Panel Type', case_.sidePanelType!),
+      MapEntry('Rear Connecting MB Support', case_.supportsRearConnectingMotherboard ? 'Yes' : 'No'),
+    ]);
+
+    dimensionsSpecs.addAll([
+      MapEntry('Width', '${case_.width.toStringAsFixed(0)} mm'),
+      MapEntry('Height', '${case_.height.toStringAsFixed(0)} mm'),
+      MapEntry('Depth', '${case_.depth.toStringAsFixed(0)} mm'),
+      MapEntry('Volume', '${case_.volume.toStringAsFixed(1)} L'),
+      MapEntry('Weight', '${case_.weight.toStringAsFixed(2)} kg'),
+    ]);
+
+    compatibilitySpecs.addAll([
+      MapEntry('Max GPU Length', '${case_.maxVideoCardLength.toStringAsFixed(0)} mm'),
+      MapEntry('Max Cooler Height', '${case_.maxCPUCoolerHeight} mm'),
+      MapEntry('Internal 3.5" Bays', case_.internal35BayAmount.toString()),
+      MapEntry('Internal 2.5" Bays', case_.internal25BayAmount.toString()),
+      MapEntry('External 3.5" Bays', case_.external35BayAmount.toString()),
+      MapEntry('External 5.25" Bays', case_.external525BayAmount.toString()),
+      MapEntry('Expansion Slots', case_.expansionSlotAmount.toString()),
+      if (case_.release != null)
+        MapEntry('Release Date', case_.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('General', generalSpecs, theme),
+        _buildSpecSection('Dimensions', dimensionsSpecs, theme),
+        _buildSpecSection('Compatibility', compatibilitySpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildCoolerSpecs(CoolerComponent cooler, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Type', cooler.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
+      MapEntry('Height', '${cooler.height.toStringAsFixed(0)} mm'),
+      if (cooler.radiatorSize != null)
+        MapEntry('Radiator Size', '${cooler.radiatorSize!.toStringAsFixed(0)} mm'),
+      if (cooler.fanSize != null)
+        MapEntry('Fan Size', '${cooler.fanSize!.toStringAsFixed(0)} mm'),
+      MapEntry('Fan Quantity', cooler.fanQuantity.toString()),
+      if (cooler.minFanRotationSpeed != null)
+        MapEntry('Min Fan Speed', '${cooler.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+      if (cooler.maxFanRotationSpeed != null)
+        MapEntry('Max Fan Speed', '${cooler.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+      if (cooler.minNoiseLevel != null)
+        MapEntry('Min Noise', '${cooler.minNoiseLevel!.toStringAsFixed(1)} dBA'),
+      if (cooler.maxNoiseLevel != null)
+        MapEntry('Max Noise', '${cooler.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+      MapEntry('Fanless Operation', cooler.canOperateFanless ? 'Yes' : 'No'),
+      if (cooler.release != null)
+        MapEntry('Release Date', cooler.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Cooler Specifications', specs, theme);
+  }
+
+  Widget _buildCaseFanSpecs(CaseFanComponent fan, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Size', '${fan.size.toStringAsFixed(0)} mm'),
+      MapEntry('Quantity', fan.quantity.toString()),
+      MapEntry('Min Airflow', '${fan.minAirflow.toStringAsFixed(0)} CFM'),
+      if (fan.maxAirflow != null)
+        MapEntry('Max Airflow', '${fan.maxAirflow!.toStringAsFixed(0)} CFM'),
+      MapEntry('Min Noise', '${fan.minNoiseLevel.toStringAsFixed(1)} dBA'),
+      if (fan.maxNoiseLevel != null)
+        MapEntry('Max Noise', '${fan.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+      MapEntry('PWM', fan.pulseWidthModulation ? 'Yes' : 'No'),
+      MapEntry('LED Type', fan.ledType ?? 'None'),
+      MapEntry('Connector Type', fan.connectorType ?? 'N/A'),
+      MapEntry('Controller Type', fan.controllerType),
+      MapEntry('Static Pressure', '${fan.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
+      MapEntry('Flow Direction', fan.flowDirection),
+      if (fan.release != null)
+        MapEntry('Release Date', fan.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Case Fan Specifications', specs, theme);
+  }
+
+  Widget _buildMonitorSpecs(MonitorComponent monitor, ThemeData theme) {
+    final displaySpecs = <MapEntry<String, String>>[];
+    final performanceSpecs = <MapEntry<String, String>>[];
+    
+    displaySpecs.addAll([
+      MapEntry('Screen Size', '${monitor.screenSize.toStringAsFixed(1)}"'),
+      MapEntry('Resolution', '${monitor.horizontalResolution}x${monitor.verticalResolution}'),
+      MapEntry('Aspect Ratio', monitor.aspectRatio),
+      MapEntry('Panel Type', monitor.panelType),
+      MapEntry('Viewing Angle', monitor.viewingAngle),
+      if (monitor.maxBrightness != null)
+        MapEntry('Max Brightness', '${monitor.maxBrightness!.toStringAsFixed(0)} nits'),
+      if (monitor.highDynamicRangeType != null)
+        MapEntry('HDR', monitor.highDynamicRangeType!),
+    ]);
+
+    performanceSpecs.addAll([
+      MapEntry('Refresh Rate', '${monitor.maxRefreshRate.toStringAsFixed(0)} Hz'),
+      MapEntry('Response Time', '${monitor.responseTime.toStringAsFixed(1)} ms'),
+      MapEntry('Adaptive Sync', monitor.adaptiveSyncType),
+      if (monitor.release != null)
+        MapEntry('Release Date', monitor.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('Display', displaySpecs, theme),
+        _buildSpecSection('Performance', performanceSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildGenericSpecs(BaseComponent component, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[
+      MapEntry('Manufacturer', component.manufacturer),
+      if (component.release != null)
+        MapEntry('Release Date', component.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ];
+
+    return _buildSpecSection('General Information', specs, theme);
   }
 }

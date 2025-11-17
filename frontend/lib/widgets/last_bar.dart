@@ -22,7 +22,7 @@ class LastBar extends StatelessWidget {
         horizontal: isMobile ? 20 : 100, // Less horizontal padding on mobile.
         vertical: 40,
       ),
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: Column(
         children: [
           /// On mobile, stack the columns vertically. On desktop, place them in a row.

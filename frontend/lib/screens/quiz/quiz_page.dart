@@ -96,7 +96,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                             ? (currentStep + 1) / _questions.length
                             : 0,
                         backgroundColor: theme.colorScheme.surfaceVariant
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                         color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                         minHeight: 10,
@@ -159,14 +159,14 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                         color: isSelected
                                             ? theme.colorScheme.primary
                                             : theme.colorScheme.outline
-                                                  .withOpacity(0.2),
+                                                  .withValues(alpha: 0.2),
                                         width: 2,
                                       ),
                                       boxShadow: isSelected
                                           ? [
                                               BoxShadow(
                                                 color: theme.colorScheme.primary
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -196,7 +196,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                           : Container(
                               height: 250,
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surface.withOpacity(
+                                color: theme.colorScheme.surface.withValues(alpha: 
                                   0.5,
                                 ),
                                 borderRadius: BorderRadius.circular(12),

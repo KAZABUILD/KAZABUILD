@@ -265,7 +265,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -502,7 +502,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColorsDark.buttonBlue.withOpacity(0.2),
+              color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -531,8 +531,8 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.7)
-                        : AppColorsLight.textBlack.withOpacity(0.7),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -552,8 +552,8 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -600,7 +600,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColorsDark.buttonBlue.withOpacity(0.2),
+              color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -630,8 +630,8 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
-                          ? AppColorsDark.textWhite.withOpacity(0.7)
-                          : AppColorsLight.textBlack.withOpacity(0.7),
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

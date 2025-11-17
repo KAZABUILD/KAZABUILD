@@ -158,7 +158,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
             end: Alignment.bottomCenter,
             colors: [
               theme.scaffoldBackgroundColor,
-              theme.colorScheme.surface.withOpacity(0.3),
+              theme.colorScheme.surface.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -181,7 +181,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Icon(
@@ -206,7 +206,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                                   Text(
                                     'Share your thoughts with the community',
                                     style: theme.textTheme.bodyLarge?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ],
@@ -223,7 +223,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
                               ),
@@ -263,7 +263,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
                               ),
@@ -310,7 +310,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
                               ),

@@ -81,13 +81,13 @@ class _GuidesPageState extends State<GuidesPage> {
                                         Icon(
                                           Icons.article_outlined,
                                           size: 64,
-                                          color: theme.colorScheme.onSurface.withOpacity(0.3),
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
                                           AppLocalizations.of(context)!.noGuidesFound,
                                           style: theme.textTheme.titleLarge?.copyWith(
-                                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                           ),
                                         ),
                                       ],
@@ -118,8 +118,8 @@ class _GuidesPageState extends State<GuidesPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primary.withOpacity(0.1),
-            theme.colorScheme.surface.withOpacity(0.5),
+            theme.colorScheme.primary.withValues(alpha: 0.1),
+            theme.colorScheme.surface.withValues(alpha: 0.5),
           ],
         ),
       ),
@@ -135,7 +135,7 @@ class _GuidesPageState extends State<GuidesPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -160,7 +160,7 @@ class _GuidesPageState extends State<GuidesPage> {
                         Text(
                           AppLocalizations.of(context)!.guidesDescription,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -187,7 +187,7 @@ class _GuidesPageState extends State<GuidesPage> {
                             _selectedCategory = category;
                           });
                         },
-                        selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                        selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                         checkmarkColor: theme.colorScheme.primary,
                         labelStyle: TextStyle(
                           color: isSelected
@@ -513,8 +513,8 @@ class _GuideCardState extends State<_GuideCard> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primary.withOpacity(0.3),
-            theme.colorScheme.secondary.withOpacity(0.2),
+            theme.colorScheme.primary.withValues(alpha: 0.3),
+            theme.colorScheme.secondary.withValues(alpha: 0.2),
           ],
         ),
       ),
@@ -526,18 +526,18 @@ class _GuideCardState extends State<_GuideCard> {
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
               return Container(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                 child: Icon(
                   Icons.article_outlined,
                   size: 64,
-                  color: theme.colorScheme.onSurface.withOpacity(0.3),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
               );
             },
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return Container(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                 child: Center(
                   child: CircularProgressIndicator(
                     value: loadingProgress.expectedTotalBytes != null
@@ -555,7 +555,7 @@ class _GuideCardState extends State<_GuideCard> {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.3),
+                  Colors.black.withValues(alpha: 0.3),
                 ],
               ),
             ),
@@ -616,7 +616,7 @@ class _GuideCardState extends State<_GuideCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -645,7 +645,7 @@ class _GuideCardState extends State<_GuideCard> {
                             child: Text(
                               widget.guide.author,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -657,13 +657,13 @@ class _GuideCardState extends State<_GuideCard> {
                               Icon(
                                 Icons.access_time,
                                 size: 14,
-                                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 widget.guide.readTime,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                                 ),
                               ),
                             ],

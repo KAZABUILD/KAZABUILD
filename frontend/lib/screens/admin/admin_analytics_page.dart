@@ -154,7 +154,7 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -432,8 +432,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
@@ -445,7 +445,7 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: (metric['color'] as Color).withOpacity(0.2),
+                        color: (metric['color'] as Color).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -457,7 +457,7 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: changeColor.withOpacity(0.2),
+                        color: changeColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -488,8 +488,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.7)
-                        : AppColorsLight.textBlack.withOpacity(0.7),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -533,8 +533,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -559,8 +559,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                       'No data available',
                       style: TextStyle(
                         color: isDark
-                            ? AppColorsDark.textWhite.withOpacity(0.5)
-                            : AppColorsLight.textBlack.withOpacity(0.5),
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.5),
                       ),
                     ),
                   )
@@ -613,8 +613,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -663,8 +663,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                     '$buildCount builds',
                     style: TextStyle(
                       color: isDark
-                          ? AppColorsDark.textWhite.withOpacity(0.7)
-                          : AppColorsLight.textBlack.withOpacity(0.7),
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -680,8 +680,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                   'No users with builds',
                   style: TextStyle(
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.5)
-                        : AppColorsLight.textBlack.withOpacity(0.5),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -711,8 +711,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -740,7 +740,7 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColorsDark.buttonPurple.withOpacity(0.2),
+                      color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.computer, size: 20),
@@ -764,8 +764,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                             _formatDate(buildDate),
                             style: TextStyle(
                               color: isDark
-                                  ? AppColorsDark.textWhite.withOpacity(0.5)
-                                  : AppColorsLight.textBlack.withOpacity(0.5),
+                                  ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                  : AppColorsLight.textBlack.withValues(alpha: 0.5),
                               fontSize: 10,
                             ),
                           ),
@@ -775,7 +775,7 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(build.status).withOpacity(0.2),
+                      color: _getStatusColor(build.status).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -798,8 +798,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                   'No builds available',
                   style: TextStyle(
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.5)
-                        : AppColorsLight.textBlack.withOpacity(0.5),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -848,8 +848,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -874,8 +874,8 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
                       'No activity data',
                       style: TextStyle(
                         color: isDark
-                            ? AppColorsDark.textWhite.withOpacity(0.5)
-                            : AppColorsLight.textBlack.withOpacity(0.5),
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.5),
                       ),
                     ),
                   )
@@ -946,7 +946,7 @@ class _LineChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = color.withOpacity(0.1)
+      ..color = color.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
     final path = Path();

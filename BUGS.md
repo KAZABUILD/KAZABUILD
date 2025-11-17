@@ -122,8 +122,8 @@
 [00021] The admin page editing and viewing are broken.
 - Type: incorrect implementation/error/missing feature
 - Status: pending
-- Source: frontend
-- Details: The editing button doesn't do anything, while the view button takes the user to an incorrect URL.
+- Source: frontendutton doesn't do anything, while the view button 
+- Details: The editing btakes the user to an incorrect URL.
 
 [00022] The admin should be able to modify their profile only like the normal user would.
 - Type: incorrect implementation
@@ -182,3 +182,9 @@
 - Status: pending
 - Source: frontend
 - Details: .
+
+[00031] .
+- Type: Incorrect forntend output
+- Status: pending
+- Source: frontend
+- Details: fix the way performance is displayed for CPU parts its too long of a float

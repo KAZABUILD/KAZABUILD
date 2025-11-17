@@ -58,7 +58,7 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
             child: Text(
               'Featured builds will be shown here soon!',
               style: theme.textTheme.headlineMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           );
@@ -70,9 +70,9 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                theme.colorScheme.surface.withOpacity(0.0),
-                theme.colorScheme.surface.withOpacity(0.3),
-                theme.colorScheme.surface.withOpacity(0.0),
+                theme.colorScheme.surface.withValues(alpha: 0.0),
+                theme.colorScheme.surface.withValues(alpha: 0.3),
+                theme.colorScheme.surface.withValues(alpha: 0.0),
               ],
             ),
           ),
@@ -195,14 +195,14 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
                         color: _current == entry.key
                             ? null
                             : (isDarkMode ? Colors.white : Colors.black)
-                                .withOpacity(0.3),
+                                .withValues(alpha: 0.3),
                         boxShadow: _current == entry.key
                             ? [
                                 BoxShadow(
                                   color: (isDarkMode
                                           ? AppColorsDark.textNeon
                                           : AppColorsLight.textNeon)
-                                      .withOpacity(0.5),
+                                      .withValues(alpha: 0.5),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
@@ -322,8 +322,8 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  widget.theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
-                  widget.theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  widget.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  widget.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
@@ -332,7 +332,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                     ? (widget.isDarkMode
                             ? AppColorsDark.textNeon
                             : AppColorsLight.textNeon)
-                        .withOpacity(0.5)
+                        .withValues(alpha: 0.5)
                     : Colors.transparent,
                 width: 2,
               ),
@@ -342,8 +342,8 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                       ? (widget.isDarkMode
                               ? AppColorsDark.textPurple
                               : AppColorsLight.textPurple)
-                          .withOpacity(0.3)
-                      : Colors.black.withOpacity(0.2),
+                          .withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.2),
                   blurRadius: _isHovered ? 30 : 15,
                   spreadRadius: _isHovered ? 5 : 0,
                 ),
@@ -361,13 +361,13 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                         end: Alignment.bottomRight,
                         colors: [
                           widget.theme.colorScheme.surface,
-                          widget.theme.colorScheme.surface.withOpacity(0.8),
+                          widget.theme.colorScheme.surface.withValues(alpha: 0.8),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           spreadRadius: 0,
                         ),
@@ -382,7 +382,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                               child: Icon(
                                 Icons.broken_image,
                                 size: 48,
-                                color: widget.theme.colorScheme.onSurface.withOpacity(0.5),
+                                color: widget.theme.colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                             ),
                           )
@@ -390,7 +390,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                             child: Icon(
                               Icons.image_not_supported,
                               size: 48,
-                              color: widget.theme.colorScheme.onSurface.withOpacity(0.5),
+                              color: widget.theme.colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                           ),
                   ),
@@ -420,12 +420,12 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                             gradient: LinearGradient(
                               colors: widget.isDarkMode
                                   ? [
-                                      AppColorsDark.textNeon.withOpacity(0.2),
-                                      AppColorsDark.textPurple.withOpacity(0.2),
+                                      AppColorsDark.textNeon.withValues(alpha: 0.2),
+                                      AppColorsDark.textPurple.withValues(alpha: 0.2),
                                     ]
                                   : [
-                                      AppColorsLight.textNeon.withOpacity(0.2),
-                                      AppColorsLight.textPurple.withOpacity(0.2),
+                                      AppColorsLight.textNeon.withValues(alpha: 0.2),
+                                      AppColorsLight.textPurple.withValues(alpha: 0.2),
                                     ],
                             ),
                             borderRadius: BorderRadius.circular(12),
@@ -461,7 +461,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                                       color: (widget.isDarkMode
                                               ? AppColorsDark.buttonPurple
                                               : AppColorsLight.buttonPurple)
-                                          .withOpacity(0.5),
+                                          .withValues(alpha: 0.5),
                                       blurRadius: 15,
                                       spreadRadius: 2,
                                     ),

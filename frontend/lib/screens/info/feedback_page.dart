@@ -96,7 +96,7 @@ class _FeedbackPageState extends State<FeedbackPage>
           gradient: LinearGradient(
             colors: [
               theme.colorScheme.background,
-              theme.colorScheme.primary.withOpacity(0.05),
+              theme.colorScheme.primary.withValues(alpha: 0.05),
               theme.colorScheme.background,
             ],
             begin: Alignment.topLeft,
@@ -279,7 +279,7 @@ class _FeedbackPageState extends State<FeedbackPage>
         labelText: label,
         hintText: hint,
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+        fillColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
@@ -289,7 +289,7 @@ class _FeedbackPageState extends State<FeedbackPage>
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 1),
         ),
       ),
       // A default validator that checks if the field is empty.
@@ -326,8 +326,8 @@ class _SubmitButtonState extends State<_SubmitButton> {
     /// Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.02 : 1.0;
     final shadowColor = _isHovered
-        ? theme.colorScheme.secondary.withOpacity(0.5)
-        : Colors.black.withOpacity(0.2);
+        ? theme.colorScheme.secondary.withValues(alpha: 0.5)
+        : Colors.black.withValues(alpha: 0.2);
 
     /// [MouseRegion] detects when the cursor enters or leaves the widget's area to trigger the hover effect.
     return MouseRegion(

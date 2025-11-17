@@ -37,8 +37,8 @@ class FaqSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 24.0),
       decoration: BoxDecoration(
         color: isDark
-            ? AppColorsDark.backgroundSecondary.withOpacity(0.5)
-            : AppColorsLight.backgroundSecondary.withOpacity(0.3),
+            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.5)
+            : AppColorsLight.backgroundSecondary.withValues(alpha: 0.3),
       ),
       child: Center(
         child: ConstrainedBox(
@@ -71,8 +71,8 @@ class FaqSection extends StatelessWidget {
                 AppLocalizations.of(context)!.findAnswersToCommonQuestions,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 40),
@@ -165,8 +165,8 @@ class _FaqItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Theme(
@@ -181,7 +181,7 @@ class _FaqItem extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                  color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -219,8 +219,8 @@ class _FaqItem extends StatelessWidget {
                 answer,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.8)
-                      : AppColorsLight.textBlack.withOpacity(0.8),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.8),
                   height: 1.6,
                 ),
               ),

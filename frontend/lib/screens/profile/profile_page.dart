@@ -49,7 +49,7 @@ class ProfilePage extends ConsumerWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              theme.colorScheme.surface.withOpacity(0.5),
+                              theme.colorScheme.surface.withValues(alpha: 0.5),
                               theme.colorScheme.background,
                             ],
                           )
@@ -100,8 +100,8 @@ class ProfilePage extends ConsumerWidget {
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(
             color: isDark
-                ? theme.colorScheme.outline.withOpacity(0.2)
-                : theme.colorScheme.outline.withOpacity(0.1),
+                ? theme.colorScheme.outline.withValues(alpha: 0.2)
+                : theme.colorScheme.outline.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -126,7 +126,7 @@ class ProfilePage extends ConsumerWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -190,10 +190,10 @@ class ProfilePage extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.1),
+                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Column(
@@ -416,10 +416,10 @@ class ProfilePage extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -428,7 +428,7 @@ class ProfilePage extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -546,8 +546,8 @@ class _BuildCard extends ConsumerWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.surfaceVariant.withOpacity(0.4),
-            theme.colorScheme.surfaceVariant.withOpacity(0.2),
+            theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
+            theme.colorScheme.surfaceVariant.withValues(alpha: 0.2),
           ],
         ),
       ),
@@ -558,13 +558,13 @@ class _BuildCard extends ConsumerWidget {
             Icon(
               Icons.computer_rounded,
               size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 8),
             Text(
               'No Image',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -609,7 +609,7 @@ class _BuildCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -666,10 +666,10 @@ class _BuildCard extends ConsumerWidget {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer.withOpacity(0.6),
+                            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: theme.colorScheme.primary.withOpacity(0.2),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.2),
                               width: 1,
                             ),
                           ),
@@ -747,10 +747,10 @@ class _BuildCard extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(buildData.status, theme).withOpacity(0.15),
+                          color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: _getStatusColor(buildData.status, theme).withOpacity(0.3),
+                            color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Text(

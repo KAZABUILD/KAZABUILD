@@ -59,8 +59,8 @@ class GuideDetailPage extends StatelessWidget {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                theme.colorScheme.primary.withOpacity(0.3),
-                                theme.colorScheme.secondary.withOpacity(0.2),
+                                theme.colorScheme.primary.withValues(alpha: 0.3),
+                                theme.colorScheme.secondary.withValues(alpha: 0.2),
                               ],
                             ),
                           ),
@@ -68,7 +68,7 @@ class GuideDetailPage extends StatelessWidget {
                             child: Icon(
                               Icons.article_outlined,
                               size: 64,
-                              color: theme.colorScheme.onSurface.withOpacity(0.3),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                             ),
                           ),
                         );
@@ -82,7 +82,7 @@ class GuideDetailPage extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.6),
+                            Colors.black.withValues(alpha: 0.6),
                           ],
                         ),
                       ),
@@ -108,7 +108,7 @@ class GuideDetailPage extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -139,13 +139,13 @@ class GuideDetailPage extends StatelessWidget {
                                   Icon(
                                     Icons.access_time,
                                     size: 16,
-                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     guide.readTime,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],
@@ -156,7 +156,7 @@ class GuideDetailPage extends StatelessWidget {
                         Text(
                           DateFormat.yMMMMd().format(guide.publishedDate),
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],

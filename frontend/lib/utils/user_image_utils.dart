@@ -151,7 +151,7 @@ class UserImageUtils {
               width: width,
               height: height,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.3),
+                color: color.withValues(alpha: 0.3),
                 borderRadius: borderRadius ?? BorderRadius.circular(8),
               ),
               child: Center(

@@ -71,7 +71,7 @@ class AdminAccessDebugPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 Card(
-                  color: isAdmin ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                  color: isAdmin ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -103,7 +103,7 @@ class AdminAccessDebugPage extends ConsumerWidget {
                           if (!isAdmin) ...[
                             const SizedBox(height: 16),
                             Card(
-                              color: Colors.blue.withOpacity(0.1),
+                              color: Colors.blue.withValues(alpha: 0.1),
                               child: Padding(
                                 padding: const EdgeInsets.all(12.0),
                                 child: Column(

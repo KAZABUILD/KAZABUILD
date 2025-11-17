@@ -60,7 +60,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -264,8 +264,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                                   Icons.computer_outlined,
                                   size: 64,
                                   color: isDark
-                                      ? AppColorsDark.textWhite.withOpacity(0.5)
-                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                      ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                      : AppColorsLight.textBlack.withValues(alpha: 0.5),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
@@ -338,8 +338,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -347,7 +347,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -376,8 +376,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -398,8 +398,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -483,8 +483,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -498,7 +498,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                    color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.computer),
@@ -523,8 +523,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.6)
-                                : AppColorsLight.textBlack.withOpacity(0.6),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.6),
                           ),
                         )
                       else if (build.databaseEntryAt != null)
@@ -533,8 +533,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.6)
-                                : AppColorsLight.textBlack.withOpacity(0.6),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.6),
                           ),
                         ),
                     ],
@@ -565,7 +565,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 constraints: const BoxConstraints(
@@ -594,8 +594,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                 build.id.substring(0, 8),
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.left,
@@ -610,8 +610,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                 build.lastEditedAt != null ? _formatDate(build.lastEditedAt!) : 'N/A',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.left,
@@ -626,8 +626,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                 build.publishedAt != null ? _formatDate(build.publishedAt!) : 'N/A',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.left,
@@ -651,13 +651,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // TODO: Implement edit build - navigate to edit page or show dialog
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Edit build functionality coming soon'),
-                          backgroundColor: AppColorsDark.buttonBlue,
-                        ),
-                      );
+                      // Navigate to build detail page where editing may be available
+                      context.go('/build/${build.id}');
                     },
                     tooltip: 'Edit',
                   ),

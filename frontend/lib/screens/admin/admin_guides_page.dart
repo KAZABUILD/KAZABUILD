@@ -100,7 +100,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -187,7 +187,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   _applyFilters();
                 },
                 selectedColor: (isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue)
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
                 checkmarkColor: isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue,
                 labelStyle: TextStyle(
                   color: isSelected
@@ -220,8 +220,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                           Icons.article_outlined,
                           size: 64,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.3)
-                              : AppColorsLight.textBlack.withOpacity(0.3),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.3)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.3),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -229,8 +229,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                           style: TextStyle(
                             fontSize: 18,
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.7)
-                                : AppColorsLight.textBlack.withOpacity(0.7),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -299,8 +299,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -308,7 +308,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -337,8 +337,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -361,8 +361,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -381,8 +381,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColorsDark.buttonPurple.withOpacity(0.3),
-                  AppColorsDark.buttonBlue.withOpacity(0.2),
+                  AppColorsDark.buttonPurple.withValues(alpha: 0.3),
+                  AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                 ],
               ),
             ),
@@ -396,7 +396,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: AppColorsDark.buttonPurple.withOpacity(0.2),
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
                     child: const Center(
                       child: Icon(Icons.book, size: 48, color: AppColorsDark.buttonPurple),
                     ),
@@ -405,7 +405,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return Container(
-                    color: AppColorsDark.buttonPurple.withOpacity(0.2),
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
                     child: const Center(
                       child: CircularProgressIndicator(),
                     ),
@@ -438,7 +438,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), 
                       decoration: BoxDecoration(
-                        color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                        color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -456,8 +456,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                       style: TextStyle(
                         fontSize: 12, 
                         color: isDark
-                            ? AppColorsDark.textWhite.withOpacity(0.5)
-                            : AppColorsLight.textBlack.withOpacity(0.5),
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -468,8 +468,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   style: TextStyle(
                     fontSize: 13, 
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.7)
-                        : AppColorsLight.textBlack.withOpacity(0.7),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -484,8 +484,8 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.5)
-                              : AppColorsLight.textBlack.withOpacity(0.5),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.5),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -58,8 +58,8 @@ class QuizResultsPage extends ConsumerWidget {
                       Text(
                         'Based on your preferences, we\'ve curated these builds for you',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onBackground.withOpacity(
-                            0.7,
+                          color: theme.colorScheme.onBackground.withValues(
+                            alpha: 0.7,
                           ),
                         ),
                         textAlign: TextAlign.center,
@@ -90,8 +90,8 @@ class QuizResultsPage extends ConsumerWidget {
                                 // Since components are not part of the Build model anymore, this part needs to be re-thought.
 
                                 return Card(
-                                  color: theme.colorScheme.surface.withOpacity(
-                                    0.1,
+                                  color: theme.colorScheme.surface.withValues(
+                                    alpha: 0.1,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -113,7 +113,7 @@ class QuizResultsPage extends ConsumerWidget {
                                             height: 100,
                                             width: 100,
                                             color: theme.colorScheme.surface
-                                                .withOpacity(0.3),
+                                                .withValues(alpha: 0.3),
                                             child: Icon(
                                               Icons.broken_image,
                                               color: Colors.grey.shade600,
@@ -143,7 +143,7 @@ class QuizResultsPage extends ConsumerWidget {
                                                 color: theme
                                                     .colorScheme
                                                     .onSurface
-                                                    .withOpacity(0.7),
+                                                    .withValues(alpha: 0.7),
                                               ),
                                           textAlign: TextAlign.center,
                                         ),
@@ -198,8 +198,8 @@ class QuizResultsPage extends ConsumerWidget {
                       Text(
                         'Don\'t see what you\'re looking for?',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onBackground.withOpacity(
-                            0.7,
+                          color: theme.colorScheme.onBackground.withValues(
+                            alpha: 0.7,
                           ),
                         ),
                       ),

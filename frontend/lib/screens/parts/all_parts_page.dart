@@ -48,7 +48,7 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
                   end: Alignment.bottomCenter,
                   colors: [
                     theme.scaffoldBackgroundColor,
-                    theme.colorScheme.surface.withOpacity(0.3),
+                    theme.colorScheme.surface.withValues(alpha: 0.3),
                   ],
                 ),
               ),
@@ -125,7 +125,7 @@ class _HeaderSection extends StatelessWidget {
         Text(
           AppLocalizations.of(context)!.chooseCategoryToBrowse,
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -342,7 +342,7 @@ class _CategoryCardState extends State<_CategoryCard> {
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
               color: _isHovered
-                  ? widget.color.withOpacity(0.5)
+                  ? widget.color.withValues(alpha: 0.5)
                   : Colors.transparent,
               width: 2,
             ),
@@ -358,8 +358,8 @@ class _CategoryCardState extends State<_CategoryCard> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    widget.color.withOpacity(0.1),
-                    widget.color.withOpacity(0.05),
+                    widget.color.withValues(alpha: 0.1),
+                    widget.color.withValues(alpha: 0.05),
                     theme.colorScheme.surface,
                   ],
                 ),
@@ -373,7 +373,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: widget.color.withOpacity(0.15),
+                        color: widget.color.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -397,7 +397,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                     Text(
                       AppLocalizations.of(context)!.itemsCount(widget.itemCount),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -405,7 +405,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                     Icon(
                       Icons.arrow_forward_ios,
                       size: 16,
-                      color: widget.color.withOpacity(0.7),
+                      color: widget.color.withValues(alpha: 0.7),
                     ),
                   ],
                 ),
@@ -474,7 +474,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
       return Icon(
         Icons.image_not_supported,
         size: 48,
-        color: theme.colorScheme.onSurface.withOpacity(0.3),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
       );
     }
 
@@ -485,7 +485,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
       return Icon(
         Icons.image_not_supported,
         size: 48,
-        color: theme.colorScheme.onSurface.withOpacity(0.3),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
       );
     }
 
@@ -519,7 +519,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
         return Icon(
           Icons.broken_image,
           size: 48,
-          color: theme.colorScheme.onSurface.withOpacity(0.3),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         );
       },
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
@@ -985,11 +985,11 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
     //     return Container(
     //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     //       decoration: BoxDecoration(
-    //         color: Colors.green.withOpacity(0.9),
+    //         color: Colors.green.withValues(alpha: 0.9),
     //         borderRadius: BorderRadius.circular(12),
     //         boxShadow: [
     //           BoxShadow(
-    //             color: Colors.black.withOpacity(0.2),
+    //             color: Colors.black.withValues(alpha: 0.2),
     //             blurRadius: 4,
     //             offset: const Offset(0, 2),
     //           ),
@@ -1019,7 +1019,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
     //   loading: () => Container(
     //     padding: const EdgeInsets.all(6),
     //     decoration: BoxDecoration(
-    //       color: Colors.grey.withOpacity(0.7),
+    //       color: Colors.grey.withValues(alpha: 0.7),
     //       borderRadius: BorderRadius.circular(12),
     //     ),
     //     child: const SizedBox(
@@ -1054,7 +1054,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: _isHovered
-                  ? widget.typeColor.withOpacity(0.5)
+                  ? widget.typeColor.withValues(alpha: 0.5)
                   : Colors.transparent,
               width: 2,
             ),
@@ -1074,13 +1074,13 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
                   child: Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          widget.typeColor.withOpacity(0.1),
-                          theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                          widget.typeColor.withValues(alpha: 0.1),
+                          theme.colorScheme.surfaceVariant.withValues(alpha: 0.1),
                         ],
                       ),
                     ),
@@ -1091,7 +1091,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
                         ),
                         if (_isHovered)
                           Container(
-                            color: widget.typeColor.withOpacity(0.1),
+                            color: widget.typeColor.withValues(alpha: 0.1),
                           ),
                         // Compatibility badge
                         Positioned(
@@ -1143,7 +1143,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: widget.typeColor.withOpacity(0.15),
+                              color: widget.typeColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -1158,7 +1158,7 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
                           Text(
                             AppLocalizations.of(context)!.priceNotAvailable,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                           ),
                       ],

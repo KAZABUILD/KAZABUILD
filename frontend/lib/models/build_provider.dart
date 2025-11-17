@@ -249,22 +249,31 @@ class BuildService {
   }
 
   /// Fetches a single build by its ID.
-  Future<Build> getBuildById(String buildId) async {
+  Future<Build> getBuildById(String buildId, {String? currentUserId}) async {
     try {
       final response = await _dio.get('$apiBaseUrl/Builds/$buildId');
       final buildJson = response.data as Map<String, dynamic>;
-      
-      // Fetch BuildComponents, Images, and Tags for this build in parallel
-      final results = await Future.wait([
-        getBuildComponents([buildId]),
-        getBuildImages([buildId]),
-        _fetchBuildTags([buildId]),
-      ]);
-      
-      final componentsByBuildId = results[0] as Map<String, List<Map<String, dynamic>>>;
-      final imageUrlsByBuildId = results[1] as Map<String, String?>;
-      final tagsByBuildId = results[2] as Map<String, List<String>>;
-      
+
+      // Fetch related data in parallel
+      final componentsFuture = getBuildComponents([buildId]);
+      final imagesFuture = getBuildImages([buildId]);
+      final tagsFuture = _fetchBuildTags([buildId]);
+      final ratingsCountFuture = _getBuildRatingsCount(buildId);
+      final userRatingFuture = currentUserId != null
+          ? _getUserRatingForBuild(buildId, currentUserId)
+          : Future<double?>.value(null);
+
+      final componentsByBuildId = await componentsFuture;
+      final imageUrlsByBuildId = await imagesFuture;
+      final tagsByBuildId = await tagsFuture;
+      final ratingsCount = await ratingsCountFuture;
+
+      double? averageRatingRaw;
+      if (ratingsCount > 0) {
+        averageRatingRaw = await _getBuildAverageRating(buildId);
+      }
+      final userRatingRaw = await userRatingFuture;
+
       if (componentsByBuildId.containsKey(buildId)) {
         final components = componentsByBuildId[buildId]!;
         buildJson['components'] = components;
@@ -277,6 +286,16 @@ class BuildService {
       if (tagsByBuildId.containsKey(buildId)) {
         buildJson['tags'] = tagsByBuildId[buildId];
         buildJson['Tags'] = tagsByBuildId[buildId];
+      }
+
+      // Attach rating metadata so UI can show accurate stats
+      buildJson['ratingsCount'] = ratingsCount;
+      buildJson['RatingsCount'] = ratingsCount;
+      buildJson['averageRating'] = averageRatingRaw ?? 0;
+      buildJson['AverageRating'] = averageRatingRaw ?? 0;
+      if (userRatingRaw != null && userRatingRaw > 0) {
+        buildJson['userRating'] = userRatingRaw;
+        buildJson['UserRating'] = userRatingRaw;
       }
       
       return Build.fromJson(buildJson);
@@ -382,6 +401,69 @@ class BuildService {
     }
     
     return tagsByBuildId;
+  }
+
+  /// Retrieves the total number of ratings (excluding unrated interactions) for a build.
+  Future<int> _getBuildRatingsCount(String buildId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get-count', data: {
+        'BuildId': [buildId],
+        'RatingStart': 1,
+        'Paging': false,
+      });
+      final data = response.data;
+      if (data is int) return data;
+      if (data is num) return data.toInt();
+      if (data is String) {
+        return int.tryParse(data) ?? 0;
+      }
+    } catch (e) {
+      debugPrint('BuildService._getBuildRatingsCount error: $e');
+    }
+    return 0;
+  }
+
+  /// Retrieves the average rating (0-100 scale) for a build.
+  Future<double?> _getBuildAverageRating(String buildId) async {
+    try {
+      final response =
+          await _dio.post('$apiBaseUrl/BuildInteractions/get-average-rating', data: {
+        'BuildId': [buildId],
+        'RatingStart': 1,
+        'Paging': false,
+      });
+      final data = response.data;
+      if (data is num) return data.toDouble();
+      if (data is String) {
+        return double.tryParse(data);
+      }
+    } catch (e) {
+      debugPrint('BuildService._getBuildAverageRating error: $e');
+    }
+    return null;
+  }
+
+  /// Retrieves the current user's rating for a specific build (0-100 scale).
+  Future<double?> _getUserRatingForBuild(String buildId, String userId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get', data: {
+        'BuildId': [buildId],
+        'UserId': [userId],
+        'Paging': false,
+      });
+      final List<dynamic> interactions = response.data as List<dynamic>? ?? [];
+      if (interactions.isEmpty) return null;
+      final interaction = interactions.first;
+      if (interaction is Map<String, dynamic>) {
+        final rating = interaction['rating'] ?? interaction['Rating'];
+        if (rating == null) return null;
+        if (rating is num) return rating.toDouble();
+        return double.tryParse(rating.toString());
+      }
+    } catch (e) {
+      debugPrint('BuildService._getUserRatingForBuild error: $e');
+    }
+    return null;
   }
 
   /// Creates a new build on the backend and returns its ID.
@@ -767,8 +849,9 @@ class ComponentCacheNotifier extends StateNotifier<Map<String, Map<String, dynam
 /// A provider that fetches the details of a single build by its ID.
 final buildDetailProvider = FutureProvider.family<Build, String>((ref, buildId) async {
   final buildService = ref.watch(buildServiceProvider);
+  final currentUser = ref.watch(authProvider).valueOrNull;
   // Use the new, more direct method to fetch a single build.
-  return buildService.getBuildById(buildId);
+  return buildService.getBuildById(buildId, currentUserId: currentUser?.uid);
 });
 
 /// A provider that fetches all available tags.

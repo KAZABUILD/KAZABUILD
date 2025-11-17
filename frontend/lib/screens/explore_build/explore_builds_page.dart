@@ -146,7 +146,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
             end: Alignment.bottomCenter,
             colors: [
               theme.scaffoldBackgroundColor,
-              theme.colorScheme.surface.withOpacity(0.3),
+              theme.colorScheme.surface.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -208,20 +208,20 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                         Icon(
                                           Icons.inbox,
                                           size: 64,
-                                          color: theme.colorScheme.onSurface.withOpacity(0.3),
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
                                           AppLocalizations.of(context)!.noBuildsFound,
                                           style: theme.textTheme.titleLarge?.copyWith(
-                                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                           ),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
                                           AppLocalizations.of(context)!.tryAdjustingFilters,
                                           style: theme.textTheme.bodyMedium?.copyWith(
-                                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                                           ),
                                         ),
                                       ],
@@ -269,7 +269,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                                       Text(
                                         err.toString(),
                                         style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -339,7 +339,7 @@ class _Header extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
@@ -364,7 +364,7 @@ class _Header extends StatelessWidget {
                   Text(
                     AppLocalizations.of(context)!.discoverAmazingBuilds,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -384,7 +384,7 @@ class _Header extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -427,12 +427,12 @@ class _Header extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: showFilters
-                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
                     : theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -458,7 +458,7 @@ class _Header extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -542,7 +542,7 @@ class _FilterPanel extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -740,7 +740,7 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
           Text(
             'Page ${_currentPage + 1} of $_totalPages (${widget.builds.length} total builds)',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -945,7 +945,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
         return Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
           ),
           child: Center(
             child: CircularProgressIndicator(
@@ -995,7 +995,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
       ),
       child: Image.network(
         '$apiBaseUrl/defaults/kaza.png',
@@ -1027,7 +1027,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -1086,7 +1086,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                           child: Text(
                             widget.buildData.author!.username,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1100,7 +1100,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                     AppLocalizations.of(context)!.clickToViewComponents,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 11,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1121,10 +1121,10 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer.withOpacity(0.6),
+                                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: theme.colorScheme.primary.withOpacity(0.5),
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
                                   width: 1.5,
                                 ),
                               ),
@@ -1199,7 +1199,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                                 ' ($_ratingsCount)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 10,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -1208,7 +1208,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                               AppLocalizations.of(context)!.newText,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
@@ -1217,7 +1217,7 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
