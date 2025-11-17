@@ -7,9 +7,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter/gestures.dart';
+
 import '../../l10n/app_localization.dart';
 import '../../core/constants/app_color.dart';
 
@@ -60,367 +61,46 @@ class _HomeBodyState extends State<HomeBody> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final mediaQuery = MediaQuery.maybeOf(context);
-    final size = mediaQuery?.size ?? const Size(1920, 1080);
-    final isMobile = size.width < 900;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 1080;
+              final heroText = _HeroTextBlock(
+                quizLabel: AppLocalizations.of(context)!.takeQuiz,
+                buildLabel: AppLocalizations.of(context)!.startBuild,
+                onQuizTap: () => context.go('/quiz'),
+                onBuildTap: () => context.go('/build-now'),
+              );
+              final heroVisual = _HeroVisual(
+                controller: _controller,
+                isRotating: _isRotating,
+              );
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  AppColorsDark.backgroundPrimary,
-                  AppColorsDark.backgroundSecondary.withOpacity(0.5),
-                  AppColorsDark.backgroundPrimary,
-                ]
-              : [
-                  AppColorsLight.backgroundPrimary,
-                  AppColorsLight.backgroundSecondary.withOpacity(0.15),
-                  AppColorsLight.backgroundPrimary,
-                ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: size.height * 0.06,
-            horizontal: size.width > 1400 ? size.width * 0.08 : size.width > 1200 ? 60 : 24,
-          ),
-          child: isMobile
-              ? Column(
-                  children: [
-                    _PremiumHeroContent(
-                      isDarkMode: isDarkMode,
-                      theme: theme,
-                    ),
-                    const SizedBox(height: 60),
-                    _Premium3DModel(
-                      controller: _controller,
-                      isRotating: _isRotating,
-                      isDarkMode: isDarkMode,
-                      theme: theme,
-                      size: size,
-                    ),
-                  ],
-                )
-              : Row(
+              if (isWide) {
+                return Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // LEFT SIDE - Premium Hero Content
+                    Expanded(child: heroText),
+                    const SizedBox(width: 64),
                     Expanded(
-                      flex: 5,
-                      child: _PremiumHeroContent(
-                        isDarkMode: isDarkMode,
-                        theme: theme,
-                      ),
-                    ),
-                    const SizedBox(width: 60),
-                    // RIGHT SIDE - 3D PC Model
-                    Expanded(
-                      flex: 6,
-                      child: _Premium3DModel(
-                        controller: _controller,
-                        isRotating: _isRotating,
-                        isDarkMode: isDarkMode,
-                        theme: theme,
-                        size: size,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: heroVisual,
                       ),
                     ),
                   ],
-                ),
-        ),
-      ),
-    );
-  }
-}
+                );
+              }
 
-/// Premium Hero Content - Left Side
-class _PremiumHeroContent extends StatelessWidget {
-  final bool isDarkMode;
-  final ThemeData theme;
-
-  const _PremiumHeroContent({
-    required this.isDarkMode,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Badge
-        _PremiumBadge(isDarkMode: isDarkMode, theme: theme),
-        const SizedBox(height: 32),
-
-        // Main Title with Gradient
-        ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            colors: isDarkMode
-                ? [
-                    AppColorsDark.textNeon,
-                    AppColorsDark.textPurple,
-                    AppColorsDark.textNeon,
-                  ]
-                : [
-                    AppColorsLight.textNeon,
-                    AppColorsLight.textPurple,
-                    AppColorsLight.textNeon,
-                  ],
-          ).createShader(bounds),
-          child: Text(
-            'Build Your\nDream PC',
-            style: theme.textTheme.displayLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-              fontSize: 72,
-              letterSpacing: -2,
-              color: Colors.white,
-              height: 1.1,
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Subtitle
-        Text(
-          'Customize. Build. Conquer.',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w400,
-            fontSize: 28,
-            letterSpacing: 1.5,
-            color: theme.colorScheme.onSurface.withOpacity(0.8),
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 40),
-
-        // Description
-        Text(
-          'Create the perfect PC build tailored to your needs. Whether you\'re a gamer pushing the limits, a creator bringing ideas to life, or a professional demanding peak performance, we help you find the ideal components and bring your vision to reality.',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontSize: 18,
-            height: 1.8,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
-            letterSpacing: 0.3,
-          ),
-        ),
-        const SizedBox(height: 50),
-
-        // Features List
-        _PremiumFeaturesList(isDarkMode: isDarkMode, theme: theme),
-        const SizedBox(height: 50),
-
-        // CTA Buttons
-        Wrap(
-          spacing: 20,
-          runSpacing: 16,
-          children: [
-            _PremiumCTAButton(
-              label: AppLocalizations.of(context)!.takeQuiz,
-              onPressed: () => context.go('/quiz'),
-              isPrimary: true,
-              isDarkMode: isDarkMode,
-            ),
-            _PremiumCTAButton(
-              label: AppLocalizations.of(context)!.startBuild,
-              onPressed: () => context.go('/build-now'),
-              isPrimary: false,
-              isDarkMode: isDarkMode,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Premium Badge Widget
-class _PremiumBadge extends StatelessWidget {
-  final bool isDarkMode;
-  final ThemeData theme;
-
-  const _PremiumBadge({required this.isDarkMode, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDarkMode
-              ? [
-                  AppColorsDark.textNeon.withOpacity(0.2),
-                  AppColorsDark.textPurple.withOpacity(0.2),
-                ]
-              : [
-                  AppColorsLight.textNeon.withOpacity(0.2),
-                  AppColorsLight.textPurple.withOpacity(0.2),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-              .withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.star_rounded,
-            size: 18,
-            color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Premium PC Builder',
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Premium Features List
-class _PremiumFeaturesList extends StatelessWidget {
-  final bool isDarkMode;
-  final ThemeData theme;
-
-  const _PremiumFeaturesList({required this.isDarkMode, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    final features = [
-      {'icon': Icons.speed, 'text': 'Lightning Fast Performance'},
-      {'icon': Icons.palette, 'text': 'Fully Customizable'},
-      {'icon': Icons.verified_user, 'text': 'Expert Recommendations'},
-    ];
-
-    return Column(
-      children: features.map((feature) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDarkMode
-                        ? [
-                            AppColorsDark.textNeon.withOpacity(0.2),
-                            AppColorsDark.textPurple.withOpacity(0.2),
-                          ]
-                        : [
-                            AppColorsLight.textNeon.withOpacity(0.2),
-                            AppColorsLight.textPurple.withOpacity(0.2),
-                          ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  feature['icon'] as IconData,
-                  color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  feature['text'] as String,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.9),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-/// Premium 3D Model - Right Side
-class _Premium3DModel extends StatelessWidget {
-  final Flutter3DController controller;
-  final bool isRotating;
-  final bool isDarkMode;
-  final ThemeData theme;
-  final Size size;
-
-  const _Premium3DModel({
-    required this.controller,
-    required this.isRotating,
-    required this.isDarkMode,
-    required this.theme,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: [
-          BoxShadow(
-            color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                .withOpacity(0.4),
-            blurRadius: 80,
-            spreadRadius: 15,
-          ),
-          BoxShadow(
-            color: (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
-                .withOpacity(0.3),
-            blurRadius: 100,
-            spreadRadius: 25,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(40),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.surface.withOpacity(0.15),
-                theme.colorScheme.surface.withOpacity(0.05),
-              ],
-            ),
-            border: Border.all(
-              color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                  .withOpacity(0.3),
-              width: 2.5,
-            ),
-          ),
-          child: Container(
-            height: size.height > 800 ? 550 : 450,
-            width: double.infinity,
-            padding: const EdgeInsets.all(30),
-            child: Flutter3DViewer(
-              src: 'assets/3d_models/pc.glb',
-              controller: controller,
-              enableTouch: false,
-            ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [heroText, const SizedBox(height: 48), heroVisual],
+              );
+            },
           ),
         ),
       ),
@@ -432,172 +112,369 @@ class _Premium3DModel extends StatelessWidget {
 class _PremiumCTAButton extends StatefulWidget {
   final String label;
   final VoidCallback onPressed;
-  final bool isPrimary;
-  final bool isDarkMode;
-
-  const _PremiumCTAButton({
+  final Gradient? gradient;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  const _CustomStartButton({
     required this.label,
     required this.onPressed,
-    required this.isPrimary,
-    required this.isDarkMode,
+    this.gradient,
+    this.backgroundColor,
+    this.borderColor,
   });
 
   @override
-  State<_PremiumCTAButton> createState() => _PremiumCTAButtonState();
+  Widget build(BuildContext context) {
+    final hasGradient = gradient != null;
+    final borderRadius = BorderRadius.circular(999);
+
+    Widget button = ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: hasGradient
+            ? Colors.transparent
+            : (backgroundColor ?? Colors.grey.shade800),
+        foregroundColor: Colors.white,
+        shadowColor: hasGradient
+            ? Colors.transparent
+            : Colors.black.withOpacity(0.35),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+        textStyle: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Quantico',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: borderRadius),
+      ),
+      child: Text(label),
+    );
+
+    if (hasGradient || borderColor != null) {
+      button = DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          color: hasGradient ? null : backgroundColor,
+          borderRadius: borderRadius,
+          border: borderColor != null
+              ? Border.all(color: borderColor!, width: 1.2)
+              : null,
+          boxShadow: hasGradient
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF7F4CFF).withOpacity(0.45),
+                    blurRadius: 25,
+                    offset: const Offset(0, 18),
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(borderRadius: borderRadius, child: button),
+      );
+    }
+
+    return button;
+  }
 }
 
-class _PremiumCTAButtonState extends State<_PremiumCTAButton>
-    with TickerProviderStateMixin {
-  bool _isHovered = false;
-  late AnimationController _scaleController;
-  late AnimationController _glowController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _glowAnimation;
+class _HeroTextBlock extends StatelessWidget {
+  final String quizLabel;
+  final String buildLabel;
+  final VoidCallback onQuizTap;
+  final VoidCallback onBuildTap;
 
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutCubic),
-    );
-    
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+  const _HeroTextBlock({
+    required this.quizLabel,
+    required this.buildLabel,
+    required this.onQuizTap,
+    required this.onBuildTap,
+  });
+
+  Widget _buildFeatureDescription(
+    BuildContext context,
+    AppLocalizations l10n,
+    TextStyle baseStyle,
+  ) {
+    final description = l10n.heroDescription;
+    final features = [
+      (l10n.buildGenerations, const Color(0xFF70FFBF)),
+      (l10n.compatibility, const Color(0xFFA8FF5F)),
+      (l10n.priceConversion, const Color(0xFFFF8B5E)),
+      (l10n.communityBuilds, const Color(0xFFFF66C4)),
+      (l10n.forumDiscussions, const Color(0xFF7CC9FF)),
+    ];
+
+    final spans = <TextSpan>[];
+    String remaining = description;
+
+    for (final (feature, color) in features) {
+      final index = remaining.indexOf(feature);
+      if (index != -1) {
+        // Add text before the feature
+        if (index > 0) {
+          spans.add(TextSpan(text: remaining.substring(0, index)));
+        }
+        // Add the highlighted feature
+        spans.add(
+          TextSpan(
+            text: feature,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Quantico',
+            ),
+          ),
+        );
+        // Update remaining text
+        remaining = remaining.substring(index + feature.length);
+      }
+    }
+
+    // Add any remaining text
+    if (remaining.isNotEmpty) {
+      spans.add(TextSpan(text: remaining));
+    }
+
+    return RichText(
+      text: TextSpan(style: baseStyle, children: spans),
     );
   }
 
   @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final bodyStyle =
+        theme.textTheme.titleMedium?.copyWith(
+          color: Colors.white70,
+          height: 1.5,
+          fontSize: 18,
+          fontFamily: 'Quantico',
+        ) ??
+        const TextStyle(
+          color: Colors.white70,
+          fontSize: 18,
+          height: 1.5,
+          fontFamily: 'Quantico',
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SeamlessAnimatedGradientText(
+          text: l10n.heroTitle,
+          colors: const [
+            Color(0xFFA8FF5F),
+            Color(0xFF9CFF63),
+            Color(0xFF6BFF8F),
+            Color(0xFF3BA848),
+            Color(0xFF2D8A3E),
+          ],
+          animationDuration: const Duration(seconds: 10),
+          textStyle:
+              Theme.of(context).textTheme.displayMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+                fontFamily: 'Quantico',
+              ) ??
+              const TextStyle(
+                fontSize: 64,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+                fontFamily: 'Quantico',
+              ),
+        ),
+        const SizedBox(height: 24),
+        _buildFeatureDescription(context, l10n, bodyStyle),
+        const SizedBox(height: 32),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _CustomStartButton(
+              label: quizLabel,
+              onPressed: onQuizTap,
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF712BFF),
+                  Color(0xFF885CFF),
+                  Color(0xFF4A7DFF),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            _CustomStartButton(
+              label: buildLabel,
+              onPressed: onBuildTap,
+              backgroundColor: const Color(0xFF191326),
+              borderColor: Colors.white10,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroVisual extends StatelessWidget {
+  final Flutter3DController controller;
+  final bool isRotating;
+
+  const _HeroVisual({required this.controller, required this.isRotating});
+
+  void _pauseRotation() {
+    if (isRotating) {
+      controller.pauseRotation();
+    }
+  }
+
+  void _resumeRotation() {
+    if (isRotating) {
+      controller.startRotation(rotationSpeed: 30);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final height = size.width > 1080 ? 560.0 : 420.0;
+
+    return SizedBox(
+      height: height,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.center,
+                child: Image.asset(
+                  'assets/images/hero_effect.png',
+                  width: height + 1000,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Listener(
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) {
+                  // absorb scroll to prevent zoom on web
+                }
+              },
+              child: GestureDetector(
+                onPanStart: (_) => _pauseRotation(),
+                onPanEnd: (_) => _resumeRotation(),
+                onPanCancel: _resumeRotation,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Flutter3DViewer(
+                      src: 'assets/3d_models/pc.glb',
+                      controller: controller,
+                      enableTouch: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A custom animated gradient text widget that ensures seamless looping
+/// by using a repeating gradient pattern that wraps around continuously.
+class _SeamlessAnimatedGradientText extends StatefulWidget {
+  final String text;
+  final List<Color> colors;
+  final Duration animationDuration;
+  final TextStyle? textStyle;
+
+  const _SeamlessAnimatedGradientText({
+    required this.text,
+    required this.colors,
+    required this.animationDuration,
+    this.textStyle,
+  });
+
+  @override
+  State<_SeamlessAnimatedGradientText> createState() =>
+      _SeamlessAnimatedGradientTextState();
+}
+
+class _SeamlessAnimatedGradientTextState
+    extends State<_SeamlessAnimatedGradientText>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.animationDuration,
+    )..repeat(); // Use repeat() to ensure continuous looping
+  }
+
+  @override
   void dispose() {
-    _scaleController.dispose();
-    _glowController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Create a repeating gradient pattern that wraps seamlessly
+        // The gradient width is 2x the text width to allow smooth scrolling
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            // Create a seamless looping gradient by duplicating the color pattern
+            // and ensuring the first and last colors match for perfect wrapping
+            final extendedColors = [...widget.colors, ...widget.colors];
 
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _scaleController.forward();
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        _scaleController.reverse();
-      },
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedBuilder(
-          animation: _glowAnimation,
-          builder: (context, child) {
-            return Container(
-              decoration: BoxDecoration(
-                gradient: widget.isPrimary
-                    ? LinearGradient(
-                        colors: widget.isDarkMode
-                            ? [
-                                AppColorsDark.buttonPurple,
-                                AppColorsDark.buttonBlue,
-                                AppColorsDark.buttonPurple,
-                              ]
-                            : [
-                                AppColorsLight.buttonPurple,
-                                AppColorsLight.buttonBlue,
-                                AppColorsLight.buttonPurple,
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : LinearGradient(
-                        colors: [
-                          theme.colorScheme.surfaceContainerHighest.withOpacity(0.9),
-                          theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  if (widget.isPrimary)
-                    BoxShadow(
-                      color: (widget.isDarkMode
-                              ? AppColorsDark.buttonPurple
-                              : AppColorsLight.buttonPurple)
-                          .withOpacity(_isHovered ? _glowAnimation.value : 0.5),
-                      blurRadius: _isHovered ? 35 : 25,
-                      spreadRadius: _isHovered ? 6 : 3,
-                      offset: Offset(0, _isHovered ? 8 : 4),
-                    ),
-                  if (!widget.isPrimary)
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(_isHovered ? 0.3 : 0.15),
-                      blurRadius: _isHovered ? 25 : 15,
-                      spreadRadius: _isHovered ? 4 : 2,
-                      offset: Offset(0, _isHovered ? 6 : 3),
-                    ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(_isHovered ? 0.25 : 0.15),
-                    blurRadius: _isHovered ? 20 : 12,
-                    spreadRadius: 0,
-                    offset: Offset(0, _isHovered ? 4 : 2),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.onPressed,
-                  borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 22),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.isPrimary) ...[
-                            Icon(
-                              Icons.quiz_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 12),
-                          ],
-                          Text(
-                            widget.label,
-                            style: TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: widget.isPrimary
-                                  ? Colors.white
-                                  : theme.colorScheme.onSurface,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          if (widget.isPrimary) ...[
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                ),
-              ),
+            // Calculate scroll position - this will loop seamlessly
+            // because we're using repeat() on the controller and duplicated colors
+            final scrollProgress = _controller.value;
+            final gradientWidth = bounds.width;
+
+            // Expand bounds slightly to prevent edge artifacts and white specks
+            // This ensures the shader fully covers all text pixels including edges
+            final expandedBounds = Rect.fromLTWH(
+              -gradientWidth - 2,
+              -2,
+              gradientWidth * 4 + 4,
+              bounds.height + 4,
             );
+
+            // Create a gradient that spans 2 full cycles
+            // The offset moves the gradient, and when it completes one cycle,
+            // the duplicated pattern ensures it looks identical to the start
+            return LinearGradient(
+              begin: Alignment(-1.0 - scrollProgress * 2, 0),
+              end: Alignment(1.0 - scrollProgress * 2, 0),
+              colors: extendedColors,
+              stops: _generateStops(extendedColors.length),
+              tileMode: TileMode.clamp,
+            ).createShader(expandedBounds);
           },
-        ),
-      ),
+          blendMode: BlendMode.srcIn,
+          child: Text(widget.text, style: widget.textStyle),
+        );
+      },
     );
+  }
+
+  /// Generates evenly spaced stops for the gradient
+  List<double> _generateStops(int colorCount) {
+    return List.generate(colorCount, (index) => index / (colorCount - 1));
   }
 }

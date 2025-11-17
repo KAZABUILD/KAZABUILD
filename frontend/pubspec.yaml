@@ -30,6 +30,7 @@ dependencies:
   google_sign_in: ^7.2.0
   image_picker: ^1.1.2
   shared_preferences: ^2.2.2
+  animated_gradient_text: ^0.0.2
   url_launcher: ^6.3.1
 
   equatable: ^2.0.5 
@@ -49,6 +50,12 @@ dependency_overrides:
 flutter:
   generate: true
   uses-material-design: true
+  fonts:
+    - family: Quantico
+      fonts:
+        - asset: assets/font/Quantico-Regular.ttf
+        - asset: assets/font/Quantico-Bold.ttf
+          weight: 700
   assets:
   - assets/flags/
   - assets/images/

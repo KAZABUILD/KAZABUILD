@@ -171,7 +171,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               Expanded(
                 child: isMobile
                     ? _buildMobileLayout(context, theme, authState, isDark)
-                    : _buildDesktopLayout(context, theme, authState, isDark),
+                    : _buildDesktopLayout(context, theme, authState, isDark, screenWidth),
               ),
             ],
           ),
@@ -190,7 +190,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       padding: const EdgeInsets.all(24.0),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
+          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 800),
           child: _buildLoginCard(context, theme, authState, isDark),
         ),
       ),
@@ -202,13 +202,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ThemeData theme,
     AsyncValue<AppUser?> authState,
     bool isDark,
+    double screenWidth,
   ) {
+    final showLeftSide = screenWidth >= 900;
+    
     return Row(
       children: [
         // Left side - Visual/Illustration area
-        Expanded(
-          flex: 1,
-          child: Container(
+        if (showLeftSide)
+          Expanded(
+            flex: 1,
+            child: Container(
             padding: const EdgeInsets.all(60),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -316,15 +320,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ],
             ),
           ),
-        ),
+          ),
         // Right side - Login form
         Expanded(
-          flex: 1,
+          flex: showLeftSide ? 1 : 2,
           child: Container(
             padding: const EdgeInsets.all(60),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 450),
+                constraints: const BoxConstraints(maxWidth: 450, maxHeight: 1000),
                 child: _buildLoginCard(context, theme, authState, isDark),
               ),
             ),
@@ -482,13 +486,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             const SizedBox(height: 14),
 
             // Remember me and Forgot password
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Theme(
                       data: Theme.of(context).copyWith(
                         checkboxTheme: CheckboxThemeData(
@@ -517,8 +521,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             : AppColorsLight.textBlack.withOpacity(0.8),
                       ),
                     ),
-                    ],
-                  ),
+                  ],
                 ),
                 TextButton(
                   onPressed: () => GoRouter.of(context).go('/forgot-password'),

@@ -38,35 +38,49 @@ class _HomePageState extends ConsumerState<HomePage> {
       drawer: CustomDrawer(showProfileArea: true),
       // Show admin panel button only for administrators
       floatingActionButton: _buildAdminButton(),
-      body: Column(
-        children: [
-          // The main navigation bar, which is responsive.
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            // Makes the main content area scrollable.
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  const HomeBody(),
-                  const SizedBox(height: 80),
-                  const FeaturedBuilds(),
-                  const SizedBox(height: 80),
-                  const PartCategoriesSection(),
-                  const SizedBox(height: 80),
-                  const LastBar(),
-                ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment(0.0, 1.0),
+            colors: [
+              Color(0xFF2D1B4E),
+              Color(0xFF1F0E3B),
+              Color(0xFF0F0519),
+              Color(0xFF090616),
+            ],
+            stops: [0.0, 0.4, 0.7, 1.0],
+          ),
+        ),
+        child: Column(
+          children: [
+            // The main navigation bar, which is responsive.
+            CustomNavigationBar(scaffoldKey: _scaffoldKey),
+            Expanded(
+              // Makes the main content area scrollable.
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const HomeBody(),
+                    const SizedBox(height: 40),
+                    const FeaturedBuilds(),
+                    const SizedBox(height: 40),
+                    const PartCategoriesSection(),
+                    const SizedBox(height: 60),
+                    const LastBar(),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget? _buildAdminButton() {
     final authState = ref.watch(authProvider);
-    
+
     return authState.when(
       data: (user) {
         // Show admin button only if user is administrator

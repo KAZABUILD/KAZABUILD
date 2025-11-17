@@ -578,5 +578,21 @@
   "@waterCooled": {},
   "waterCooled": "Su Soğutmalı",
   "@airCooled": {},
-  "airCooled": "Hava Soğutmalı"
+  "airCooled": "Hava Soğutmalı",
+  "@heroTitle": {},
+  "heroTitle": "Nereden başlayacağınızdan emin değil misiniz?\nbaşlamak için bu kısa quizi yapın",
+  "@heroDescription": {},
+  "heroDescription": "Build nesilleri, uyumluluk, fiyat dönüşümü, topluluk build'leri ve forum tartışmaları özelliklerini sunuyoruz",
+  "@buildGenerations": {},
+  "buildGenerations": "build nesilleri",
+  "@compatibility": {},
+  "compatibility": "uyumluluk",
+  "@priceConversion": {},
+  "priceConversion": "fiyat dönüşümü",
+  "@communityBuilds": {},
+  "communityBuilds": "topluluk build'leri",
+  "@forumDiscussions": {},
+  "forumDiscussions": "forum tartışmaları",
+  "@appName": {},
+  "appName": "KAZABUILD"
 }

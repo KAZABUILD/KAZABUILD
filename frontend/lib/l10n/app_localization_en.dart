@@ -907,4 +907,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get airCooled => 'Air Cooled';
+
+  @override
+  String get heroTitle =>
+      'Not sure where to start?\njust take this short quiz to get started';
+
+  @override
+  String get heroDescription =>
+      'We feature build generations, compatibility, price conversion, community builds, and forum discussions';
+
+  @override
+  String get buildGenerations => 'build generations';
+
+  @override
+  String get compatibility => 'compatibility';
+
+  @override
+  String get priceConversion => 'price conversion';
+
+  @override
+  String get communityBuilds => 'community builds';
+
+  @override
+  String get forumDiscussions => 'forum discussions';
+
+  @override
+  String get appName => 'KAZABUILD';
 }

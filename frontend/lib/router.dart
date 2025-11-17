@@ -83,6 +83,40 @@ final authRouterListenerProvider = ChangeNotifierProvider<AuthRouterListener>((
   return listener;
 });
 
+/// A wrapper widget that fetches a post by ID and passes it to PostDetailPage.
+class _PostDetailWrapper extends ConsumerWidget {
+  final String postId;
+  
+  const _PostDetailWrapper({required this.postId});
+  
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final postAsync = ref.watch(postDetailProvider(postId));
+    
+    return postAsync.when(
+      data: (post) => PostDetailPage(post: post),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Error loading post'),
+              Text(error.toString()),
+              ElevatedButton(
+                onPressed: () => context.go('/forums'),
+                child: const Text('Back to Forums'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// A provider that creates and exposes the [GoRouter] instance to the app.
 final routerProvider = Provider<GoRouter>((ref) {
   final authListener = ref.watch(authRouterListenerProvider);
@@ -344,7 +378,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (postId == null) {
             return const ForumsPage(); // Redirect to forums if no ID
           }
-          return PostDetailPage(postId: postId);
+          return _PostDetailWrapper(postId: postId);
         },
       ),
       GoRoute(

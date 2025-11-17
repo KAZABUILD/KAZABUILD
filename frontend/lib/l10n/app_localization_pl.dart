@@ -914,4 +914,30 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get airCooled => 'Chłodzenie Powietrzne';
+
+  @override
+  String get heroTitle =>
+      'Nie wiesz od czego zacząć?\npo prostu rozwiąż ten krótki quiz, aby rozpocząć';
+
+  @override
+  String get heroDescription =>
+      'Oferujemy generacje buildów, kompatybilność, konwersję cen, buildy społeczności i dyskusje na forum';
+
+  @override
+  String get buildGenerations => 'generacje buildów';
+
+  @override
+  String get compatibility => 'kompatybilność';
+
+  @override
+  String get priceConversion => 'konwersję cen';
+
+  @override
+  String get communityBuilds => 'buildy społeczności';
+
+  @override
+  String get forumDiscussions => 'dyskusje na forum';
+
+  @override
+  String get appName => 'KAZABUILD';
 }
