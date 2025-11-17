@@ -260,7 +260,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(2, 0),
           ),
@@ -505,7 +505,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -605,8 +605,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 style: TextStyle(
                   fontSize: 14,
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -689,8 +689,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: const Center(
@@ -870,8 +870,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
         child: Center(
@@ -891,7 +891,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               : AppColorsLight.backgroundTertiary,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColorsDark.error.withOpacity(0.3),
+            color: AppColorsDark.error.withValues(alpha: 0.3),
           ),
         ),
         child: Column(
@@ -924,12 +924,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -945,7 +945,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: stat.color.withOpacity(0.2),
+                  color: stat.color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(stat.icon, color: stat.color, size: 24),
@@ -957,8 +957,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: stat.isPositive
-                          ? AppColorsDark.success.withOpacity(0.2)
-                          : AppColorsDark.error.withOpacity(0.2),
+                          ? AppColorsDark.success.withValues(alpha: 0.2)
+                          : AppColorsDark.error.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -994,8 +994,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       style: TextStyle(
                         fontSize: 10,
                         color: isDark
-                            ? AppColorsDark.textWhite.withOpacity(0.5)
-                            : AppColorsLight.textBlack.withOpacity(0.5),
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -1022,8 +1022,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 style: TextStyle(
                   fontSize: 14,
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -1110,8 +1110,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -1143,8 +1143,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 style: TextStyle(
                   fontSize: 14,
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.5)
-                      : AppColorsLight.textBlack.withOpacity(0.5),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.5),
                 ),
               ),
             )
@@ -1194,7 +1194,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   (isDark
                           ? AppColorsDark.buttonBlue
                           : AppColorsLight.buttonBlue)
-                      .withOpacity(0.2),
+                      .withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -1226,8 +1226,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.6)
-                        : AppColorsLight.textBlack.withOpacity(0.6),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -1312,8 +1312,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -1321,7 +1321,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: action.color.withOpacity(0.2),
+                color: action.color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(action.icon, color: action.color, size: 24),

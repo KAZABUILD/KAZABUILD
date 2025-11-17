@@ -296,44 +296,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       AppLocalizations.of(context)!.tags,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8),
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final tagsAsync = ref.watch(tagsProvider);
-                        return tagsAsync.when(
-                          data: (tags) {
-                            if (tags.isEmpty) {
-                              return Text(
-                                AppLocalizations.of(context)!.noTagsAvailable,
-                                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
-                              );
-                            }
-                            return Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: tags.map((tag) {
-                                final isSelected = selectedTagIds.contains(tag.name);
-                                return FilterChip(
-                                  label: Text(tag.name),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setDialogState(() {
-                                      if (selected) {
-                                        selectedTagIds.add(tag.name);
-                                      } else {
-                                        selectedTagIds.remove(tag.name);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            );
-                          },
-                          loading: () => const CircularProgressIndicator(),
-                          error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: $error'),
-                        );
-                      },
-                    ),
+                    const SizedBox(height: 8), 
                   ],
                 ),
               ),
@@ -1172,7 +1135,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
                     Text(
                       'Total Price: ',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
 
@@ -1234,7 +1197,7 @@ class _CompatibilityAndPriceBar extends ConsumerWidget {
                 Text(
                   'Total Price: ',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
                 DropdownButton<Currency>(
@@ -1298,7 +1261,7 @@ class _ComponentTable extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withOpacity(0.5),
+        color: theme.colorScheme.surface.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
 
@@ -1311,7 +1274,7 @@ class _ComponentTable extends StatelessWidget {
                 final product = component.selectedProduct;
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                   elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),

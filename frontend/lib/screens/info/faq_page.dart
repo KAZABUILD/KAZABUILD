@@ -41,7 +41,7 @@ class FaqPage extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               theme.scaffoldBackgroundColor,
-              theme.colorScheme.surface.withOpacity(0.3),
+              theme.colorScheme.surface.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -63,7 +63,7 @@ class FaqPage extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withOpacity(0.1),
+                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Icon(
@@ -88,7 +88,7 @@ class FaqPage extends StatelessWidget {
                                   Text(
                                     AppLocalizations.of(context)!.findAnswersToCommonQuestions,
                                     style: theme.textTheme.bodyLarge?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ],
@@ -117,10 +117,10 @@ class FaqPage extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -145,7 +145,7 @@ class FaqPage extends StatelessWidget {
                                     Text(
                                       'If you couldn\'t find the answer you\'re looking for, please contact our support team or visit our feedback page.',
                                       style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                       ),
                                     ),
                                   ],
@@ -238,8 +238,8 @@ class _FaqItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Theme(
@@ -253,7 +253,7 @@ class _FaqItem extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                  color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -290,8 +290,8 @@ class _FaqItem extends StatelessWidget {
                 answer,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.8)
-                      : AppColorsLight.textBlack.withOpacity(0.8),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.8),
                   height: 1.6,
                 ),
               ),

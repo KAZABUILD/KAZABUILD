@@ -419,11 +419,12 @@ class CustomDrawer extends ConsumerWidget {
               children: [
                 Image.asset("assets/logo/kaza.png", width: 45, height: 45),
                 Text(
-                  'KazaBuild',
+                  'azaBuild',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimary,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    fontFamily: 'Quantico',
                   ),
                 ),
               ],
@@ -815,7 +816,7 @@ class _SignInArea extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
           child: Icon(Icons.person, size: 18, color: theme.colorScheme.primary),
         ),
         const SizedBox(width: 8),
@@ -1043,7 +1044,7 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(
@@ -1195,7 +1196,7 @@ class _DropdownItemState extends State<_DropdownItem> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: _isHovering
-                ? colorScheme.secondary.withOpacity(0.1)
+                ? colorScheme.secondary.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),

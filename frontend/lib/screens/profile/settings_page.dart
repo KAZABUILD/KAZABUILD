@@ -99,7 +99,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              theme.colorScheme.surface.withOpacity(0.5),
+                              theme.colorScheme.surface.withValues(alpha: 0.5),
                               theme.colorScheme.background,
                             ],
                           )
@@ -454,7 +454,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
               ),
               validator: (value) {
                 if (title == AppLocalizations.of(context)!.displayName && (value == null || value.length < 4)) {
@@ -524,7 +524,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -537,7 +537,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -550,7 +550,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -567,7 +567,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -582,7 +582,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -601,7 +601,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -616,7 +616,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             filled: true,
-                            fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -679,7 +679,7 @@ class _SettingsSection extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -749,7 +749,7 @@ class _SettingsItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 20, color: theme.colorScheme.onPrimaryContainer),
@@ -927,12 +927,12 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     width: 4,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -959,7 +959,7 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                     ),
                     child: const Center(
                       child: CircularProgressIndicator(
@@ -1004,10 +1004,10 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+            color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.1),
+              color: theme.colorScheme.outline.withValues(alpha: 0.1),
             ),
           ),
           child: Row(
@@ -1086,7 +1086,7 @@ class _AddressItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

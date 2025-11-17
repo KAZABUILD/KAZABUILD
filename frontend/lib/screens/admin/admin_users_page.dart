@@ -58,7 +58,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -208,8 +208,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                             Icons.people_outline,
                             size: 64,
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.5)
-                                : AppColorsLight.textBlack.withOpacity(0.5),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -331,8 +331,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -340,7 +340,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -369,8 +369,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -391,8 +391,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -462,8 +462,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -500,8 +500,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                           user.userRole,
                           style: TextStyle(
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.5)
-                                : AppColorsLight.textBlack.withOpacity(0.5),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.5),
                             fontSize: 11,
                           ),
                         ),
@@ -517,8 +517,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               email,
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -530,7 +530,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 constraints: const BoxConstraints(
@@ -559,8 +559,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   : 'N/A',
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -597,20 +597,18 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 IconButton(
                   icon: const Icon(Icons.visibility, size: 18),
                   onPressed: () {
-                    context.go('/profile/${user.id}');
+                    // Navigate to profile page (currently only shows logged-in user's profile)
+                    // TODO: Add route for viewing other users' profiles: /profile/:id
+                    context.go('/profile');
                   },
                   tooltip: 'View',
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () {
-                    // TODO: Implement edit user - navigate to edit page or show dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Edit user functionality coming soon'),
-                        backgroundColor: AppColorsDark.buttonBlue,
-                      ),
-                    );
+                    // Navigate to profile page where editing may be available
+                    // TODO: Add route for editing other users' profiles: /profile/:id
+                    context.go('/profile');
                   },
                   tooltip: 'Edit',
                 ),

@@ -57,7 +57,7 @@ class _AboutUsPageState extends State<AboutUsPage>
             end: Alignment.bottomCenter,
             colors: [
               theme.scaffoldBackgroundColor,
-              theme.colorScheme.surface.withOpacity(0.3),
+              theme.colorScheme.surface.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -250,7 +250,7 @@ class _AboutUsPageState extends State<AboutUsPage>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
+              theme.colorScheme.primary.withValues(alpha: 0.1),
               theme.colorScheme.background,
             ],
             begin: Alignment.topCenter,
@@ -372,8 +372,8 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
     /// Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.05 : 1.0;
     final shadowColor = _isHovered
-        ? theme.colorScheme.primary.withOpacity(0.4)
-        : Colors.black.withOpacity(0.2);
+        ? theme.colorScheme.primary.withValues(alpha: 0.4)
+        : Colors.black.withValues(alpha: 0.2);
 
     /// [MouseRegion] detects when the cursor enters or leaves the widget's area to trigger the hover effect.
     return MouseRegion(
@@ -412,7 +412,7 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
                             return Icon(
                               Icons.person,
                               size: 60,
-                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                             );
                           },
                           loadingBuilder: (context, child, loadingProgress) {
@@ -430,7 +430,7 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
                       : Icon(
                           Icons.person,
                           size: 60,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                 ),
               ),

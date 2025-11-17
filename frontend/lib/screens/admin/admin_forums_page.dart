@@ -60,7 +60,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -228,8 +228,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                                   Icons.forum_outlined,
                                   size: 64,
                                   color: isDark
-                                      ? AppColorsDark.textWhite.withOpacity(0.5)
-                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                      ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                      : AppColorsLight.textBlack.withValues(alpha: 0.5),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
@@ -322,8 +322,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -331,7 +331,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -360,8 +360,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -382,8 +382,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -443,8 +443,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -475,8 +475,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
-                          ? AppColorsDark.textWhite.withOpacity(0.6)
-                          : AppColorsLight.textBlack.withOpacity(0.6),
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.6),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -491,8 +491,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
               post.creatorId != null ? post.creatorId!.substring(0, 8) : 'Unknown',
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 fontSize: 11,
               ),
             ),
@@ -504,7 +504,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                  color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 constraints: const BoxConstraints(
@@ -533,8 +533,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                 post.postedAt != null ? _formatDate(post.postedAt!) : 'N/A',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.right,
@@ -549,8 +549,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                 post.id.substring(0, 8),
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.right,
@@ -574,13 +574,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // TODO: Implement edit post - navigate to edit page or show dialog
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Edit post functionality coming soon'),
-                          backgroundColor: AppColorsDark.buttonBlue,
-                        ),
-                      );
+                      // Navigate to forum post detail page where editing may be available
+                      context.go('/forums/${post.id}');
                     },
                     tooltip: 'Edit',
                   ),

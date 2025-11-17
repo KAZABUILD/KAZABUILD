@@ -113,7 +113,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -233,8 +233,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                                   Icons.label_outline,
                                   size: 64,
                                   color: isDark
-                                      ? AppColorsDark.textWhite.withOpacity(0.5)
-                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                      ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                      : AppColorsLight.textBlack.withValues(alpha: 0.5),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
@@ -326,8 +326,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -335,7 +335,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -364,8 +364,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -386,8 +386,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -421,8 +421,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -436,7 +436,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColorsDark.buttonPurple.withOpacity(0.2),
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.label),
@@ -469,8 +469,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
               tag.description,
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
               maxLines: 2,
@@ -485,8 +485,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                   : 'N/A',
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 fontSize: 11,
               ),
             ),
@@ -531,8 +531,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
             border: Border(
               top: BorderSide(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -543,8 +543,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                 'Showing ${(_currentPage - 1) * _pageSize + 1}-${(_currentPage - 1) * _pageSize + tags.length} of ${hasMore ? '?' : totalTags} tags',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
               ),
               Row(

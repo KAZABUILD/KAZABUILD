@@ -167,12 +167,12 @@ class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
                             height: 40,
                             decoration: BoxDecoration(
                               color: canScrollPrevious
-                                  ? theme.colorScheme.surface.withOpacity(0.9)
-                                  : theme.colorScheme.surface.withOpacity(0.3),
+                                  ? theme.colorScheme.surface.withValues(alpha: 0.9)
+                                  : theme.colorScheme.surface.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -182,7 +182,7 @@ class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
                               Icons.chevron_left,
                               color: canScrollPrevious
                                   ? theme.colorScheme.onSurface
-                                  : theme.colorScheme.onSurface.withOpacity(0.3),
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
@@ -205,12 +205,12 @@ class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
                             height: 40,
                             decoration: BoxDecoration(
                               color: canScrollNext
-                                  ? theme.colorScheme.surface.withOpacity(0.9)
-                                  : theme.colorScheme.surface.withOpacity(0.3),
+                                  ? theme.colorScheme.surface.withValues(alpha: 0.9)
+                                  : theme.colorScheme.surface.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -220,7 +220,7 @@ class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
                               Icons.chevron_right,
                               color: canScrollNext
                                   ? theme.colorScheme.onSurface
-                                  : theme.colorScheme.onSurface.withOpacity(0.3),
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
@@ -313,7 +313,7 @@ class _SimilarBuildCard extends StatelessWidget {
                       Text(
                         AppLocalizations.of(context)!.newText,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -326,7 +326,7 @@ class _SimilarBuildCard extends StatelessWidget {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -352,7 +352,7 @@ class _SimilarBuildCard extends StatelessWidget {
   Widget _buildImage(BuildContext context, ThemeData theme) {
     if (buildData.imageUrl == null || buildData.imageUrl!.isEmpty) {
       return Container(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
         child: Image.network(
           '$apiBaseUrl/defaults/kaza.png',
           fit: BoxFit.contain,
@@ -384,7 +384,7 @@ class _SimilarBuildCard extends StatelessWidget {
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         return Container(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
           child: Image.network(
             '$apiBaseUrl/defaults/kaza.png',
             fit: BoxFit.contain,

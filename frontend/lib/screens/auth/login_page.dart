@@ -116,12 +116,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ? [
                         AppColorsDark.backgroundPrimary,
                         AppColorsDark.backgroundSecondary,
-                        AppColorsDark.buttonPurple.withOpacity(0.3),
+                        AppColorsDark.buttonPurple.withValues(alpha: 0.3),
                       ]
                     : [
                         AppColorsLight.backgroundPrimary,
-                        AppColorsLight.backgroundSecondary.withOpacity(0.5),
-                        AppColorsLight.buttonPurple.withOpacity(0.2),
+                        AppColorsLight.backgroundSecondary.withValues(alpha: 0.5),
+                        AppColorsLight.buttonPurple.withValues(alpha: 0.2),
                       ],
               ),
             ),
@@ -137,7 +137,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColorsDark.buttonBlue.withOpacity(0.1),
+                    AppColorsDark.buttonBlue.withValues(alpha: 0.1),
                     Colors.transparent,
                   ],
                 ),
@@ -154,7 +154,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColorsDark.buttonPurple.withOpacity(0.1),
+                    AppColorsDark.buttonPurple.withValues(alpha: 0.1),
                     Colors.transparent,
                   ],
                 ),
@@ -227,7 +227,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColorsDark.buttonBlue.withOpacity(0.3),
+                            color: AppColorsDark.buttonBlue.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -290,8 +290,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   style: TextStyle(
                     fontSize: 18,
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.8)
-                        : AppColorsLight.textBlack.withOpacity(0.7),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
                     height: 1.6,
                   ),
                 ),
@@ -349,7 +349,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColorsDark.buttonBlue.withOpacity(0.2),
+            color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -379,8 +379,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 style: TextStyle(
                   fontSize: 14,
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -399,20 +399,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Container(
       decoration: BoxDecoration(
         color: isDark
-            ? AppColorsDark.backgroundSecondary.withOpacity(0.95)
-            : Colors.white.withOpacity(0.95),
+            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
         ],
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.05),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: Form(
@@ -442,8 +442,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   style: TextStyle(
                     fontSize: 16,
                     color: isDark
-                        ? AppColorsDark.textWhite.withOpacity(0.7)
-                        : AppColorsLight.textBlack.withOpacity(0.7),
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -517,8 +517,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       'Remember me',
                       style: TextStyle(
                         color: isDark
-                            ? AppColorsDark.textWhite.withOpacity(0.8)
-                            : AppColorsLight.textBlack.withOpacity(0.8),
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -597,8 +597,8 @@ class _AuthToggleButtons extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
       ),
       child: Row(
@@ -621,8 +621,8 @@ class _AuthToggleButtons extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isSignIn ? Colors.transparent : Colors.transparent,
                   foregroundColor: isSignIn ? Colors.white : (isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7)),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7)),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -656,8 +656,8 @@ class _AuthToggleButtons extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   foregroundColor: !isSignIn ? Colors.white : (isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7)),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7)),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -709,7 +709,7 @@ class _SignInButton extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColorsDark.buttonBlue.withOpacity(0.4),
+            color: AppColorsDark.buttonBlue.withValues(alpha: 0.4),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),

@@ -205,7 +205,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                           'Please log in to view messages',
                           style: TextStyle(
                             fontSize: 18,
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -287,7 +287,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                             color: colorScheme.surface,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -360,14 +360,14 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                       Icon(
                                         Icons.inbox_outlined,
                                         size: 64,
-                                        color: colorScheme.onSurface.withOpacity(0.3),
+                                        color: colorScheme.onSurface.withValues(alpha: 0.3),
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
                                         'No messages yet',
                                         style: TextStyle(
                                           fontSize: 18,
-                                          color: colorScheme.onSurface.withOpacity(0.7),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -375,7 +375,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                         'Start a conversation by messaging another user',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: colorScheme.onSurface.withOpacity(0.5),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.5),
                                         ),
                                       ),
                                       const SizedBox(height: 24),
@@ -479,7 +479,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                                       style: TextStyle(
                                                         color: conversation.unreadCount > 0
                                                             ? colorScheme.onSurface
-                                                            : colorScheme.onSurface.withOpacity(0.7),
+                                                            : colorScheme.onSurface.withValues(alpha: 0.7),
                                                         fontWeight: conversation.unreadCount > 0
                                                             ? FontWeight.w500
                                                             : FontWeight.normal,
@@ -492,7 +492,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                                           : '',
                                                       style: TextStyle(
                                                         fontSize: 12,
-                                                        color: colorScheme.onSurface.withOpacity(0.5),
+                                                        color: colorScheme.onSurface.withValues(alpha: 0.5),
                                                       ),
                                                     ),
                                                   ],
@@ -546,7 +546,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                           error.toString(),
                           style: TextStyle(
                             fontSize: 14,
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),

@@ -376,8 +376,8 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                theme.colorScheme.primary.withOpacity(0.08),
-                theme.colorScheme.secondary.withOpacity(0.04),
+                theme.colorScheme.primary.withValues(alpha: 0.08),
+                theme.colorScheme.secondary.withValues(alpha: 0.04),
                 theme.colorScheme.surface,
               ],
               begin: Alignment.topLeft,
@@ -386,7 +386,7 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: theme.shadowColor.withOpacity(0.08),
+                color: theme.shadowColor.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -500,10 +500,10 @@ class _LinkedBuildCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Card(
         elevation: 0,
-        color: theme.colorScheme.primaryContainer.withOpacity(0.4),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.2)),
+          side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -528,7 +528,7 @@ class _LinkedBuildCard extends StatelessWidget {
                       Text(
                         'Linked Build',
                         style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7)),
+                            color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7)),
                       ),
                       Text(
                         linkedBuild.name,
@@ -565,10 +565,10 @@ class _ReplyCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.15)),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withOpacity(0.05),
+            color: theme.shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -742,7 +742,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
     return Material(
       elevation: 12,
       color: theme.colorScheme.surface,
-      shadowColor: theme.shadowColor.withOpacity(0.2),
+      shadowColor: theme.shadowColor.withValues(alpha: 0.2),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           16,
@@ -760,10 +760,10 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.3),
+                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: theme.colorScheme.error.withOpacity(0.3),
+                      color: theme.colorScheme.error.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(

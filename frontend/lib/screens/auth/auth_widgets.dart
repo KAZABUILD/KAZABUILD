@@ -103,10 +103,10 @@ class SocialButton extends StatelessWidget {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+        backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -157,8 +157,8 @@ class OrDivider extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.6)
-                    : AppColorsLight.textBlack.withOpacity(0.6),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -258,7 +258,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final iconColor = theme.iconTheme.color?.withOpacity(0.5);
+    final iconColor = theme.iconTheme.color?.withValues(alpha: 0.5);
     
     return TextFormField(
       controller: widget.controller,

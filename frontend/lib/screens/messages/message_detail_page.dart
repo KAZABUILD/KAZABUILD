@@ -299,7 +299,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                             color: colorScheme.surface,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -346,7 +346,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                         otherUser?.email ?? '',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: colorScheme.onSurface.withOpacity(0.6),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                                         ),
                                       ),
                                   ],
@@ -373,14 +373,14 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                       Icon(
                                         Icons.chat_bubble_outline,
                                         size: 64,
-                                        color: colorScheme.onSurface.withOpacity(0.3),
+                                        color: colorScheme.onSurface.withValues(alpha: 0.3),
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
                                         'No messages yet',
                                         style: TextStyle(
                                           fontSize: 18,
-                                          color: colorScheme.onSurface.withOpacity(0.7),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -388,7 +388,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                         'Start the conversation!',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: colorScheme.onSurface.withOpacity(0.5),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.5),
                                         ),
                                       ),
                                     ],
@@ -421,7 +421,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: colorScheme.onSurface
-                                                  .withOpacity(0.5),
+                                                  .withValues(alpha: 0.5),
                                             ),
                                           ),
                                         ),
@@ -536,7 +536,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                             color: colorScheme.surface,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 4,
                                 offset: const Offset(0, -2),
                               ),
@@ -707,8 +707,8 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                       _formatMessageTime(message.createdAt),
                       style: TextStyle(
                         color: isCurrentUser
-                            ? colorScheme.onPrimary.withOpacity(0.7)
-                            : colorScheme.onSurface.withOpacity(0.5),
+                            ? colorScheme.onPrimary.withValues(alpha: 0.7)
+                            : colorScheme.onSurface.withValues(alpha: 0.5),
                         fontSize: 11,
                       ),
                     ),
@@ -717,7 +717,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                       Icon(
                         Icons.more_vert,
                         size: 14,
-                        color: colorScheme.onPrimary.withOpacity(0.7),
+                        color: colorScheme.onPrimary.withValues(alpha: 0.7),
                       ),
                     ],
                   ],

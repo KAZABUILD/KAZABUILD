@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
 
@@ -61,7 +62,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
             : AppColorsLight.backgroundTertiary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -266,8 +267,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                                   Icons.memory_outlined,
                                   size: 64,
                                   color: isDark
-                                      ? AppColorsDark.textWhite.withOpacity(0.5)
-                                      : AppColorsLight.textBlack.withOpacity(0.5),
+                                      ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                      : AppColorsLight.textBlack.withValues(alpha: 0.5),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
@@ -361,8 +362,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -370,7 +371,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (stat['color'] as Color).withOpacity(0.2),
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -399,8 +400,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark
-                              ? AppColorsDark.textWhite.withOpacity(0.7)
-                              : AppColorsLight.textBlack.withOpacity(0.7),
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -421,8 +422,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : Colors.black.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -492,8 +493,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -507,7 +508,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColorsDark.buttonPurple.withOpacity(0.2),
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.memory),
@@ -534,8 +535,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
-                                ? AppColorsDark.textWhite.withOpacity(0.6)
-                                : AppColorsLight.textBlack.withOpacity(0.6),
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.6),
                           ),
                         ),
                     ],
@@ -550,8 +551,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               component.manufacturer ?? 'Unknown',
               style: TextStyle(
                 color: isDark
-                    ? AppColorsDark.textWhite.withOpacity(0.7)
-                    : AppColorsLight.textBlack.withOpacity(0.7),
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -563,7 +564,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColorsDark.buttonBlue.withOpacity(0.2),
+                  color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 constraints: const BoxConstraints(
@@ -592,8 +593,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                 component.release != null ? _formatDate(component.release!) : 'N/A',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
                 textAlign: TextAlign.left,
@@ -623,13 +624,10 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // TODO: Implement edit component - navigate to edit page or show dialog
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Edit component functionality coming soon'),
-                          backgroundColor: AppColorsDark.buttonBlue,
-                        ),
-                      );
+                      // Navigate to parts page for the component type
+                      // Since there's no detail page yet, navigate to the parts list for this component type
+                      final componentType = component.componentType.toLowerCase();
+                      GoRouter.of(context).go('/parts/$componentType');
                     },
                     tooltip: 'Edit',
                   ),
@@ -679,8 +677,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
             border: Border(
               top: BorderSide(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -693,8 +691,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                     : 'No components',
                 style: TextStyle(
                   color: isDark
-                      ? AppColorsDark.textWhite.withOpacity(0.7)
-                      : AppColorsLight.textBlack.withOpacity(0.7),
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
               ),
               Row(

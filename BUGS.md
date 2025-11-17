@@ -122,8 +122,8 @@
 [00021] The admin page editing and viewing are broken.
 - Type: incorrect implementation/error/missing feature
 - Status: pending
-- Source: frontend
-- Details: The editing button doesn't do anything, while the view button takes the user to an incorrect URL.
+- Source: frontendutton doesn't do anything, while the view button 
+- Details: The editing btakes the user to an incorrect URL.
 
 [00022] The admin should be able to modify their profile only like the normal user would.
 - Type: incorrect implementation
@@ -179,5 +179,11 @@
 
 [00030] Explore builds rating is missing.
 - Type: missing feature
+- Status: fixed
+- Source: frontend
+
+[00031] Incorrect frontend output.
+- Type: error
 - Status: pending
 - Source: frontend
+- Details: The way performance is displayed for CPU parts is too long when displayed as a float.
