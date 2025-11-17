@@ -220,17 +220,19 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     ThemeData theme,
     bool isDark,
   ) {
-    return Row(
-      children: [
-        // Left side - Visual/Illustration area
-        Expanded(
-          flex: 1,
-          child: Container(
-            padding: const EdgeInsets.all(60),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return SingleChildScrollView(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Visual/Illustration area
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.all(60),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Logo and branding
                 Row(
                   children: [
@@ -334,20 +336,21 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
             ),
           ),
         ),
-        // Right side - Sign up form
-        Expanded(
-          flex: 1,
-          child: Container(
-            padding: const EdgeInsets.all(60),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500),
-                child: _buildSignUpCard(context, theme, isDark),
+          // Right side - Sign up form
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.all(60),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: _buildSignUpCard(context, theme, isDark),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -429,7 +432,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       ),
       child: Form(
         key: _formKey,
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -485,8 +485,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     Theme(
                       data: Theme.of(context).copyWith(
                         checkboxTheme: CheckboxThemeData(
@@ -515,7 +517,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             : AppColorsLight.textBlack.withOpacity(0.8),
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
                 TextButton(
                   onPressed: () => GoRouter.of(context).go('/forgot-password'),

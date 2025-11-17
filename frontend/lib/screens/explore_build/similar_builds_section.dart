@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// Widget that displays builds with similar tags to the current build
-class SimilarBuildsSection extends ConsumerWidget {
+class SimilarBuildsSection extends ConsumerStatefulWidget {
   final String buildId;
   final List<String> tags;
 
@@ -20,11 +21,60 @@ class SimilarBuildsSection extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SimilarBuildsSection> createState() => _SimilarBuildsSectionState();
+}
+
+class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
+  final ScrollController _scrollController = ScrollController();
+  int _currentIndex = 0;
+  double? _cardWidth;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToIndex(int index, List<Build> builds) {
+    final cardWidth = _cardWidth;
+    if (cardWidth == null || !_scrollController.hasClients) return;
+    
+    // Calculate offset: index * (card width + margin)
+    // Padding is already handled by ListView padding
+    final targetOffset = index * (cardWidth + 16); // card width + margin
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final clampedOffset = targetOffset.clamp(0.0, maxScroll);
+    
+    _scrollController.animateTo(
+      clampedOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  void _scrollPrevious(List<Build> builds) {
+    if (_currentIndex > 0) {
+      _scrollToIndex(_currentIndex - 1, builds);
+    }
+  }
+
+  void _scrollNext(List<Build> builds) {
+    // Show 3 cards at a time, so max index is builds.length - 3
+    final maxIndex = builds.length > 3 ? builds.length - 3 : 0;
+    if (_currentIndex < maxIndex) {
+      _scrollToIndex(_currentIndex + 1, builds);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     // If no tags, don't show similar builds
-    if (tags.isEmpty) {
+    if (widget.tags.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -34,14 +84,14 @@ class SimilarBuildsSection extends ConsumerWidget {
       data: (allBuilds) {
         // Find builds with at least one matching tag, excluding the current build
         final similarBuilds = allBuilds
-            .where((build) => build.id != buildId)
-            .where((build) => build.tags.isNotEmpty && build.tags.any((tag) => tags.contains(tag)))
+            .where((build) => build.id != widget.buildId)
+            .where((build) => build.tags.isNotEmpty && build.tags.any((tag) => widget.tags.contains(tag)))
             .toList();
 
         // Sort by number of matching tags (descending), then by rating
         similarBuilds.sort((a, b) {
-          final aMatchingTags = a.tags.where((tag) => tags.contains(tag)).length;
-          final bMatchingTags = b.tags.where((tag) => tags.contains(tag)).length;
+          final aMatchingTags = a.tags.where((tag) => widget.tags.contains(tag)).length;
+          final bMatchingTags = b.tags.where((tag) => widget.tags.contains(tag)).length;
           
           if (aMatchingTags != bMatchingTags) {
             return bMatchingTags.compareTo(aMatchingTags);
@@ -53,18 +103,31 @@ class SimilarBuildsSection extends ConsumerWidget {
           return bRating.compareTo(aRating);
         });
 
-        // Take top 6 similar builds
-        final topSimilarBuilds = similarBuilds.take(6).toList();
+        // Take top builds (can be more than 6)
+        final topSimilarBuilds = similarBuilds.take(10).toList();
 
         if (topSimilarBuilds.isEmpty) {
           return const SizedBox.shrink();
         }
 
+        // Calculate card width based on available space (show 3 cards)
+        final screenWidth = MediaQuery.of(context).size.width;
+        final availableWidth = screenWidth > 900 ? 900.0 : screenWidth;
+        final calculatedCardWidth = ((availableWidth - 64 - 80) / 3).clamp(250.0, 350.0); // -64 for padding, -80 for arrows
+        if (_cardWidth == null) {
+          _cardWidth = calculatedCardWidth;
+        }
+
+        // Calculate max index: can scroll until we show the last 3 cards
+        final maxIndex = topSimilarBuilds.length > 3 ? topSimilarBuilds.length - 3 : 0;
+        final canScrollPrevious = _currentIndex > 0;
+        final canScrollNext = _currentIndex < maxIndex;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Similar Builds',
+              AppLocalizations.of(context)!.similarBuilds,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -72,13 +135,99 @@ class SimilarBuildsSection extends ConsumerWidget {
             const SizedBox(height: 16),
             SizedBox(
               height: 300,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: topSimilarBuilds.length,
-                itemBuilder: (context, index) {
-                  final build = topSimilarBuilds[index];
-                  return _SimilarBuildCard(buildData: build);
-                },
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    physics: const NeverScrollableScrollPhysics(), // Disable manual scrolling
+                    itemCount: topSimilarBuilds.length,
+                    itemBuilder: (context, index) {
+                      final build = topSimilarBuilds[index];
+                      return _SimilarBuildCard(
+                        buildData: build,
+                        cardWidth: _cardWidth ?? calculatedCardWidth,
+                      );
+                    },
+                  ),
+                  // Left arrow
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: canScrollPrevious ? () => _scrollPrevious(topSimilarBuilds) : null,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: canScrollPrevious
+                                  ? theme.colorScheme.surface.withOpacity(0.9)
+                                  : theme.colorScheme.surface.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.chevron_left,
+                              color: canScrollPrevious
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurface.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Right arrow
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: canScrollNext ? () => _scrollNext(topSimilarBuilds) : null,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: canScrollNext
+                                  ? theme.colorScheme.surface.withOpacity(0.9)
+                                  : theme.colorScheme.surface.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.chevron_right,
+                              color: canScrollNext
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurface.withOpacity(0.3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -93,14 +242,16 @@ class SimilarBuildsSection extends ConsumerWidget {
 /// Card widget for displaying a similar build
 class _SimilarBuildCard extends StatelessWidget {
   final Build buildData;
+  final double cardWidth;
 
-  const _SimilarBuildCard({required this.buildData});
+  const _SimilarBuildCard({
+    required this.buildData,
+    required this.cardWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth * 0.3).clamp(250.0, 350.0);
 
     return Container(
       width: cardWidth,
@@ -160,7 +311,7 @@ class _SimilarBuildCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        'New',
+                        AppLocalizations.of(context)!.newText,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
@@ -202,12 +353,13 @@ class _SimilarBuildCard extends StatelessWidget {
     if (buildData.imageUrl == null || buildData.imageUrl!.isEmpty) {
       return Container(
         color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        child: Center(
-          child: Icon(
-            Icons.computer,
-            size: 48,
-            color: theme.colorScheme.onSurface.withOpacity(0.3),
-          ),
+        child: Image.network(
+          '$apiBaseUrl/defaults/kaza.png',
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback to empty container if default image fails
+            return const SizedBox.shrink();
+          },
         ),
       );
     }
@@ -233,12 +385,13 @@ class _SimilarBuildCard extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) {
         return Container(
           color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-          child: Center(
-            child: Icon(
-              Icons.computer,
-              size: 48,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
+          child: Image.network(
+            '$apiBaseUrl/defaults/kaza.png',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to empty container if default image fails
+              return const SizedBox.shrink();
+            },
           ),
         );
       },

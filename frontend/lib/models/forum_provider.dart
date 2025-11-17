@@ -18,62 +18,43 @@ class ForumService {
   ForumService(this._dio);
 
   /// Fetches forum posts from the backend based on a given filter map.
-  /// Also fetches comment counts for each post in parallel.
   Future<List<ForumPost>> getPosts(Map<String, dynamic> filter) async {
     try {
+      // Debug: Log the filter being sent
+      debugPrint('Sending forum posts request with filter: $filter');
+      
       final response = await _dio.post('$apiBaseUrl/ForumPosts/get', data: filter);
+      
+      // Debug: Log response
+      debugPrint('Forum posts response status: ${response.statusCode}');
+      debugPrint('Forum posts response data type: ${response.data.runtimeType}');
 
       final List<dynamic> postsJson = response.data as List<dynamic>? ?? [];
+      debugPrint('Forum posts count in response: ${postsJson.length}');
+      
       final posts = postsJson.map((json) => ForumPost.fromJson(json)).toList();
       
-      // Fetch comment counts for all posts in parallel
-      final commentCounts = await Future.wait(
-        posts.map((post) => _getCommentCount(post.id)),
-      );
-      
-      // Update posts with actual comment counts
-      final updatedPosts = <ForumPost>[];
-      for (int i = 0; i < posts.length; i++) {
-        updatedPosts.add(ForumPost(
-          id: posts[i].id,
-          title: posts[i].title,
-          creatorId: posts[i].creatorId,
-          topic: posts[i].topic,
-          content: posts[i].content,
-          createdAt: posts[i].createdAt,
-          replies: posts[i].replies,
-          replyCount: commentCounts[i], // Use fetched count
-          acceptedReplyId: posts[i].acceptedReplyId,
-          tags: posts[i].tags,
-          build: posts[i].build,
-        ));
-      }
-      
-      return updatedPosts;
+      // Return posts without fetching comment counts (to avoid loading all comments)
+      return posts.map((post) => ForumPost(
+        id: post.id,
+        title: post.title,
+        creatorId: post.creatorId,
+        topic: post.topic,
+        content: post.content,
+        createdAt: post.createdAt,
+        replies: post.replies,
+        replyCount: 0, // Not fetching count to avoid loading all comments
+        acceptedReplyId: post.acceptedReplyId,
+        tags: post.tags,
+        build: post.build,
+      )).toList();
     } catch (e) {
       // In case of an error, rethrow it to be handled by the provider.
+      debugPrint('Error fetching forum posts: $e');
       rethrow;
     }
   }
   
-  /// Fetches the comment count for a specific forum post.
-  Future<int> _getCommentCount(String forumPostId) async {
-    try {
-      final response = await _dio.post('$apiBaseUrl/UserComments/get', data: {
-        'ForumPostId': [forumPostId],
-        'CommentTargetType': ['FORUM'],
-        'Paging': false,
-      });
-      
-      final List<dynamic> commentsJson = response.data as List<dynamic>? ?? [];
-      return commentsJson.length;
-    } catch (e) {
-      // If error, return 0
-      debugPrint('Error fetching comment count for post $forumPostId: $e');
-      return 0;
-    }
-  }
-
   /// Fetches a single forum post by its ID using the direct GET endpoint.
   Future<ForumPost> getPostById(String postId) async {
     try {
@@ -88,13 +69,15 @@ class ForumService {
     }
   }
 
-  /// Fetches comments/replies for a forum post using the UserComments endpoint.
-  Future<List<PostReply>> getPostComments(String forumPostId) async {
+  /// Fetches comments/replies for a forum post using the UserComments endpoint with pagination.
+  Future<List<PostReply>> getPostComments(String forumPostId, {int page = 1, int pageSize = 20}) async {
     try {
       final response = await _dio.post('$apiBaseUrl/UserComments/get', data: {
         'ForumPostId': [forumPostId],
         'CommentTargetType': ['FORUM'],
-        'Paging': false,
+        'Paging': true,
+        'Page': page,
+        'PageLength': pageSize,
         'OrderBy': 'PostedAt',
         'SortDirection': 'asc',
       });
@@ -190,9 +173,9 @@ final forumPostsProvider = FutureProvider.family<List<ForumPost>, ForumPostsPara
   final forumService = ref.watch(forumServiceProvider);
   
   // Build filter map for backend API
-  // Note: Backend DTO uses PascalCase property names
+  // Backend C# uses PascalCase property names (default JSON serialization)
   final Map<String, dynamic> filter = {
-    'Paging': true,
+    'Paging': true,  // PascalCase - what C# expects
     'Page': params.page,
     'PageLength': params.pageSize,
     'SortDirection': params.sortOption == 'Newest' ? 'desc' : 'asc',
@@ -211,8 +194,14 @@ final forumPostsProvider = FutureProvider.family<List<ForumPost>, ForumPostsPara
     debugPrint('Forum search: query="${params.searchQuery}", page=${params.page}, category=${params.category}');
   }
   
-  // Debug: Log filter parameters
-  debugPrint('Forum posts request: page=${params.page}, pageSize=${params.pageSize}, filters=$filter');
+  // Debug: Log filter parameters BEFORE sending
+  debugPrint('=== FORUM POSTS REQUEST ===');
+  debugPrint('Page: ${params.page}, PageSize: ${params.pageSize}');
+  debugPrint('Filter JSON: ${filter.toString()}');
+  debugPrint('Filter keys: ${filter.keys.toList()}');
+  debugPrint('Paging value: ${filter['Paging']}');
+  debugPrint('Page value: ${filter['Page']}');
+  debugPrint('PageLength value: ${filter['PageLength']}');
   
   final posts = await forumService.getPosts(filter);
   debugPrint('Forum posts response: ${posts.length} posts returned');

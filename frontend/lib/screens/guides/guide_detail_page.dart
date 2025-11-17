@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:frontend/models/guide_model.dart';
+import 'package:frontend/widgets/linkable_text.dart';
 import 'package:intl/intl.dart';
 
 /// A page that displays the detailed content of a [Guide].
@@ -176,11 +177,11 @@ class GuideDetailPage extends StatelessWidget {
                         );
                       }
 
-                      /// Otherwise, render it as a standard paragraph with increased line height for readability.
+                      /// Otherwise, render it as a standard paragraph with clickable links.
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          block['text']!,
+                        child: LinkableText(
+                          text: block['text']!,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             height: 1.6,
                           ),

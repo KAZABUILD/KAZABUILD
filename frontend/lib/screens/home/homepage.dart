@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/home/faq_section.dart';
 import 'package:frontend/screens/home/featured_builds.dart';
 import 'package:frontend/screens/home/home_body.dart';
 import 'package:frontend/widgets/last_bar.dart';
@@ -46,15 +45,15 @@ class _HomePageState extends ConsumerState<HomePage> {
           Expanded(
             // Makes the main content area scrollable.
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
                   const HomeBody(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 80),
                   const FeaturedBuilds(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 80),
                   const PartCategoriesSection(),
-                  const SizedBox(height: 60),
-                  const FaqSection(),
+                  const SizedBox(height: 80),
                   const LastBar(),
                 ],
               ),

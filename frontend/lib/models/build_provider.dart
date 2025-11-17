@@ -219,9 +219,8 @@ class BuildService {
           .where((id) => id.isNotEmpty)
           .toList();
       
-      // Fetch images and tags in parallel for better performance
+      // Fetch images only (tags are not fetched for explore builds page)
       Map<String, String?> imageUrlsByBuildId = {};
-      Map<String, List<String>> tagsByBuildId = {};
       
       try {
         imageUrlsByBuildId = await getBuildImages(buildIds);
@@ -230,26 +229,13 @@ class BuildService {
         // This ensures builds are still displayed even without images
       }
       
-      // Fetch tags for all builds using helper method
-      try {
-        tagsByBuildId = await _fetchBuildTags(buildIds);
-      } catch (e) {
-        // If fetching tags fails, continue with empty map
-        // This ensures builds are still displayed even without tags
-        debugPrint('Error fetching build tags: $e');
-      }
-      
-      // Add imageUrl and tags to build JSON
+      // Add imageUrl to build JSON (tags are not added)
       for (var json in buildsJson) {
         if (json is Map<String, dynamic>) {
           final buildId = (json['id'] ?? json['Id'] ?? '').toString();
           if (imageUrlsByBuildId.containsKey(buildId)) {
             json['imageUrl'] = imageUrlsByBuildId[buildId];
             json['ImageUrl'] = imageUrlsByBuildId[buildId];
-          }
-          if (tagsByBuildId.containsKey(buildId)) {
-            json['tags'] = tagsByBuildId[buildId];
-            json['Tags'] = tagsByBuildId[buildId];
           }
         }
       }

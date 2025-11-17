@@ -987,6 +987,834 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Email'**
   String get email;
+
+  /// No description provided for @noBuildsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No builds found'**
+  String get noBuildsFound;
+
+  /// No description provided for @tryAdjustingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Try adjusting your filters or check back later'**
+  String get tryAdjustingFilters;
+
+  /// No description provided for @errorLoadingBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading builds'**
+  String get errorLoadingBuilds;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get status;
+
+  /// No description provided for @noImage.
+  ///
+  /// In en, this message translates to:
+  /// **'No Image'**
+  String get noImage;
+
+  /// No description provided for @clickToViewComponents.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to view components'**
+  String get clickToViewComponents;
+
+  /// No description provided for @components.
+  ///
+  /// In en, this message translates to:
+  /// **'Components'**
+  String get components;
+
+  /// No description provided for @comments.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get comments;
+
+  /// No description provided for @noImageAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No Image Available'**
+  String get noImageAvailable;
+
+  /// No description provided for @postedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted on'**
+  String get postedOn;
+
+  /// No description provided for @wishlistBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Wishlist Build'**
+  String get wishlistBuild;
+
+  /// No description provided for @noComponentsListed.
+  ///
+  /// In en, this message translates to:
+  /// **'No components listed'**
+  String get noComponentsListed;
+
+  /// No description provided for @fromVendors.
+  ///
+  /// In en, this message translates to:
+  /// **'from {count} {count, plural, =1{vendor} other{vendors}}'**
+  String fromVendors(num count);
+
+  /// No description provided for @signInToComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to comment on this build'**
+  String get signInToComment;
+
+  /// No description provided for @pleaseSignInToComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in to comment. Use the navigation to go to login.'**
+  String get pleaseSignInToComment;
+
+  /// No description provided for @writeComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a comment...'**
+  String get writeComment;
+
+  /// No description provided for @post.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get post;
+
+  /// No description provided for @pleaseSignInToCommentShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in to comment'**
+  String get pleaseSignInToCommentShort;
+
+  /// No description provided for @failedToLoadComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load comments'**
+  String get failedToLoadComments;
+
+  /// No description provided for @noCommentsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet. Be the first to comment!'**
+  String get noCommentsYet;
+
+  /// No description provided for @pleaseSignInToRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in to rate this build.'**
+  String get pleaseSignInToRate;
+
+  /// No description provided for @pleaseSignInToRateBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in to rate builds'**
+  String get pleaseSignInToRateBuilds;
+
+  /// No description provided for @failedToSubmitRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit rating'**
+  String get failedToSubmitRating;
+
+  /// No description provided for @removeRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove rating'**
+  String get removeRating;
+
+  /// No description provided for @rate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get rate;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @vendors.
+  ///
+  /// In en, this message translates to:
+  /// **'Vendors'**
+  String get vendors;
+
+  /// No description provided for @similarBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar Builds'**
+  String get similarBuilds;
+
+  /// No description provided for @series.
+  ///
+  /// In en, this message translates to:
+  /// **'Series'**
+  String get series;
+
+  /// No description provided for @socket.
+  ///
+  /// In en, this message translates to:
+  /// **'Socket'**
+  String get socket;
+
+  /// No description provided for @chipset.
+  ///
+  /// In en, this message translates to:
+  /// **'Chipset'**
+  String get chipset;
+
+  /// No description provided for @formFactor.
+  ///
+  /// In en, this message translates to:
+  /// **'Form Factor'**
+  String get formFactor;
+
+  /// No description provided for @memoryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory Type'**
+  String get memoryType;
+
+  /// No description provided for @ramType.
+  ///
+  /// In en, this message translates to:
+  /// **'RAM Type'**
+  String get ramType;
+
+  /// No description provided for @capacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity'**
+  String get capacity;
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @tdp.
+  ///
+  /// In en, this message translates to:
+  /// **'TDP'**
+  String get tdp;
+
+  /// No description provided for @length.
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get length;
+
+  /// No description provided for @height.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get height;
+
+  /// No description provided for @baseClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Base Clock'**
+  String get baseClock;
+
+  /// No description provided for @boostClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Boost Clock'**
+  String get boostClock;
+
+  /// No description provided for @coreCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Core Count'**
+  String get coreCount;
+
+  /// No description provided for @threads.
+  ///
+  /// In en, this message translates to:
+  /// **'Threads'**
+  String get threads;
+
+  /// No description provided for @vram.
+  ///
+  /// In en, this message translates to:
+  /// **'VRAM'**
+  String get vram;
+
+  /// No description provided for @microarchitecture.
+  ///
+  /// In en, this message translates to:
+  /// **'Microarchitecture'**
+  String get microarchitecture;
+
+  /// No description provided for @coreFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Core Family'**
+  String get coreFamily;
+
+  /// No description provided for @totalCores.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Cores'**
+  String get totalCores;
+
+  /// No description provided for @pCores.
+  ///
+  /// In en, this message translates to:
+  /// **'P-Cores'**
+  String get pCores;
+
+  /// No description provided for @eCores.
+  ///
+  /// In en, this message translates to:
+  /// **'E-Cores'**
+  String get eCores;
+
+  /// No description provided for @l1Cache.
+  ///
+  /// In en, this message translates to:
+  /// **'L1 Cache'**
+  String get l1Cache;
+
+  /// No description provided for @l2Cache.
+  ///
+  /// In en, this message translates to:
+  /// **'L2 Cache'**
+  String get l2Cache;
+
+  /// No description provided for @l3Cache.
+  ///
+  /// In en, this message translates to:
+  /// **'L3 Cache'**
+  String get l3Cache;
+
+  /// No description provided for @l4Cache.
+  ///
+  /// In en, this message translates to:
+  /// **'L4 Cache'**
+  String get l4Cache;
+
+  /// No description provided for @lithography.
+  ///
+  /// In en, this message translates to:
+  /// **'Lithography'**
+  String get lithography;
+
+  /// No description provided for @packaging.
+  ///
+  /// In en, this message translates to:
+  /// **'Packaging'**
+  String get packaging;
+
+  /// No description provided for @includesCooler.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes Cooler'**
+  String get includesCooler;
+
+  /// No description provided for @smtSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'SMT Support'**
+  String get smtSupport;
+
+  /// No description provided for @eccSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'ECC Support'**
+  String get eccSupport;
+
+  /// No description provided for @integratedGraphics.
+  ///
+  /// In en, this message translates to:
+  /// **'Integrated Graphics'**
+  String get integratedGraphics;
+
+  /// No description provided for @memoryClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory Clock'**
+  String get memoryClock;
+
+  /// No description provided for @memoryBusWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory Bus Width'**
+  String get memoryBusWidth;
+
+  /// No description provided for @slotWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot Width'**
+  String get slotWidth;
+
+  /// No description provided for @totalSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Slots'**
+  String get totalSlots;
+
+  /// No description provided for @coolingType.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling Type'**
+  String get coolingType;
+
+  /// No description provided for @frameSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame Sync'**
+  String get frameSync;
+
+  /// No description provided for @ramSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'RAM Slots'**
+  String get ramSlots;
+
+  /// No description provided for @maxRam.
+  ///
+  /// In en, this message translates to:
+  /// **'Max RAM'**
+  String get maxRam;
+
+  /// No description provided for @cpuFanHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU Fan Headers'**
+  String get cpuFanHeaders;
+
+  /// No description provided for @caseFanHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Case Fan Headers'**
+  String get caseFanHeaders;
+
+  /// No description provided for @pumpHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Pump Headers'**
+  String get pumpHeaders;
+
+  /// No description provided for @audioChipset.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Chipset'**
+  String get audioChipset;
+
+  /// No description provided for @maxAudioChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Audio Channels'**
+  String get maxAudioChannels;
+
+  /// No description provided for @raidSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'RAID Support'**
+  String get raidSupport;
+
+  /// No description provided for @biosFlashback.
+  ///
+  /// In en, this message translates to:
+  /// **'BIOS Flashback'**
+  String get biosFlashback;
+
+  /// No description provided for @clearCmos.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear CMOS'**
+  String get clearCmos;
+
+  /// No description provided for @casLatency.
+  ///
+  /// In en, this message translates to:
+  /// **'CAS Latency'**
+  String get casLatency;
+
+  /// No description provided for @timings.
+  ///
+  /// In en, this message translates to:
+  /// **'Timings'**
+  String get timings;
+
+  /// No description provided for @modules.
+  ///
+  /// In en, this message translates to:
+  /// **'Modules'**
+  String get modules;
+
+  /// No description provided for @moduleCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Module Capacity'**
+  String get moduleCapacity;
+
+  /// No description provided for @ecc.
+  ///
+  /// In en, this message translates to:
+  /// **'ECC'**
+  String get ecc;
+
+  /// No description provided for @registered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get registered;
+
+  /// No description provided for @heatSpreader.
+  ///
+  /// In en, this message translates to:
+  /// **'Heat Spreader'**
+  String get heatSpreader;
+
+  /// No description provided for @rgb.
+  ///
+  /// In en, this message translates to:
+  /// **'RGB'**
+  String get rgb;
+
+  /// No description provided for @voltage.
+  ///
+  /// In en, this message translates to:
+  /// **'Voltage'**
+  String get voltage;
+
+  /// No description provided for @interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface'**
+  String get interface;
+
+  /// No description provided for @nvme.
+  ///
+  /// In en, this message translates to:
+  /// **'NVMe'**
+  String get nvme;
+
+  /// No description provided for @wattage.
+  ///
+  /// In en, this message translates to:
+  /// **'Wattage'**
+  String get wattage;
+
+  /// No description provided for @efficiency.
+  ///
+  /// In en, this message translates to:
+  /// **'Efficiency'**
+  String get efficiency;
+
+  /// No description provided for @modularity.
+  ///
+  /// In en, this message translates to:
+  /// **'Modularity'**
+  String get modularity;
+
+  /// No description provided for @fanless.
+  ///
+  /// In en, this message translates to:
+  /// **'Fanless'**
+  String get fanless;
+
+  /// No description provided for @radiatorSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Radiator Size'**
+  String get radiatorSize;
+
+  /// No description provided for @fanSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Fan Size'**
+  String get fanSize;
+
+  /// No description provided for @fanQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Fan Quantity'**
+  String get fanQuantity;
+
+  /// No description provided for @minFanSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Min Fan Speed'**
+  String get minFanSpeed;
+
+  /// No description provided for @maxFanSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Fan Speed'**
+  String get maxFanSpeed;
+
+  /// No description provided for @minNoise.
+  ///
+  /// In en, this message translates to:
+  /// **'Min Noise'**
+  String get minNoise;
+
+  /// No description provided for @maxNoise.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Noise'**
+  String get maxNoise;
+
+  /// No description provided for @fanlessOperation.
+  ///
+  /// In en, this message translates to:
+  /// **'Fanless Operation'**
+  String get fanlessOperation;
+
+  /// No description provided for @size.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get size;
+
+  /// No description provided for @quantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get quantity;
+
+  /// No description provided for @minAirflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Min Airflow'**
+  String get minAirflow;
+
+  /// No description provided for @maxAirflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Airflow'**
+  String get maxAirflow;
+
+  /// No description provided for @pwm.
+  ///
+  /// In en, this message translates to:
+  /// **'PWM'**
+  String get pwm;
+
+  /// No description provided for @ledType.
+  ///
+  /// In en, this message translates to:
+  /// **'LED Type'**
+  String get ledType;
+
+  /// No description provided for @connector.
+  ///
+  /// In en, this message translates to:
+  /// **'Connector'**
+  String get connector;
+
+  /// No description provided for @controller.
+  ///
+  /// In en, this message translates to:
+  /// **'Controller'**
+  String get controller;
+
+  /// No description provided for @staticPressure.
+  ///
+  /// In en, this message translates to:
+  /// **'Static Pressure'**
+  String get staticPressure;
+
+  /// No description provided for @flowDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Flow Direction'**
+  String get flowDirection;
+
+  /// No description provided for @powerSupplyShrouded.
+  ///
+  /// In en, this message translates to:
+  /// **'Power Supply Shrouded'**
+  String get powerSupplyShrouded;
+
+  /// No description provided for @includedPsu.
+  ///
+  /// In en, this message translates to:
+  /// **'Included PSU'**
+  String get includedPsu;
+
+  /// No description provided for @transparentSidePanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Transparent Side Panel'**
+  String get transparentSidePanel;
+
+  /// No description provided for @sidePanelType.
+  ///
+  /// In en, this message translates to:
+  /// **'Side Panel Type'**
+  String get sidePanelType;
+
+  /// No description provided for @maxGpuLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Max GPU Length'**
+  String get maxGpuLength;
+
+  /// No description provided for @maxCpuCoolerHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Max CPU Cooler Height'**
+  String get maxCpuCoolerHeight;
+
+  /// No description provided for @screenSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Size'**
+  String get screenSize;
+
+  /// No description provided for @resolution.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolution'**
+  String get resolution;
+
+  /// No description provided for @refreshRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Rate'**
+  String get refreshRate;
+
+  /// No description provided for @panelType.
+  ///
+  /// In en, this message translates to:
+  /// **'Panel Type'**
+  String get panelType;
+
+  /// No description provided for @responseTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Response Time'**
+  String get responseTime;
+
+  /// No description provided for @viewingAngle.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing Angle'**
+  String get viewingAngle;
+
+  /// No description provided for @aspectRatio.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect Ratio'**
+  String get aspectRatio;
+
+  /// No description provided for @maxBrightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Max Brightness'**
+  String get maxBrightness;
+
+  /// No description provided for @hdr.
+  ///
+  /// In en, this message translates to:
+  /// **'HDR'**
+  String get hdr;
+
+  /// No description provided for @adaptiveSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Adaptive Sync'**
+  String get adaptiveSync;
+
+  /// No description provided for @sata6Gbs.
+  ///
+  /// In en, this message translates to:
+  /// **'SATA 6 Gb/s'**
+  String get sata6Gbs;
+
+  /// No description provided for @sata3Gbs.
+  ///
+  /// In en, this message translates to:
+  /// **'SATA 3 Gb/s'**
+  String get sata3Gbs;
+
+  /// No description provided for @u2Ports.
+  ///
+  /// In en, this message translates to:
+  /// **'U.2 Ports'**
+  String get u2Ports;
+
+  /// No description provided for @wifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Wi-Fi'**
+  String get wifi;
+
+  /// No description provided for @argb5vHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'ARGB 5V Headers'**
+  String get argb5vHeaders;
+
+  /// No description provided for @rgb12vHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'RGB 12V Headers'**
+  String get rgb12vHeaders;
+
+  /// No description provided for @internal35BayAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'3.5\" Bays'**
+  String get internal35BayAmount;
+
+  /// No description provided for @internal25BayAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'2.5\" Bays'**
+  String get internal25BayAmount;
+
+  /// No description provided for @external525BayAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'5.25\" Bays'**
+  String get external525BayAmount;
+
+  /// No description provided for @external35BayAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'3.5\" External Bays'**
+  String get external35BayAmount;
+
+  /// No description provided for @waterCooled.
+  ///
+  /// In en, this message translates to:
+  /// **'Water Cooled'**
+  String get waterCooled;
+
+  /// No description provided for @airCooled.
+  ///
+  /// In en, this message translates to:
+  /// **'Air Cooled'**
+  String get airCooled;
 }
 
 class _AppLocalizationsDelegate

@@ -47,6 +47,7 @@ class LastBar extends StatelessWidget {
                           title: l10n.info,
                           items: [
                             _FooterItem(text: l10n.aboutUs, route: '/about'),
+                            _FooterItem(text: l10n.frequentlyAskedQuestions, route: '/faq'),
                             _FooterItem(text: l10n.contactFeedback, route: '/feedback'),
                           ],
                         ),
@@ -69,6 +70,7 @@ class LastBar extends StatelessWidget {
                           title: l10n.info,
                           items: [
                             _FooterItem(text: l10n.aboutUs, route: '/about'),
+                            _FooterItem(text: l10n.frequentlyAskedQuestions, route: '/faq'),
                             _FooterItem(text: l10n.contactFeedback, route: '/feedback'),
                           ],
                         ),

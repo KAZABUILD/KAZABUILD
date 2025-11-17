@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/user_role.dart';
+import 'dart:html' as html;
 import 'package:frontend/screens/auth/change_password_page.dart';
+import 'package:frontend/screens/auth/confirm_register_page.dart';
 import 'package:frontend/screens/auth/confirm_reset_password_page.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/screens/auth/login_page.dart';
@@ -44,6 +46,9 @@ import 'package:frontend/screens/admin/admin_component_compatibility_test_page.d
 import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
+import 'package:frontend/screens/info/faq_page.dart';
+import 'package:frontend/screens/messages/messages_page.dart';
+import 'package:frontend/screens/messages/message_detail_page.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -82,8 +87,42 @@ final authRouterListenerProvider = ChangeNotifierProvider<AuthRouterListener>((
 final routerProvider = Provider<GoRouter>((ref) {
   final authListener = ref.watch(authRouterListenerProvider);
 
+  // Check if URL contains /auth/confirm-register or /auth/confirm-reset-password
+  // If so, use that as initial location to bypass splash screen
+  String getInitialLocation() {
+    try {
+      // Use conditional import for web
+      if (identical(0, 0.0)) {
+        // This is a compile-time check - will only work on web
+        // For web, check if there's a hash in the URL (email links)
+        // Otherwise, start at homepage
+        try {
+          final currentHref = html.window.location.href;
+          if (currentHref.contains('/auth/confirm-register') || 
+              currentHref.contains('/auth/confirm-reset-password')) {
+            // Extract the path from hash
+            if (currentHref.contains('#')) {
+              final hashPart = currentHref.split('#').last;
+              if (hashPart.startsWith('/auth/')) {
+                return hashPart.split('?').first; // Return path without query params
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore errors, default to home
+        }
+        // Default: start at homepage
+        return '/home';
+      }
+    } catch (e) {
+      // Not web platform
+    }
+    // Default: start at homepage
+    return '/home';
+  }
+
   return GoRouter(
-    initialLocation: '/', // Set initial location to splash screen
+    initialLocation: getInitialLocation(), // Set initial location dynamically
     debugLogDiagnostics: true, // Useful for debugging routing issues.
     /// The list of all routes in the application.
     routes: [
@@ -230,18 +269,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ForgotPasswordPage(),
       ),
       GoRoute(
+        path: '/auth/confirm-register',
+        name: 'confirm-register',
+        builder: (context, state) {
+          // Extract the 'token' and 'userId' from the query parameters.
+          // e.g., /auth/confirm-register?token=xyz123&userId=abc456
+          final token = state.uri.queryParameters['token'];
+          final userId = state.uri.queryParameters['userId'];
+          return ConfirmRegisterPage(token: token, userId: userId);
+        },
+      ),
+      GoRoute(
         path: '/auth/confirm-reset-password',
         name: 'confirm-reset-password',
         builder: (context, state) {
           // Extract the 'token' and 'userId' from the query parameters.
           // e.g., /auth/confirm-reset-password?token=xyz123&userId=abc456
+          // Note: The page will also extract from URL hash fragments if needed
           final token = state.uri.queryParameters['token'];
           final userId = state.uri.queryParameters['userId'];
-          if (token == null || token.isEmpty) {
-            // If no token is found, redirect to the login page.
-            // This prevents direct access to the page without a token.
-            return const LoginPage();
-          }
+          // Don't redirect if token is missing - let the page handle it
+          // The page will extract token from URL hash fragments if needed
           return ConfirmResetPasswordPage(token: token, userId: userId);
         },
       ),
@@ -332,18 +380,355 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'feedback',
         builder: (context, state) => const FeedbackPage(),
       ),
+      GoRoute(
+        path: '/faq',
+        name: 'faq',
+        builder: (context, state) => const FaqPage(),
+      ),
+      GoRoute(
+        path: '/messages',
+        name: 'messages',
+        builder: (context, state) => const MessagesPage(),
+      ),
+      GoRoute(
+        path: '/messages/:userId',
+        name: 'message-detail',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          if (userId == null) {
+            return const MessagesPage();
+          }
+          return MessageDetailPage(otherUserId: userId);
+        },
+      ),
     ],
 
     /// A redirect function that runs before any navigation.
     /// It's used here to handle authentication logic.
     redirect: (context, state) {
-      // If the auth state is still loading, don't redirect anywhere.
-      // The user will stay on the splash screen.
-      if (state.matchedLocation == '/') {
-        return null;
+      // CRITICAL: First, clean hash fragment from URL if present
+      // This must happen before any other processing
+      try {
+        final currentHref = html.window.location.href;
+        if (currentHref.contains('#')) {
+          // Check if this is a confirm-register or confirm-reset-password URL
+          if (currentHref.contains('/auth/confirm-register') || 
+              currentHref.contains('/auth/confirm-reset-password')) {
+            // Remove hash fragment
+            final cleanHref = currentHref.split('#').first;
+            final cleanUri = Uri.parse(cleanHref);
+            final userId = cleanUri.queryParameters['userId'];
+            
+            if (userId != null && userId.isNotEmpty) {
+              // Rebuild URL with only userId
+              final newUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}${cleanUri.path}?userId=$userId';
+              html.window.history.replaceState(null, '', newUrl);
+              html.window.location.hash = '';
+            } else {
+              // Just remove hash
+              html.window.history.replaceState(null, '', cleanHref);
+              html.window.location.hash = '';
+            }
+          }
+        }
+      } catch (e) {
+        // Not web platform, ignore
       }
-
+      
       final location = state.matchedLocation;
+      final uri = state.uri;
+      final fullPath = uri.path;
+      final fullUriString = uri.toString(); // Get full URI including hash if any
+      final fullPathWithHash = state.fullPath; // Get full path including hash fragment
+      
+      // CRITICAL: Check window.location directly for web platform
+      // This catches the actual URL even if GoRouter hasn't parsed it yet
+      String? windowPath;
+      String? windowSearch;
+      try {
+        windowPath = html.window.location.pathname;
+        windowSearch = html.window.location.search;
+        debugPrint('🌐 WINDOW LOCATION: ${html.window.location.href}');
+        debugPrint('🌐 window.pathname: $windowPath');
+        debugPrint('🌐 window.search: $windowSearch');
+      } catch (e) {
+        // Not web platform, ignore
+      }
+      
+      // DEBUG: Print all routing information
+      debugPrint('=== ROUTER REDIRECT DEBUG ===');
+      debugPrint('location: $location');
+      debugPrint('fullPath: $fullPath');
+      debugPrint('fullPathWithHash: $fullPathWithHash');
+      debugPrint('fullUriString: $fullUriString');
+      debugPrint('uri.query: ${uri.query}');
+      debugPrint('uri.hasQuery: ${uri.hasQuery}');
+      debugPrint('windowPath: $windowPath');
+      debugPrint('windowSearch: $windowSearch');
+      debugPrint('=============================');
+      
+      // PRIORITY 1: If user is trying to access /auth/confirm-register or /auth/confirm-reset-password
+      // via email link, bypass EVERYTHING and go directly there (even from splash screen)
+      // Check path, full URI, fullPathWithHash, AND window.location to catch all routing cases
+      final windowUrl = windowPath ?? '';
+      final windowQuery = windowSearch ?? '';
+      final fullWindowUrl = windowUrl + windowQuery;
+      
+      final isConfirmRegister = fullPath.startsWith('/auth/confirm-register') || 
+                                fullUriString.contains('/auth/confirm-register') ||
+                                (fullPathWithHash?.contains('/auth/confirm-register') ?? false) ||
+                                windowUrl.startsWith('/auth/confirm-register') ||
+                                fullWindowUrl.contains('/auth/confirm-register');
+      final isConfirmReset = fullPath.startsWith('/auth/confirm-reset-password') || 
+                            fullUriString.contains('/auth/confirm-reset-password') ||
+                            (fullPathWithHash?.contains('/auth/confirm-reset-password') ?? false) ||
+                            windowUrl.startsWith('/auth/confirm-reset-password') ||
+                            fullWindowUrl.contains('/auth/confirm-reset-password');
+      
+      if (isConfirmRegister || isConfirmReset) {
+        // CRITICAL: First, clean the browser URL to remove hash fragments
+        // But keep token and userId in the URL
+        try {
+          final currentHref = html.window.location.href;
+          if (currentHref.contains('#')) {
+            // Remove hash fragment completely but keep query params
+            final cleanHref = currentHref.split('#').first;
+            final cleanUri = Uri.parse(cleanHref);
+            // Keep all query parameters (token and userId)
+            final cleanUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}${cleanUri.path}${cleanUri.hasQuery ? '?${cleanUri.query}' : ''}';
+            html.window.history.replaceState(null, '', cleanUrl);
+            html.window.location.hash = '';
+            debugPrint('🧹🧹🧹 IMMEDIATELY cleaned URL (removed hash, kept params): $cleanUrl');
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        // Extract userId and token from URL (from either window.location or uri)
+        // Always parse from href without hash fragment
+        String? userId;
+        String? token;
+        try {
+          final currentHref = html.window.location.href;
+          final cleanHref = currentHref.split('#').first;
+          final windowUri = Uri.parse(cleanHref);
+          userId = windowUri.queryParameters['userId'];
+          token = windowUri.queryParameters['token'];
+          
+          if (userId == null) {
+            // Fallback to uri if not found in window location
+            userId = uri.queryParameters['userId'];
+          }
+          if (token == null) {
+            // Fallback to uri if not found in window location
+            token = uri.queryParameters['token'];
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        // Build the full path with token and userId (keep both, no hash)
+        String targetPath;
+        if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
+          // Keep both token and userId
+          targetPath = isConfirmRegister 
+              ? '/auth/confirm-register?token=$token&userId=$userId'
+              : '/auth/confirm-reset-password?token=$token&userId=$userId';
+          
+          
+          // Ensure browser URL is clean (no hash, but keep token and userId)
+          try {
+            final currentHref = html.window.location.href;
+            final cleanHref = currentHref.split('#').first;
+            final cleanUri = Uri.parse(cleanHref);
+            final newUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}$targetPath';
+            html.window.history.replaceState(null, '', newUrl);
+            debugPrint('🧹🧹🧹 Final cleaned URL: $newUrl');
+          } catch (e) {
+            // Ignore
+          }
+        } else if (userId != null && userId.isNotEmpty) {
+          // Only userId available
+          targetPath = isConfirmRegister 
+              ? '/auth/confirm-register?userId=$userId'
+              : '/auth/confirm-reset-password?userId=$userId';
+          
+        } else {
+          // Fallback: use window.location or uri, but clean hash first
+          String queryString;
+          if (windowPath != null && windowPath.startsWith('/auth/confirm')) {
+            queryString = windowQuery;
+            if (queryString.contains('#')) {
+              queryString = queryString.split('#').first;
+            }
+            targetPath = windowPath + queryString;
+          } else {
+            queryString = uri.hasQuery ? '?${uri.query}' : '';
+            if (queryString.contains('#')) {
+              queryString = queryString.split('#').first;
+            }
+            targetPath = fullPath.startsWith('/auth/confirm') ? fullPath + queryString :
+                        (isConfirmRegister ? '/auth/confirm-register$queryString' : 
+                         '/auth/confirm-reset-password$queryString');
+          }
+          
+        }
+        
+        // CRITICAL: Clean the target path - remove any hash fragments
+        if (targetPath.contains('#')) {
+          targetPath = targetPath.split('#').first;
+          
+        }
+        
+        // CRITICAL: ALWAYS redirect to confirm page if we're not already there
+        // This bypasses splash screen and ALL other redirects completely
+        // If window.location has confirm-register but current location doesn't, FORCE redirect
+        final windowHasConfirm = windowPath != null && windowPath.startsWith('/auth/confirm');
+        final locationIsConfirm = location.startsWith('/auth/confirm');
+        
+        // If window has confirm but location doesn't, FORCE redirect
+        if (windowHasConfirm && !locationIsConfirm) {
+          
+          return targetPath;
+        }
+        
+        // If we're already on confirm page, allow access
+        if (locationIsConfirm || location == targetPath) {
+          
+          return null; // CRITICAL: Return null immediately, don't continue with other checks
+        }
+        
+        // Fallback: If any confirm check is true but we're not on the page, redirect
+        
+        return targetPath;
+      }
+      
+      // PRIORITY 2: If we're on splash screen but URL has confirm-register, redirect immediately
+      // This prevents splash screen from showing at all
+      // Check window.location first (most reliable)
+      if (location == '/' && windowPath != null) {
+        if (windowPath.startsWith('/auth/confirm-register') || 
+            windowPath.startsWith('/auth/confirm-reset-password')) {
+          // CRITICAL: First, clean the browser URL to remove hash fragments
+          try {
+            final currentHref = html.window.location.href;
+            if (currentHref.contains('#')) {
+              // Remove hash fragment completely
+              final cleanHref = currentHref.split('#').first;
+              final cleanUri = Uri.parse(cleanHref);
+              final cleanUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}${cleanUri.path}${cleanUri.hasQuery ? '?${cleanUri.query}' : ''}';
+              html.window.history.replaceState(null, '', cleanUrl);
+             
+            }
+          } catch (e) {
+            // Ignore
+          }
+          
+          // Extract userId from query parameters (from cleaned URL)
+          String? userId;
+          try {
+            final currentHref = html.window.location.href;
+            final cleanHref = currentHref.split('#').first;
+            final uri = Uri.parse(cleanHref);
+            userId = uri.queryParameters['userId'];
+          } catch (e) {
+            // Ignore
+          }
+          
+          // Build clean path with only userId (no token, no hash)
+          String targetPath;
+          if (userId != null && userId.isNotEmpty) {
+            targetPath = '$windowPath?userId=$userId';
+          } else {
+            String cleanQuery = windowQuery;
+            // Remove hash from query string
+            if (cleanQuery.contains('#')) {
+              cleanQuery = cleanQuery.split('#').first;
+            }
+            targetPath = windowPath + (cleanQuery.isNotEmpty ? cleanQuery : '');
+          }
+          
+          // Remove hash from targetPath if present
+          if (targetPath.contains('#')) {
+            targetPath = targetPath.split('#').first;
+          }
+          
+          
+          
+          // CRITICAL: Ensure browser URL is clean (no hash)
+          try {
+            final currentHref = html.window.location.href;
+            final cleanHref = currentHref.split('#').first;
+            final cleanUri = Uri.parse(cleanHref);
+            if (userId != null && userId.isNotEmpty) {
+              // Rebuild URL with only userId, no token, no hash
+              final newUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}$targetPath';
+              html.window.history.replaceState(null, '', newUrl);
+              
+            } else if (currentHref.contains('#')) {
+              // Just remove hash if no userId
+              html.window.history.replaceState(null, '', cleanHref);
+              
+            }
+          } catch (e) {
+            // Not web platform, ignore
+          }
+          
+          return targetPath;
+        }
+      }
+      
+      // Also check uri string as fallback
+      if (location == '/' && (fullUriString.contains('/auth/confirm-register') || 
+                              fullUriString.contains('/auth/confirm-reset-password'))) {
+        // CRITICAL: Clean hash fragment from query string
+        String queryString = uri.hasQuery ? '?${uri.query}' : '';
+        if (queryString.contains('#')) {
+          queryString = queryString.split('#').first;
+        }
+        String targetPath = fullPath.startsWith('/auth/') ? fullPath + queryString : 
+                          (fullUriString.contains('/auth/confirm-register') ? 
+                           '/auth/confirm-register$queryString' : 
+                           '/auth/confirm-reset-password$queryString');
+        // Remove hash from targetPath if still present
+        if (targetPath.contains('#')) {
+          targetPath = targetPath.split('#').first;
+        }
+        
+        // Clean browser URL
+        try {
+          final currentHref = html.window.location.href;
+          if (currentHref.contains('#')) {
+            final cleanHref = currentHref.split('#').first;
+            final cleanUri = Uri.parse(cleanHref);
+            final newUrl = '${cleanUri.scheme}://${cleanUri.host}:${cleanUri.port}$targetPath';
+            html.window.history.replaceState(null, '', newUrl);
+            
+          }
+        } catch (e) {
+          // Ignore
+        }
+        
+        return targetPath;
+      }
+      
+      // PRIORITY 3: If the auth state is still loading and we're on splash, stay there
+      // BUT only if we're not trying to access a confirm page
+      if (location == '/') {
+        final authState = ref.read(authProvider);
+        if (authState.isLoading) {
+          return null; // Stay on splash while loading
+        }
+      }
+      
+      // PRIORITY 4: Allow /auth/confirm-register and /auth/confirm-reset-password to be accessed
+      // regardless of login status (they are accessed via email links)
+      // This is a safety check in case the above didn't catch it
+      if (location.startsWith('/auth/confirm-register') || 
+          location.startsWith('/auth/confirm-reset-password')) {
+        
+        return null; // Don't redirect, allow access
+      }
 
       // Check admin routes - require authentication and ADMINISTRATOR role
       // Exception: /admin/debug is accessible to all logged-in users for debugging
@@ -378,22 +763,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         
         // Debug: Print user role information with full details
-        debugPrint('=== ADMIN ROUTE ACCESS CHECK ===');
-        debugPrint('User: ${user.username}');
-        debugPrint('User ID: ${user.uid}');
-        debugPrint('Role Name: ${user.userRole.name}');
-        debugPrint('Role Value: ${user.userRole.value}');
-        debugPrint('Is Administrator: ${user.userRole.isAdministrator}');
-        debugPrint('All Roles: ${UserRole.values.map((r) => '${r.name}=${r.value}').join(', ')}');
-        debugPrint('================================');
+        
         
         // Check if user has administrator privileges
         // SYSTEM role is now included in isAdministrator getter
         if (!user.userRole.isAdministrator) {
-          debugPrint('Admin route: Access DENIED - User ${user.username}');
-          debugPrint('Role: ${user.userRole.name} (value: ${user.userRole.value})');
-          debugPrint('Required: ADMINISTRATOR (6), OWNER (7), or SYSTEM (8)');
-          debugPrint('Please check /admin/debug for more details');
+          
           return '/home';
         }
         
@@ -409,6 +784,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         orElse: () => false,
       );
 
+      // CRITICAL: Never redirect /auth/confirm-register or /auth/confirm-reset-password
+      // These must be accessible regardless of login status
+      // Check both location AND windowPath to catch all cases
+      final locationIsConfirm = location.startsWith('/auth/confirm-register') || 
+                                location.startsWith('/auth/confirm-reset-password');
+      final windowIsConfirm = windowPath != null && 
+                             (windowPath.startsWith('/auth/confirm-register') || 
+                              windowPath.startsWith('/auth/confirm-reset-password'));
+      
+      if (locationIsConfirm || windowIsConfirm) {
+        // If window has confirm but location doesn't, redirect to window location
+        if (windowIsConfirm && !locationIsConfirm) {
+          // windowIsConfirm already checks windowPath != null
+          final path = windowPath ?? '';
+          final targetPath = path + (windowQuery.isNotEmpty ? windowQuery : '');
+          
+          return targetPath;
+        }
+        
+        return null; // NEVER redirect these pages
+      }
+
       // Define protected routes that require a user to be logged in.
       final protectedRoutes = ['/settings', '/profile'];
       final isProtected = protectedRoutes.contains(location);
@@ -418,11 +815,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Define authentication routes that a logged-in user should not access.
+      // Note: /auth/confirm-register and /auth/confirm-reset-password are excluded
+      // because they can be accessed via email links regardless of login status
       final authRoutes = [
         '/login',
         '/signup',
         '/forgot-password',
-        '/confirm-reset-password',
       ];
       if (loggedIn && authRoutes.any((r) => location.startsWith(r))) {
         return '/home';

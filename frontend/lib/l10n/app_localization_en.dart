@@ -483,4 +483,428 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get email => 'Email';
+
+  @override
+  String get noBuildsFound => 'No builds found';
+
+  @override
+  String get tryAdjustingFilters =>
+      'Try adjusting your filters or check back later';
+
+  @override
+  String get errorLoadingBuilds => 'Error loading builds';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get noImage => 'No Image';
+
+  @override
+  String get clickToViewComponents => 'Click to view components';
+
+  @override
+  String get components => 'Components';
+
+  @override
+  String get comments => 'Comments';
+
+  @override
+  String get noImageAvailable => 'No Image Available';
+
+  @override
+  String get postedOn => 'Posted on';
+
+  @override
+  String get wishlistBuild => 'Wishlist Build';
+
+  @override
+  String get noComponentsListed => 'No components listed';
+
+  @override
+  String fromVendors(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'vendors',
+      one: 'vendor',
+    );
+    return 'from $count $_temp0';
+  }
+
+  @override
+  String get signInToComment => 'Sign in to comment on this build';
+
+  @override
+  String get pleaseSignInToComment =>
+      'Please sign in to comment. Use the navigation to go to login.';
+
+  @override
+  String get writeComment => 'Write a comment...';
+
+  @override
+  String get post => 'Post';
+
+  @override
+  String get pleaseSignInToCommentShort => 'Please sign in to comment';
+
+  @override
+  String get failedToLoadComments => 'Failed to load comments';
+
+  @override
+  String get noCommentsYet => 'No comments yet. Be the first to comment!';
+
+  @override
+  String get pleaseSignInToRate => 'Please sign in to rate this build.';
+
+  @override
+  String get pleaseSignInToRateBuilds => 'Please sign in to rate builds';
+
+  @override
+  String get failedToSubmitRating => 'Failed to submit rating';
+
+  @override
+  String get removeRating => 'Remove rating';
+
+  @override
+  String get rate => 'Rate';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get vendors => 'Vendors';
+
+  @override
+  String get similarBuilds => 'Similar Builds';
+
+  @override
+  String get series => 'Series';
+
+  @override
+  String get socket => 'Socket';
+
+  @override
+  String get chipset => 'Chipset';
+
+  @override
+  String get formFactor => 'Form Factor';
+
+  @override
+  String get memoryType => 'Memory Type';
+
+  @override
+  String get ramType => 'RAM Type';
+
+  @override
+  String get capacity => 'Capacity';
+
+  @override
+  String get speed => 'Speed';
+
+  @override
+  String get tdp => 'TDP';
+
+  @override
+  String get length => 'Length';
+
+  @override
+  String get height => 'Height';
+
+  @override
+  String get baseClock => 'Base Clock';
+
+  @override
+  String get boostClock => 'Boost Clock';
+
+  @override
+  String get coreCount => 'Core Count';
+
+  @override
+  String get threads => 'Threads';
+
+  @override
+  String get vram => 'VRAM';
+
+  @override
+  String get microarchitecture => 'Microarchitecture';
+
+  @override
+  String get coreFamily => 'Core Family';
+
+  @override
+  String get totalCores => 'Total Cores';
+
+  @override
+  String get pCores => 'P-Cores';
+
+  @override
+  String get eCores => 'E-Cores';
+
+  @override
+  String get l1Cache => 'L1 Cache';
+
+  @override
+  String get l2Cache => 'L2 Cache';
+
+  @override
+  String get l3Cache => 'L3 Cache';
+
+  @override
+  String get l4Cache => 'L4 Cache';
+
+  @override
+  String get lithography => 'Lithography';
+
+  @override
+  String get packaging => 'Packaging';
+
+  @override
+  String get includesCooler => 'Includes Cooler';
+
+  @override
+  String get smtSupport => 'SMT Support';
+
+  @override
+  String get eccSupport => 'ECC Support';
+
+  @override
+  String get integratedGraphics => 'Integrated Graphics';
+
+  @override
+  String get memoryClock => 'Memory Clock';
+
+  @override
+  String get memoryBusWidth => 'Memory Bus Width';
+
+  @override
+  String get slotWidth => 'Slot Width';
+
+  @override
+  String get totalSlots => 'Total Slots';
+
+  @override
+  String get coolingType => 'Cooling Type';
+
+  @override
+  String get frameSync => 'Frame Sync';
+
+  @override
+  String get ramSlots => 'RAM Slots';
+
+  @override
+  String get maxRam => 'Max RAM';
+
+  @override
+  String get cpuFanHeaders => 'CPU Fan Headers';
+
+  @override
+  String get caseFanHeaders => 'Case Fan Headers';
+
+  @override
+  String get pumpHeaders => 'Pump Headers';
+
+  @override
+  String get audioChipset => 'Audio Chipset';
+
+  @override
+  String get maxAudioChannels => 'Max Audio Channels';
+
+  @override
+  String get raidSupport => 'RAID Support';
+
+  @override
+  String get biosFlashback => 'BIOS Flashback';
+
+  @override
+  String get clearCmos => 'Clear CMOS';
+
+  @override
+  String get casLatency => 'CAS Latency';
+
+  @override
+  String get timings => 'Timings';
+
+  @override
+  String get modules => 'Modules';
+
+  @override
+  String get moduleCapacity => 'Module Capacity';
+
+  @override
+  String get ecc => 'ECC';
+
+  @override
+  String get registered => 'Registered';
+
+  @override
+  String get heatSpreader => 'Heat Spreader';
+
+  @override
+  String get rgb => 'RGB';
+
+  @override
+  String get voltage => 'Voltage';
+
+  @override
+  String get interface => 'Interface';
+
+  @override
+  String get nvme => 'NVMe';
+
+  @override
+  String get wattage => 'Wattage';
+
+  @override
+  String get efficiency => 'Efficiency';
+
+  @override
+  String get modularity => 'Modularity';
+
+  @override
+  String get fanless => 'Fanless';
+
+  @override
+  String get radiatorSize => 'Radiator Size';
+
+  @override
+  String get fanSize => 'Fan Size';
+
+  @override
+  String get fanQuantity => 'Fan Quantity';
+
+  @override
+  String get minFanSpeed => 'Min Fan Speed';
+
+  @override
+  String get maxFanSpeed => 'Max Fan Speed';
+
+  @override
+  String get minNoise => 'Min Noise';
+
+  @override
+  String get maxNoise => 'Max Noise';
+
+  @override
+  String get fanlessOperation => 'Fanless Operation';
+
+  @override
+  String get size => 'Size';
+
+  @override
+  String get quantity => 'Quantity';
+
+  @override
+  String get minAirflow => 'Min Airflow';
+
+  @override
+  String get maxAirflow => 'Max Airflow';
+
+  @override
+  String get pwm => 'PWM';
+
+  @override
+  String get ledType => 'LED Type';
+
+  @override
+  String get connector => 'Connector';
+
+  @override
+  String get controller => 'Controller';
+
+  @override
+  String get staticPressure => 'Static Pressure';
+
+  @override
+  String get flowDirection => 'Flow Direction';
+
+  @override
+  String get powerSupplyShrouded => 'Power Supply Shrouded';
+
+  @override
+  String get includedPsu => 'Included PSU';
+
+  @override
+  String get transparentSidePanel => 'Transparent Side Panel';
+
+  @override
+  String get sidePanelType => 'Side Panel Type';
+
+  @override
+  String get maxGpuLength => 'Max GPU Length';
+
+  @override
+  String get maxCpuCoolerHeight => 'Max CPU Cooler Height';
+
+  @override
+  String get screenSize => 'Screen Size';
+
+  @override
+  String get resolution => 'Resolution';
+
+  @override
+  String get refreshRate => 'Refresh Rate';
+
+  @override
+  String get panelType => 'Panel Type';
+
+  @override
+  String get responseTime => 'Response Time';
+
+  @override
+  String get viewingAngle => 'Viewing Angle';
+
+  @override
+  String get aspectRatio => 'Aspect Ratio';
+
+  @override
+  String get maxBrightness => 'Max Brightness';
+
+  @override
+  String get hdr => 'HDR';
+
+  @override
+  String get adaptiveSync => 'Adaptive Sync';
+
+  @override
+  String get sata6Gbs => 'SATA 6 Gb/s';
+
+  @override
+  String get sata3Gbs => 'SATA 3 Gb/s';
+
+  @override
+  String get u2Ports => 'U.2 Ports';
+
+  @override
+  String get wifi => 'Wi-Fi';
+
+  @override
+  String get argb5vHeaders => 'ARGB 5V Headers';
+
+  @override
+  String get rgb12vHeaders => 'RGB 12V Headers';
+
+  @override
+  String get internal35BayAmount => '3.5\" Bays';
+
+  @override
+  String get internal25BayAmount => '2.5\" Bays';
+
+  @override
+  String get external525BayAmount => '5.25\" Bays';
+
+  @override
+  String get external35BayAmount => '3.5\" External Bays';
+
+  @override
+  String get waterCooled => 'Water Cooled';
+
+  @override
+  String get airCooled => 'Air Cooled';
 }
