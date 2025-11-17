@@ -56,7 +56,7 @@ namespace KAZABUILD.Tests.Utils
     }
     public static class HttpClientFactory
     {
-        public async static Task<HttpClient> Create(WebApplicationFactory<API.Program> factory, User user, string? ip = null, string? password = null) {
+        public async static Task<HttpClient> Create(WebApplicationFactory<API.Program>? factory, User user, string? ip = null, string? password = null) {
             var client = factory.CreateClient();
             await HttpClientAssigner.AssignUserToClientAsync(client, user, ip, password);
             return client;
