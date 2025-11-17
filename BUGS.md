@@ -177,8 +177,7 @@
 - Status: pending
 - Source: frontend
 
-[00030] .
-- Type: incorrect implementation/error/missing feature
+[00030] Explore builds rating is missing.
+- Type: missing feature
 - Status: pending
 - Source: frontend
-- Details: .
