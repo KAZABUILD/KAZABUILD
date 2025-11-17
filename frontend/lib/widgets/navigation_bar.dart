@@ -94,23 +94,27 @@ class CustomNavigationBar extends ConsumerWidget {
 
           /// The main navigation buttons in the center of the bar.
           Row(
-            children: [
-              _NavButton(
-                title: AppLocalizations.of(context)!.buildNow,
-                route: '/build-now',
+            children:  [
+              _NavButton(title: AppLocalizations.of(context)!.buildNow, route: '/build-now'),
+              _NavButton(title: AppLocalizations.of(context)!.exploreBuilds, route: '/explore'),
+              _NavButton(title: AppLocalizations.of(context)!.guides,route: '/guides'),
+              _NavButton(title: AppLocalizations.of(context)!.forums, route: '/forums'),
+              Consumer(
+                builder: (context, ref, child) {
+                  final authState = ref.watch(authProvider);
+                  return authState.when(
+                    data: (user) {
+                      if (user != null) {
+                        return _NavButton(title: 'Messages', route: '/messages');
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
               ),
-              _NavButton(
-                title: AppLocalizations.of(context)!.exploreBuilds,
-                route: '/explore',
-              ),
-              _NavButton(
-                title: AppLocalizations.of(context)!.guides,
-                route: '/guides',
-              ),
-              _NavButton(
-                title: AppLocalizations.of(context)!.forums,
-                route: '/forums',
-              ),
+              _NavButton(title: AppLocalizations.of(context)!.aboutUs, route: '/about'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -545,6 +549,28 @@ class CustomDrawer extends ConsumerWidget {
             onTap: () {
               Navigator.pop(context);
               context.go('/forums');
+            },
+          ),
+          Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authProvider);
+              return authState.when(
+                data: (user) {
+                  if (user != null) {
+                    return ListTile(
+                      leading: const Icon(Icons.message),
+                      title: const Text('Messages'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/messages');
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
             },
           ),
           ListTile(

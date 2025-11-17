@@ -108,3 +108,77 @@
 - Type: error
 - Status: pending
 - Source: backend
+
+[00019] The user doesn't have the option to see notifications and send messages on the navigation bar.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+
+[00020] The website freezes whenever there are a lot of elements loaded.
+- Type: error
+- Status: pending
+- Source: frontend
+
+[00021] The admin page editing and viewing are broken.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: frontend
+- Details: The editing button doesn't do anything, while the view button takes the user to an incorrect URL.
+
+[00022] The admin should be able to modify their profile only like the normal user would.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: The settings from the admin page should be removed/reworked.
+
+[00023] Attempting to get tags with a query results in the backend failing.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: backend
+- Details: Error code: "Microsoft.Data.SqlClient.SqlException: 'An expression of non-boolean type specified in a context where a condition is expected, near 'OR'.'".
+
+[00024] Attempting to post or save the build freezes the website.
+- Type: incorrect implementation/error
+- Status: pending
+- Source: frontend
+- Details: The application needs a performance increase.
+
+[00025] The content displayed on webpages should differ based on the user id and access level.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: frontend
+- Details: For example, if the user is viewing their own profile they should see options to modify it vs other users should see an additional follow button.
+
+[00025-A] The user should be able to modify their builds.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+- Details: The option is missing from build page.
+
+[00026] The build page does not display who created the build.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: frontend
+
+[00027] The errors displayed to the users shouldn't contain error output.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: User readable errors either should have simplified output or no output displayed at all.
+
+[00028] The explore builds page search doesn't use server side paging.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: Any paging for a lot of elements should be paginated. ordered and searched using the server.
+
+[00029] The builds in the explore build page shouldn't have "click to view" text when the entire object is clickable.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+
+[00030] .
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: frontend
+- Details: .

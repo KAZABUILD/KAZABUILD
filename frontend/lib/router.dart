@@ -47,6 +47,8 @@ import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/info/aboutus_page.dart';
 import 'package:frontend/screens/info/feedback_page.dart';
 import 'package:frontend/screens/info/faq_page.dart';
+import 'package:frontend/screens/messages/messages_page.dart';
+import 'package:frontend/screens/messages/message_detail_page.dart';
 
 /// A ChangeNotifier that listens to authentication state changes for go_router refresh.
 class AuthRouterListener extends ChangeNotifier {
@@ -317,13 +319,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           // Extract the 'token' and 'userId' from the query parameters.
           // e.g., /auth/confirm-reset-password?token=xyz123&userId=abc456
+          // Note: The page will also extract from URL hash fragments if needed
           final token = state.uri.queryParameters['token'];
           final userId = state.uri.queryParameters['userId'];
-          if (token == null || token.isEmpty) {
-            // If no token is found, redirect to the login page.
-            // This prevents direct access to the page without a token.
-            return const LoginPage();
-          }
+          // Don't redirect if token is missing - let the page handle it
+          // The page will extract token from URL hash fragments if needed
           return ConfirmResetPasswordPage(token: token, userId: userId);
         },
       ),
@@ -418,6 +418,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/faq',
         name: 'faq',
         builder: (context, state) => const FaqPage(),
+      ),
+      GoRoute(
+        path: '/messages',
+        name: 'messages',
+        builder: (context, state) => const MessagesPage(),
+      ),
+      GoRoute(
+        path: '/messages/:userId',
+        name: 'message-detail',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          if (userId == null) {
+            return const MessagesPage();
+          }
+          return MessageDetailPage(otherUserId: userId);
+        },
       ),
     ],
 

@@ -1,15 +1,9 @@
-/// This file defines the main forum page where users can browse, filter,
-/// and sort discussion posts. It serves as the central hub for community
-/// interaction.
-/// It now fetches live data from the backend using Riverpod providers.
-/// Key features include:
-/// - A modern, visually appealing header with a gradient and call-to-action button.
-/// - A `SliverPersistentHeader` that keeps search, filter, and sort controls
-///   accessible while scrolling.
-/// - An animated list of post cards that fade and slide in for a smooth
-///   user experience, powered by `flutter_staggered_animations`.
+/// Ultra Premium Professional Forums Page - WOW Design
+///
+/// A stunning, premium forum page with glassmorphism, advanced animations, and breathtaking visuals.
 library;
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -21,19 +15,30 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import '../../core/constants/app_color.dart';
+import 'dart:math' as math;
 
 /// A provider to fetch the author's details based on their ID.
-/// Returns null if the user cannot be fetched (e.g., user deleted, network error).
 final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
   try {
-    // This uses the existing auth service to fetch user data.
     final authService = ref.read(authServiceProvider);
     final userResponse = await authService.getUserById(userId);
-    return AppUser.fromJson(userResponse.data);
+    
+    if (userResponse.statusCode == 200 && userResponse.data != null) {
+      try {
+        final user = AppUser.fromJson(userResponse.data);
+        return user;
+      } catch (parseError) {
+        debugPrint('Error parsing user $userId: $parseError');
+        return null;
+      }
+    }
+    return null;
+  } on DioException catch (e) {
+    debugPrint('Error fetching user $userId: ${e.response?.statusCode}');
+    return null;
   } catch (e) {
-    // If user cannot be fetched, return null instead of throwing
-    // This allows the UI to display a fallback (e.g., "User" or "Unknown")
-    debugPrint('Error fetching user $userId: $e');
+    debugPrint('Unexpected error fetching user $userId: $e');
     return null;
   }
 });
@@ -46,97 +51,64 @@ class ForumsPage extends ConsumerStatefulWidget {
   ConsumerState<ForumsPage> createState() => _ForumsPageState();
 }
 
-/// The state for the [ForumsPage].
-///
-/// It manages the UI state for filters, search, and sorting.
-class _ForumsPageState extends ConsumerState<ForumsPage> {
-  /// A key to manage the [Scaffold], particularly for opening the drawer on mobile.
+class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  /// The currently selected category for filtering posts.
   String? _selectedCategory;
-
-  /// The current text in the search input field.
   String _searchQuery = '';
-
-  /// The currently selected option for sorting posts.
   String? _selectedSortOption;
-
-  /// Current page number for pagination (for infinite scroll).
   int _currentPage = 1;
-
-  /// Number of posts per page.
   static const int _pageSize = 20;
-
-  /// Controller for the search text field.
   final TextEditingController _searchController = TextEditingController();
-  
-  /// Timer for debouncing search input
   Timer? _searchDebounce;
-
-  /// All loaded posts (accumulated across pages for infinite scroll)
   final List<ForumPost> _allPosts = [];
-  
-  /// Whether more posts are available to load
   bool _hasMorePosts = true;
-  
-  /// Whether posts are currently loading
   bool _isLoadingPosts = false;
-  
-  /// ScrollController to detect when user scrolls to bottom
   final ScrollController _scrollController = ScrollController();
-
-  /// Returns localized categories list
-  List<String> _getCategories(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return [
-      l10n.all,
-      l10n.troubleshooting,
-      l10n.buildAdvice,
-      l10n.showOffBuild,
-    ];
-  }
-
-  /// Returns localized sort options list
-  List<String> _getSortOptions(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return [
-      l10n.newest,
-      l10n.oldest,
-    ];
-  }
+  late AnimationController _headerAnimationController;
+  late AnimationController _backgroundAnimationController;
+  late Animation<double> _headerFadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _headerAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _headerFadeAnimation = CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+    
+    _backgroundAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+    
+    _headerAnimationController.forward();
 
-    /// Adds a listener to the search controller to update the UI with debouncing.
-    /// This prevents too many API calls while the user is typing.
     _searchController.addListener(() {
       _searchDebounce?.cancel();
       _searchDebounce = Timer(const Duration(milliseconds: 500), () {
         if (_searchController.text != _searchQuery) {
           setState(() {
             _searchQuery = _searchController.text.trim();
-            _currentPage = 1; // Reset to first page when search changes
-            _allPosts.clear(); // Clear existing posts
-            _hasMorePosts = true; // Reset hasMorePosts
+            _currentPage = 1;
+            _allPosts.clear();
+            _hasMorePosts = true;
           });
-          _loadPosts(); // Reload posts
+          _loadPosts();
         }
       });
     });
     
-    // Add scroll listener for infinite scroll
     _scrollController.addListener(_onScroll);
     
-    // Load first page of posts after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPosts();
     });
   }
   
-  /// Loads the next page of posts for infinite scroll
   Future<void> _loadPosts() async {
     if (_isLoadingPosts || !_hasMorePosts) return;
     
@@ -172,7 +144,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
         } else {
           _allPosts.addAll(posts);
           _currentPage++;
-          // If we got fewer posts than pageSize, there are no more
           if (posts.length < _pageSize) {
             _hasMorePosts = false;
           }
@@ -189,249 +160,340 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
     }
   }
   
-  /// Called when user scrolls - checks if we need to load more posts
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
     if (position.pixels >= position.maxScrollExtent - 200) {
-      // User is within 200 pixels of bottom, load more
       _loadPosts();
     }
   }
   
   @override
   void dispose() {
-    // Clean up controllers to prevent memory leaks.
     _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _headerAnimationController.dispose();
+    _backgroundAnimationController.dispose();
     super.dispose();
+  }
+
+  List<String> _getCategories(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [l10n.all, l10n.troubleshooting, l10n.buildAdvice, l10n.showOffBuild];
+  }
+
+  List<String> _getSortOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [l10n.newest, l10n.oldest];
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    // Get localized values
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final allText = AppLocalizations.of(context)!.all;
     final selectedCat = _selectedCategory ?? allText;
     final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
 
-
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
-      backgroundColor: theme.colorScheme.background,
-      body: Column(
+      backgroundColor: isDarkMode ? AppColorsDark.backgroundPrimary : AppColorsLight.backgroundPrimary,
+      body: Stack(
         children: [
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            /// [CustomScrollView] allows for combining different types of scrollable lists and headers.
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                /// The main header section with the title and "Start Discussion" button.
-                _buildModernHeader(theme, context),
-
-                /// The persistent header that contains search, filter, and sort controls.
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _ModernForumActionsHeader(
-                    searchController: _searchController,
-                    categories: _getCategories(context),
-                    selectedCategory: selectedCat,
-                    onCategorySelected: (category) {
-                      setState(() {
-                        _selectedCategory = category;
-                        _currentPage = 1; // Reset to first page when category changes
-                        _allPosts.clear(); // Clear existing posts
-                        _hasMorePosts = true; // Reset hasMorePosts
-                      });
-                      _loadPosts(); // Reload posts
-                    },
-                    sortOptions: _getSortOptions(context),
-                    selectedSortOption: selectedSort,
-                    onSortOptionSelected: (option) {
-                      setState(() {
-                        _selectedSortOption = option;
-                        _currentPage = 1; // Reset to first page when sort changes
-                        _allPosts.clear(); // Clear existing posts
-                        _hasMorePosts = true; // Reset hasMorePosts
-                      });
-                      _loadPosts(); // Reload posts
-                    },
-                  ),
+          // Animated Background
+          AnimatedBuilder(
+            animation: _backgroundAnimationController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: _AnimatedBackgroundPainter(
+                  progress: _backgroundAnimationController.value,
+                  isDarkMode: isDarkMode,
                 ),
-                // Show loading indicator only on initial load
-                if (_allPosts.isEmpty && _isLoadingPosts)
-                  const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                // Show empty state if no posts found
-                else if (_allPosts.isEmpty && !_isLoadingPosts)
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.forum_outlined,
-                            size: 64,
-                            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppLocalizations.of(context)!.noPostsFound,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try adjusting your filters or search query',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
+                size: Size.infinite,
+              );
+            },
+          ),
+          Column(
+            children: [
+              CustomNavigationBar(scaffoldKey: _scaffoldKey),
+              Expanded(
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    _WOWPremiumHeader(
+                      animation: _headerFadeAnimation,
+                      isDarkMode: isDarkMode,
+                      theme: theme,
                     ),
-                  )
-                // Show posts list with infinite scroll
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16.0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          // Show loading indicator at the end if loading more
-                          if (index == _allPosts.length) {
-                            return _isLoadingPosts
-                                ? const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Center(child: CircularProgressIndicator()),
-                                  )
-                                : const SizedBox.shrink();
-                          }
-                          
-                          return AnimationConfiguration.staggeredList(
-                            position: index,
-                            duration: const Duration(milliseconds: 375),
-                            child: SlideAnimation(
-                              verticalOffset: 50.0,
-                              child: FadeInAnimation(
-                                child: _ModernPostCard(
-                                    post: _allPosts[index]),
-                              ),
-                            ),
-                          );
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _WOWPremiumActionsHeader(
+                        searchController: _searchController,
+                        categories: _getCategories(context),
+                        selectedCategory: selectedCat,
+                        onCategorySelected: (category) {
+                          setState(() {
+                            _selectedCategory = category;
+                            _currentPage = 1;
+                            _allPosts.clear();
+                            _hasMorePosts = true;
+                          });
+                          _loadPosts();
                         },
-                        childCount: _allPosts.length + (_isLoadingPosts ? 1 : 0),
+                        sortOptions: _getSortOptions(context),
+                        selectedSortOption: selectedSort,
+                        onSortOptionSelected: (option) {
+                          setState(() {
+                            _selectedSortOption = option;
+                            _currentPage = 1;
+                            _allPosts.clear();
+                            _hasMorePosts = true;
+                          });
+                          _loadPosts();
+                        },
+                        isDarkMode: isDarkMode,
+                        theme: theme,
                       ),
                     ),
-                  ),
-              ],
-            ),
+                    if (_allPosts.isEmpty && _isLoadingPosts)
+                      const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_allPosts.isEmpty && !_isLoadingPosts)
+                      SliverFillRemaining(
+                        child: _WOWEmptyState(isDarkMode: isDarkMode, theme: theme),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              if (index == _allPosts.length) {
+                                return _isLoadingPosts
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(32.0),
+                                        child: Center(child: CircularProgressIndicator()),
+                                      )
+                                    : const SizedBox.shrink();
+                              }
+                              
+                              return AnimationConfiguration.staggeredList(
+                                position: index,
+                                duration: const Duration(milliseconds: 500),
+                                child: SlideAnimation(
+                                  verticalOffset: 80.0,
+                                  child: FadeInAnimation(
+                                    child: _WOWPremiumPostCard(
+                                      post: _allPosts[index],
+                                      isDarkMode: isDarkMode,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: _allPosts.length + (_isLoadingPosts ? 1 : 0),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  /// Builds the main header section of the page, which includes the title and a button to create a new post.
-  Widget _buildModernHeader(ThemeData theme, BuildContext context) {
+/// Animated Background Painter
+class _AnimatedBackgroundPainter extends CustomPainter {
+  final double progress;
+  final bool isDarkMode;
+
+  _AnimatedBackgroundPainter({
+    required this.progress,
+    required this.isDarkMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
+
+    // Animated gradient circles
+    for (int i = 0; i < 3; i++) {
+      final offset = progress + (i * 0.33);
+      final x = size.width * (0.3 + 0.4 * math.sin(offset * 2 * math.pi));
+      final y = size.height * (0.2 + 0.3 * math.cos(offset * 2 * math.pi));
+      
+      paint.shader = RadialGradient(
+        colors: [
+          (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
+              .withOpacity(0.15),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 300));
+      
+      canvas.drawCircle(Offset(x, y), 300, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// WOW Premium Header
+class _WOWPremiumHeader extends StatelessWidget {
+  final Animation<double> animation;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumHeader({
+    required this.animation,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return SliverToBoxAdapter(
-      /// A decorative container with a gradient background for the header.
-      child: Container(
-        height: 280,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
-              theme.colorScheme.secondary.withOpacity(0.05),
-              theme.colorScheme.background,
-            ],
+      child: FadeTransition(
+        opacity: animation,
+        child: Container(
+          height: 280,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDarkMode
+                  ? [
+                      AppColorsDark.backgroundSecondary,
+                      AppColorsDark.backgroundPrimary,
+                      AppColorsDark.backgroundSecondary.withOpacity(0.7),
+                    ]
+                  : [
+                      AppColorsLight.backgroundSecondary.withOpacity(0.5),
+                      AppColorsLight.backgroundPrimary,
+                      AppColorsLight.backgroundSecondary.withOpacity(0.4),
+                    ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+            borderRadius: BorderRadius.zero,
           ),
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(32),
-            bottomRight: Radius.circular(32),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                /// The main title and subtitle of the forum page.
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        shape: BoxShape.circle,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Premium Badge with Glow
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDarkMode
+                            ? [
+                                AppColorsDark.textNeon.withOpacity(0.3),
+                                AppColorsDark.textPurple.withOpacity(0.3),
+                              ]
+                            : [
+                                AppColorsLight.textNeon.withOpacity(0.3),
+                                AppColorsLight.textPurple.withOpacity(0.3),
+                              ],
                       ),
-                      child: Icon(
-                        Icons.forum,
-                        color: theme.colorScheme.onPrimaryContainer,
-                        size: 28,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                            .withOpacity(0.5),
+                        width: 2,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                              .withOpacity(0.3),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Community Hub',
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onBackground,
-                            ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.forum_rounded,
+                          size: 16,
+                          color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'COMMUNITY FORUM',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                            letterSpacing: 2,
+                            fontSize: 11,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Connect, share, and learn from fellow enthusiasts',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onBackground.withOpacity(
-                                0.7,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                /// A prominent button to encourage users to start a new discussion.
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NewPostPage(),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add, size: 24),
-                    label: Text(AppLocalizations.of(context)!.startDiscussion),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  
+                  // Main Title with Gradient
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: isDarkMode
+                          ? [
+                              AppColorsDark.textNeon,
+                              AppColorsDark.textPurple,
+                              AppColorsDark.textNeon,
+                            ]
+                          : [
+                              AppColorsLight.textNeon,
+                              AppColorsLight.textPurple,
+                              AppColorsLight.textNeon,
+                            ],
+                    ).createShader(bounds),
+                    child: Text(
+                      'Community Hub',
+                      style: theme.textTheme.displayLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 42,
+                        letterSpacing: -1,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Subtitle
+                  Text(
+                    'Connect, share, and learn from fellow PC building enthusiasts',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface.withOpacity(0.9),
+                      height: 1.4,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  
+                  // WOW Premium CTA Button
+                  _WOWPremiumStartButton(
+                    isDarkMode: isDarkMode,
+                    theme: theme,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -440,11 +502,155 @@ class _ForumsPageState extends ConsumerState<ForumsPage> {
   }
 }
 
-/// A persistent header delegate that stays visible while scrolling.
-///
-/// It contains the search bar, category filters, and sorting dropdown, allowing
-/// users to refine the post list at any time.
-class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
+/// WOW Premium Start Button
+class _WOWPremiumStartButton extends StatefulWidget {
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumStartButton({
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  State<_WOWPremiumStartButton> createState() => _WOWPremiumStartButtonState();
+}
+
+class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
+    with TickerProviderStateMixin {
+  bool _isHovered = false;
+  late AnimationController _scaleController;
+  late AnimationController _glowController;
+  late AnimationController _shimmerController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutCubic),
+    );
+    
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat(reverse: true);
+    _glowAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+    
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    _glowController.dispose();
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _scaleController.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _scaleController.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_glowAnimation, _shimmerController]),
+          builder: (context, child) {
+            return GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NewPostPage()),
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: widget.isDarkMode
+                        ? [
+                            AppColorsDark.buttonPurple,
+                            AppColorsDark.buttonBlue,
+                            AppColorsDark.buttonPurple,
+                          ]
+                        : [
+                            AppColorsLight.buttonPurple,
+                            AppColorsLight.buttonBlue,
+                            AppColorsLight.buttonPurple,
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (widget.isDarkMode
+                              ? AppColorsDark.buttonPurple
+                              : AppColorsLight.buttonPurple)
+                          .withOpacity(_glowAnimation.value * (_isHovered ? 0.8 : 0.5)),
+                      blurRadius: _isHovered ? 30 : 20,
+                      spreadRadius: _isHovered ? 4 : 2,
+                      offset: Offset(0, _isHovered ? 8 : 4),
+                    ),
+                    BoxShadow(
+                      color: (widget.isDarkMode
+                              ? AppColorsDark.buttonBlue
+                              : AppColorsLight.buttonBlue)
+                          .withOpacity(_glowAnimation.value * 0.4),
+                      blurRadius: _isHovered ? 50 : 30,
+                      spreadRadius: _isHovered ? 8 : 4,
+                      offset: Offset(0, _isHovered ? 12 : 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_circle_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      AppLocalizations.of(context)!.startDiscussion,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// WOW Premium Actions Header
+class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
   final TextEditingController searchController;
   final List<String> categories;
   final String selectedCategory;
@@ -452,8 +658,10 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
   final List<String> sortOptions;
   final String selectedSortOption;
   final Function(String?) onSortOptionSelected;
+  final bool isDarkMode;
+  final ThemeData theme;
 
-  _ModernForumActionsHeader({
+  _WOWPremiumActionsHeader({
     required this.searchController,
     required this.categories,
     required this.selectedCategory,
@@ -461,56 +669,84 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
     required this.sortOptions,
     required this.selectedSortOption,
     required this.onSortOptionSelected,
+    required this.isDarkMode,
+    required this.theme,
   });
 
-  /// Builds the content of the persistent header.
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final theme = Theme.of(context);
-
-    /// The main container for the actions header, with a background color and shadow.
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: isDarkMode
+            ? AppColorsDark.backgroundSecondary.withOpacity(0.98)
+            : AppColorsLight.backgroundPrimary.withOpacity(0.98),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          /// The search bar for filtering posts by title.
-          SizedBox(
-            height: 48,
+          // Glassmorphism Search Bar
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.surface.withOpacity(0.9),
+                  theme.colorScheme.surface.withOpacity(0.7),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                    .withOpacity(0.4),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                ),
+                BoxShadow(
+                  color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                      .withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
             child: TextField(
               controller: searchController,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
               decoration: InputDecoration(
-                hintText: 'Search in post titles...',
+                hintText: 'Search discussions...',
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  fontSize: 15,
+                ),
                 prefixIcon: Icon(
-                  Icons.search,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  Icons.search_rounded,
+                  color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                  size: 22,
                 ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
             ),
           ),
-          const SizedBox(height: 8),
-
-          /// A row containing the category filter chips and the sorting dropdown.
+          const SizedBox(height: 20),
+          
+          // Premium Filter Chips
           Row(
             children: [
               Expanded(
@@ -520,51 +756,56 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
                     children: categories.map((category) {
                       final isSelected = category == selectedCategory;
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (_) => onCategorySelected(category),
-                          backgroundColor: theme.colorScheme.surfaceVariant
-                              .withOpacity(0.5),
-                          selectedColor: theme.colorScheme.primary,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? theme.colorScheme.onPrimary
-                                : theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide.none,
-                          ),
-                          showCheckmark: false,
+                        padding: const EdgeInsets.only(right: 12.0),
+                        child: _WOWPremiumFilterChip(
+                          label: category,
+                          isSelected: isSelected,
+                          onTap: () => onCategorySelected(category),
+                          isDarkMode: isDarkMode,
+                          theme: theme,
                         ),
                       );
                     }).toList(),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              /// The dropdown menu for sorting the posts.
+              const SizedBox(width: 10),
+              
+              // Premium Sort Dropdown
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.surface.withOpacity(0.9),
+                      theme.colorScheme.surface.withOpacity(0.7),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                        .withOpacity(0.4),
+                    width: 1.5,
+                  ),
                 ),
                 child: DropdownButton<String>(
                   value: selectedSortOption,
                   onChanged: onSortOptionSelected,
                   underline: const SizedBox(),
-                  icon: const Icon(Icons.sort),
-                  items: sortOptions.map<DropdownMenuItem<String>>((
-                    String value,
-                  ) {
+                  isDense: true,
+                  icon: Icon(
+                    Icons.sort_rounded,
+                    color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                    size: 16,
+                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                  items: sortOptions.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
-                      child: Text(value),
+                      child: Text(value, style: const TextStyle(fontSize: 12)),
                     );
                   }).toList(),
                 ),
@@ -577,492 +818,622 @@ class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  /// The maximum height of the header.
-  double get maxExtent => 130;
+  double get maxExtent => 170;
+
   @override
-  /// The minimum height of the header (it doesn't shrink).
-  double get minExtent => 130;
+  double get minExtent => 170;
+
   @override
-  /// Determines if the header should rebuild. Set to true for simplicity,
-  /// but can be optimized by comparing old and new delegate properties.
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      true;
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
 }
 
-/// A card widget that displays a summary of a single [ForumPost].
-///
-/// It includes the post title, author, category, a content preview, and stats.
-/// It also has a subtle animation on tap.
-class _ModernPostCard extends ConsumerStatefulWidget {
-  final ForumPost post;
-  const _ModernPostCard({required this.post});
+/// WOW Premium Filter Chip
+class _WOWPremiumFilterChip extends StatefulWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.isDarkMode,
+    required this.theme,
+  });
 
   @override
-  ConsumerState<_ModernPostCard> createState() => _ModernPostCardState();
+  State<_WOWPremiumFilterChip> createState() => _WOWPremiumFilterChipState();
 }
 
-/// The state for [_ModernPostCard], which manages the tap animation.
-class _ModernPostCardState extends ConsumerState<_ModernPostCard>
+class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+  late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
+    _controller = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 250),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => _controller.forward(),
+      onExit: (_) => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: widget.isSelected
+                  ? LinearGradient(
+                      colors: widget.isDarkMode
+                          ? [
+                              AppColorsDark.buttonPurple,
+                              AppColorsDark.buttonBlue,
+                            ]
+                          : [
+                              AppColorsLight.buttonPurple,
+                              AppColorsLight.buttonBlue,
+                            ],
+                    )
+                  : null,
+              color: widget.isSelected
+                  ? null
+                  : widget.theme.colorScheme.surface.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: widget.isSelected
+                    ? Colors.transparent
+                    : (widget.isDarkMode
+                            ? AppColorsDark.textNeon
+                            : AppColorsLight.textNeon)
+                        .withOpacity(0.5),
+                width: 2,
+              ),
+              boxShadow: widget.isSelected
+                  ? [
+                      BoxShadow(
+                        color: (widget.isDarkMode
+                                ? AppColorsDark.buttonPurple
+                                : AppColorsLight.buttonPurple)
+                            .withOpacity(0.5),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              widget.label,
+              style: widget.theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: widget.isSelected
+                    ? Colors.white
+                    : widget.theme.colorScheme.onSurface,
+                letterSpacing: 0.5,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// WOW Empty State
+class _WOWEmptyState extends StatelessWidget {
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWEmptyState({
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(48),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.surface.withOpacity(0.5),
+                  theme.colorScheme.surface.withOpacity(0.3),
+                ],
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                      .withOpacity(0.2),
+                  blurRadius: 40,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.forum_outlined,
+              size: 100,
+              color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
+                  .withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 48),
+          Text(
+            AppLocalizations.of(context)!.noPostsFound,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.onSurface,
+              fontSize: 36,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Try adjusting your filters or search query',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              fontSize: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// WOW Premium Post Card
+class _WOWPremiumPostCard extends ConsumerStatefulWidget {
+  final ForumPost post;
+  final bool isDarkMode;
+
+  const _WOWPremiumPostCard({
+    required this.post,
+    required this.isDarkMode,
+  });
+
+  @override
+  ConsumerState<_WOWPremiumPostCard> createState() => _WOWPremiumPostCardState();
+}
+
+class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Use read instead of watch to prevent unnecessary rebuilds
-    // The user info will be fetched lazily and cached by Riverpod
     final authorAsync = ref.watch(userProvider(widget.post.creatorId));
     
-    return AnimatedBuilder(
-      // The AnimatedBuilder rebuilds the card when the animation value changes.
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            elevation: 0,
-            color: theme.colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.1),
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _controller.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _controller.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedBuilder(
+          animation: _glowAnimation,
+          builder: (context, child) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.surface.withOpacity(0.98),
+                    theme.colorScheme.surface.withOpacity(0.95),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _isHovered
+                      ? (widget.isDarkMode
+                              ? AppColorsDark.textNeon
+                              : AppColorsLight.textNeon)
+                          .withOpacity(0.6)
+                      : Colors.transparent,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _isHovered
+                        ? (widget.isDarkMode
+                                ? AppColorsDark.textPurple
+                                : AppColorsLight.textPurple)
+                            .withOpacity(0.4 * _glowAnimation.value)
+                        : Colors.black.withOpacity(0.15),
+                    blurRadius: _isHovered ? 30 * _glowAnimation.value : 20,
+                    spreadRadius: _isHovered ? 5 * _glowAnimation.value : 0,
+                    offset: Offset(0, _isHovered ? 10 * _glowAnimation.value : 5),
+                  ),
+                ],
               ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () {
-                /// Play a quick "press down" animation on tap before navigating.
-                _animationController.forward().then(
-                  // After the forward animation completes...
-                  (_) => _animationController.reverse(),
-                );
-                // Navigate using go_router so the URL updates
-                context.push('/forums/${widget.post.id}');
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// A circular avatar for the author with a gradient background.
-                    authorAsync.when(
-                      data: (author) {
-                        if (author == null) {
-                          // Fallback if user cannot be fetched
-                          return Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  theme.colorScheme.primary,
-                                  theme.colorScheme.secondary,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.push('/forums/${widget.post.id}'),
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // WOW Premium Avatar
+                        authorAsync.when(
+                          data: (author) {
+                            final displayName = author?.displayName.isNotEmpty == true
+                                ? author!.displayName
+                                : author?.username ?? 'User';
+                            final initial = displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : 'U';
+                            return Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: widget.isDarkMode
+                                      ? [
+                                          AppColorsDark.buttonPurple,
+                                          AppColorsDark.buttonBlue,
+                                        ]
+                                      : [
+                                          AppColorsLight.buttonPurple,
+                                          AppColorsLight.buttonBlue,
+                                        ],
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (widget.isDarkMode
+                                            ? AppColorsDark.buttonPurple
+                                            : AppColorsLight.buttonPurple)
+                                        .withOpacity(0.5),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
                                 ],
                               ),
+                              child: Center(
+                                child: Text(
+                                  initial,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          loading: () => Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.surfaceVariant,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              ),
+                            ),
+                          ),
+                          error: (_, __) => Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: widget.isDarkMode
+                                    ? [
+                                        AppColorsDark.buttonPurple,
+                                        AppColorsDark.buttonBlue,
+                                      ]
+                                    : [
+                                        AppColorsLight.buttonPurple,
+                                        AppColorsLight.buttonBlue,
+                                      ],
+                              ),
+                              shape: BoxShape.circle,
                             ),
                             child: const Center(
                               child: Text(
                                 'U',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 20,
                                 ),
                               ),
                             ),
-                          );
-                        }
-                        final displayName = author.displayName.isNotEmpty 
-                            ? author.displayName 
-                            : author.username;
-                        final initial = displayName.isNotEmpty 
-                            ? displayName[0].toUpperCase() 
-                            : 'U';
-                        return Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.secondary,
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      loading: () => Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.surfaceVariant,
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                      ),
-                      error: (_, __) => Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              theme.colorScheme.primary,
-                              theme.colorScheme.secondary,
-                            ],
-                          ),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'U',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  widget.post.title,
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.2,
+                              // Title and Category
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      widget.post.title,
+                                      style: theme.textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 20,
+                                        height: 1.3,
+                                        letterSpacing: -0.5,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              /// A chip that displays the post's category with a unique color.
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      _getCategoryColor(widget.post.topic, theme),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  widget.post.topic,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-
-                          /// A preview of the post's content, displayed in a subtle container.
-                          if (widget.post.content.isNotEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant
-                                    .withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                widget.post.content,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          const SizedBox(height: 12),
-
-                          /// The footer of the card, containing metadata and stats.
-                          Row(
-                            children: [
-                              /// Author's avatar, name, and post date.
-                              authorAsync.when(
-                                data: (author) {
-                                  if (author == null) {
-                                    // Fallback if user cannot be fetched
-                                    return Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 12,
-                                          backgroundColor:
-                                              theme.colorScheme.primary.withOpacity(0.1),
-                                          child: Text(
-                                            'U',
-                                            style: TextStyle(
-                                              color: theme.colorScheme.primary,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: _getCategoryGradient(
+                                          widget.post.topic,
+                                          widget.isDarkMode,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'User',
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                            ),
-                                            Text(
-                                              DateFormat(
-                                                'MMM dd, yyyy',
-                                              ).format(widget.post.createdAt),
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
-                                          ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _getCategoryColor(
+                                            widget.post.topic,
+                                            widget.isDarkMode,
+                                          ).withOpacity(0.5),
+                                          blurRadius: 12,
+                                          spreadRadius: 2,
                                         ),
                                       ],
-                                    );
-                                  }
-                                  final displayName = author.displayName.isNotEmpty 
-                                      ? author.displayName 
-                                      : author.username;
-                                  final initial = displayName.isNotEmpty 
-                                      ? displayName[0].toUpperCase() 
-                                      : 'U';
-                                  return Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 12,
-                                        backgroundColor:
-                                            theme.colorScheme.primary.withOpacity(0.1),
-                                        child: Text(
-                                          initial,
-                                          style: TextStyle(
-                                            color: theme.colorScheme.primary,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                    ),
+                                    child: Text(
+                                      widget.post.topic,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.4,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              
+                              // Content Preview
+                              if (widget.post.content.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                                        theme.colorScheme.surfaceVariant.withOpacity(0.2),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(
+                                    widget.post.content,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                                      height: 1.6,
+                                      fontSize: 15,
+                                    ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+                              
+                              // Footer with Author and Stats
+                              Row(
+                                children: [
+                                  authorAsync.when(
+                                    data: (author) {
+                                      final displayName = author?.displayName.isNotEmpty == true
+                                          ? author!.displayName
+                                          : author?.username ?? 'User';
+                                      return Row(
                                         children: [
-                                          Text(
-                                            displayName,
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w500,
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: widget.isDarkMode
+                                                    ? [
+                                                        AppColorsDark.buttonPurple.withOpacity(0.4),
+                                                        AppColorsDark.buttonBlue.withOpacity(0.4),
+                                                      ]
+                                                    : [
+                                                        AppColorsLight.buttonPurple.withOpacity(0.4),
+                                                        AppColorsLight.buttonBlue.withOpacity(0.4),
+                                                      ],
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                displayName.isNotEmpty
+                                                    ? displayName[0].toUpperCase()
+                                                    : 'U',
+                                                style: TextStyle(
+                                                  color: widget.isDarkMode
+                                                      ? AppColorsDark.textNeon
+                                                      : AppColorsLight.textNeon,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w800,
                                                 ),
+                                              ),
+                                            ),
                                           ),
-                                          Text(
-                                            DateFormat(
-                                              'MMM dd, yyyy',
-                                            ).format(widget.post.createdAt),
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  color: theme
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
+                                          const SizedBox(width: 10),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                displayName,
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
                                                 ),
+                                              ),
+                                              Text(
+                                                DateFormat('MMM dd, yyyy').format(widget.post.createdAt),
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: theme.colorScheme.onSurface.withOpacity(0.65),
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
-                                      ),
-                                    ],
-                                  );
-                                },
-                                loading: () => Row(
-                                  children: [
-                                    const SizedBox(
+                                      );
+                                    },
+                                    loading: () => const SizedBox(
                                       width: 24,
                                       height: 24,
                                       child: CircularProgressIndicator(strokeWidth: 2),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          width: 60,
-                                          height: 12,
-                                          color: theme.colorScheme.surfaceVariant,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          width: 80,
-                                          height: 10,
-                                          color: theme.colorScheme.surfaceVariant,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                error: (_, __) => Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor:
-                                          theme.colorScheme.primary.withOpacity(0.1),
-                                      child: Text(
-                                        'U',
-                                        style: TextStyle(
-                                          color: theme.colorScheme.primary,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    error: (_, __) => const SizedBox.shrink(),
+                                  ),
+                                  const Spacer(),
+                                  
+                                  // Premium Stats
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                                          theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                        ],
                                       ),
+                                      borderRadius: BorderRadius.circular(14),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    child: Row(
                                       children: [
-                                        Text(
-                                          'User',
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                        Icon(
+                                          Icons.comment_rounded,
+                                          size: 18,
+                                          color: widget.isDarkMode
+                                              ? AppColorsDark.textNeon
+                                              : AppColorsLight.textNeon,
                                         ),
+                                        const SizedBox(width: 6),
                                         Text(
-                                          DateFormat(
-                                            'MMM dd, yyyy',
-                                          ).format(widget.post.createdAt),
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
+                                          'Replies',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: widget.isDarkMode
+                                                ? AppColorsDark.textNeon
+                                                : AppColorsLight.textNeon,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              const Spacer(),
-
-                              /// Chips for displaying replies.
-                              _StatChip(
-                                Icons.comment_outlined,
-                                'Replies',
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
-  /// Returns a specific color based on the post's category for styling the category chip.
-  Color _getCategoryColor(String category, ThemeData theme) {
+  List<Color> _getCategoryGradient(String category, bool isDarkMode) {
+    final color = _getCategoryColor(category, isDarkMode);
+    return [color, color.withOpacity(0.8)];
+  }
+
+  Color _getCategoryColor(String category, bool isDarkMode) {
     switch (category) {
       case 'Troubleshooting':
-        return theme.colorScheme.error;
+        return isDarkMode ? AppColorsDark.error : AppColorsLight.error;
       case 'Build Advice':
-        return theme.colorScheme.tertiary;
+        return isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple;
       case 'Show Off Your Build':
-        return theme.colorScheme.secondary;
+        // Use a darker, more readable color instead of bright neon
+        return isDarkMode 
+            ? const Color(0xFF10B981) // Green color for dark mode
+            : const Color(0xFF059669); // Darker green for light mode
       default:
-        return theme.colorScheme.primary;
+        return isDarkMode ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue;
     }
-  }
-}
-
-/// A small, reusable widget for displaying post statistics like views and replies.
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _StatChip(this.icon, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

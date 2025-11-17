@@ -12,6 +12,7 @@ import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localization.dart';
+import '../../core/constants/app_color.dart';
 
 /// The main content widget for the homepage.
 class HomeBody extends StatefulWidget {
@@ -21,20 +22,31 @@ class HomeBody extends StatefulWidget {
   State<HomeBody> createState() => _HomeBodyState();
 }
 
-class _HomeBodyState extends State<HomeBody> {
+class _HomeBodyState extends State<HomeBody> with SingleTickerProviderStateMixin {
   late Flutter3DController _controller;
   bool _isRotating = false;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = Flutter3DController();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+    _fadeController.forward();
 
     // Listen for when the model is fully loaded, then start slow rotation.
     _controller.onModelLoaded.addListener(() {
       if (_controller.onModelLoaded.value == true) {
         debugPrint('3D model loaded, starting slow rotation...');
-        _controller.startRotation(rotationSpeed: 30);
+        _controller.startRotation(rotationSpeed: 20);
         _isRotating = true;
       }
     });
@@ -43,6 +55,7 @@ class _HomeBodyState extends State<HomeBody> {
   @override
   void dispose() {
     _controller.stopRotation();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -95,10 +108,8 @@ class _HomeBodyState extends State<HomeBody> {
   }
 }
 
-/// A private, reusable button widget styled specifically for the homepage's
-/// main call-to-action buttons.
-class _CustomStartButton extends StatelessWidget {
-  /// The text to display on the button.
+/// Premium CTA button with gradient and hover effects
+class _PremiumCTAButton extends StatefulWidget {
   final String label;
   final VoidCallback onPressed;
   final Gradient? gradient;
