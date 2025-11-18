@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
+import '../../utils/error_utils.dart';
 
 class AdminPartsPage extends ConsumerStatefulWidget {
   const AdminPartsPage({super.key});
@@ -306,7 +307,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                             Icon(Icons.error_outline, size: 48, color: AppColorsDark.error),
                             const SizedBox(height: 16),
                             Text(
-                              'Error loading components: ${error.toString()}',
+                              'Unable to load components. Please try again.',
                               style: TextStyle(
                                 color: isDark
                                     ? AppColorsDark.textWhite
@@ -611,23 +612,17 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   IconButton(
                     icon: const Icon(Icons.visibility, size: 18),
                     onPressed: () {
-                      // TODO: Navigate to component detail page when available
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Component detail page coming soon'),
-                          backgroundColor: AppColorsDark.buttonBlue,
-                        ),
-                      );
+                      // Navigate to parts page for the component type to view details
+                      final componentType = component.componentType.toLowerCase();
+                      context.go('/parts/$componentType');
                     },
                     tooltip: 'View',
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // Navigate to parts page for the component type
-                      // Since there's no detail page yet, navigate to the parts list for this component type
-                      final componentType = component.componentType.toLowerCase();
-                      GoRouter.of(context).go('/parts/$componentType');
+                      // Show edit dialog for component
+                      _showEditComponentDialog(context, component, isDark);
                     },
                     tooltip: 'Edit',
                   ),
@@ -771,7 +766,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to delete component: ${e.toString()}'),
+                      content: Text(getUserFriendlyError(e)),
                       backgroundColor: AppColorsDark.error,
                     ),
                   );
@@ -784,6 +779,18 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditComponentDialog(BuildContext context, AdminComponent component, bool isDark) {
+    // For now, show a message that component editing is not yet implemented
+    // In the future, this could open a dialog to edit component properties
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Component editing is not yet available. Use the parts page to view component details.'),
+        backgroundColor: AppColorsDark.buttonBlue,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

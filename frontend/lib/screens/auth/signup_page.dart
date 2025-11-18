@@ -21,6 +21,7 @@ import 'package:frontend/screens/auth/privacy_policy_dialog.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:intl/intl.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the sign-up page.
 class SignUpPage extends ConsumerStatefulWidget {
@@ -931,7 +932,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString()),
+          content: Text(getUserFriendlyError(error)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

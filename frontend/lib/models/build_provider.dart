@@ -503,6 +503,32 @@ class BuildService {
     }
   }
 
+  /// Removes a component from a build by BuildComponent ID.
+  Future<void> removeComponentFromBuild(String buildComponentId) async {
+    try {
+      await _dio.delete('$apiBaseUrl/BuildComponents/$buildComponentId');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Gets BuildComponent IDs for a build (to get the BuildComponent ID for deletion).
+  Future<List<Map<String, dynamic>>> getBuildComponentIds(String buildId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/BuildComponents/get', data: {
+        'BuildId': [buildId],
+        'Paging': false,
+      });
+      final List<dynamic> buildComponentsJson = response.data as List<dynamic>? ?? [];
+      return buildComponentsJson
+          .where((json) => json is Map<String, dynamic>)
+          .map((json) => json as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Gets a BuildInteraction by userId and buildId
   Future<String?> getBuildInteractionId(String buildId, String userId) async {
     try {
@@ -729,6 +755,24 @@ class BuildService {
     }
   }
 
+  /// Updates a tag (admin only).
+  Future<void> updateTag(String tagId, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('$apiBaseUrl/Tags/$tagId', data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Deletes a tag (admin only).
+  Future<void> deleteTag(String tagId) async {
+    try {
+      await _dio.delete('$apiBaseUrl/Tags/$tagId');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Gets all tags for a specific build.
   Future<List<Tag>> getBuildTags(String buildId) async {
     try {
@@ -778,10 +822,120 @@ final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, user
 });
 
 /// A provider that fetches all public builds for the "Explore" page.
+/// @deprecated Use exploreBuildsProvider instead for server-side pagination
 final allBuildsProvider = FutureProvider<List<Build>>((ref) async {
   final buildService = ref.watch(buildServiceProvider);
   // Fetch only published builds and disable paging to get all of them.
   return buildService.getBuilds({'status': ['PUBLISHED'], 'paging': false});
+});
+
+/// Parameters for exploring builds with server-side pagination, search, filtering, and sorting
+class ExploreBuildsParams {
+  final String? searchQuery;
+  final Set<String>? selectedTags;
+  final Set<String>? selectedStatuses;
+  final String sortBy; // 'Latest', 'Popular', 'Price'
+  final int page;
+  final int pageLength;
+
+  ExploreBuildsParams({
+    this.searchQuery,
+    this.selectedTags,
+    this.selectedStatuses,
+    this.sortBy = 'Latest',
+    this.page = 1,
+    this.pageLength = 16,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExploreBuildsParams &&
+          runtimeType == other.runtimeType &&
+          searchQuery == other.searchQuery &&
+          _setEquals(selectedTags, other.selectedTags) &&
+          _setEquals(selectedStatuses, other.selectedStatuses) &&
+          sortBy == other.sortBy &&
+          page == other.page &&
+          pageLength == other.pageLength;
+
+  bool _setEquals(Set<String>? a, Set<String>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (var item in a) {
+      if (!b.contains(item)) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode =>
+      searchQuery.hashCode ^
+      (selectedTags?.length ?? 0) ^
+      (selectedStatuses?.length ?? 0) ^
+      sortBy.hashCode ^
+      page.hashCode ^
+      pageLength.hashCode;
+}
+
+/// A provider that fetches builds for the "Explore" page with server-side pagination, search, filtering, and sorting.
+final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsParams>((ref, params) async {
+  final buildService = ref.watch(buildServiceProvider);
+  
+  // Build the filter map for the API
+  final filter = <String, dynamic>{
+    'Status': ['PUBLISHED'], // Only show published builds
+    'Paging': true,
+    'Page': params.page,
+    'PageLength': params.pageLength,
+  };
+
+  // Add search query if provided
+  if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
+    filter['Query'] = params.searchQuery!.trim();
+  }
+
+  // Add tag filter if provided
+  if (params.selectedTags != null && params.selectedTags!.isNotEmpty) {
+    filter['Tag'] = params.selectedTags!.toList();
+  }
+
+  // Note: Explore page only shows PUBLISHED builds
+  // If status filter is provided, it should only include PUBLISHED
+  // For now, we always filter by PUBLISHED only
+  // The status filter in the UI is kept for consistency but only PUBLISHED builds are shown
+
+  // Map sort options to backend OrderBy fields
+  String? orderBy;
+  String sortDirection = 'desc';
+  
+  switch (params.sortBy) {
+    case 'Latest':
+      orderBy = 'DatabaseEntryAt';
+      sortDirection = 'desc';
+      break;
+    case 'Popular':
+      // For popular, we'll sort by averageRating descending
+      // Note: Backend might not have this field directly, but we'll try
+      // If it doesn't work, we may need backend support
+      orderBy = 'DatabaseEntryAt'; // Fallback to latest if rating sorting not available
+      sortDirection = 'desc';
+      break;
+    case 'Price':
+      orderBy = 'Name';
+      sortDirection = 'asc';
+      break;
+    default:
+      orderBy = 'DatabaseEntryAt';
+      sortDirection = 'desc';
+  }
+
+  // Always set OrderBy and SortDirection
+  filter['OrderBy'] = orderBy;
+  filter['SortDirection'] = sortDirection;
+
+  return buildService.getBuilds(filter);
 });
 
 /// A provider that lazily fetches components for specific build IDs.

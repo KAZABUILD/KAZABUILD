@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
+import '../../utils/error_utils.dart';
 
 class AdminUsersPage extends ConsumerStatefulWidget {
   const AdminUsersPage({super.key});
@@ -256,7 +257,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Error loading users: ${error.toString()}',
+                        'Unable to load users. Please try again.',
                         style: TextStyle(
                           color: isDark
                               ? AppColorsDark.textWhite
@@ -597,18 +598,16 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 IconButton(
                   icon: const Icon(Icons.visibility, size: 18),
                   onPressed: () {
-                    // Navigate to profile page (currently only shows logged-in user's profile)
-                    // TODO: Add route for viewing other users' profiles: /profile/:id
-                    context.go('/profile');
+                    // Navigate to user's profile page
+                    context.go('/profile/${user.id}');
                   },
                   tooltip: 'View',
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () {
-                    // Navigate to profile page where editing may be available
-                    // TODO: Add route for editing other users' profiles: /profile/:id
-                    context.go('/profile');
+                    // Navigate to settings page for editing user
+                    context.go('/settings');
                   },
                   tooltip: 'Edit',
                 ),
@@ -661,7 +660,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to delete user: ${e.toString()}'),
+                      content: Text(getUserFriendlyError(e)),
                       backgroundColor: AppColorsDark.error,
                     ),
                   );

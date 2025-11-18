@@ -20,6 +20,7 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/core/constants/app_color.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the login page.
 /// It's a `ConsumerStatefulWidget` to interact with Riverpod providers for state management.
@@ -92,7 +93,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         // If an error occurs, show a SnackBar with the error message.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error.toString()),
+            content: Text(getUserFriendlyError(next.error)),
             backgroundColor: theme.colorScheme.error,
           ),
         );

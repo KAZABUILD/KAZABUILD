@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/build_provider.dart';
 import '../../models/tag_model.dart';
+import '../../utils/error_utils.dart';
 
 /// Provider for admin tags with pagination and search
 final adminTagsProvider = FutureProvider.autoDispose.family<List<Tag>, Map<String, dynamic>>((ref, params) async {
@@ -275,7 +276,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                               Icon(Icons.error_outline, size: 48, color: AppColorsDark.error),
                               const SizedBox(height: 16),
                               Text(
-                                'Error loading tags: ${error.toString()}',
+                                'Unable to load tags. Please try again.',
                                 style: TextStyle(
                                   color: isDark
                                       ? AppColorsDark.textWhite
@@ -678,14 +679,47 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // TODO: Implement update tag API call
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Edit tag functionality coming soon'),
-                  backgroundColor: AppColorsDark.buttonBlue,
-                ),
-              );
+              if (nameController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tag name cannot be empty'),
+                    backgroundColor: AppColorsDark.error,
+                  ),
+                );
+                return;
+              }
+              
+              try {
+                final buildService = ref.read(buildServiceProvider);
+                await buildService.updateTag(
+                  tag.id,
+                  {
+                    'Name': nameController.text.trim(),
+                    'Description': descriptionController.text.trim(),
+                  },
+                );
+                
+                Navigator.of(context).pop();
+                
+                if (mounted) {
+                  _loadTags();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tag updated successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(getUserFriendlyError(e)),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Save'),
           ),
@@ -708,13 +742,29 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              // TODO: Implement delete tag API call
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Delete tag functionality coming soon'),
-                  backgroundColor: AppColorsDark.buttonBlue,
-                ),
-              );
+              try {
+                final buildService = ref.read(buildServiceProvider);
+                await buildService.deleteTag(tag.id);
+                
+                if (mounted) {
+                  _loadTags();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tag deleted successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(getUserFriendlyError(e)),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColorsDark.error,

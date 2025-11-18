@@ -37,10 +37,16 @@ class PartPickerPage extends ConsumerStatefulWidget {
   /// The user's current build, used for compatibility checks and summary display.
   /// If null, will be fetched from buildProvider.
   final List<PcComponent>? currentBuild;
+
+  /// Optional callback when a component is selected.
+  /// If provided, component will be returned via callback instead of adding to buildProvider.
+  final Function(BaseComponent)? onComponentSelected;
+
   const PartPickerPage({
     super.key,
     required this.componentType,
     this.currentBuild,
+    this.onComponentSelected,
   });
 
   @override
@@ -864,6 +870,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                   componentType: widget.componentType,
                                   searchController: _searchController,
                                   products: filteredProducts,
+                                  onComponentSelected: widget.onComponentSelected,
                                 );
                               },
                             );
@@ -875,6 +882,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                           componentType: widget.componentType,
                           searchController: _searchController,
                           products: filteredProducts,
+                          onComponentSelected: widget.onComponentSelected,
                         );
                       },
                     ),
@@ -2136,10 +2144,12 @@ class _ProductList extends ConsumerWidget {
   final ComponentType componentType;
   final TextEditingController searchController;
   final List<BaseComponent> products;
+  final Function(BaseComponent)? onComponentSelected;
   const _ProductList({
     required this.componentType,
     required this.searchController,
     required this.products,
+    this.onComponentSelected,
   });
 
   @override
@@ -2161,6 +2171,7 @@ class _ProductList extends ConsumerWidget {
               : _ProductListWithCompatibility(
                   products: products,
                   componentType: componentType,
+                  onComponentSelected: onComponentSelected,
                 ),
         ),
       ],
@@ -2172,10 +2183,12 @@ class _ProductList extends ConsumerWidget {
 class _ProductListWithCompatibility extends ConsumerWidget {
   final List<BaseComponent> products;
   final ComponentType componentType;
+  final Function(BaseComponent)? onComponentSelected;
 
   const _ProductListWithCompatibility({
     required this.products,
     required this.componentType,
+    this.onComponentSelected,
   });
 
   @override
@@ -2187,29 +2200,30 @@ class _ProductListWithCompatibility extends ConsumerWidget {
       itemBuilder: (context, index) {
         final product = products[index];
 
+        final onComponentSelected = this.onComponentSelected;
         switch (product.type) {
           case ComponentType.cpu:
-            return _CpuProductRow(product: product as CPUComponent);
+            return _CpuProductRow(product: product as CPUComponent, onComponentSelected: onComponentSelected);
           case ComponentType.motherboard:
-            return _MotherboardProductRow(product: product as MotherboardComponent);
+            return _MotherboardProductRow(product: product as MotherboardComponent, onComponentSelected: onComponentSelected);
           case ComponentType.ram:
-            return _RamProductRow(product: product as MemoryComponent);
+            return _RamProductRow(product: product as MemoryComponent, onComponentSelected: onComponentSelected);
           case ComponentType.storage:
-            return _StorageProductRow(product: product as StorageComponent);
+            return _StorageProductRow(product: product as StorageComponent, onComponentSelected: onComponentSelected);
           case ComponentType.psu:
-            return _PsuProductRow(product: product as PowerSupplyComponent);
+            return _PsuProductRow(product: product as PowerSupplyComponent, onComponentSelected: onComponentSelected);
           case ComponentType.pcCase:
-            return _CaseProductRow(product: product as CaseComponent);
+            return _CaseProductRow(product: product as CaseComponent, onComponentSelected: onComponentSelected);
           case ComponentType.gpu:
-            return _GpuProductRow(product: product as GPUComponent);
+            return _GpuProductRow(product: product as GPUComponent, onComponentSelected: onComponentSelected);
           case ComponentType.cooler:
-            return _CoolerProductRow(product: product as CoolerComponent);
+            return _CoolerProductRow(product: product as CoolerComponent, onComponentSelected: onComponentSelected);
           case ComponentType.caseFan:
-            return _CaseFanProductRow(product: product as CaseFanComponent);
+            return _CaseFanProductRow(product: product as CaseFanComponent, onComponentSelected: onComponentSelected);
           case ComponentType.monitor:
-            return _MonitorProductRow(product: product as MonitorComponent);
+            return _MonitorProductRow(product: product as MonitorComponent, onComponentSelected: onComponentSelected);
           default:
-            return _GenericProductRow(product: product);
+            return _GenericProductRow(product: product, onComponentSelected: onComponentSelected);
         }
       },
     );
@@ -2373,7 +2387,8 @@ class _ProductListHeader extends StatelessWidget {
 /// An abstract base class for all product row widgets to reduce code duplication.
 abstract class _ProductRow extends ConsumerWidget {
   final BaseComponent product;
-  const _ProductRow({required this.product});
+  final Function(BaseComponent)? onComponentSelected;
+  const _ProductRow({required this.product, this.onComponentSelected});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2515,13 +2530,19 @@ abstract class _ProductRow extends ConsumerWidget {
           const SizedBox(width: 24),
           ElevatedButton.icon(
             onPressed: () {
-              // Add component to build (will be added to the correct slot based on component type)
-              ref.read(buildProvider.notifier).addComponent(product);
-              // Navigate to build-now page
-              context.go('/build-now');
-              // Also pop if we came from a navigation stack
-              if (Navigator.canPop(context)) {
+              // If callback is provided (e.g., from edit page), use it instead of buildProvider
+              if (onComponentSelected != null) {
+                onComponentSelected!(product);
                 Navigator.pop(context);
+              } else {
+                // Default behavior: Add component to buildProvider and navigate to build-now
+                ref.read(buildProvider.notifier).addComponent(product);
+                // Navigate to build-now page
+                context.go('/build-now');
+                // Also pop if we came from a navigation stack
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -2543,8 +2564,8 @@ abstract class _ProductRow extends ConsumerWidget {
 
 /// A concrete implementation of [_ProductRow] for displaying CPU details.
 class _CpuProductRow extends _ProductRow {
-  const _CpuProductRow({required CPUComponent product})
-    : super(product: product);
+  const _CpuProductRow({required CPUComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2568,8 +2589,8 @@ class _CpuProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying Motherboard details.
 class _MotherboardProductRow extends _ProductRow {
-  const _MotherboardProductRow({required MotherboardComponent product})
-    : super(product: product);
+  const _MotherboardProductRow({required MotherboardComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2587,8 +2608,8 @@ class _MotherboardProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying RAM details.
 class _RamProductRow extends _ProductRow {
-  const _RamProductRow({required MemoryComponent product})
-    : super(product: product);
+  const _RamProductRow({required MemoryComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2609,8 +2630,8 @@ class _RamProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying Storage details.
 class _StorageProductRow extends _ProductRow {
-  const _StorageProductRow({required StorageComponent product})
-    : super(product: product);
+  const _StorageProductRow({required StorageComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2628,8 +2649,8 @@ class _StorageProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying PSU details.
 class _PsuProductRow extends _ProductRow {
-  const _PsuProductRow({required PowerSupplyComponent product})
-    : super(product: product);
+  const _PsuProductRow({required PowerSupplyComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2647,8 +2668,8 @@ class _PsuProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying PC Case details.
 class _CaseProductRow extends _ProductRow {
-  const _CaseProductRow({required CaseComponent product})
-    : super(product: product);
+  const _CaseProductRow({required CaseComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2666,8 +2687,8 @@ class _CaseProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying GPU details.
 class _GpuProductRow extends _ProductRow {
-  const _GpuProductRow({required GPUComponent product})
-      : super(product: product);
+  const _GpuProductRow({required GPUComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2690,8 +2711,8 @@ class _GpuProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying Cooler details.
 class _CoolerProductRow extends _ProductRow {
-  const _CoolerProductRow({required CoolerComponent product})
-      : super(product: product);
+  const _CoolerProductRow({required CoolerComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2716,8 +2737,8 @@ class _CoolerProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying Case Fan details.
 class _CaseFanProductRow extends _ProductRow {
-  const _CaseFanProductRow({required CaseFanComponent product})
-      : super(product: product);
+  const _CaseFanProductRow({required CaseFanComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2746,8 +2767,8 @@ class _CaseFanProductRow extends _ProductRow {
 
 /// A concrete implementation of [_ProductRow] for displaying Monitor details.
 class _MonitorProductRow extends _ProductRow {
-  const _MonitorProductRow({required MonitorComponent product})
-      : super(product: product);
+  const _MonitorProductRow({required MonitorComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -2766,8 +2787,8 @@ class _MonitorProductRow extends _ProductRow {
 
 /// A generic fallback implementation of [_ProductRow] for component types without a specific row widget.
 class _GenericProductRow extends _ProductRow {
-  const _GenericProductRow({required BaseComponent product})
-      : super(product: product);
+  const _GenericProductRow({required BaseComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {

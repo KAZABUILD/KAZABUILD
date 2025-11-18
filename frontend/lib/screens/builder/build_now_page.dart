@@ -89,11 +89,12 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     }
 
     // 1. Create the main build entry.
+    // Backend expects PascalCase property names and Description is required (cannot be empty)
     final newBuildId = await buildService.createBuild({
-      'userId': userId,
-      'name': name,
-      'description': description,
-      'status': 'DRAFT',
+      'UserId': userId,
+      'Name': name.trim(),
+      'Description': description.trim().isEmpty ? 'No description provided.' : description.trim(),
+      'Status': 'DRAFT',
     });
 
     // 2. Add each selected component to the newly created build in parallel

@@ -12,6 +12,7 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// A page for creating a new forum post.
 class NewPostPage extends ConsumerStatefulWidget {
@@ -134,7 +135,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to create post: ${e.toString()}'),
+            content: Text(getUserFriendlyError(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

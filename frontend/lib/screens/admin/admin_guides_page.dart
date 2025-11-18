@@ -498,10 +498,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {
-                            // TODO: Implement guide editing
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Edit guide: ${guide.title}')),
-                            );
+                            _showEditGuideDialog(context, guide);
                           },
                           tooltip: 'Edit',
                         ),
@@ -510,10 +507,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {
-                            // TODO: Implement guide deletion
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Delete guide: ${guide.title}')),
-                            );
+                            _showDeleteGuideConfirmation(context, guide);
                           },
                           tooltip: 'Delete',
                           color: AppColorsDark.error,
@@ -530,6 +524,61 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
     );
   }
 
+
+  void _showEditGuideDialog(BuildContext context, Guide guide) {
+    // Guides are stored in frontend, so editing would require modifying the source code
+    // For now, show a message that guide editing requires code changes
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Guide'),
+        content: const Text(
+          'Guides are currently stored in the frontend code. To edit a guide, please modify the guide data in the source code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteGuideConfirmation(BuildContext context, Guide guide) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Guide'),
+        content: Text('Are you sure you want to delete "${guide.title}"? This will only remove it from the current session. Guides are stored in the frontend code, so this change will not persist after page refresh.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _allGuides.remove(guide);
+                _applyFilters();
+              });
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Guide "${guide.title}" removed from current session'),
+                  backgroundColor: AppColorsDark.buttonGreen,
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColorsDark.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

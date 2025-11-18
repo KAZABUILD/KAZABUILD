@@ -49,11 +49,6 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
       label: 'Analytics',
       route: '/admin/analytics',
     ),
-    NavigationItem(
-      icon: Icons.settings,
-      label: 'Settings',
-      route: '/admin/settings',
-    ),
   ];
 
   @override

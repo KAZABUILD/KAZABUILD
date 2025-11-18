@@ -12,6 +12,7 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'dart:html' as html;
 import 'dart:async';
+import 'package:frontend/utils/error_utils.dart';
 
 /// A widget that allows a user to set a new password.
 ///
@@ -340,7 +341,7 @@ class _ConfirmResetPasswordPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
+          content: Text(getUserFriendlyError(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }

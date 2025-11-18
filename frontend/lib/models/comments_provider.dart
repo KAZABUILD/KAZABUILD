@@ -9,12 +9,14 @@ import 'package:frontend/models/auth_provider.dart';
 class BuildComment {
   final String id;
   final String authorName;
+  final String? userId;
   final String text;
   final DateTime createdAt;
 
   BuildComment({
     required this.id,
     required this.authorName,
+    this.userId,
     required this.text,
     required this.createdAt,
   });
@@ -23,6 +25,7 @@ class BuildComment {
     return BuildComment(
       id: (json['id'] ?? json['Id'])?.toString() ?? '',
       authorName: json['authorName'] ?? json['AuthorName'] ?? json['author']?['login'] ?? json['author']?['Login'] ?? 'User',
+      userId: json['userId']?.toString() ?? json['UserId']?.toString(),
       text: json['content'] ?? json['Content'] ?? json['text'] ?? '',
       createdAt: (json['postedAt'] ?? json['PostedAt']) != null
           ? DateTime.parse(json['postedAt'] ?? json['PostedAt'])
@@ -69,6 +72,7 @@ class CommentsService {
             comments.add(BuildComment.fromJson({
               ...commentData,
               'authorName': authorName,
+              'userId': userId,
             }));
           } else {
             comments.add(BuildComment.fromJson(commentData));
@@ -112,6 +116,7 @@ class CommentsService {
         return BuildComment.fromJson({
           ...data,
           'authorName': authorName,
+          'userId': userId,
         });
       } catch (e) {
         print('Error fetching user info for new comment: $e');

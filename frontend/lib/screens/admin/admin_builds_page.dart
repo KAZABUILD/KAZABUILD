@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
+import '../../utils/error_utils.dart';
 
 class AdminBuildsPage extends ConsumerStatefulWidget {
   const AdminBuildsPage({super.key});
@@ -651,8 +652,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // Navigate to build detail page where editing may be available
-                      context.go('/build/${build.id}');
+                      // Navigate to build edit page
+                      context.go('/build/${build.id}/edit');
                     },
                     tooltip: 'Edit',
                   ),
@@ -706,7 +707,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to delete build: ${e.toString()}'),
+                      content: Text(getUserFriendlyError(e)),
                       backgroundColor: AppColorsDark.error,
                     ),
                   );

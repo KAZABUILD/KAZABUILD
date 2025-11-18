@@ -57,6 +57,39 @@ class AuthService {
     return _dio.get('$apiBaseUrl/Users/$userId');
   }
 
+  /// Follows a user by creating a UserFollow relationship.
+  /// Requires the JWT to be set in the Dio headers for authorization.
+  Future<Response> followUser(String followerId, String followedId) {
+    return _dio.post('$apiBaseUrl/UserFollows/add', data: {
+      'FollowerId': followerId,
+      'FollowedId': followedId,
+    });
+  }
+
+  /// Unfollows a user by removing the UserFollow relationship.
+  /// Requires the JWT to be set in the Dio headers for authorization.
+  Future<Response> unfollowUser(String userFollowId) {
+    return _dio.delete('$apiBaseUrl/UserFollows/$userFollowId');
+  }
+
+  /// Gets the follow relationship ID between two users.
+  /// Returns null if not following.
+  Future<String?> getFollowId(String followerId, String followedId) async {
+    try {
+      final response = await _dio.post('$apiBaseUrl/UserFollows/get', data: {
+        'FollowerId': [followerId],
+        'FollowedId': [followedId],
+        'Paging': false,
+      });
+      final List<dynamic> follows = response.data as List<dynamic>? ?? [];
+      if (follows.isEmpty) return null;
+      final follow = follows.first as Map<String, dynamic>;
+      return follow['id']?.toString() ?? follow['Id']?.toString();
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Sends a registration request to the backend.
   Future<Response> register(Map<String, dynamic> userData) {
     // Makes a POST request to the /Auth/register endpoint.

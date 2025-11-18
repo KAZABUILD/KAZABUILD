@@ -15,6 +15,7 @@ import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/widgets/linkable_text.dart';
 
 import 'package:intl/intl.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// Parameters for paginated comments fetching.
 class PostCommentsParams {
@@ -229,7 +230,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
       ),
       body: postAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error loading post: $err')),
+        error: (err, stack) => Center(child: const Text('Unable to load post. Please try again.')),
         data: (post) => Column(
           children: [
             Expanded(
@@ -432,19 +433,33 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
                           ? displayName[0].toUpperCase() 
                           : 'U';
                       return [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: theme.colorScheme.primary,
-                          child: Text(
-                            initial,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'by $displayName',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        InkWell(
+                          onTap: () {
+                            context.go('/profile/${author.uid}');
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: theme.colorScheme.primary,
+                                  child: Text(
+                                    initial,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'by $displayName',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const Spacer(),
@@ -595,11 +610,20 @@ class _ReplyCard extends ConsumerWidget {
               final initial = displayName.isNotEmpty 
                   ? displayName[0].toUpperCase() 
                   : 'U';
-              return CircleAvatar(
-                backgroundColor: theme.colorScheme.secondaryContainer,
-                child: Text(
-                  initial,
-                  style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+              return InkWell(
+                onTap: () {
+                  context.go('/profile/${author.uid}');
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: CircleAvatar(
+                    backgroundColor: theme.colorScheme.secondaryContainer,
+                    child: Text(
+                      initial,
+                      style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+                    ),
+                  ),
                 ),
               );
             },
@@ -621,12 +645,25 @@ class _ReplyCard extends ConsumerWidget {
                     return Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            displayName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: author != null
+                              ? InkWell(
+                                  onTap: () {
+                                    context.go('/profile/${author.uid}');
+                                  },
+                                  child: Text(
+                                    displayName,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  displayName,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                         const Spacer(),
                         Text(
@@ -725,7 +762,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
         widget.onReplySubmitted();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(getUserFriendlyError(e)), backgroundColor: Colors.red),
         );
       } finally {
         // setState(() => _isLoading = false); // If you add a loading state

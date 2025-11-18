@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/core/constants/app_color.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// A widget that renders the "Forgot Password" page.
 /// It's a `ConsumerStatefulWidget` to manage local state (loading) and interact with Riverpod.
@@ -496,7 +497,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString()),
+          content: Text(getUserFriendlyError(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }

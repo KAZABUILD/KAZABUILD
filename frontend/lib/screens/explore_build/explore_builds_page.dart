@@ -40,6 +40,8 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   Set<String> _selectedTags = {};
   Set<String> _selectedStatuses = {};
   bool _showFilters = false;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 16;
 
   @override
   void initState() {
@@ -71,60 +73,39 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
     });
   }
 
-  List<Build> _filterAndSortBuilds(List<Build> builds) {
-    var filtered = builds;
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+      _currentPage = 1; // Reset to first page when search changes
+    });
+  }
 
-    // Apply search filter - search in name, author, and description (tags are not fetched)
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase().trim();
-      filtered = filtered.where((build) {
-        // Search in build name
-        final nameMatch = build.name.toLowerCase().contains(query);
-        
-        // Search in author username
-        final authorMatch = build.author?.username.toLowerCase().contains(query) ?? false;
-        
-        // Search in description
-        final descriptionMatch = build.description?.toLowerCase().contains(query) ?? false;
-        
-        // Return true if any field matches
-        return nameMatch || authorMatch || descriptionMatch;
-      }).toList();
-    }
+  void _onSortChanged(String sort) {
+    setState(() {
+      _sortBy = sort;
+      _currentPage = 1; // Reset to first page when sort changes
+    });
+  }
 
-    // Apply status filter
-    if (_selectedStatuses.isNotEmpty) {
-      filtered = filtered.where((build) {
-        return _selectedStatuses.contains(build.status);
-      }).toList();
-    }
+  void _onTagsChanged(Set<String> tags) {
+    setState(() {
+      _selectedTags = tags;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
 
-    // Tag filter removed - tags are not fetched for explore builds page
+  void _onStatusesChanged(Set<String> statuses) {
+    setState(() {
+      _selectedStatuses = statuses;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
 
-    // Apply sorting
-    switch (_sortBy) {
-      case 'Latest':
-        filtered.sort((a, b) {
-          // Use databaseEntryAt for sorting (backend already sorts by PublishedAt/DatabaseEntryAt)
-          final aDate = a.databaseEntryAt ?? DateTime(1970);
-          final bDate = b.databaseEntryAt ?? DateTime(1970);
-          return bDate.compareTo(aDate);
-        });
-        break;
-      case 'Popular':
-        filtered.sort((a, b) {
-          final aRating = a.averageRating * a.ratingsCount;
-          final bRating = b.averageRating * b.ratingsCount;
-          return bRating.compareTo(aRating);
-        });
-        break;
-      case 'Price':
-        // Sort by total component price if available, otherwise by name
-        filtered.sort((a, b) => a.name.compareTo(b.name));
-        break;
-    }
-
-    return filtered;
+  void _onPageChanged(int page) {
+    setState(() {
+      _currentPage = page;
+    });
+    _scrollToTop();
   }
 
   @override
@@ -165,17 +146,9 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                       _Header(
                         searchController: _searchController,
                         searchQuery: _searchQuery,
-                        onSearchChanged: (query) {
-                          setState(() {
-                            _searchQuery = query;
-                          });
-                        },
+                        onSearchChanged: _onSearchChanged,
                         sortBy: _sortBy,
-                        onSortChanged: (sort) {
-                          setState(() {
-                            _sortBy = sort;
-                          });
-                        },
+                        onSortChanged: _onSortChanged,
                         showFilters: _showFilters,
                         onFilterToggle: () {
                           setState(() {
@@ -183,110 +156,12 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                           });
                         },
                         selectedTags: _selectedTags,
-                        onTagsChanged: (tags) {
-                          setState(() {
-                            _selectedTags = tags;
-                          });
-                        },
+                        onTagsChanged: _onTagsChanged,
                         selectedStatuses: _selectedStatuses,
-                        onStatusesChanged: (statuses) {
-                          setState(() {
-                            _selectedStatuses = statuses;
-                          });
-                        },
+                        onStatusesChanged: _onStatusesChanged,
                       ),
                       const SizedBox(height: 32),
-                      ref.watch(allBuildsProvider).when(
-                            data: (builds) {
-                              if (builds.isEmpty) {
-                                return Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(48.0),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.inbox,
-                                          size: 64,
-                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          AppLocalizations.of(context)!.noBuildsFound,
-                                          style: theme.textTheme.titleLarge?.copyWith(
-                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          AppLocalizations.of(context)!.tryAdjustingFilters,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
-                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }
-                              final filteredBuilds = _filterAndSortBuilds(builds);
-                              return _BuildsGridWithPagination(
-                                builds: filteredBuilds,
-                                crossAxisCount: crossAxisCount,
-                                onPageChanged: _scrollToTop,
-                              );
-                            },
-                            loading: () => const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(48.0),
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                            error: (err, stack) {
-                              if (kDebugMode) {
-                                print('Error loading builds: $err');
-                                print('Stack trace: $stack');
-                              }
-                              return Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(48.0),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        size: 64,
-                                        color: theme.colorScheme.error,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        AppLocalizations.of(context)!.errorLoadingBuilds,
-                                        style: theme.textTheme.titleLarge?.copyWith(
-                                          color: theme.colorScheme.error,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        err.toString(),
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          ref.invalidate(allBuildsProvider);
-                                        },
-                                        icon: const Icon(Icons.refresh),
-                                        label: Text(AppLocalizations.of(context)!.retry),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                      ),
+                      _buildBuildsContent(crossAxisCount, theme),
                     ],
                   ),
                 ),
@@ -295,6 +170,116 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBuildsContent(int crossAxisCount, ThemeData theme) {
+    // Create params for the provider
+    final params = ExploreBuildsParams(
+      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      selectedTags: _selectedTags.isEmpty ? null : _selectedTags,
+      selectedStatuses: _selectedStatuses.isEmpty ? null : _selectedStatuses,
+      sortBy: _sortBy,
+      page: _currentPage,
+      pageLength: _itemsPerPage,
+    );
+
+    return ref.watch(exploreBuildsProvider(params)).when(
+      data: (builds) {
+        if (builds.isEmpty && _currentPage == 1) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(48.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.inbox,
+                    size: 64,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context)!.noBuildsFound,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context)!.tryAdjustingFilters,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Determine if there are more pages
+        // If we got fewer items than requested, we're on the last page
+        final hasMorePages = builds.length >= _itemsPerPage;
+        
+        return _BuildsGridWithPagination(
+          builds: builds,
+          crossAxisCount: crossAxisCount,
+          currentPage: _currentPage,
+          hasMorePages: hasMorePages,
+          onPageChanged: _onPageChanged,
+        );
+      },
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48.0),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (err, stack) {
+        if (kDebugMode) {
+          print('Error loading builds: $err');
+          print('Stack trace: $stack');
+        }
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(48.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.errorLoadingBuilds,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  err.toString(),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(exploreBuildsProvider(params));
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: Text(AppLocalizations.of(context)!.retry),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -609,15 +594,19 @@ class _FilterPanel extends ConsumerWidget {
   }
 }
 
-/// Widget that displays builds with pagination
+/// Widget that displays builds with server-side pagination
 class _BuildsGridWithPagination extends ConsumerStatefulWidget {
   final List<Build> builds;
   final int crossAxisCount;
-  final VoidCallback onPageChanged;
+  final int currentPage; // 1-based page number
+  final bool hasMorePages;
+  final Function(int) onPageChanged; // Takes 1-based page number
 
   const _BuildsGridWithPagination({
     required this.builds,
     required this.crossAxisCount,
+    required this.currentPage,
+    required this.hasMorePages,
     required this.onPageChanged,
   });
 
@@ -626,14 +615,6 @@ class _BuildsGridWithPagination extends ConsumerStatefulWidget {
 }
 
 class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagination> {
-  static const int itemsPerPage = 16; // 4x4 grid for consistent rows
-  int _currentPage = 0;
-
-  int get _totalPages => (widget.builds.length / itemsPerPage).ceil();
-  int get _startIndex => _currentPage * itemsPerPage;
-  int get _endIndex => (_startIndex + itemsPerPage).clamp(0, widget.builds.length);
-  List<Build> get _currentPageBuilds => widget.builds.sublist(_startIndex, _endIndex);
-
   @override
   Widget build(BuildContext context) {
     // Don't fetch components on explore page to completely avoid 429 errors
@@ -645,9 +626,13 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
   Widget _buildGrid(Map<String, String?> imageMap, {required bool imagesLoaded, Map<String, List<Map<String, dynamic>>> componentsByBuildId = const {}}) {
     final theme = Theme.of(context);
     
+    // For server-side pagination, we show a simplified pagination UI
+    // Since we don't know the total number of pages, we show prev/next buttons
+    final showPagination = widget.currentPage > 1 || widget.hasMorePages;
+    
     return Column(
       children: [
-        // Builds grid
+        // Builds grid - display all builds received (already paginated from server)
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -657,24 +642,24 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
             mainAxisSpacing: 20,
             childAspectRatio: 0.7,
           ),
-          itemCount: _currentPageBuilds.length,
-           itemBuilder: (context, index) {
-             // Components are not fetched on explore page to avoid 429 errors
-             // They will be displayed on the build detail page
-             return _BuildCard(
-               buildData: _currentPageBuilds[index],
-               imageMap: imageMap,
-               imagesLoaded: imagesLoaded,
-               onRatingChanged: () {
-                 // Don't refresh builds list to prevent re-sorting
-                 // Optimistic update in the card is sufficient
-               },
-             );
-           },
+          itemCount: widget.builds.length,
+          itemBuilder: (context, index) {
+            // Components are not fetched on explore page to avoid 429 errors
+            // They will be displayed on the build detail page
+            return _BuildCard(
+              buildData: widget.builds[index],
+              imageMap: imageMap,
+              imagesLoaded: imagesLoaded,
+              onRatingChanged: () {
+                // Don't refresh builds list to prevent re-sorting
+                // Optimistic update in the card is sufficient
+              },
+            );
+          },
         ),
         
         // Pagination controls
-        if (_totalPages > 1) ...[
+        if (showPagination) ...[
           const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -682,10 +667,9 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
               // Previous button
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                onPressed: _currentPage > 0
+                onPressed: widget.currentPage > 1
                     ? () {
-                        setState(() => _currentPage--);
-                        Future.microtask(() => widget.onPageChanged());
+                        widget.onPageChanged(widget.currentPage - 1);
                       }
                     : null,
                 style: IconButton.styleFrom(
@@ -695,36 +679,18 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               
-              // Page numbers
-              ...List.generate(_totalPages, (index) {
-                if (_totalPages > 10) {
-                  // Show first, last, current, and nearby pages
-                  if (index == 0 ||
-                      index == _totalPages - 1 ||
-                      (index >= _currentPage - 2 && index <= _currentPage + 2)) {
-                    return _buildPageButton(context, theme, index);
-                  } else if (index == _currentPage - 3 || index == _currentPage + 3) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text('...', style: theme.textTheme.bodyMedium),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                } else {
-                  return _buildPageButton(context, theme, index);
-                }
-              }),
+              // Page numbers - show current page and nearby pages
+              ..._buildPageNumbers(theme),
               
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // Next button
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                onPressed: _currentPage < _totalPages - 1
+                onPressed: widget.hasMorePages
                     ? () {
-                        setState(() => _currentPage++);
-                        Future.microtask(() => widget.onPageChanged());
+                        widget.onPageChanged(widget.currentPage + 1);
                       }
                     : null,
                 style: IconButton.styleFrom(
@@ -738,7 +704,7 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
           ),
           const SizedBox(height: 8),
           Text(
-            'Page ${_currentPage + 1} of $_totalPages (${widget.builds.length} total builds)',
+            'Showing ${widget.builds.length} build${widget.builds.length != 1 ? 's' : ''}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
@@ -748,8 +714,49 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
     );
   }
 
-  Widget _buildPageButton(BuildContext context, ThemeData theme, int pageIndex) {
-    final isActive = pageIndex == _currentPage;
+  List<Widget> _buildPageNumbers(ThemeData theme) {
+    final currentPage = widget.currentPage;
+    final hasMorePages = widget.hasMorePages;
+    final List<Widget> pageButtons = [];
+    
+    // Only show pages that we know have builds
+    // We know currentPage has builds (otherwise we wouldn't be here)
+    // We can show next page only if hasMorePages is true (meaning next page likely has builds)
+    
+    // Show page 1 if we're not on it and not on page 2 (to avoid duplicate)
+    if (currentPage > 2) {
+      pageButtons.add(_buildPageButton(theme, 1));
+      
+      // If previous page is not page 2, show ellipsis
+      // (meaning there's a gap between page 1 and previous page)
+      if (currentPage - 1 > 2) {
+        pageButtons.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('...', style: theme.textTheme.bodyMedium),
+          ),
+        );
+      }
+    }
+    
+    // Show previous page if we're not on page 1
+    if (currentPage > 1) {
+      pageButtons.add(_buildPageButton(theme, currentPage - 1));
+    }
+    
+    // Show current page
+    pageButtons.add(_buildPageButton(theme, currentPage));
+    
+    // Show next page only if we know there are more builds
+    if (hasMorePages) {
+      pageButtons.add(_buildPageButton(theme, currentPage + 1));
+    }
+    
+    return pageButtons;
+  }
+
+  Widget _buildPageButton(ThemeData theme, int page) {
+    final isActive = page == widget.currentPage;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
@@ -758,12 +765,10 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
             : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         elevation: isActive ? 2 : 0,
-          child: InkWell(
+        child: InkWell(
           onTap: () {
-            if (pageIndex != _currentPage) {
-              setState(() => _currentPage = pageIndex);
-              // Call onPageChanged after state update
-              Future.microtask(() => widget.onPageChanged());
+            if (page != widget.currentPage) {
+              widget.onPageChanged(page);
             }
           },
           borderRadius: BorderRadius.circular(12),
@@ -772,7 +777,7 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
             height: 44,
             alignment: Alignment.center,
             child: Text(
-              '${pageIndex + 1}',
+              '$page',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: isActive
                     ? theme.colorScheme.onPrimary
@@ -1063,35 +1068,44 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                   ),
                   const SizedBox(height: 8),
                   if (widget.buildData.author != null)
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundImage: widget.buildData.author!.photoURL != null
-                              ? NetworkImage(widget.buildData.author!.photoURL!)
-                              : null,
-                          child: widget.buildData.author!.photoURL == null
-                              ? Text(
-                                  widget.buildData.author!.username.substring(0, 1).toUpperCase(),
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.buildData.author!.username,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    InkWell(
+                      onTap: () {
+                        context.go('/profile/${widget.buildData.author!.uid}');
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundImage: widget.buildData.author!.photoURL != null
+                                  ? NetworkImage(widget.buildData.author!.photoURL!)
+                                  : null,
+                              child: widget.buildData.author!.photoURL == null
+                                  ? Text(
+                                      widget.buildData.author!.username.substring(0, 1).toUpperCase(),
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onPrimary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                widget.buildData.author!.username,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   const SizedBox(height: 8),
                   if (widget.buildData.tags.isNotEmpty) ...[

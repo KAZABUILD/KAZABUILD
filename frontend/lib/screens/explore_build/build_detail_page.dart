@@ -22,6 +22,7 @@ import 'package:frontend/screens/explore_build/similar_builds_section.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// Provider to fetch user details based on their ID
 final buildUserProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
@@ -71,7 +72,7 @@ class BuildDetailPage extends ConsumerWidget {
             child: buildAsyncValue.when(
               data: (build) => _buildContentView(context, ref, build),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('${AppLocalizations.of(context)!.errorLoadingBuilds}: $err')),
+              error: (err, stack) => Center(child: Text(AppLocalizations.of(context)!.errorLoadingBuilds ?? 'Unable to load build. Please try again.')),
             ),
           ),
         ],
@@ -244,20 +245,36 @@ class BuildDetailPage extends ConsumerWidget {
     final authorAsync = build.author != null 
         ? AsyncValue.data(build.author) 
         : ref.watch(buildUserProvider(build.userId));
+    final currentUser = ref.watch(authProvider).valueOrNull;
+    final isOwner = currentUser != null && currentUser.uid == build.userId;
 
     return authorAsync.when(
       data: (author) {
         return Row(
           children: <Widget>[
             if (author != null) ...[
-              UserImageUtils.buildUserAvatar(
-                imageUrl: author.photoURL,
-                username: author.username,
-                userId: author.uid,
-                radius: 12,
+              InkWell(
+                onTap: () {
+                  context.go('/profile/${author.uid}');
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      UserImageUtils.buildUserAvatar(
+                        imageUrl: author.photoURL,
+                        username: author.username,
+                        userId: author.uid,
+                        radius: 12,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
               const SizedBox(width: 8),
               Text('•', style: theme.textTheme.bodySmall),
               const SizedBox(width: 8),
@@ -268,43 +285,82 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
+            // Show Edit button if user is the owner
+            if (isOwner) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.go('/build/${build.id}/edit');
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+            ],
             // TODO: Implement "Wishlist" functionality.
             OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
           ],
         );
       },
-      loading: () => Row(
-        children: <Widget>[
-          const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
-            style: theme.textTheme.bodySmall,
-          ),
-          const Spacer(),
-          OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-        ],
-      ),
-      error: (error, stack) => Row(
-        children: <Widget>[
-          Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
-          const SizedBox(width: 8),
-          Text('Unknown User', style: theme.textTheme.bodyMedium),
-          const SizedBox(width: 8),
-          Text('•', style: theme.textTheme.bodySmall),
-          const SizedBox(width: 8),
-          Text(
-            '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
-            style: theme.textTheme.bodySmall,
-          ),
-          const Spacer(),
-          OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-        ],
-      ),
+      loading: () {
+        final currentUser = ref.watch(authProvider).valueOrNull;
+        final isOwner = currentUser != null && currentUser.uid == build.userId;
+        return Row(
+          children: <Widget>[
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
+              style: theme.textTheme.bodySmall,
+            ),
+            const Spacer(),
+            if (isOwner) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.go('/build/${build.id}/edit');
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
+          ],
+        );
+      },
+      error: (error, stack) {
+        final currentUser = ref.watch(authProvider).valueOrNull;
+        final isOwner = currentUser != null && currentUser.uid == build.userId;
+        return Row(
+          children: <Widget>[
+            Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            Text('Unknown User', style: theme.textTheme.bodyMedium),
+            const SizedBox(width: 8),
+            Text('•', style: theme.textTheme.bodySmall),
+            const SizedBox(width: 8),
+            Text(
+              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
+              style: theme.textTheme.bodySmall,
+            ),
+            const Spacer(),
+            if (isOwner) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.go('/build/${build.id}/edit');
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
+          ],
+        );
+      },
     );
   }
 
@@ -1265,7 +1321,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
           // Don't refresh to avoid disrupting UI
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to ${isUndo ? 'remove' : 'submit'} rating: $e')),
+            SnackBar(content: Text(getUserFriendlyError(e))),
           );
         }
       }
@@ -1422,7 +1478,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                         } catch (e) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to post comment: $e')),
+                                SnackBar(content: Text(getUserFriendlyError(e))),
                               );
                             }
                           } finally {
@@ -1463,10 +1519,26 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      UserImageUtils.buildUserAvatar(
-                        username: c.authorName,
-                        radius: 16,
-                      ),
+                      if (c.userId != null)
+                        InkWell(
+                          onTap: () {
+                            context.go('/profile/${c.userId}');
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: UserImageUtils.buildUserAvatar(
+                              username: c.authorName,
+                              userId: c.userId,
+                              radius: 16,
+                            ),
+                          ),
+                        )
+                      else
+                        UserImageUtils.buildUserAvatar(
+                          username: c.authorName,
+                          radius: 16,
+                        ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1474,7 +1546,15 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                           children: <Widget>[
                             Row(
                               children: <Widget>[
-                                Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                if (c.userId != null)
+                                  InkWell(
+                                    onTap: () {
+                                      context.go('/profile/${c.userId}');
+                                    },
+                                    child: Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                                  )
+                                else
+                                  Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                                 const SizedBox(width: 8),
                                 Text(DateFormat.yMMMd().add_jm().format(c.createdAt), style: theme.textTheme.bodySmall),
                               ],

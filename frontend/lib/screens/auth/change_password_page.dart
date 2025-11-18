@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The change password page widget.
 /// 
@@ -311,7 +312,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                error.toString(),
+                'Unable to load user data. Please try again.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

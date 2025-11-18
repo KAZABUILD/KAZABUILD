@@ -17,25 +17,86 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/l10n/app_localization.dart';
 
-/// A page that displays the profile of the currently authenticated user.
+/// Provider to fetch a user's profile by ID
+final userProfileProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+  try {
+    final authService = ref.read(authServiceProvider);
+    final userResponse = await authService.getUserById(userId);
+    
+    if (userResponse.statusCode == 200 && userResponse.data != null) {
+      try {
+        final user = AppUser.fromJson(userResponse.data);
+        return user;
+      } catch (parseError) {
+        debugPrint('Error parsing user $userId: $parseError');
+        return null;
+      }
+    }
+    return null;
+  } catch (e) {
+    debugPrint('Error fetching user $userId: $e');
+    return null;
+  }
+});
+
+/// Provider to check if current user is following another user
+final isFollowingProvider = FutureProvider.family<bool, String>((ref, followedUserId) async {
+  try {
+    final currentUser = ref.read(authProvider).valueOrNull;
+    if (currentUser == null) return false;
+    
+    final authService = ref.read(authServiceProvider);
+    final followId = await authService.getFollowId(currentUser.uid, followedUserId);
+    return followId != null;
+  } catch (e) {
+    debugPrint('Error checking follow status: $e');
+    return false;
+  }
+});
+
+/// Provider to get the follow ID between two users
+final followIdProvider = FutureProvider.family<String?, String>((ref, followedUserId) async {
+  try {
+    final currentUser = ref.read(authProvider).valueOrNull;
+    if (currentUser == null) return null;
+    
+    final authService = ref.read(authServiceProvider);
+    return await authService.getFollowId(currentUser.uid, followedUserId);
+  } catch (e) {
+    debugPrint('Error getting follow ID: $e');
+    return null;
+  }
+});
+
+/// A page that displays a user's profile.
+/// If userId is provided, shows that user's profile, otherwise shows the current user's profile.
 class ProfilePage extends ConsumerWidget {
-  const ProfilePage({super.key});
+  final String? userId;
+  
+  const ProfilePage({super.key, this.userId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final authAsyncValue = ref.watch(authProvider);
+    final currentUserAsync = ref.watch(authProvider);
     final scaffoldKey = GlobalKey<ScaffoldState>();
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: theme.colorScheme.surface,
-      body: authAsyncValue.when(
-        data: (user) {
-          if (user == null) {
+      body: currentUserAsync.when(
+        data: (currentUser) {
+          // If userId is provided, fetch that user's profile
+          if (userId != null && userId != currentUser?.uid) {
+            return _buildOtherUserProfile(context, ref, userId!, currentUser, theme, isDark, scaffoldKey);
+          }
+          
+          // Otherwise show current user's profile
+          if (currentUser == null) {
             return const Center(child: Text('Not logged in.'));
           }
+          
           return Column(
             children: [
               CustomNavigationBar(scaffoldKey: scaffoldKey),
@@ -62,11 +123,11 @@ class ProfilePage extends ConsumerWidget {
                         constraints: const BoxConstraints(maxWidth: 1400),
                         child: Column(
                           children: [
-                            // Profile Header Card
-                            _buildProfileCard(context, ref, user, theme, isDark),
+                            // Profile Header Card (own profile - show edit options)
+                            _buildProfileCard(context, ref, currentUser, theme, isDark, isOwnProfile: true),
                             const SizedBox(height: 32),
                             // Builds Section
-                            _buildBuildsSection(context, ref, user.uid, theme, isDark),
+                            _buildBuildsSection(context, ref, currentUser.uid, theme, isDark, isOwnProfile: true),
                             const SizedBox(height: 40),
                           ],
                         ),
@@ -84,14 +145,100 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
+  /// Builds the profile page for another user
+  Widget _buildOtherUserProfile(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    AppUser? currentUser,
+    ThemeData theme,
+    bool isDark,
+    GlobalKey<ScaffoldState> scaffoldKey,
+  ) {
+    final profileUserAsync = ref.watch(userProfileProvider(userId));
+    
+    return profileUserAsync.when(
+      data: (profileUser) {
+        if (profileUser == null) {
+          return Column(
+            children: [
+              CustomNavigationBar(scaffoldKey: scaffoldKey),
+              const Expanded(
+                child: Center(child: Text('User not found.')),
+              ),
+            ],
+          );
+        }
+        
+        final isOwnProfile = currentUser?.uid == profileUser.uid;
+        
+        return Column(
+          children: [
+            CustomNavigationBar(scaffoldKey: scaffoldKey),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.background,
+                  gradient: isDark
+                      ? LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            theme.colorScheme.surface.withValues(alpha: 0.5),
+                            theme.colorScheme.background,
+                          ],
+                        )
+                      : null,
+                ),
+                child: SingleChildScrollView(
+                  child: Center(
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 1400),
+                      child: Column(
+                        children: [
+                          // Profile Header Card (other user - show follow button)
+                          _buildProfileCard(context, ref, profileUser, theme, isDark, isOwnProfile: isOwnProfile, currentUser: currentUser),
+                          const SizedBox(height: 32),
+                          // Builds Section
+                          _buildBuildsSection(context, ref, profileUser.uid, theme, isDark, isOwnProfile: isOwnProfile),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => Column(
+        children: [
+          CustomNavigationBar(scaffoldKey: scaffoldKey),
+          const Expanded(child: Center(child: CircularProgressIndicator())),
+        ],
+      ),
+      error: (err, stack) => Column(
+        children: [
+          CustomNavigationBar(scaffoldKey: scaffoldKey),
+          Expanded(child: Center(child: Text('Error loading profile: $err'))),
+        ],
+      ),
+    );
+  }
+
   /// Builds the main profile card with user information
   Widget _buildProfileCard(
     BuildContext context,
     WidgetRef ref,
     AppUser user,
     ThemeData theme,
-    bool isDark,
-  ) {
+    bool isDark, {
+    bool isOwnProfile = false,
+    AppUser? currentUser,
+  }) {
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Card(
@@ -230,29 +377,39 @@ class ProfilePage extends ConsumerWidget {
                 const SizedBox(height: 32),
               ],
 
-              // Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _ActionButton(
-                    icon: Icons.settings_rounded,
-                    label: 'Settings',
-                    onPressed: () => context.push('/settings'),
-                    isPrimary: true,
-                    theme: theme,
-                  ),
-                  const SizedBox(width: 16),
-                  _ActionButton(
-                    icon: Icons.logout_rounded,
-                    label: 'Sign Out',
-                    onPressed: () async {
-                      await ref.read(authProvider.notifier).signOut();
-                    },
-                    isPrimary: false,
-                    theme: theme,
-                  ),
-                ],
-              ),
+              // Action Buttons - Different for own profile vs other users
+              if (isOwnProfile) ...[
+                // Own profile: Show Settings and Sign Out
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _ActionButton(
+                      icon: Icons.settings_rounded,
+                      label: 'Settings',
+                      onPressed: () => context.push('/settings'),
+                      isPrimary: true,
+                      theme: theme,
+                    ),
+                    const SizedBox(width: 16),
+                    _ActionButton(
+                      icon: Icons.logout_rounded,
+                      label: 'Sign Out',
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).signOut();
+                      },
+                      isPrimary: false,
+                      theme: theme,
+                    ),
+                  ],
+                ),
+              ] else if (currentUser != null) ...[
+                // Other user's profile: Show Follow/Unfollow button
+                _FollowButton(
+                  followedUserId: user.uid,
+                  currentUserId: currentUser.uid,
+                  theme: theme,
+                ),
+              ],
             ],
           ),
         ),
@@ -266,8 +423,9 @@ class ProfilePage extends ConsumerWidget {
     WidgetRef ref,
     String userId,
     ThemeData theme,
-    bool isDark,
-  ) {
+    bool isDark, {
+    bool isOwnProfile = false,
+  }) {
     final buildsAsyncValue = ref.watch(userBuildsProvider(userId));
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -330,29 +488,31 @@ class ProfilePage extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: () {
-                      context.push('/build-now');
-                    },
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('New Build'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  // Only show "New Build" button for own profile
+                  if (isOwnProfile)
+                    FilledButton.icon(
+                      onPressed: () {
+                        context.push('/build-now');
+                      },
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      label: const Text('New Build'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 24),
 
               // Builds Grid or Empty State
               if (builds.isEmpty)
-                _buildEmptyState(context, theme)
+                _buildEmptyState(context, theme, isOwnProfile: isOwnProfile)
               else
                 GridView.builder(
                   shrinkWrap: true,
@@ -365,7 +525,7 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   itemCount: builds.length,
                   itemBuilder: (context, index) {
-                    return _BuildCard(buildData: builds[index]);
+                    return _BuildCard(buildData: builds[index], isOwnProfile: isOwnProfile);
                   },
                 ),
             ],
@@ -411,7 +571,7 @@ class ProfilePage extends ConsumerWidget {
   }
 
   /// Builds the empty state when no builds exist
-  Widget _buildEmptyState(BuildContext context, ThemeData theme) {
+  Widget _buildEmptyState(BuildContext context, ThemeData theme, {bool isOwnProfile = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
@@ -453,24 +613,137 @@ class ProfilePage extends ConsumerWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () {
-              context.push('/build-now');
-            },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Create Your First Build'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 16,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          // Only show "Create Your First Build" button for own profile
+          if (isOwnProfile) ...[
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () {
+                context.push('/build-now');
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Create Your First Build'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// A widget for the Follow/Unfollow button on other users' profiles
+class _FollowButton extends ConsumerWidget {
+  final String followedUserId;
+  final String currentUserId;
+  final ThemeData theme;
+
+  const _FollowButton({
+    required this.followedUserId,
+    required this.currentUserId,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFollowingAsync = ref.watch(isFollowingProvider(followedUserId));
+    final followIdAsync = ref.watch(followIdProvider(followedUserId));
+
+    return isFollowingAsync.when(
+      data: (isFollowing) {
+        return FilledButton.icon(
+          onPressed: () async {
+            try {
+              final authService = ref.read(authServiceProvider);
+              
+              if (isFollowing) {
+                // Unfollow
+                final followIdValue = await followIdAsync.value;
+                if (followIdValue != null) {
+                  await authService.unfollowUser(followIdValue);
+                  // Invalidate providers to refresh
+                  ref.invalidate(isFollowingProvider(followedUserId));
+                  ref.invalidate(followIdProvider(followedUserId));
+                  
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Unfollowed successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error: Follow relationship not found'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } else {
+                // Follow
+                await authService.followUser(currentUserId, followedUserId);
+                // Invalidate providers to refresh
+                ref.invalidate(isFollowingProvider(followedUserId));
+                ref.invalidate(followIdProvider(followedUserId));
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Followed successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+          icon: Icon(isFollowing ? Icons.person_remove : Icons.person_add),
+          label: Text(isFollowing ? 'Unfollow' : 'Follow'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 120,
+        height: 48,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (err, stack) => FilledButton.icon(
+        onPressed: () {
+          ref.invalidate(isFollowingProvider(followedUserId));
+        },
+        icon: const Icon(Icons.refresh),
+        label: const Text('Retry'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
@@ -531,9 +804,11 @@ class _ActionButton extends StatelessWidget {
 /// Shows the build name and component information.
 class _BuildCard extends ConsumerWidget {
   final Build buildData;
+  final bool isOwnProfile;
 
   const _BuildCard({
     required this.buildData,
+    this.isOwnProfile = false,
   });
 
 
@@ -613,20 +888,24 @@ class _BuildCard extends ConsumerWidget {
           width: 1,
         ),
       ),
-      child: InkWell(
-        onTap: () {
-          context.go('/build/${buildData.id}');
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
             // Build Image - always show placeholder to avoid loading and 429 errors
             // Images will be loaded on the detail page
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _buildPlaceholderImage(context, theme),
+            InkWell(
+              onTap: () {
+                context.go('/build/${buildData.id}');
+              },
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _buildPlaceholderImage(context, theme),
+              ),
             ),
 
             // Content Section
@@ -719,7 +998,7 @@ class _BuildCard extends ConsumerWidget {
                   ],
                   const SizedBox(height: 12),
 
-                  // Status and Rating
+                  // Status, Rating, and Edit Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -743,32 +1022,52 @@ class _BuildCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      // Status
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.3),
+                      // Status and Edit Button (only for own profile)
+                      Row(
+                        children: [
+                          // Status
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              buildData.status,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: _getStatusColor(buildData.status, theme),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          buildData.status,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: _getStatusColor(buildData.status, theme),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
+                          // Edit Button (only for own profile)
+                          if (isOwnProfile) ...[
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () {
+                                context.go('/build/${buildData.id}/edit');
+                              },
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: 'Edit Build',
+                              style: IconButton.styleFrom(
+                                padding: const EdgeInsets.all(6),
+                                minimumSize: const Size(32, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'dart:html' as html;
 import 'dart:async';
+import 'package:frontend/utils/error_utils.dart';
 
 /// A widget that automatically confirms user registration.
 ///
@@ -257,7 +258,7 @@ class _ConfirmRegisterPageState
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _errorMessage = getUserFriendlyError(e);
         });
       }
     }

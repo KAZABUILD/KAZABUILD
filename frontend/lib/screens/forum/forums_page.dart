@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import '../../core/constants/app_color.dart';
+import '../../utils/error_utils.dart';
 import 'dart:math' as math;
 
 /// A provider to fetch the author's details based on their ID.
@@ -295,7 +296,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
               ),
               const SizedBox(height: 8),
               Text(
-                error.toString(),
+                'Unable to load forums. Please try again.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),

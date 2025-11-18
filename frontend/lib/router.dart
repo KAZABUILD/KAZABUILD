@@ -15,6 +15,7 @@ import 'package:frontend/screens/auth/confirm_reset_password_page.dart';
 import 'package:frontend/screens/auth/forgot_password_page.dart';
 import 'package:frontend/screens/auth/login_page.dart';
 import 'package:frontend/screens/explore_build/build_detail_page.dart';
+import 'package:frontend/screens/explore_build/edit_build_page.dart';
 import 'package:frontend/screens/auth/signup_page.dart';
 import 'package:frontend/screens/extra/spalsh_page.dart';
 import 'package:frontend/screens/profile/settings_page.dart';
@@ -39,7 +40,6 @@ import 'package:frontend/screens/admin/admin_forums_page.dart';
 import 'package:frontend/screens/admin/admin_parts_page.dart';
 import 'package:frontend/screens/admin/admin_guides_page.dart';
 import 'package:frontend/screens/admin/admin_analytics_page.dart';
-import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
 import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
 import 'package:frontend/screens/admin/admin_tags_page.dart';
@@ -238,14 +238,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const AdminAnalyticsPage(),
         ),
       ),
+      // Admin settings removed - admins should use the regular profile/settings page
+      // Redirect /admin/settings to /settings
       GoRoute(
         path: '/admin/settings',
-        name: 'admin-settings',
-        builder: (context, state) => AdminBaseLayout(
-          currentRoute: '/admin/settings',
-          pageTitle: 'Admin Settings',
-          child: const AdminSettingsPage(),
-        ),
+        redirect: (context, state) => '/settings',
       ),
       GoRoute(
         path: '/admin/tags',
@@ -273,9 +270,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/build/:id/edit',
+        name: 'edit-build',
+        builder: (context, state) {
+          final buildId = state.pathParameters['id'];
+          if (buildId == null) {
+            return const HomePage(); // Or an error page
+          }
+          return EditBuildPage(buildId: buildId);
+        },
+      ),
+      GoRoute(
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: '/profile/:id',
+        name: 'user-profile',
+        builder: (context, state) {
+          final userId = state.pathParameters['id'];
+          if (userId == null) {
+            return const ProfilePage();
+          }
+          return ProfilePage(userId: userId);
+        },
       ),
       GoRoute(
         path: '/settings',
