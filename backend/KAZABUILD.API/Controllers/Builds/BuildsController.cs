@@ -715,7 +715,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - UserPreference Doesn't Exist"
+                    "Operation Failed - UserPreference For This User Doesn't Exist"
                 );
 
                 //Return proper error response

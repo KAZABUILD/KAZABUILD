@@ -243,16 +243,19 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get all table names
-            var tableNames = _db.Model.GetEntityTypes()
-                .Select(t => t.GetTableName())
-                .Distinct()
-                .ToList();
-
             //Go through every table and reset them
-            foreach (var tableName in tableNames)
+            foreach (var entityType in _db.Model.GetEntityTypes())
             {
-                _db.Database.ExecuteSql($"DELETE FROM [{tableName}]");
+                //Get table name
+                var tableName = entityType.GetTableName();
+
+                //Omit cleaning invalid tables
+                if (string.IsNullOrWhiteSpace(tableName) || tableName == "__EFMigrationsHistory")
+                    continue;
+
+                //Build and execute a query for resetting
+                var sql = $"DELETE FROM [{tableName}]";
+                await _db.Database.ExecuteSqlRawAsync(sql);
             }
 
             //Log the creation
@@ -273,7 +276,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "Database reset successfully!" });
+            return Ok(new { message = "Database reset successfully! Restart the backend to reinitialize." });
         }
 
         /// <summary>
