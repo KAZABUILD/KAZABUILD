@@ -8,8 +8,7 @@
 - Source: backend/frontend/database/testing
 - Details: Write details if necessary.
 
-
-## FRONTEND
+## BUGS
 
 [00001] The 3d model loads before the loading screen.
 - Type: error
@@ -106,7 +105,7 @@
 
 [00018] The system admin is not using the name set in the appsettings.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: backend
 
 [00019] The user doesn't have the option to see notifications and send messages on the navigation bar.
@@ -122,18 +121,18 @@
 [00021] The admin page editing and viewing are broken.
 - Type: incorrect implementation/error/missing feature
 - Status: FIXED
-- Source: frontendutton doesn't do anything, while the view button 
-- Details: The editing btakes the user to an incorrect URL.
+- Source: frontend
+- Details: The editing button doesn't do anything, while the view button takes the user to an incorrect URL.
 
 [00022] The admin should be able to modify their profile only like the normal user would.
 - Type: incorrect implementation
-- Status: FIXED
+- Status: INCORRECT
 - Source: frontend
 - Details: The settings from the admin page should be removed/reworked.
 
-[00023] Attempting to get tags with a query results in the backend failing.
+[00023] Attempting to get tags with a query results in the failure.
 - Type: incorrect implementation/error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
 - Details: Error code: "Microsoft.Data.SqlClient.SqlException: 'An expression of non-boolean type specified in a context where a condition is expected, near 'OR'.'".
 
@@ -144,7 +143,7 @@
 - Details: The application needs a performance increase.
 
 [00025] The content displayed on webpages should differ based on the user id and access level.
-- Type: incorrect implementation/error/missing feature
+- Type: missing feature
 - Status: FIXED
 - Source: frontend
 - Details: For example, if the user is viewing their own profile they should see options to modify it vs other users should see an additional follow button.
@@ -187,3 +186,121 @@
 - Status: pending
 - Source: frontend
 - Details: The way performance is displayed for CPU parts is too long when displayed as a float.
+
+[00007-A] The 3d model display still allows user interaction - the bug was not fixed.
+- Type: error
+- Status: pending
+- Source: frontend
+- Details: The 3d model should be immutable.
+
+[00032] Price is not loaded for the components correctly.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: frontend
+- Details: There can be several prices for a components so the lowest one should be chosen (or some other metric).
+
+[00033] Explore builds and build pages takes around 10 seconds to load.
+- Type: error
+- Status: pending
+- Source: frontend
+
+[00005-A] User cannot open any link in a new card in the browser - the bug was not fixed.
+- Type: missing feature
+- Status: FIXED
+- Source: frontend
+- Details: The user should have the option to easily open any link on the website on another card. When right clicking an element on the website it should display an option to open in new card, when middle clicking it should open in a new card.
+
+[00006-A] About us section is missing team member pictures.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+
+[00034] The default image is not loading in the explore builds sections and the build pages.
+- Type: error
+- Status: pending
+- Source: frontend
+
+[00035] The forum posts sorting by categories doesn't work.
+- Type: error
+- Status: pending
+- Source: frontend
+- Details: Error loading posts message appears despite the posts loading in the "all" category. The error seems to disappear after a while but it should not appear at all.
+
+[00036] Paging should be applied for users when sending new messages.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: There should be a limited number of users displayed.
+
+[00037] The user should be able to attach images to Users/Forum Posts/Comments/Builds.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+- Details: Additionally an admin should be able to attach images to Components/SubComponents.
+
+[00038] Admins should be able to send notifications from the admin panel.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+- Details: The admin should be able to specify what kind of users will receive the notification.
+
+[00038] The admin should be able to plan future notifications for users through setting the send date to the future.
+- Type: incorrect implementation/error/missing feature
+- Status: pending
+- Source: backend/frontend
+- Details: The backend should only return notification based on whether the data passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
+
+[00039] No paging in the admin panel.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+
+[00021-A] The admin page editing and viewing are broken - not fully fixed.
+- Type: incorrect implementation/missing feature
+- Status: FIXED
+- Source: frontend
+- Details: The components editing is not implemented yet. Posts cannot be edited
+
+[00040] Posted comments don't appear until the webpage is refreshed.
+- Type: incorrect implementation/error
+- Status: pending
+- Source: frontend
+
+[00041] The user cannot reply to a comment.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+- Details: The user should be able to choose a comment they are replying to using "ParentCommentId" in the comment model.
+
+[00042] Administrators receive an unauthorized access notice for editing.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: Administrators should be able to edit anything, while moderators should be able to modify user related parts of the website (comments/user profiles/etc).
+
+[00043] The administrators and moderators should be able to assign user roles.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+- Details: Assigning roles should function normally except for bans which should allow the staff to assigned the bannedUntil value.
+
+[00044] The UserGuide model is missing.
+- Type: missing feature
+- Status: pending
+- Source: backend
+
+[00045] There are no filters in the explore builds page.
+- Type: missing feature
+- Status: pending
+- Source: frontend
+
+[00027-A] The errors displayed to the users shouldn't contain error output - bug not fully fixed.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
+- Details: User readable errors either should have simplified output or no output displayed at all. Example - the error for when the connection to the server fails.
+
+[00046] The filters in the parts webpage should be a dropdown for accessibility.
+- Type: incorrect implementation
+- Status: pending
+- Source: frontend
