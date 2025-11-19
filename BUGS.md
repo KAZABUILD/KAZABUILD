@@ -46,7 +46,7 @@
 
 [00007] The 3d model display allows user interaction.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The 3d model should be immutable.
 
@@ -67,7 +67,7 @@
 
 [00011] The designs on the website and figma do not match.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00012] The user cannot interact with components on the build page.
@@ -100,7 +100,7 @@
 
 [00017] Paging is done client side only.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The website should be paging server side.
 
@@ -111,7 +111,7 @@
 
 [00019] The user doesn't have the option to see notifications and send messages on the navigation bar.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00020] The website freezes whenever there are a lot of elements loaded.
@@ -121,13 +121,13 @@
 
 [00021] The admin page editing and viewing are broken.
 - Type: incorrect implementation/error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontendutton doesn't do anything, while the view button 
 - Details: The editing btakes the user to an incorrect URL.
 
 [00022] The admin should be able to modify their profile only like the normal user would.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The settings from the admin page should be removed/reworked.
 
@@ -139,42 +139,42 @@
 
 [00024] Attempting to post or save the build freezes the website.
 - Type: incorrect implementation/error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The application needs a performance increase.
 
 [00025] The content displayed on webpages should differ based on the user id and access level.
 - Type: incorrect implementation/error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: For example, if the user is viewing their own profile they should see options to modify it vs other users should see an additional follow button.
 
 [00025-A] The user should be able to modify their builds.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The option is missing from build page.
 
 [00026] The build page does not display who created the build.
 - Type: incorrect implementation/error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00027] The errors displayed to the users shouldn't contain error output.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: User readable errors either should have simplified output or no output displayed at all.
 
 [00028] The explore builds page search doesn't use server side paging.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Any paging for a lot of elements should be paginated. ordered and searched using the server.
 
 [00029] The builds in the explore build page shouldn't have "click to view" text when the entire object is clickable.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00030] Explore builds rating is missing.
