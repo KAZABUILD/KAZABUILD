@@ -978,7 +978,7 @@ class ExploreBuildsParams {
 }
 
 /// A provider that fetches builds for the "Explore" page with server-side pagination, search, filtering, and sorting.
-final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsParams>((ref, params) async {
+final exploreBuildsProvider = FutureProvider.autoDispose.family<List<Build>, ExploreBuildsParams>((ref, params) async {
   final buildService = ref.watch(buildServiceProvider);
   
   // Get current user ID for fetching user ratings
