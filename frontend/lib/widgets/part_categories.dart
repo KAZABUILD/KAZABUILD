@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the part categories section.
 ///
@@ -93,7 +94,7 @@ class PartCategoriesSection extends ConsumerWidget {
       loading: () => const SizedBox(
           height: 424, child: Center(child: CircularProgressIndicator())),
       error: (err, stack) => SizedBox(
-          height: 424, child: Center(child: Text('Error: ${err.toString()}'))),
+          height: 424, child: Center(child: Text(getUserFriendlyError(err)))),
     );
   }
 }
@@ -159,8 +160,8 @@ class _HoverAnimatedCardState extends State<_HoverAnimatedCard> {
     final theme = Theme.of(context);
     final scale = _isHovered ? 1.03 : 1.0;
     final shadowColor = _isHovered
-        ? theme.colorScheme.primary.withOpacity(0.4)
-        : Colors.black.withOpacity(0.2);
+        ? theme.colorScheme.primary.withValues(alpha: 0.4)
+        : Colors.black.withValues(alpha: 0.2);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -210,8 +211,8 @@ class _HoverAnimatedCardState extends State<_HoverAnimatedCard> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.2),
-                        Colors.black.withOpacity(0.8),
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.8),
                       ],
                       stops: const [0.5, 0.7, 1.0],
                     ),

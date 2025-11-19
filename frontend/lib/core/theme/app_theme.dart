@@ -99,10 +99,10 @@ class AppTheme {
       foregroundColor: AppColorsDark.textWhite,
     ),
     iconTheme: const IconThemeData(color: AppColorsDark.textWhite),
-    dividerTheme: DividerThemeData(color: Colors.grey.withOpacity(0.2)),
+    dividerTheme: DividerThemeData(color: Colors.grey.withValues(alpha: 0.2)),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColorsDark.backgroundTertiary.withOpacity(0.5),
+      fillColor: AppColorsDark.backgroundTertiary.withValues(alpha: 0.5),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide.none,

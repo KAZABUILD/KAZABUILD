@@ -6,22 +6,17 @@
 /// - `CustomDrawer`: The slide-out navigation drawer for mobile.
 /// - Helper widgets for navigation buttons, dropdowns, and user profile areas.
 library;
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/auth/login_page.dart';
-import 'package:frontend/screens/auth/signup_page.dart';
-import 'package:frontend/screens/explore_build/explore_builds_page.dart';
-import 'package:frontend/screens/forum/forums_page.dart';
-import 'package:frontend/screens/profile/profile_page.dart';
-import 'package:frontend/screens/profile/settings_page.dart';
-import 'package:frontend/screens/builder/build_now_page.dart';
-import 'package:frontend/screens/home/homepage.dart';
-import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
-import 'package:frontend/screens/guides/guides_page.dart';
+import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/widgets/theme_provider.dart';
+import 'package:frontend/models/notification_provider.dart';
 
 /// A simple data class to represent a PC part in the dropdown menu.
 class PcPart {
@@ -62,7 +57,7 @@ class CustomNavigationBar extends ConsumerWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     /// For screens smaller than 1000px, show the mobile-specific app bar.
-    if (screenWidth < 1100) {
+    if (screenWidth < 1300) {
       return _MobileAppBar(
         showProfileArea: showProfileArea,
         scaffoldKey: scaffoldKey,
@@ -82,31 +77,45 @@ class CustomNavigationBar extends ConsumerWidget {
           InkWell(
             onTap: () {
               context.go('/home');
-              
             },
             borderRadius: BorderRadius.circular(8),
             child: Row(
               children: [
-                Image.asset(
-                  "assets/logo/kaza.png",
-                  width: 40,
-                  height: 40,
-                ),
-                const Text(
-                  'AZABUILD',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                Image.asset("assets/logo/kaza.png", width: 40, height: 40),
+                Text(
+                  AppLocalizations.of(context)!.appName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
                 ),
               ],
             ),
           ),
 
           /// The main navigation buttons in the center of the bar.
-          const Row(
+          Row(
             children:  [
-              _NavButton(title: 'Build Now', route: '/build-now'),
-              _NavButton(title: 'Explore Builds', route: '/explore'),
-              _NavButton(title: 'Guides',route: '/guides'),
-              _NavButton(title: 'Forums', route: '/forums'),
+              _NavButton(title: AppLocalizations.of(context)!.buildNow, route: '/build-now'),
+              _NavButton(title: AppLocalizations.of(context)!.exploreBuilds, route: '/explore'),
+              _NavButton(title: AppLocalizations.of(context)!.guides,route: '/guides'),
+              _NavButton(title: AppLocalizations.of(context)!.forums, route: '/forums'),
+              Consumer(
+                builder: (context, ref, child) {
+                  final authState = ref.watch(authProvider);
+                  return authState.when(
+                    data: (user) {
+                      if (user != null) {
+                        return _NavButton(title: 'Messages', route: '/messages');
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              _NavButton(title: AppLocalizations.of(context)!.aboutUs, route: '/about'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -114,10 +123,33 @@ class CustomNavigationBar extends ConsumerWidget {
           /// The right-hand side of the bar with user profile and other actions.
           Row(
             children: [
+              // Notification button (only for logged-in users)
+              Consumer(
+                builder: (context, ref, child) {
+                  final authState = ref.watch(authProvider);
+                  return authState.when(
+                    data: (user) {
+                      if (user != null) {
+                        return const _NotificationButton();
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
               if (showProfileArea) ...[
                 authState.when(
-                  data: (user) => user == null ? const _SignInArea() : const _LoggedInProfileArea(),
-                  loading: () => const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                  data: (user) => user == null
+                      ? const _SignInArea()
+                      : const _LoggedInProfileArea(),
+                  loading: () => const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                   error: (err, stack) => const Icon(Icons.error),
                 ),
               ],
@@ -144,50 +176,236 @@ class _MobileAppBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final authState = ref.watch(authProvider);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       color: colorScheme.surface,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          /// The hamburger menu icon to open the drawer.
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              if (scaffoldKey?.currentState != null) {
-                scaffoldKey!.currentState!.openDrawer();
-              } else {
-                Scaffold.of(context).openDrawer();
-              }
-            },
-          ),
-
-          /// The app logo and name, centered.
-          InkWell(
-            onTap: () {
-              context.go('/home');
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Row(
-              children: [
-                Image.asset(
-                  "assets/logo/kaza.png",
-                  width: 30,
-                  height: 30,
-                ),
-                const Text(
-                  'AZABUILD',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color:Color.fromRGBO(143, 104, 255, 1)),
-                ),
-              ],
+          /// The hamburger menu icon to open the drawer - larger touch target.
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (scaffoldKey?.currentState != null) {
+                  scaffoldKey!.currentState!.openDrawer();
+                } else {
+                  Scaffold.of(context).openDrawer();
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Icon(Icons.menu, size: 28),
+              ),
             ),
           ),
+
+          /// The app logo and name, centered - larger touch target.
+          Expanded(
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    context.go('/home');
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          "assets/logo/kaza.png",
+                          width: 32,
+                          height: 32,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context)!.appName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Color.fromRGBO(143, 104, 255, 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          /// Right side: User profile (when logged in), theme toggle.
           Row(
             mainAxisSize: MainAxisSize.min,
-
-            /// Actions like the theme toggle button.
-            children: const [ThemeToggleButton()],
+            children: [
+              /// Show user profile when logged in, nothing when not logged in (Sign In/Sign Up only in drawer).
+              if (showProfileArea)
+                authState.when(
+                  data: (user) {
+                    if (user == null) {
+                      // Don't show Sign In/Sign Up in mobile app bar - only in drawer
+                      return const SizedBox.shrink();
+                    } else {
+                      // Show user profile area when logged in
+                      return PopupMenuButton<String>(
+                        offset: const Offset(0, 50),
+                        onSelected: (value) {
+                          if (value == 'profile') context.go('/profile');
+                          if (value == 'settings') context.go('/settings');
+                          if (value == 'logout') {
+                            ref.read(authProvider.notifier).signOut();
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'profile',
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: colorScheme.primaryContainer,
+                                  backgroundImage:
+                                      UserImageUtils.getUserImageUrl(
+                                            user.photoURL,
+                                          ) !=
+                                          null
+                                      ? NetworkImage(
+                                          UserImageUtils.getUserImageUrl(
+                                            user.photoURL,
+                                          )!,
+                                        )
+                                      : null,
+                                  child:
+                                      UserImageUtils.getUserImageUrl(
+                                            user.photoURL,
+                                          ) ==
+                                          null
+                                      ? Text(
+                                          user.username[0].toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color:
+                                                colorScheme.onPrimaryContainer,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        user.username,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.viewProfile,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              theme.textTheme.bodySmall?.color,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'settings',
+                            child: Text(AppLocalizations.of(context)!.settings),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem(
+                            value: 'logout',
+                            child: Text(AppLocalizations.of(context)!.logout),
+                          ),
+                        ],
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: CircleAvatar(
+                                radius: 16,
+                                backgroundColor: colorScheme.primaryContainer,
+                                backgroundImage:
+                                    UserImageUtils.getUserImageUrl(
+                                          user.photoURL,
+                                        ) !=
+                                        null
+                                    ? NetworkImage(
+                                        UserImageUtils.getUserImageUrl(
+                                          user.photoURL,
+                                        )!,
+                                      )
+                                    : null,
+                                child:
+                                    UserImageUtils.getUserImageUrl(
+                                          user.photoURL,
+                                        ) ==
+                                        null
+                                    ? Text(
+                                        user.username[0].toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: colorScheme.onPrimaryContainer,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  loading: () => const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  error: (err, stack) => const Icon(Icons.error),
+                ),
+              if (showProfileArea) const SizedBox(width: 8),
+              // Theme toggle button - larger touch target
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    ref.read(themeProvider.notifier).toggleTheme();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Icon(
+                      ref.watch(themeProvider) == ThemeMode.dark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -204,7 +422,7 @@ class CustomDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final user = ref.watch(authProvider);
+    final authState = ref.watch(authProvider);
 
     return Drawer(
       child: ListView(
@@ -212,22 +430,19 @@ class CustomDrawer extends ConsumerWidget {
         children: [
           /// The header of the drawer.
           DrawerHeader(
-            decoration: BoxDecoration(color:Color.fromARGB(255, 9, 0, 26)),
+            decoration: BoxDecoration(color: Color.fromARGB(255, 9, 0, 26)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Image.asset(
-                  "assets/logo/kaza.png",
-                  width: 45,
-                  height: 45,
-                ),
+                Image.asset("assets/logo/kaza.png", width: 45, height: 45),
                 Text(
-                  'KazaBuild',
+                  'azaBuild',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimary,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    fontFamily: 'Quantico',
                   ),
                 ),
               ],
@@ -235,58 +450,82 @@ class CustomDrawer extends ConsumerWidget {
           ),
 
           /// If a user is logged in, show their profile information.
-         // if (showProfileArea && user != null) ...[
-           // ListTile(
-             // leading: CircleAvatar(
-               // backgroundColor: theme.colorScheme.primaryContainer,
-               ///   ? NetworkImage(user.photoURL!)
-                   // : null,
-                //child: user.photoURL == null
-                    //? Text(user.username.substring(0, 1).toUpperCase())
-                    //: null,
-              //),
-              //title: Text(user.username),
-             // subtitle: const Text('View Profile'),
-              //onTap: () {
-              //  Navigator.pop(context);
-               // Navigator.push(
-                 // context,
-                 //MaterialPageRoute(builder: (_) => const ProfilePage()),
-               // );
-              //},
-           //),
-            //const Divider(),
+          // if (showProfileArea && user != null) ...[
+          // ListTile(
+          // leading: CircleAvatar(
+          // backgroundColor: theme.colorScheme.primaryContainer,
+          ///   ? NetworkImage(user.photoURL!)
+          // : null,
+          //child: user.photoURL == null
+          //? Text(user.username.substring(0, 1).toUpperCase())
+          //: null,
+          //),
+          //title: Text(user.username),
+          // subtitle: const Text('View Profile'),
+          //onTap: () {
+          //  Navigator.pop(context);
+          // Navigator.push(
+          // context,
+          //MaterialPageRoute(builder: (_) => const ProfilePage()),
+          // );
+          //},
+          //),
+          //const Divider(),
           //],
 
           /// If no user is logged in, show Sign In and Sign Up options.
-          if (showProfileArea && user == null) ...[
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('Sign In'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/login');
-                //Navigator.push(
-                  //context,
-                  //MaterialPageRoute(builder: (_) => const LoginPage
+          if (showProfileArea)
+            authState.when(
+              data: (user) {
+                if (user == null) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.login),
+                        title: Text(AppLocalizations.of(context)!.signIn),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        minVerticalPadding: 12,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/login');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.person_add),
+                        title: Text(AppLocalizations.of(context)!.signUp),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        minVerticalPadding: 12,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/signup');
+                        },
+                      ),
+                      const Divider(),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
               },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
-            ListTile(
-              leading: const Icon(Icons.person_add),
-              title: const Text('Sign Up'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/signup');
-              },
-            ),
-            const Divider(),
-          ],
 
           /// Main navigation links.
           // TODO: Refactor these to use named routes for better maintainability.
           ListTile(
             leading: const Icon(Icons.construction),
-            title: const Text('Build Now'),
+            title: Text(AppLocalizations.of(context)!.buildNow),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 8,
+            ),
+            minVerticalPadding: 12,
             onTap: () {
               Navigator.pop(context);
               context.go('/build-now');
@@ -294,7 +533,12 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.explore),
-            title: const Text('Explore Builds'),
+            title: Text(AppLocalizations.of(context)!.exploreBuilds),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 8,
+            ),
+            minVerticalPadding: 12,
             onTap: () {
               Navigator.pop(context);
               context.go('/explore');
@@ -302,7 +546,12 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.book),
-            title: const Text('Guides'),
+            title: Text(AppLocalizations.of(context)!.guides),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 8,
+            ),
+            minVerticalPadding: 12,
             onTap: () {
               Navigator.pop(context);
               context.go('/guides');
@@ -310,52 +559,188 @@ class CustomDrawer extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.forum),
-            title: const Text('Forums'),
+            title: Text(AppLocalizations.of(context)!.forums),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 8,
+            ),
+            minVerticalPadding: 12,
             onTap: () {
               Navigator.pop(context);
               context.go('/forums');
             },
           ),
+          Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authProvider);
+              return authState.when(
+                data: (user) {
+                  if (user != null) {
+                    return ListTile(
+                      leading: const Icon(Icons.message),
+                      title: const Text('Messages'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/messages');
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(AppLocalizations.of(context)!.aboutUs),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 8,
+            ),
+            minVerticalPadding: 12,
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/about');
+            },
+          ),
+          const Divider(),
+          // Admin panel link - only show for administrators
+          Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authProvider);
+              return authState.when(
+                data: (user) {
+                  if (user != null && user.userRole.isAdministrator) {
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.admin_panel_settings,
+                        color: Colors.orange,
+                      ),
+                      title: Text(
+                        AppLocalizations.of(context)!.adminPanel,
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      minVerticalPadding: 12,
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.go('/admin');
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
+            },
+          ),
           const Divider(),
 
           /// An expandable tile for all the individual part categories.
-         ExpansionTile(
-            leading: const Icon(Icons.category),
-            title: const Text('Parts'),
-            children: _PartsDropdownMenu.parts.map((part) {
-              return ListTile(
-                leading: Icon(part.icon, size: 20),
-                title: Text(part.name),
-                contentPadding: const EdgeInsets.only(left: 72, right: 16),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/parts/${part.type.name}');
-                },
+          Builder(
+            builder: (context) {
+              // Helper function to get localized part name
+              String getLocalizedPartName(ComponentType type) {
+                final l10n = AppLocalizations.of(context)!;
+                switch (type) {
+                  case ComponentType.cpu:
+                    return l10n.cpu;
+                  case ComponentType.gpu:
+                    return l10n.gpu;
+                  case ComponentType.motherboard:
+                    return l10n.motherboard;
+                  case ComponentType.ram:
+                    return l10n.memoryRam;
+                  case ComponentType.storage:
+                    return l10n.storage;
+                  case ComponentType.psu:
+                    return l10n.powerSupply;
+                  case ComponentType.cooler:
+                    return l10n.cooler;
+                  case ComponentType.caseFan:
+                    return l10n.caseFan;
+                  case ComponentType.pcCase:
+                    return l10n.pcCase;
+                  case ComponentType.monitor:
+                    return l10n.monitor;
+                }
+              }
+
+              return ExpansionTile(
+                leading: const Icon(Icons.category),
+                title: Text(AppLocalizations.of(context)!.parts),
+                children: _PartsDropdownMenu.parts.map((part) {
+                  return ListTile(
+                    leading: Icon(part.icon, size: 20),
+                    title: Text(getLocalizedPartName(part.type)),
+                    contentPadding: const EdgeInsets.only(
+                      left: 72,
+                      right: 16,
+                      top: 8,
+                      bottom: 8,
+                    ),
+                    minVerticalPadding: 12,
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/parts/${part.type.name}');
+                    },
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
 
           /// If a user is logged in, show Settings and Log Out options.
-          if (showProfileArea && user != null) ...[
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/settings');
+          if (showProfileArea)
+            authState.when(
+              data: (user) {
+                if (user != null) {
+                  return Column(
+                    children: [
+                      const Divider(),
+                      ListTile(
+                        leading: const Icon(Icons.settings),
+                        title: Text(AppLocalizations.of(context)!.settings),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        minVerticalPadding: 12,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/settings');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.logout),
+                        title: Text(AppLocalizations.of(context)!.logout),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        minVerticalPadding: 12,
+                        onTap: () {
+                          Navigator.pop(context);
+                          ref.read(authProvider.notifier).signOut();
+                        },
+                      ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
               },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Log Out'),
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(authProvider.notifier).signOut();
-              },
-            ),
-          ],
-          const Divider(),
 
           /// Language selector at the bottom of the drawer.
           Padding(
@@ -375,7 +760,8 @@ class CustomDrawer extends ConsumerWidget {
 class _NavButton extends StatefulWidget {
   final String title;
   final String route;
-  const _NavButton({required this.title, required this.route, Key? key}) : super(key: key);
+  const _NavButton({required this.title, required this.route, Key? key})
+    : super(key: key);
 
   @override
   State<_NavButton> createState() => _NavButtonState();
@@ -410,7 +796,10 @@ class _NavButtonState extends State<_NavButton> {
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.5,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               child: Text(widget.title),
             ),
@@ -429,7 +818,6 @@ class _NavButtonState extends State<_NavButton> {
   }
 }
 
-
 /// The widget displayed in the profile area when the user is not logged in.
 /// It provides "Sign In" and "Sign Up" buttons.
 class _SignInArea extends StatelessWidget {
@@ -438,32 +826,51 @@ class _SignInArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
+    final textStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.bold,
+    );
 
     return Row(
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
           child: Icon(Icons.person, size: 18, color: theme.colorScheme.primary),
         ),
         const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome', style: theme.textTheme.bodySmall),
+            Text(
+              AppLocalizations.of(context)!.welcome,
+              style: theme.textTheme.bodySmall,
+            ),
             Row(
               children: [
                 TextButton(
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () => context.go('/login'),
-                  child: Text('Sign In', style: textStyle),
+                  child: Text(
+                    AppLocalizations.of(context)!.signIn,
+                    style: textStyle,
+                  ),
                 ),
                 Text(' / ', style: theme.textTheme.bodySmall),
                 TextButton(
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () => context.go('/signup'),
-                  child: Text('Sign Up', style: textStyle),
+                  child: Text(
+                    AppLocalizations.of(context)!.signUp,
+                    style: textStyle,
+                  ),
                 ),
               ],
             ),
@@ -493,40 +900,69 @@ class _LoggedInProfileArea extends ConsumerWidget {
         if (value == 'logout') ref.read(authProvider.notifier).signOut();
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'profile', child: Text('Profile')),
-        const PopupMenuItem(value: 'settings', child: Text('Settings')),
+        PopupMenuItem(
+          value: 'profile',
+          child: Text(AppLocalizations.of(context)!.profile),
+        ),
+        PopupMenuItem(
+          value: 'settings',
+          child: Text(AppLocalizations.of(context)!.settings),
+        ),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'logout', child: Text('Log Out')),
+        PopupMenuItem(
+          value: 'logout',
+          child: Text(AppLocalizations.of(context)!.logout),
+        ),
       ],
       child: authState.when(
         data: (user) {
-          if (user == null) return const _SignInArea(); // Should not happen, but as a fallback
+          if (user == null)
+            return const _SignInArea(); // Should not happen, but as a fallback
           return Row(
             children: [
               CircleAvatar(
                 radius: 14,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                child: user.photoURL == null ? Text(user.username[0].toUpperCase()) : null,
+                backgroundImage:
+                    UserImageUtils.getUserImageUrl(user.photoURL) != null
+                    ? NetworkImage(
+                        UserImageUtils.getUserImageUrl(user.photoURL)!,
+                      )
+                    : null,
+                child: UserImageUtils.getUserImageUrl(user.photoURL) == null
+                    ? Text(user.username[0].toUpperCase())
+                    : null,
               ),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.username, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  Text('View Profile', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    user.username,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    AppLocalizations.of(context)!.viewProfile,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
               const Icon(Icons.arrow_drop_down),
             ],
           );
         },
-        loading: () => const SizedBox(width: 150, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+        loading: () => const SizedBox(
+          width: 150,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
         error: (e, s) => const Icon(Icons.error),
       ),
     );
   }
 }
+
 /// A dropdown menu specifically for navigating to different PC part categories.
 class _PartsDropdownMenu extends StatefulWidget {
   const _PartsDropdownMenu();
@@ -534,14 +970,19 @@ class _PartsDropdownMenu extends StatefulWidget {
   /// A static list of all PC part categories to be displayed in the menu.
   /// This keeps the data self-contained within the widget.
   static final List<PcPart> parts = [
-    PcPart(name: 'CPU', icon: Icons.memory, type: ComponentType.cpu),
-    PcPart(name: 'GPU', icon: Icons.developer_board, type: ComponentType.gpu),
-    PcPart(name: 'Motherboard', icon: Icons.dns, type: ComponentType.motherboard),
-    PcPart(name: 'Case', icon: Icons.desktop_windows_outlined, type: ComponentType.pcCase),
+    PcPart(name: 'CPU', icon: Icons.speed, type: ComponentType.cpu),
+    PcPart(name: 'GPU', icon: Icons.videogame_asset, type: ComponentType.gpu),
+    PcPart(
+      name: 'Motherboard',
+      icon: Icons.developer_board,
+      type: ComponentType.motherboard,
+    ),
+    PcPart(name: 'Memory (RAM)', icon: Icons.memory, type: ComponentType.ram),
+    PcPart(name: 'Storage', icon: Icons.save, type: ComponentType.storage),
     PcPart(name: 'Power Supply', icon: Icons.power, type: ComponentType.psu),
-    PcPart(name: 'Memory', icon: Icons.sd_storage, type: ComponentType.ram),
-    PcPart(name: 'Cooler', icon: Icons.air, type: ComponentType.cooler),
-    PcPart(name: 'Fan', icon: Icons.wind_power, type: ComponentType.caseFan),
+    PcPart(name: 'Cooler', icon: Icons.ac_unit, type: ComponentType.cooler),
+    PcPart(name: 'Case Fan', icon: Icons.air, type: ComponentType.caseFan),
+    PcPart(name: 'Case', icon: Icons.computer, type: ComponentType.pcCase),
     PcPart(name: 'Monitor', icon: Icons.monitor, type: ComponentType.monitor),
   ];
   @override
@@ -552,6 +993,34 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
   OverlayEntry? _overlayEntry;
   bool _isHoveringDropdown = false;
   bool _isHoveringButton = false;
+  bool _isDropdownOpen = false;
+
+  /// Returns the localized name for a component type
+  String _getLocalizedPartName(ComponentType type) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (type) {
+      case ComponentType.cpu:
+        return l10n.cpu;
+      case ComponentType.gpu:
+        return l10n.gpu;
+      case ComponentType.motherboard:
+        return l10n.motherboard;
+      case ComponentType.ram:
+        return l10n.memoryRam;
+      case ComponentType.storage:
+        return l10n.storage;
+      case ComponentType.psu:
+        return l10n.powerSupply;
+      case ComponentType.cooler:
+        return l10n.cooler;
+      case ComponentType.caseFan:
+        return l10n.caseFan;
+      case ComponentType.pcCase:
+        return l10n.pcCase;
+      case ComponentType.monitor:
+        return l10n.monitor;
+    }
+  }
 
   @override
   void dispose() {
@@ -561,20 +1030,27 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 
   void _showDropdown() {
     if (_overlayEntry != null) return;
-    final box = context.findRenderObject() as RenderBox;
-    final offset = box.localToGlobal(Offset.zero);
-    final size = box.size;
+
+    setState(() => _isDropdownOpen = true);
+
+    final RenderBox? buttonBox = context.findRenderObject() as RenderBox?;
+    if (buttonBox == null) return;
+
+    final offset = buttonBox.localToGlobal(Offset.zero);
+    final size = buttonBox.size;
 
     _overlayEntry = OverlayEntry(
       builder: (_) => Positioned(
-        left: offset.dx,
-        top: offset.dy + size.height,
+        left: offset.dx, // Align with the left edge of the Parts button
+        top: offset.dy + size.height + 4,
         child: MouseRegion(
           onEnter: (_) => setState(() => _isHoveringDropdown = true),
           onExit: (_) {
             setState(() => _isHoveringDropdown = false);
-            Future.delayed(const Duration(milliseconds: 100), () {
-              if (!_isHoveringDropdown) _hideDropdown();
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (!_isHoveringDropdown && !_isHoveringButton) {
+                _hideDropdown();
+              }
             });
           },
           child: Material(
@@ -585,13 +1061,16 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: _PartsDropdownMenu.parts.map((part) {
                   return _DropdownItem(
                     part: part,
+                    localizedName: _getLocalizedPartName(part.type),
                     onTap: () {
                       _hideDropdown();
                       context.go('/parts/${part.type.name}');
@@ -611,41 +1090,91 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
   void _hideDropdown() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+    setState(() => _isDropdownOpen = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHoveringButton = true);
-        _showDropdown();
-      },
-      onExit: (_) {
-        setState(() => _isHoveringButton = false);
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (!_isHoveringDropdown) _hideDropdown();
-        });
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: () => context.go('/parts/cpu'),
-            style: TextButton.styleFrom(
-              foregroundColor: _isHoveringButton ? Theme.of(context).colorScheme.secondary : null,
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.5),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            child: const Text('Parts'),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MouseRegion(
+          onEnter: (_) {
+            setState(() => _isHoveringButton = true);
+            _showDropdown();
+          },
+          onExit: (_) {
+            setState(() => _isHoveringButton = false);
+            // Only hide dropdown if not hovering over dropdown itself
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (!_isHoveringDropdown && !_isHoveringButton) {
+                _hideDropdown();
+              }
+            });
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => context.go('/parts'),
+                style: TextButton.styleFrom(
+                  foregroundColor: _isHoveringButton
+                      ? colorScheme.secondary
+                      : theme.textTheme.bodyLarge?.color,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                  padding: const EdgeInsets.only(
+                    left: 12,
+                    right: 0,
+                    top: 8,
+                    bottom: 8,
+                  ),
+                ),
+                child: Text(AppLocalizations.of(context)!.parts),
+              ),
+              InkWell(
+                onTap: () {
+                  if (_isDropdownOpen) {
+                    _hideDropdown();
+                  } else {
+                    _showDropdown();
+                  }
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 0,
+                    right: 8.0,
+                    top: 8.0,
+                    bottom: 8.0,
+                  ),
+                  child: Icon(
+                    _isDropdownOpen
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down,
+                    size: 20,
+                    color: _isHoveringButton
+                        ? colorScheme.secondary
+                        : theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+              ),
+            ],
           ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 2,
-            width: _isHoveringButton ? 20 : 0,
-            color: Theme.of(context).colorScheme.secondary,
-          ),
-        ],
-      ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 2,
+          width: _isHoveringButton ? 20 : 0,
+          color: colorScheme.secondary,
+        ),
+      ],
     );
   }
 }
@@ -653,10 +1182,12 @@ class _PartsDropdownMenuState extends State<_PartsDropdownMenu> {
 /// A dropdown item widget with hover effects for the parts dropdown menu.
 class _DropdownItem extends StatefulWidget {
   final PcPart part;
+  final String localizedName;
   final VoidCallback onTap;
 
   const _DropdownItem({
     required this.part,
+    required this.localizedName,
     required this.onTap,
   });
 
@@ -680,36 +1211,125 @@ class _DropdownItemState extends State<_DropdownItem> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _isHovering 
-                ? colorScheme.secondary.withOpacity(0.1)
+            color: _isHovering
+                ? colorScheme.secondary.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
             children: [
               Icon(
-                widget.part.icon, 
+                widget.part.icon,
                 size: 20,
-                color: _isHovering 
+                color: _isHovering
                     ? colorScheme.secondary
                     : theme.textTheme.bodyMedium?.color,
               ),
               const SizedBox(width: 12),
               Text(
-                widget.part.name,
+                widget.localizedName,
                 style: TextStyle(
-                  color: _isHovering 
+                  color: _isHovering
                       ? colorScheme.secondary
                       : theme.textTheme.bodyMedium?.color,
                   fontWeight: _isHovering ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A notification button widget that displays a bell icon with a badge showing unread count.
+class _NotificationButton extends ConsumerWidget {
+  const _NotificationButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
+
+    return unreadCountAsync.when(
+      data: (unreadCount) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              context.go('/notifications');
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    Icons.notifications_outlined,
+                    size: 24,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Center(
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 40,
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, __) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            context.go('/notifications');
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Icon(
+              Icons.notifications_outlined,
+              size: 24,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
       ),

@@ -75,10 +75,11 @@ namespace KAZABUILD.Infrastructure.Data
                 }
             }
 
-            //Register the db full-text search function
+            //Register the db full-text search CONTAINS function
             modelBuilder
                 .HasDbFunction(() => FullTextDbFunction.Contains(default!, default!))
-                .HasName("CONTAINS");
+                .HasName("CONTAINS")
+                .IsBuiltIn(true);
 
             //====================================== USER ======================================//
 

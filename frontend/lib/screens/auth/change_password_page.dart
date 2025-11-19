@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The change password page widget.
 /// 
@@ -121,7 +122,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                       Text(
                         'Enter your current password and choose a new one',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -269,7 +270,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: theme.colorScheme.outline.withOpacity(0.3),
+                            color: theme.colorScheme.outline.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Column(
@@ -285,7 +286,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                             Text(
                               '• At least 8 characters long\n• Must be different from current password\n• Use a combination of letters, numbers, and symbols for better security',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -311,7 +312,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                error.toString(),
+                'Unable to load user data. Please try again.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

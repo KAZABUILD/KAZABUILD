@@ -238,7 +238,7 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 build.Status = (BuildStatus)dto.Status;
 
-                if(dto.Status == BuildStatus.PUBLISHED)
+                if (dto.Status == BuildStatus.PUBLISHED)
                 {
                     changedFields.Add("PublishedAt: " + build.PublishedAt);
 
@@ -356,7 +356,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Return not found response
                 return Forbid();
             }
-            
+
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -664,6 +664,88 @@ namespace KAZABUILD.API.Controllers.Builds
 
             //Return success response
             return Ok(new { build = "Build deleted successfully!" });
+        }
+
+        /// <summary>
+        /// API Endpoint for creating a new Build.
+        /// Used to create a draft of the build for users.
+        /// Admins can create any status.
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("generate")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<IActionResult> GenerateBuilds()
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if the user exists
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == currentUserId);
+            if (user == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Build",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - User Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "User not found!" });
+            }
+
+            //Check if the preference exists
+            var preference = await _db.UserPreferences.OrderBy(p => p.DatabaseEntryAt).FirstOrDefaultAsync(u => u.UserId == currentUserId);
+            if (preference == null)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Build",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - UserPreference Doesn't Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "User preference not found!" });
+            }
+
+            List<Build> generatedBuilds = [];
+
+            //TODO generate the build
+
+            //Log the generation
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Build",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Successful Operation - New Build Created"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("build.generated", new
+            {
+                buildIds = generatedBuilds.Select(b => b.Id),
+                createdBy = currentUserId
+            });
+
+            //Return success response
+            return Ok(new { build = "Builds generated successfully!" });
         }
     }
 }

@@ -9,21 +9,126 @@
 /// - Each build is presented as an interactive card that navigates to the `BuildDetailPage`.
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:intl/intl.dart';
+import 'package:frontend/screens/forum/post_detail_page.dart' show userProvider;
 
 /// The main widget for the "Explore Builds" screen.
-class ExploreBuildsPage extends ConsumerWidget {
-  const ExploreBuildsPage({super.key});
+class ExploreBuildsPage extends ConsumerStatefulWidget {
+  final String? initialTag;
+  
+  const ExploreBuildsPage({super.key, this.initialTag});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExploreBuildsPage> createState() => _ExploreBuildsPageState();
+}
+
+class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
+  final ScrollController _scrollController = ScrollController();
+  final scaffoldKey = GlobalKey<ScaffoldState>();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _sortBy = 'Latest';
+  Set<String> _selectedTags = {};
+  Set<String> _selectedStatuses = {};
+  String? _selectedDateRange; // '7days', '30days', '3months', null
+  Set<String> _selectedUserIds = {};
+  bool _showFilters = false;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 16;
+
+  @override
+  void initState() {
+    super.initState();
+    // If initialTag is provided via URL parameter, add it to selected tags
+    if (widget.initialTag != null && widget.initialTag!.isNotEmpty) {
+      _selectedTags = {widget.initialTag!};
+      _showFilters = true; // Show filters if a tag is selected
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToTop() {
+    // Use post frame callback to ensure the widget is rebuilt before scrolling
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+      _currentPage = 1; // Reset to first page when search changes
+    });
+  }
+
+  void _onSortChanged(String sort) {
+    setState(() {
+      _sortBy = sort;
+      _currentPage = 1; // Reset to first page when sort changes
+    });
+  }
+
+  void _onTagsChanged(Set<String> tags) {
+    setState(() {
+      _selectedTags = tags;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
+  void _onStatusesChanged(Set<String> statuses) {
+    setState(() {
+      _selectedStatuses = statuses;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
+  void _onDateRangeChanged(String? dateRange) {
+    setState(() {
+      _selectedDateRange = dateRange;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
+  void _onUserIdsChanged(Set<String> userIds) {
+    setState(() {
+      _selectedUserIds = userIds;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
+  void _onPageChanged(int page) {
+    setState(() {
+      _currentPage = page;
+    });
+    _scrollToTop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scaffoldKey = GlobalKey<ScaffoldState>();
     final screenWidth = MediaQuery.of(context).size.width;
 
     /// Calculate the number of columns for the grid based on screen width,
@@ -32,304 +137,1127 @@ class ExploreBuildsPage extends ConsumerWidget {
 
     return Scaffold(
       key: scaffoldKey,
-      // The navigation drawer that slides in from the left on mobile.
       drawer: CustomDrawer(showProfileArea: true),
-      // The main container with a gradient background.
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
-              theme.colorScheme.background,
-              theme.colorScheme.secondary.withOpacity(0.1),
+              theme.scaffoldBackgroundColor,
+              theme.colorScheme.surface.withValues(alpha: 0.3),
             ],
           ),
         ),
-        child: Stack(
-          /// The decorative wave is placed at the top using a [Stack] to overlay it.
+        child: Column(
           children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: CustomPaint(
-                painter: WavePainter(
-                  theme.colorScheme.primary.withOpacity(0.2),
-                ),
-                child: const SizedBox(height: 100),
-              ),
-            ),
-            Column(
-              /// The main layout consists of the navigation bar and the scrollable content.
-              children: [
-                const CustomNavigationBar(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        const _Header(),
-                        const SizedBox(height: 24),
-                        ref.watch(allBuildsProvider).when(
-                              data: (builds) => GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 24,
-                                  mainAxisSpacing: 24,
-                                  childAspectRatio: 0.8,
-                                ),
-                                itemCount: builds.length,
-                                itemBuilder: (context, index) =>
-                                    _BuildCard(buildData: builds[index]),
-                              ),
-                              loading: () => const Center(child: CircularProgressIndicator()),
-                              error: (err, stack) => Center(child: Text('Error: $err')),
-                        ),
-                      ],
-                    ),
+            const CustomNavigationBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(24.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1400),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Header(
+                        searchController: _searchController,
+                        searchQuery: _searchQuery,
+                        onSearchChanged: _onSearchChanged,
+                        sortBy: _sortBy,
+                        onSortChanged: _onSortChanged,
+                        showFilters: _showFilters,
+                        onFilterToggle: () {
+                          setState(() {
+                            _showFilters = !_showFilters;
+                          });
+                        },
+                        selectedTags: _selectedTags,
+                        onTagsChanged: _onTagsChanged,
+                        selectedStatuses: _selectedStatuses,
+                        onStatusesChanged: _onStatusesChanged,
+                        selectedDateRange: _selectedDateRange,
+                        onDateRangeChanged: _onDateRangeChanged,
+                        selectedUserIds: _selectedUserIds,
+                        onUserIdsChanged: _onUserIdsChanged,
+                      ),
+                      const SizedBox(height: 32),
+                      _buildBuildsContent(crossAxisCount, theme),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-/// A custom painter that draws a decorative wave shape at the top of the page.
-class WavePainter extends CustomPainter {
-  final Color color;
+  Widget _buildBuildsContent(int crossAxisCount, ThemeData theme) {
+    // Create params for the provider
+    final params = ExploreBuildsParams(
+      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      selectedTags: _selectedTags.isEmpty ? null : _selectedTags,
+      selectedStatuses: _selectedStatuses.isEmpty ? null : _selectedStatuses,
+      dateRange: _selectedDateRange,
+      selectedUserIds: _selectedUserIds.isEmpty ? null : _selectedUserIds,
+      sortBy: _sortBy,
+      page: _currentPage,
+      pageLength: _itemsPerPage,
+    );
 
-  WavePainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    /// Configures the paint properties (color and style).
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    /// Defines the path for the wave shape using quadratic Bezier curves for a smooth, flowing look.
-    final path = Path();
-    path.moveTo(0, 40);
-    path.quadraticBezierTo(size.width * 0.25, 60, size.width * 0.5, 40);
-    path.quadraticBezierTo(size.width * 0.75, 20, size.width, 40);
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-
-    canvas.drawPath(path, paint);
+    return ref.watch(exploreBuildsProvider(params)).when(
+      data: (builds) {
+        if (builds.isEmpty && _currentPage == 1) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(48.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.inbox,
+                    size: 64,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context)!.noBuildsFound,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context)!.tryAdjustingFilters,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Determine if there are more pages
+        // If we got fewer items than requested, we're on the last page
+        final hasMorePages = builds.length >= _itemsPerPage;
+        
+        return _BuildsGridWithPagination(
+          builds: builds,
+          crossAxisCount: crossAxisCount,
+          currentPage: _currentPage,
+          hasMorePages: hasMorePages,
+          onPageChanged: _onPageChanged,
+        );
+      },
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48.0),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (err, stack) {
+        if (kDebugMode) {
+          print('Error loading builds: $err');
+          print('Stack trace: $stack');
+        }
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(48.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.errorLoadingBuilds,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  err.toString(),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(exploreBuildsProvider(params));
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: Text(AppLocalizations.of(context)!.retry),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
-
-  @override
-  /// The wave does not need to be repainted unless its color or size changes, which is an optimization.
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// The header section of the page, containing search, filter, and sort controls.
 class _Header extends StatelessWidget {
-  const _Header();
+  final TextEditingController searchController;
+  final String searchQuery;
+  final Function(String) onSearchChanged;
+  final String sortBy;
+  final Function(String) onSortChanged;
+  final bool showFilters;
+  final VoidCallback onFilterToggle;
+  final Set<String> selectedTags;
+  final Function(Set<String>) onTagsChanged;
+  final Set<String> selectedStatuses;
+  final Function(Set<String>) onStatusesChanged;
+  final String? selectedDateRange;
+  final Function(String?) onDateRangeChanged;
+  final Set<String> selectedUserIds;
+  final Function(Set<String>) onUserIdsChanged;
+
+  const _Header({
+    required this.searchController,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.sortBy,
+    required this.onSortChanged,
+    required this.showFilters,
+    required this.onFilterToggle,
+    required this.selectedTags,
+    required this.onTagsChanged,
+    required this.selectedStatuses,
+    required this.onStatusesChanged,
+    required this.selectedDateRange,
+    required this.onDateRangeChanged,
+    required this.selectedUserIds,
+    required this.onUserIdsChanged,
+  });
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// Action buttons for comparing and posting builds.
+        // Title Section
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                _StyledButton(
-                  icon: Icons.compare_arrows,
-                  label: 'Compare',
-                  onPressed: () {},
-                  isOutlined: true,
-                ),
-                const SizedBox(width: 12),
-                // TODO: Implement navigation to the build creation page.
-                _StyledButton(
-                  icon: Icons.add,
-                  label: 'Post your build',
-                  onPressed: () {},
-                  isOutlined: false,
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.explore,
+                size: 32,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.exploreBuilds,
+                    style: theme.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppLocalizations.of(context)!.discoverAmazingBuilds,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-
-        /// Row containing the search field, tags button, and sort dropdown.
+        const SizedBox(height: 24),
+        
+        // Search and Filter Row
         Row(
           children: [
             Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search builds...',
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: theme.colorScheme.primary,
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surface.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  onChanged: onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context)!.searchBuilds,
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: theme.colorScheme.primary,
+                    ),
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              searchController.clear();
+                              onSearchChanged('');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            // TODO: Implement a dialog or panel to select filter tags.
-            _StyledButton(
-              icon: Icons.sell_outlined,
-              label: 'Tags',
-              onPressed: () {},
-              isOutlined: true,
-            ),
-            const SizedBox(width: 12),
-            DropdownButtonHideUnderline(
-              /// Dropdown for sorting the list of builds.
-              child: DropdownButton<String>(
-                value: 'Latest',
-                items: const [
-                  DropdownMenuItem(
-                    value: 'Latest',
-                    child: Text('Sort by: Latest'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Popular',
-                    child: Text('Sort by: Popular'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Price',
-                    child: Text('Sort by: Price'),
+            // Filter Button
+            Container(
+              decoration: BoxDecoration(
+                color: showFilters
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    : theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
                 ],
-                // TODO: Implement the logic to re-fetch and sort the builds based on the selected value.
-                onChanged: (value) {},
-                style: theme.textTheme.bodyMedium,
-                dropdownColor: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: onFilterToggle,
+                icon: Icon(
+                  Icons.tune,
+                  color: showFilters ? theme.colorScheme.primary : null,
+                ),
+                tooltip: AppLocalizations.of(context)!.filters,
+                style: IconButton.styleFrom(
+                  padding: const EdgeInsets.all(16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Sort Dropdown
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: sortBy,
+                  items: [
+                    DropdownMenuItem(
+                      value: 'Latest',
+                      child: Text(AppLocalizations.of(context)!.latest),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Popular',
+                      child: Text(AppLocalizations.of(context)!.popular),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Price',
+                      child: Text(AppLocalizations.of(context)!.price),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onSortChanged(value);
+                    }
+                  },
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ],
         ),
+        // Filter Panel
+        if (showFilters) ...[
+          const SizedBox(height: 16),
+          _FilterPanel(
+            selectedTags: selectedTags,
+            onTagsChanged: onTagsChanged,
+            selectedStatuses: selectedStatuses,
+            onStatusesChanged: onStatusesChanged,
+            selectedDateRange: selectedDateRange,
+            onDateRangeChanged: onDateRangeChanged,
+            selectedUserIds: selectedUserIds,
+            onUserIdsChanged: onUserIdsChanged,
+          ),
+        ],
       ],
     );
   }
 }
 
-/// A reusable styled button widget used in the header.
-///
-/// It can be rendered as either a filled `ElevatedButton` or an
-/// [OutlinedButton] based on the `isOutlined` property.
-class _StyledButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-  final bool isOutlined;
+/// Filter panel widget
+class _FilterPanel extends ConsumerWidget {
+  final Set<String> selectedTags;
+  final Function(Set<String>) onTagsChanged;
+  final Set<String> selectedStatuses;
+  final Function(Set<String>) onStatusesChanged;
+  final String? selectedDateRange;
+  final Function(String?) onDateRangeChanged;
+  final Set<String> selectedUserIds;
+  final Function(Set<String>) onUserIdsChanged;
 
-  const _StyledButton({
-    required this.icon,
+  const _FilterPanel({
+    required this.selectedTags,
+    required this.onTagsChanged,
+    required this.selectedStatuses,
+    required this.onStatusesChanged,
+    required this.selectedDateRange,
+    required this.onDateRangeChanged,
+    required this.selectedUserIds,
+    required this.onUserIdsChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final buildsAsync = ref.watch(allBuildsProvider);
+
+    return buildsAsync.when(
+      data: (builds) {
+        // Collect all unique statuses from builds
+        final allStatuses = <String>{};
+        // Collect unique authors from builds
+        final authorsMap = <String, AppUser>{};
+        for (final build in builds) {
+          allStatuses.add(build.status);
+          if (build.author != null && build.userId.isNotEmpty) {
+            authorsMap[build.userId] = build.author!;
+          }
+        }
+        final authors = authorsMap.values.toList();
+        authors.sort((a, b) {
+          final nameA = a.displayName.isNotEmpty ? a.displayName : a.username;
+          final nameB = b.displayName.isNotEmpty ? b.displayName : b.username;
+          return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+        });
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.filters,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Date Range Filter
+              Text(
+                'Date Range',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _DateRangeChip(
+                    label: 'Last 7 Days',
+                    value: '7days',
+                    selected: selectedDateRange == '7days',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '7days' : null);
+                    },
+                  ),
+                  _DateRangeChip(
+                    label: 'Last 30 Days',
+                    value: '30days',
+                    selected: selectedDateRange == '30days',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '30days' : null);
+                    },
+                  ),
+                  _DateRangeChip(
+                    label: 'Last 3 Months',
+                    value: '3months',
+                    selected: selectedDateRange == '3months',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '3months' : null);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Author Filter
+              if (authors.isNotEmpty) ...[
+                Text(
+                  'Author',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: authors.map((author) {
+                    final authorName = author.displayName.isNotEmpty 
+                        ? author.displayName 
+                        : author.username;
+                    final isSelected = selectedUserIds.contains(author.uid);
+                    return FilterChip(
+                      avatar: CircleAvatar(
+                        radius: 12,
+                        backgroundImage: author.photoURL != null
+                            ? NetworkImage(author.photoURL!)
+                            : null,
+                        child: author.photoURL == null
+                            ? Text(
+                                authorName.isNotEmpty
+                                    ? authorName.substring(0, 1).toUpperCase()
+                                    : '?',
+                                style: const TextStyle(fontSize: 12),
+                              )
+                            : null,
+                      ),
+                      label: Text(authorName),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        final newUserIds = Set<String>.from(selectedUserIds);
+                        if (selected) {
+                          newUserIds.add(author.uid);
+                        } else {
+                          newUserIds.remove(author.uid);
+                        }
+                        onUserIdsChanged(newUserIds);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+              // Status Filter
+              if (allStatuses.isNotEmpty) ...[
+                Text(
+                  AppLocalizations.of(context)!.status,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: allStatuses.map((status) {
+                    final isSelected = selectedStatuses.contains(status);
+                    return FilterChip(
+                      label: Text(status),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        final newStatuses = Set<String>.from(selectedStatuses);
+                        if (selected) {
+                          newStatuses.add(status);
+                        } else {
+                          newStatuses.remove(status);
+                        }
+                        onStatusesChanged(newStatuses);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+              // Clear Filters Button
+              if (selectedStatuses.isNotEmpty || 
+                  selectedDateRange != null || 
+                  selectedUserIds.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    onStatusesChanged({});
+                    onDateRangeChanged(null);
+                    onUserIdsChanged({});
+                  },
+                  icon: const Icon(Icons.clear_all),
+                  label: Text(AppLocalizations.of(context)!.clearAllFilters),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Date range chip widget
+class _DateRangeChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool selected;
+  final Function(bool) onSelected;
+
+  const _DateRangeChip({
     required this.label,
-    required this.onPressed,
-    required this.isOutlined,
+    required this.value,
+    required this.selected,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: onSelected,
+    );
+  }
+}
+
+/// Widget that displays builds with server-side pagination
+class _BuildsGridWithPagination extends ConsumerStatefulWidget {
+  final List<Build> builds;
+  final int crossAxisCount;
+  final int currentPage; // 1-based page number
+  final bool hasMorePages;
+  final Function(int) onPageChanged; // Takes 1-based page number
+
+  const _BuildsGridWithPagination({
+    required this.builds,
+    required this.crossAxisCount,
+    required this.currentPage,
+    required this.hasMorePages,
+    required this.onPageChanged,
+  });
+
+  @override
+  ConsumerState<_BuildsGridWithPagination> createState() => _BuildsGridWithPaginationState();
+}
+
+class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagination> {
+  @override
+  Widget build(BuildContext context) {
+    // Don't fetch components on explore page to completely avoid 429 errors
+    // Components will be shown only on build detail page
+    // This makes the explore page load instantly without any rate limiting issues
+    return _buildGrid(<String, String?>{}, imagesLoaded: true, componentsByBuildId: {});
+  }
+
+  Widget _buildGrid(Map<String, String?> imageMap, {required bool imagesLoaded, Map<String, List<Map<String, dynamic>>> componentsByBuildId = const {}}) {
     final theme = Theme.of(context);
-    return isOutlined
-        ? OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon, size: 20),
-            label: Text(label),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+    
+    // For server-side pagination, we show a simplified pagination UI
+    // Since we don't know the total number of pages, we show prev/next buttons
+    final showPagination = widget.currentPage > 1 || widget.hasMorePages;
+    
+    return Column(
+      children: [
+        // Builds grid - display all builds received (already paginated from server)
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: widget.crossAxisCount,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 20,
+            childAspectRatio: 0.7,
+          ),
+          itemCount: widget.builds.length,
+          itemBuilder: (context, index) {
+            // Components are not fetched on explore page to avoid 429 errors
+            // They will be displayed on the build detail page
+            return _BuildCard(
+              buildData: widget.builds[index],
+              imageMap: imageMap,
+              imagesLoaded: imagesLoaded,
+              onRatingChanged: () {
+                // Don't refresh builds list to prevent re-sorting
+                // Optimistic update in the card is sufficient
+              },
+            );
+          },
+        ),
+        
+        // Pagination controls
+        if (showPagination) ...[
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Previous button
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: widget.currentPage > 1
+                    ? () {
+                        widget.onPageChanged(widget.currentPage - 1);
+                      }
+                    : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-              side: BorderSide(color: theme.colorScheme.primary),
-            ),
-          )
-        : ElevatedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon, size: 20),
-            label: Text(label),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 8),
+              
+              // Page numbers - show current page and nearby pages
+              ..._buildPageNumbers(theme),
+              
+              const SizedBox(width: 8),
+              // Next button
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: widget.hasMorePages
+                    ? () {
+                        widget.onPageChanged(widget.currentPage + 1);
+                      }
+                    : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              elevation: 2,
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Showing ${widget.builds.length} build${widget.builds.length != 1 ? 's' : ''}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
-          );
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildPageNumbers(ThemeData theme) {
+    final currentPage = widget.currentPage;
+    final hasMorePages = widget.hasMorePages;
+    final List<Widget> pageButtons = [];
+    
+    // Only show pages that we know have builds
+    // We know currentPage has builds (otherwise we wouldn't be here)
+    // We can show next page only if hasMorePages is true (meaning next page likely has builds)
+    
+    // Show page 1 if we're not on it and not on page 2 (to avoid duplicate)
+    if (currentPage > 2) {
+      pageButtons.add(_buildPageButton(theme, 1));
+      
+      // If previous page is not page 2, show ellipsis
+      // (meaning there's a gap between page 1 and previous page)
+      if (currentPage - 1 > 2) {
+        pageButtons.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('...', style: theme.textTheme.bodyMedium),
+          ),
+        );
+      }
+    }
+    
+    // Show previous page if we're not on page 1
+    if (currentPage > 1) {
+      pageButtons.add(_buildPageButton(theme, currentPage - 1));
+    }
+    
+    // Show current page
+    pageButtons.add(_buildPageButton(theme, currentPage));
+    
+    // Show next page only if we know there are more builds
+    if (hasMorePages) {
+      pageButtons.add(_buildPageButton(theme, currentPage + 1));
+    }
+    
+    return pageButtons;
+  }
+
+  Widget _buildPageButton(ThemeData theme, int page) {
+    final isActive = page == widget.currentPage;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: isActive
+            ? theme.colorScheme.primary
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        elevation: isActive ? 2 : 0,
+        child: InkWell(
+          onTap: () {
+            if (page != widget.currentPage) {
+              widget.onPageChanged(page);
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            child: Text(
+              '$page',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isActive
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.onSurface,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 /// A card widget that displays a summary of a single [CommunityBuild].
 ///
 /// Tapping on the card navigates to the [BuildDetailPage] for that build.
-class _BuildCard extends StatelessWidget {
+/// Users can rate builds by clicking on the star rating widget.
+class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
+  final Map<String, String?> imageMap;
+  final bool imagesLoaded;
+  final VoidCallback? onRatingChanged; // Callback to notify parent of rating changes
 
-  const _BuildCard({required this.buildData});
+  const _BuildCard({
+    required this.buildData,
+    required this.imageMap,
+    required this.imagesLoaded,
+    this.onRatingChanged,
+  });
+
+  @override
+  ConsumerState<_BuildCard> createState() => _BuildCardState();
+}
+
+class _BuildCardState extends ConsumerState<_BuildCard> {
+  late double _averageRating;
+  late int _ratingsCount;
+  double? _userRating;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _averageRating = widget.buildData.averageRating;
+    _ratingsCount = widget.buildData.ratingsCount;
+    _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
+        ? widget.buildData.userRating 
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(_BuildCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.buildData.averageRating != widget.buildData.averageRating ||
+        oldWidget.buildData.ratingsCount != widget.buildData.ratingsCount ||
+        oldWidget.buildData.userRating != widget.buildData.userRating) {
+      setState(() {
+        _averageRating = widget.buildData.averageRating;
+        _ratingsCount = widget.buildData.ratingsCount;
+        _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
+            ? widget.buildData.userRating 
+            : null;
+      });
+    }
+  }
+
+  /// Submits a rating for this build
+  /// If user clicks the same rating again, it removes the rating (undo)
+  Future<void> _submitRating(double rating) async {
+    final currentUser = ref.read(authProvider).valueOrNull;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to rate this build.')),
+        );
+      }
+      return;
+    }
+
+    if (_submitting) return;
+
+    // Check if user is clicking the same rating (undo)
+    final isUndo = _userRating != null && _userRating == rating;
+    final ratingToSubmit = isUndo ? 0.0 : rating;
+
+    // Store previous values for rollback on error
+    final previousAverage = _averageRating;
+    final previousCount = _ratingsCount;
+    final previousUserRating = _userRating;
+
+    setState(() {
+      _submitting = true;
+      // Optimistic update
+      if (isUndo) {
+        // Remove rating: subtract user's rating from average
+        if (_ratingsCount > 1) {
+          final total = (_averageRating * _ratingsCount) - _userRating!;
+          _averageRating = total / (_ratingsCount - 1);
+          _ratingsCount = _ratingsCount - 1;
+        } else {
+          // Last rating removed
+          _averageRating = 0.0;
+          _ratingsCount = 0;
+        }
+        _userRating = null;
+      } else {
+        final hadPrevious = _userRating != null;
+        if (!hadPrevious) {
+          // New rating
+          _averageRating = _ratingsCount == 0 
+              ? rating 
+              : ((_averageRating * _ratingsCount) + rating) / (_ratingsCount + 1);
+          _ratingsCount = _ratingsCount + 1;
+        } else {
+          // Update existing rating
+          final total = (_averageRating * _ratingsCount) - _userRating! + rating;
+          _averageRating = _ratingsCount == 0 ? rating : (total / _ratingsCount);
+        }
+        _userRating = rating;
+      }
+    });
+
+    try {
+      final service = ref.read(buildServiceProvider);
+      final result = await service.rateBuild(widget.buildData.id, ratingToSubmit, currentUser.uid);
+      
+      // Check if backend returned rating statistics
+      final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
+      final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
+      
+      if (mounted) {
+        // Update local state with backend response if available
+        if (newAvg != null && newCount != null) {
+          setState(() {
+            // Backend returns 0-100; normalize to 0-5
+            final avgDouble = (newAvg as num).toDouble();
+            _averageRating = avgDouble > 5.0 ? (avgDouble / 20.0) : avgDouble;
+            _ratingsCount = (newCount as num).toInt();
+          });
+        }
+        
+        // Refresh build detail page
+        ref.invalidate(buildDetailProvider(widget.buildData.id));
+        
+        // Invalidate explore builds provider to refresh rating data
+        // This ensures the build cards show the correct rating information
+        // We invalidate all explore builds providers to ensure consistency
+        ref.invalidate(exploreBuildsProvider);
+        
+        widget.onRatingChanged?.call();
+      }
+    } catch (e) {
+      // Rollback on error
+      if (mounted) {
+        setState(() {
+          _averageRating = previousAverage;
+          _ratingsCount = previousCount;
+          _userRating = previousUserRating;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to ${isUndo ? 'remove' : 'submit'} rating: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  /// Builds the image widget - shows image if available, otherwise placeholder
+  Widget _buildImage(BuildContext context, ThemeData theme) {
+    // Check if build has an image URL
+    final imageUrl = _getImageUrl();
+    
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return _buildPlaceholderImage(context, theme);
+    }
+
+    // Show image with error handling
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // On error, show placeholder
+        return _buildPlaceholderImage(context, theme);
+      },
+    );
+  }
+
+  /// Gets the image URL for the build
+  String? _getImageUrl() {
+    if (widget.buildData.imageUrl == null || widget.buildData.imageUrl!.isEmpty) {
+      return null;
+    }
+
+    final url = widget.buildData.imageUrl!;
+    
+    // Check if it's a GUID (image ID)
+    final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (guidPattern.hasMatch(url)) {
+      // It's an image ID, construct download URL
+      return '$apiBaseUrl/Images/download/$url';
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Already a full URL
+      return url;
+    } else if (url.startsWith('/')) {
+      // Relative URL
+      return '$apiBaseUrl$url';
+    }
+
+    return null;
+  }
+
+  /// Formats the publish date for display
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return months == 1 ? '1 month ago' : '$months months ago';
+    } else {
+      return DateFormat('MMM yyyy').format(date);
+    }
+  }
+
+  /// Builds a placeholder image widget when no image is available
+  Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+      ),
+      child: Image.network(
+        '$apiBaseUrl/defaults/kaza.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to empty container if default image fails
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    if (kDebugMode) {
+      print('_BuildCard: Build ID: ${widget.buildData.id}, Name: ${widget.buildData.name}');
+      print('_BuildCard: Average Rating: $_averageRating, Count: $_ratingsCount, User Rating: $_userRating');
+      print('_BuildCard: Tags: ${widget.buildData.tags} (${widget.buildData.tags.length} tags)');
+      if (widget.buildData.tags.isEmpty) {
+        print('  ⚠️ WARNING: Build "${widget.buildData.name}" has NO TAGS!');
+      }
+    }
+
     return Card(
-      elevation: 4,
+      elevation: 2,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
       child: InkWell(
         onTap: () {
-          context.go('/build/${buildData.id}');
+          context.go('/build/${widget.buildData.id}');
         },
         borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              /// The main image of the build.
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: buildData.imageUrl != null ? Image.network(
-                    buildData.imageUrl!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 200,
-                        color: theme.colorScheme.surface,
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 200,
-                      color: theme.colorScheme.error.withOpacity(0.1),
-                      child: const Center(child: Icon(Icons.error)),
-                    ),
-                  ) : Container(height: 200, color: theme.colorScheme.surface,
-                      child: const Center(child: Icon(Icons.image_not_supported))),
-                ),
-              ],
+            // Build Image - show image if available, otherwise placeholder
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _buildImage(context, theme),
             ),
 
             /// The content section below the image.
@@ -337,58 +1265,295 @@ class _BuildCard extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          buildData.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                  Text(
+                    widget.buildData.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  // Author information - fetch if not available
+                  widget.buildData.author != null
+                      ? InkWell(
+                          onTap: () {
+                            context.go('/profile/${widget.buildData.author!.uid}');
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundImage: widget.buildData.author!.photoURL != null
+                                      ? NetworkImage(widget.buildData.author!.photoURL!)
+                                      : null,
+                                  child: widget.buildData.author!.photoURL == null
+                                      ? Text(
+                                          widget.buildData.author!.username.isNotEmpty
+                                              ? widget.buildData.author!.username.substring(0, 1).toUpperCase()
+                                              : '?',
+                                          style: TextStyle(
+                                            color: theme.colorScheme.onPrimary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    widget.buildData.author!.displayName.isNotEmpty
+                                        ? widget.buildData.author!.displayName
+                                        : widget.buildData.author!.username,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
+                        )
+                      : ref.watch(userProvider(widget.buildData.userId)).when(
+                          data: (author) {
+                            if (author == null) {
+                              return Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    child: Text(
+                                      '?',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onPrimary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Unknown User',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                            return InkWell(
+                              onTap: () {
+                                context.go('/profile/${author.uid}');
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundImage: author.photoURL != null
+                                          ? NetworkImage(author.photoURL!)
+                                          : null,
+                                      child: author.photoURL == null
+                                          ? Text(
+                                              author.username.isNotEmpty
+                                                  ? author.username.substring(0, 1).toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                color: theme.colorScheme.onPrimary,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        author.displayName.isNotEmpty
+                                            ? author.displayName
+                                            : author.username,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          loading: () => Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                child: SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Loading...',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          error: (_, __) => Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                child: Text(
+                                  '?',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Unknown User',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                  const SizedBox(height: 12),
+                  // Rating section with interactive stars and display
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Interactive star rating - wrapped to prevent card navigation
+                      GestureDetector(
+                        onTap: () {
+                          // Consume tap to prevent card navigation
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(5, (index) {
+                            final starIndex = index + 1;
+                            final hasUserRating = _userRating != null && _userRating! > 0;
+                            final isFilled = hasUserRating && _userRating! >= starIndex - 0.5;
+                            return InkWell(
+                              onTap: _submitting ? null : () {
+                                _submitRating(starIndex.toDouble());
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  isFilled ? Icons.star : Icons.star_border,
+                                  size: 16,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            );
+                          }),
                         ),
                       ),
-                      // TODO: Add rating when available
-                      const Icon(Icons.star_border, color: Colors.amber, size: 16),
+                      // Rating display - show as "X.X/5" format
+                      if (_averageRating > 0 || _ratingsCount > 0)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${_averageRating.toStringAsFixed(1)}/5',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            if (_ratingsCount > 0) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '($_ratingsCount)',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ],
+                        )
+                      else
+                        const SizedBox.shrink(),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // TODO: Add price when available
-                  Text(
-                    'Price not available',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 8.0),
-              child: Row(
-                children: [
-                  if (buildData.author != null) ...[
-                    CircleAvatar(
-                    radius: 12,
-                    backgroundImage: buildData.author!.photoURL != null ? NetworkImage(buildData.author!.photoURL!) : null,
-                    child: buildData.author!.photoURL == null ? Text(
-                      buildData.author!.username.substring(0, 1).toUpperCase(),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold
+                  // Publish date and status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Publish date
+                      if (widget.buildData.databaseEntryAt != null)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatDate(widget.buildData.databaseEntryAt!),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      // Status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.buildData.status,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
                       ),
-                    ) : null,
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        buildData.author!.username,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -1,0 +1,409 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": [
+    "object",
+    "null"
+  ],
+  "title": "CPU Schema",
+  "description": "Schema for CPU components",
+  "required": [
+    "metadata"
+  ],
+  "properties": {
+    "opendb_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Unique identifier for the document (UUID v4)"
+    },
+    "series": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The CPU series (e.g., Intel Core i9, AMD Ryzen 9, Intel Core Ultra 5)"
+    },
+    "microarchitecture": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The microarchitecture of the CPU (e.g., Raptor Lake Refresh, Zen 4)"
+    },
+    "coreFamily": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The specific core family (e.g., Raptor Cove, Granite Ridge)"
+    },
+    "socket": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The type of socket the CPU uses (e.g., LGA 1851, AM5)"
+    },
+    "cores": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "total",
+        "threads"
+      ],
+      "properties": {
+        "total": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The total number of physical cores in the CPU"
+        },
+        "performance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The number of performance cores (hybrid CPUs only)"
+        },
+        "efficiency": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The number of efficiency cores (hybrid CPUs only)"
+        },
+        "threads": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The number of logical threads the CPU can handle"
+        }
+      }
+    },
+    "clocks": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "performance": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "base": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The base clock speed of the performance cores in GHz"
+            },
+            "boost": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The maximum boost clock speed of the performance cores in GHz"
+            }
+          }
+        },
+        "efficiency": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "base": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The base clock speed of the efficiency cores in GHz (if applicable)"
+            },
+            "boost": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The maximum boost clock speed of the efficiency cores in GHz (if applicable)"
+            }
+          }
+        }
+      }
+    },
+    "cache": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "l1": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Breakdown of L1 cache configuration"
+        },
+        "l2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The total amount of L2 cache in MB"
+        },
+        "l3": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The total amount of L3 cache in MB"
+        }
+      }
+    },
+    "specifications": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "tdp": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The Thermal Design Power of the CPU in Watts"
+        },
+        "integratedGraphics": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The model of integrated graphics, if present"
+            },
+            "baseClock": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Base clock of integrated graphics"
+            },
+            "boostClock": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Boost clock of integrated graphics"
+            },
+            "shaderCount": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Number of shaders in the integrated graphics"
+            }
+          }
+        },
+        "eccSupport": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the CPU supports Error-Correcting Code memory"
+        },
+        "includesCooler": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether a stock cooler is included with the CPU"
+        },
+        "packaging": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The type of packaging the CPU comes in (e.g., Tray, Box)"
+        },
+        "lithography": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The manufacturing process technology used. Can be multiple process technologies if chiplet design"
+        },
+        "simultaneousMultithreading": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the CPU supports simultaneous multithreading (SMT), also known as hyperthreading"
+        },
+        "memory": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "maxSupport": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Max supported memory in GB"
+            },
+            "types": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": "Supported memory types (e.g., DDR5, DDR4)"
+            },
+            "channels": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Max supported memory channels"
+            }
+          }
+        }
+      }
+    },
+    "general_product_information": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "General product information and retailer SKUs",
+      "properties": {
+        "amazon_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Amazon product SKU"
+        },
+        "newegg_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Newegg product SKU"
+        },
+        "bestbuy_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Best Buy product SKU"
+        },
+        "walmart_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Walmart product SKU"
+        },
+        "adorama_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Adorama product SKU"
+        },
+        "ibuypower_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "iBuyPower product SKU"
+        },
+        "hyte_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "HYTE product SKU"
+        },
+        "manufacturer_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Official manufacturer product URL"
+        }
+      }
+    },
+    "metadata": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full product name"
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product manufacturer"
+        },
+        "part_numbers": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of manufacturer's part numbers/SKUs"
+        },
+        "series": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product series name"
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Specific variant in the series"
+        },
+        "releaseYear": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Year of release"
+        }
+      }
+    }
+  }
+}

@@ -5,9 +5,30 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:frontend/models/api_constants.dart';
 
 /// Utility class for handling user images and avatars.
 class UserImageUtils {
+  /// Converts photoURL (which might be a GUID ImageId from backend) to a proper image URL.
+  /// Backend returns ImageId as GUID, which needs to be converted to a download URL.
+  static String? getUserImageUrl(String? photoURL) {
+    if (photoURL == null || photoURL.isEmpty) {
+      return null;
+    }
+    
+    // Check if it's an image ID (GUID format)
+    final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (guidPattern.hasMatch(photoURL)) {
+      return '$apiBaseUrl/Images/download/$photoURL';
+    } else if (!photoURL.startsWith('http://') && !photoURL.startsWith('https://')) {
+      // Relative URL, prepend base URL
+      return '$apiBaseUrl$photoURL';
+    }
+    
+    // Already a full URL
+    return photoURL;
+  }
+  
   /// Default avatar colors for generating consistent avatars.
   static const List<Color> _avatarColors = [
     Color(0xFFE57373), // Red
@@ -53,11 +74,12 @@ class UserImageUtils {
     final letter = getAvatarLetter(username);
     final textColorFinal = textColor ?? Colors.white;
 
-    if (imageUrl != null && imageUrl.isNotEmpty) {
+    final processedUrl = getUserImageUrl(imageUrl);
+    if (processedUrl != null && processedUrl.isNotEmpty) {
       return CircleAvatar(
         radius: radius,
         backgroundColor: color,
-        backgroundImage: NetworkImage(imageUrl),
+        backgroundImage: NetworkImage(processedUrl),
         onBackgroundImageError: (exception, stackTrace) {
           // If network image fails, it will fall back to the background color
           // and we can show the letter instead
@@ -93,11 +115,12 @@ class UserImageUtils {
     final color = getAvatarColor(userId, username);
     final letter = getAvatarLetter(username);
 
-    if (imageUrl != null && imageUrl.isNotEmpty) {
+    final processedUrl = getUserImageUrl(imageUrl);
+    if (processedUrl != null && processedUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: borderRadius ?? BorderRadius.circular(8),
         child: Image.network(
-          imageUrl,
+          processedUrl,
           width: width,
           height: height,
           fit: fit,
@@ -128,7 +151,7 @@ class UserImageUtils {
               width: width,
               height: height,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.3),
+                color: color.withValues(alpha: 0.3),
                 borderRadius: borderRadius ?? BorderRadius.circular(8),
               ),
               child: Center(

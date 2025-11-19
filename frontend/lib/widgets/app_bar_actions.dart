@@ -5,11 +5,10 @@
 /// - [LanguageSelector]: A dropdown menu to change the application's language.
 library;
 
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/widgets/theme_provider.dart';
+import 'package:frontend/models/locale_provider.dart';
 
 /// A `ConsumerWidget` that displays an icon button to toggle the app's theme.
 ///
@@ -38,45 +37,38 @@ class ThemeToggleButton extends ConsumerWidget {
   }
 }
 
-/// A stateful widget that provides a dropdown menu for language selection.
+/// A `ConsumerWidget` that provides a dropdown menu for language selection.
 ///
 /// It displays the flag of the currently selected language and shows a list
-/// of other available languages in a popup menu.
-class LanguageSelector extends StatefulWidget {
+/// of other available languages in a popup menu. It integrates with the
+/// `localeProvider` to actually change the app's locale when a language is selected.
+class LanguageSelector extends ConsumerWidget {
   const LanguageSelector({super.key});
-  @override
-  _LanguageSelectorState createState() => _LanguageSelectorState();
-}
-
-class _LanguageSelectorState extends State<LanguageSelector> {
-  /// The language code of the currently selected language (e.g., 'uk', 'tr').
-  String _selectedLanguageCode = 'en';
 
   /// A map containing the data for each supported language, including the
   /// asset path for its flag and its display name.
-  final Map<String, Map<String, String>> _languages = {
+  static const Map<String, Map<String, String>> _languages = {
     'en': {'flag': 'assets/flags/uk_flag.png', 'name': 'English'},
     'tr': {'flag': 'assets/flags/tr_flag.png', 'name': 'Türkçe'},
     'pl': {'flag': 'assets/flags/pl_flag.png', 'name': 'Polski'},
   };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the locale provider to get the current language code
+    final currentLocale = ref.watch(localeProvider);
+    final selectedLanguageCode = currentLocale.languageCode;
+
     return PopupMenuButton<String>(
       onSelected: (String newLangCode) {
-        /// Update the state with the newly selected language code to change the displayed flag.
-        setState(() {
-          _selectedLanguageCode = newLangCode;
-        });
-        // TODO: Integrate with a localization provider to actually change the app's locale.
-        // This currently only updates the UI of this widget. A real implementation
-        // would call a provider like `ref.read(localeProvider.notifier).setLocale(newLocale)`.
-        log('${_languages[newLangCode]!['name']} choose.');
+        // Update the locale using the provider, which will persist the choice
+        // and trigger a rebuild of the entire app with the new language
+        ref.read(localeProvider.notifier).setLocale(newLangCode);
       },
       itemBuilder: (BuildContext context) {
         /// Build the list of menu items, excluding the currently selected language.
         return _languages.keys
-            .where((langCode) => langCode != _selectedLanguageCode)
+            .where((langCode) => langCode != selectedLanguageCode)
             .map((langCode) {
               return PopupMenuItem<String>(
                 value: langCode,
@@ -103,7 +95,7 @@ class _LanguageSelectorState extends State<LanguageSelector> {
       /// The child of the [PopupMenuButton] is the widget that is always visible on the AppBar.
       /// It displays the flag of the currently selected language.
       child: Image.asset(
-        _languages[_selectedLanguageCode]!['flag']!,
+        _languages[selectedLanguageCode]!['flag']!,
         width: 24,
         height: 16,
         fit: BoxFit.cover,

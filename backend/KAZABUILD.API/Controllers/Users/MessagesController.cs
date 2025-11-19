@@ -341,7 +341,7 @@ namespace KAZABUILD.API.Controllers.Users
             MessageResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == message.SenderId;
+            var isSelf = currentUserId == message.SenderId || currentUserId == message.ReceiverId;
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
@@ -499,7 +499,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<Message> messages = await query.Where(m => m.SenderId == currentUserId || isPrivileged).ToListAsync();
+            List<Message> messages = await query.Where(m => m.SenderId == currentUserId || m.ReceiverId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
             List<MessageResponseDto> responses;

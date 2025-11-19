@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'dart:async';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -30,10 +31,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _animationController.forward();
 
-    // 2 saniye sonra direkt Home'a git
+   
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
-        context.go('/home');
+        final currentLocation = GoRouterState.of(context).uri.path;
+        
+        
+        if (currentLocation.startsWith('/auth/confirm-register') || 
+            currentLocation.startsWith('/auth/confirm-reset-password')) {
+          return; 
+        }
+        
+        final authState = ref.read(authProvider);
+        final loggedIn = authState.maybeWhen(
+          data: (user) => user != null,
+          orElse: () => false,
+        );
+        
+        if (loggedIn) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
       }
     });
   }

@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/constants/app_color.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// A simple data class to hold the data for a single FAQ item.
 class FaqItem {
@@ -26,47 +28,115 @@ class FaqSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    // TODO: Replace this mock data with a list fetched from a backend service.
-    final List<FaqItem> faqs = [];
+    // Default FAQ items - Can be replaced with backend data later
+    final List<FaqItem> faqs = _getDefaultFaqs(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 24.0),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.5)
+            : AppColorsLight.backgroundSecondary.withValues(alpha: 0.3),
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: Column(
             children: [
               // The main title for the section.
-              Text('FaQ', style: theme.textTheme.displaySmall),
-              const SizedBox(height: 32),
-              // If there are no FAQs, display a placeholder message.
-              if (faqs.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 48.0),
-                  child: Text(
-                    'Frequently Asked Questions will be shown here soon.',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.help_outline,
+                    size: 40,
+                    color: AppColorsDark.buttonBlue,
                   ),
-                )
-              else
-                // Otherwise, build a list of expandable FAQ items.
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: faqs.length,
-                  // Adds a divider between each FAQ item for visual separation.
-                  separatorBuilder: (context, index) =>
-                      const Divider(color: Colors.grey),
-                  itemBuilder: (context, index) {
-                    final faq = faqs[index];
-                    return _FaqItem(question: faq.question, answer: faq.answer);
-                  },
+                  const SizedBox(width: 12),
+                  Text(
+                    AppLocalizations.of(context)!.frequentlyAskedQuestions,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppLocalizations.of(context)!.findAnswersToCommonQuestions,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
                 ),
+              ),
+              const SizedBox(height: 40),
+              // Build a list of expandable FAQ items.
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: faqs.length,
+                // Adds a divider between each FAQ item for visual separation.
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final faq = faqs[index];
+                  return _FaqItem(
+                    question: faq.question,
+                    answer: faq.answer,
+                    index: index,
+                  );
+                },
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Returns default FAQ items for the homepage.
+  /// In the future, this can be replaced with data from the backend.
+  List<FaqItem> _getDefaultFaqs(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      FaqItem(
+        question: l10n.whatIsKazabuild,
+        answer: l10n.whatIsKazabuildAnswer,
+      ),
+      FaqItem(
+        question: l10n.howDoICreateABuild,
+        answer: l10n.howDoICreateABuildAnswer,
+      ),
+      FaqItem(
+        question: l10n.arePricesUpToDate,
+        answer: l10n.arePricesUpToDateAnswer,
+      ),
+      FaqItem(
+        question: l10n.canIShareMyBuilds,
+        answer: l10n.canIShareMyBuildsAnswer,
+      ),
+      FaqItem(
+        question: l10n.howDoICheckCompatibility,
+        answer: l10n.howDoICheckCompatibilityAnswer,
+      ),
+      FaqItem(
+        question: l10n.isKazabuildFree,
+        answer: l10n.isKazabuildFreeAnswer,
+      ),
+      FaqItem(
+        question: l10n.howCanIGetHelp,
+        answer: l10n.howCanIGetHelpAnswer,
+      ),
+      FaqItem(
+        question: l10n.canISaveMultipleBuilds,
+        answer: l10n.canISaveMultipleBuildsAnswer,
+      ),
+    ];
   }
 }
 
@@ -74,25 +144,90 @@ class FaqSection extends StatelessWidget {
 class _FaqItem extends StatelessWidget {
   final String question;
   final String answer;
+  final int index;
 
-  const _FaqItem({required this.question, required this.answer});
+  const _FaqItem({
+    required this.question,
+    required this.answer,
+    required this.index,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ExpansionTile is a built-in Flutter widget that can be tapped to expand or collapse.
-    return ExpansionTile(
-      // The question is always visible as the title of the tile.
-      title: Text(question, style: theme.textTheme.titleMedium),
-      iconColor: Colors.white,
-      collapsedIconColor: Colors.white,
-      // The answer is displayed in the `children` list and is only visible when the tile is expanded.
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(answer, style: theme.textTheme.bodyMedium),
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColorsDark.backgroundTertiary
+            : AppColorsLight.backgroundTertiary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
         ),
-      ],
+      ),
+      child: Theme(
+        data: theme.copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          // The question is always visible as the title of the tile.
+          title: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      color: AppColorsDark.buttonBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  question,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          iconColor: AppColorsDark.buttonBlue,
+          collapsedIconColor: AppColorsDark.buttonBlue,
+          // The answer is displayed in the `children` list and is only visible when the tile is expanded.
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+              child: Text(
+                answer,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.8),
+                  height: 1.6,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

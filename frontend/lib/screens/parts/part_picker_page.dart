@@ -17,9 +17,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/component_compatibility_provider.dart' as compatibility;
+import 'package:frontend/models/api_constants.dart';
+import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 
@@ -32,11 +36,18 @@ class PartPickerPage extends ConsumerStatefulWidget {
   final ComponentType componentType;
 
   /// The user's current build, used for compatibility checks and summary display.
-  final List<PcComponent> currentBuild;
+  /// If null, will be fetched from buildProvider.
+  final List<PcComponent>? currentBuild;
+
+  /// Optional callback when a component is selected.
+  /// If provided, component will be returned via callback instead of adding to buildProvider.
+  final Function(BaseComponent)? onComponentSelected;
+
   const PartPickerPage({
     super.key,
     required this.componentType,
-    required this.currentBuild,
+    this.currentBuild,
+    this.onComponentSelected,
   });
 
   @override
@@ -54,15 +65,351 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   /// Controller for the text-based search input.
   final _searchController = TextEditingController();
 
+  // Filter state
+  final Set<String> _selectedManufacturers = {};
+  RangeValues? _priceRange; // Will be initialized based on products
+  
+  // Component-specific filter states
+  final Set<String> _selectedCpuSeries = {};
+  final Set<String> _selectedCpuSockets = {};
+  bool? _cpuIncludesCooler;
+  
+  final Set<String> _selectedMotherboardSockets = {};
+  final Set<String> _selectedMotherboardChipsets = {};
+  final Set<String> _selectedMotherboardFormFactors = {};
+  
+  final Set<String> _selectedRamTypes = {};
+  final Set<int> _selectedRamModules = {};
+  bool? _ramHasRgb;
+  
+  final Set<String> _selectedStorageTypes = {};
+  final Set<String> _selectedStorageInterfaces = {};
+  
+  final Set<String> _selectedPsuWattages = {};
+  final Set<String> _selectedPsuEfficiencies = {};
+  final Set<String> _selectedPsuModularities = {};
+  
+  final Set<String> _selectedCaseFormFactors = {};
+  
+  // GPU filters
+  final Set<String> _selectedGpuChipsets = {};
+  RangeValues? _gpuVramRange; // Will be initialized based on products
+  final Set<String> _selectedGpuMemoryTypes = {};
+  final Set<String> _selectedGpuCoolingTypes = {};
+  final Set<String> _selectedGpuFrameSyncs = {};
+  
+  // Cooler filters
+  bool? _coolerIsWaterCooled;
+  RangeValues? _coolerHeightRange;
+  RangeValues? _coolerRadiatorSizeRange;
+  RangeValues? _coolerFanSizeRange;
+  
+  // Case Fan filters
+  RangeValues? _caseFanSizeRange;
+  final Set<String> _selectedCaseFanLedTypes = {};
+  final Set<String> _selectedCaseFanFlowDirections = {};
+  final Set<String> _selectedCaseFanConnectorTypes = {};
+  
+  // Monitor filters
+  RangeValues? _monitorScreenSizeRange;
+  final Set<String> _selectedMonitorPanelTypes = {};
+  RangeValues? _monitorRefreshRateRange;
+  final Set<String> _selectedMonitorAdaptiveSyncTypes = {};
+  final Set<String> _selectedMonitorAspectRatios = {};
+  
+  // Case filters (additional)
+  RangeValues? _caseMaxGpuLengthRange;
+  RangeValues? _caseMaxCoolerHeightRange;
+  
+  // Compatibility filter
+  bool _enableCompatibilityFilter = false;
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {}); // Trigger rebuild to apply search filter
+  }
+
+  /// Fetches compatible component IDs for given component IDs
+  Future<Set<String>> _getCompatibleComponentIds(List<String> componentIds, WidgetRef ref) async {
+    final Set<String> compatibleIds = {};
+    final service = ref.read(compatibility.componentCompatibilityServiceProvider);
+    
+    try {
+      for (final componentId in componentIds) {
+        final compatible = await service.getCompatibleComponentIds(componentId);
+        compatibleIds.addAll(compatible);
+        // Also add the component itself as compatible
+        compatibleIds.add(componentId);
+      }
+    } catch (e) {
+      debugPrint('Error fetching compatible components: $e');
+    }
+    
+    return compatibleIds;
+  }
+
+  /// Filters products based on all active filters
+  List<BaseComponent> _filterProducts(List<BaseComponent> products, {Set<String>? compatibleIds}) {
+    return products.where((product) {
+      // Search filter
+      final searchText = _searchController.text.toLowerCase();
+      if (searchText.isNotEmpty) {
+        if (!product.name.toLowerCase().contains(searchText) &&
+            !product.manufacturer.toLowerCase().contains(searchText)) {
+          return false;
+        }
+      }
+
+      // Manufacturer filter
+      if (_selectedManufacturers.isNotEmpty &&
+          !_selectedManufacturers.contains(product.manufacturer)) {
+        return false;
+      }
+
+      // Price filter
+      if (_priceRange != null) {
+        final price = product.lowestPrice ?? 0;
+        if (price < _priceRange!.start || price > _priceRange!.end) {
+          return false;
+        }
+      }
+
+      // Component-specific filters
+      switch (widget.componentType) {
+        case ComponentType.cpu:
+          if (product is CPUComponent) {
+            if (_selectedCpuSeries.isNotEmpty &&
+                !_selectedCpuSeries.contains(product.series)) {
+              return false;
+            }
+            if (_selectedCpuSockets.isNotEmpty &&
+                !_selectedCpuSockets.contains(product.socketType)) {
+              return false;
+            }
+            if (_cpuIncludesCooler != null &&
+                product.includesCooler != _cpuIncludesCooler) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.motherboard:
+          if (product is MotherboardComponent) {
+            if (_selectedMotherboardSockets.isNotEmpty &&
+                !_selectedMotherboardSockets.contains(product.socketType)) {
+              return false;
+            }
+            if (_selectedMotherboardChipsets.isNotEmpty &&
+                !_selectedMotherboardChipsets.contains(product.chipsetType)) {
+              return false;
+            }
+            if (_selectedMotherboardFormFactors.isNotEmpty &&
+                !_selectedMotherboardFormFactors.contains(product.formFactor)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.ram:
+          if (product is MemoryComponent) {
+            if (_selectedRamTypes.isNotEmpty &&
+                !_selectedRamTypes.contains(product.ramType)) {
+              return false;
+            }
+            if (_selectedRamModules.isNotEmpty &&
+                !_selectedRamModules.contains(product.moduleQuantity)) {
+              return false;
+            }
+            if (_ramHasRgb != null && product.haveRGB != _ramHasRgb) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.storage:
+          if (product is StorageComponent) {
+            if (_selectedStorageTypes.isNotEmpty &&
+                !_selectedStorageTypes.contains(product.driveType)) {
+              return false;
+            }
+            if (_selectedStorageInterfaces.isNotEmpty &&
+                !_selectedStorageInterfaces.contains(product.interface)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.psu:
+          if (product is PowerSupplyComponent) {
+            // Wattage filter
+            if (_selectedPsuWattages.isNotEmpty) {
+              bool matchesWattage = false;
+              for (final range in _selectedPsuWattages) {
+                final parts = range.split('-');
+                if (parts.length == 2) {
+                  final min = int.tryParse(parts[0]) ?? 0;
+                  final max = int.tryParse(parts[1]) ?? 9999;
+                  if (product.powerOutput >= min && product.powerOutput <= max) {
+                    matchesWattage = true;
+                    break;
+                  }
+                }
+              }
+              if (!matchesWattage) return false;
+            }
+            if (_selectedPsuEfficiencies.isNotEmpty &&
+                product.efficiencyRating != null &&
+                !_selectedPsuEfficiencies.contains(product.efficiencyRating)) {
+              return false;
+            }
+            if (_selectedPsuModularities.isNotEmpty &&
+                !_selectedPsuModularities.contains(product.modularityType)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.pcCase:
+          if (product is CaseComponent) {
+            if (_selectedCaseFormFactors.isNotEmpty &&
+                !_selectedCaseFormFactors.contains(product.formFactor)) {
+              return false;
+            }
+            // Max GPU length filter
+            if (_caseMaxGpuLengthRange != null &&
+                (product.maxVideoCardLength < _caseMaxGpuLengthRange!.start ||
+                 product.maxVideoCardLength > _caseMaxGpuLengthRange!.end)) {
+              return false;
+            }
+            // Max Cooler height filter
+            if (_caseMaxCoolerHeightRange != null &&
+                (product.maxCPUCoolerHeight < _caseMaxCoolerHeightRange!.start ||
+                 product.maxCPUCoolerHeight > _caseMaxCoolerHeightRange!.end)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.gpu:
+          if (product is GPUComponent) {
+            if (_selectedGpuChipsets.isNotEmpty &&
+                !_selectedGpuChipsets.contains(product.chipset)) {
+              return false;
+            }
+            if (_gpuVramRange != null &&
+                (product.videoMemoryAmount < _gpuVramRange!.start ||
+                 product.videoMemoryAmount > _gpuVramRange!.end)) {
+              return false;
+            }
+            if (_selectedGpuMemoryTypes.isNotEmpty &&
+                !_selectedGpuMemoryTypes.contains(product.videoMemoryType)) {
+              return false;
+            }
+            if (_selectedGpuCoolingTypes.isNotEmpty &&
+                !_selectedGpuCoolingTypes.contains(product.coolingType)) {
+              return false;
+            }
+            if (_selectedGpuFrameSyncs.isNotEmpty &&
+                !_selectedGpuFrameSyncs.contains(product.frameSync)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.cooler:
+          if (product is CoolerComponent) {
+            if (_coolerIsWaterCooled != null &&
+                product.isWaterCooled != _coolerIsWaterCooled) {
+              return false;
+            }
+            if (_coolerHeightRange != null &&
+                (product.height < _coolerHeightRange!.start ||
+                 product.height > _coolerHeightRange!.end)) {
+              return false;
+            }
+            if (_coolerRadiatorSizeRange != null &&
+                product.radiatorSize != null &&
+                (product.radiatorSize! < _coolerRadiatorSizeRange!.start ||
+                 product.radiatorSize! > _coolerRadiatorSizeRange!.end)) {
+              return false;
+            }
+            if (_coolerFanSizeRange != null &&
+                product.fanSize != null &&
+                (product.fanSize! < _coolerFanSizeRange!.start ||
+                 product.fanSize! > _coolerFanSizeRange!.end)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.caseFan:
+          if (product is CaseFanComponent) {
+            if (_caseFanSizeRange != null &&
+                (product.size < _caseFanSizeRange!.start ||
+                 product.size > _caseFanSizeRange!.end)) {
+              return false;
+            }
+            if (_selectedCaseFanLedTypes.isNotEmpty &&
+                product.ledType != null &&
+                !_selectedCaseFanLedTypes.contains(product.ledType)) {
+              return false;
+            }
+            if (_selectedCaseFanFlowDirections.isNotEmpty &&
+                !_selectedCaseFanFlowDirections.contains(product.flowDirection)) {
+              return false;
+            }
+            if (_selectedCaseFanConnectorTypes.isNotEmpty &&
+                product.connectorType != null &&
+                !_selectedCaseFanConnectorTypes.contains(product.connectorType)) {
+              return false;
+            }
+          }
+          break;
+        case ComponentType.monitor:
+          if (product is MonitorComponent) {
+            if (_monitorScreenSizeRange != null &&
+                (product.screenSize < _monitorScreenSizeRange!.start ||
+                 product.screenSize > _monitorScreenSizeRange!.end)) {
+              return false;
+            }
+            if (_selectedMonitorPanelTypes.isNotEmpty &&
+                !_selectedMonitorPanelTypes.contains(product.panelType)) {
+              return false;
+            }
+            if (_monitorRefreshRateRange != null &&
+                (product.maxRefreshRate < _monitorRefreshRateRange!.start ||
+                 product.maxRefreshRate > _monitorRefreshRateRange!.end)) {
+              return false;
+            }
+            if (_selectedMonitorAdaptiveSyncTypes.isNotEmpty &&
+                !_selectedMonitorAdaptiveSyncTypes.contains(product.adaptiveSyncType)) {
+              return false;
+            }
+            if (_selectedMonitorAspectRatios.isNotEmpty &&
+                !_selectedMonitorAspectRatios.contains(product.aspectRatio)) {
+              return false;
+            }
+          }
+          break;
+        default:
+          break;
+      }
+
+      // Compatibility filter
+      if (_enableCompatibilityFilter && compatibleIds != null) {
+        // If compatibility filter is enabled, only show products that are compatible
+        // with at least one component in the current build
+        if (!compatibleIds.contains(product.id)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
   }
 
   @override
@@ -91,10 +438,401 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                   /// The left panel containing the build summary and all filter options.
                   SizedBox(
                     width: 280,
-                    child: _LeftPanel(
-                      currentBuild: widget.currentBuild,
-                      allProducts: asyncComponents.valueOrNull ?? [], // Pass current data or empty list
-                      componentType: widget.componentType,
+                    child: asyncComponents.when(
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (products) {
+                        // Initialize price range if not set
+                        if (_priceRange == null && products.isNotEmpty) {
+                          final maxPrice = products
+                              .map((p) => p.lowestPrice ?? 0)
+                              .fold<double>(0, (max, price) => price > max ? price : max);
+                          _priceRange = RangeValues(0, maxPrice > 0 ? maxPrice : 10000);
+                        }
+                        // Initialize component-specific range filters
+                        if (widget.componentType == ComponentType.gpu && _gpuVramRange == null && products.isNotEmpty) {
+                          final gpus = products.whereType<GPUComponent>().toList();
+                          if (gpus.isNotEmpty) {
+                            final maxVram = gpus.map((p) => p.videoMemoryAmount).fold<double>(0, (max, val) => val > max ? val : max);
+                            _gpuVramRange = RangeValues(0, maxVram > 0 ? maxVram : 24);
+                          }
+                        }
+                        if (widget.componentType == ComponentType.cooler && _coolerHeightRange == null && products.isNotEmpty) {
+                          final coolers = products.whereType<CoolerComponent>().toList();
+                          if (coolers.isNotEmpty) {
+                            final maxHeight = coolers.map((p) => p.height).fold<double>(0, (max, val) => val > max ? val : max);
+                            _coolerHeightRange = RangeValues(0, maxHeight > 0 ? maxHeight : 200);
+                          }
+                        }
+                        if (widget.componentType == ComponentType.caseFan && _caseFanSizeRange == null && products.isNotEmpty) {
+                          final fans = products.whereType<CaseFanComponent>().toList();
+                          if (fans.isNotEmpty) {
+                            final maxSize = fans.map((p) => p.size).fold<double>(0, (max, val) => val > max ? val : max);
+                            _caseFanSizeRange = RangeValues(0, maxSize > 0 ? maxSize : 200);
+                          }
+                        }
+                        if (widget.componentType == ComponentType.monitor && _monitorScreenSizeRange == null && products.isNotEmpty) {
+                          final monitors = products.whereType<MonitorComponent>().toList();
+                          if (monitors.isNotEmpty) {
+                            final maxSize = monitors.map((p) => p.screenSize).fold<double>(0, (max, val) => val > max ? val : max);
+                            _monitorScreenSizeRange = RangeValues(0, maxSize > 0 ? maxSize : 50);
+                            final maxRefresh = monitors.map((p) => p.maxRefreshRate).fold<double>(0, (max, val) => val > max ? val : max);
+                            _monitorRefreshRateRange = RangeValues(0, maxRefresh > 0 ? maxRefresh : 240);
+                          }
+                        }
+                        if (widget.componentType == ComponentType.pcCase && _caseMaxGpuLengthRange == null && products.isNotEmpty) {
+                          final cases = products.whereType<CaseComponent>().toList();
+                          if (cases.isNotEmpty) {
+                            final maxGpuLength = cases.map((p) => p.maxVideoCardLength).fold<double>(0, (max, val) => val > max ? val : max);
+                            _caseMaxGpuLengthRange = RangeValues(0, maxGpuLength > 0 ? maxGpuLength : 500);
+                            final maxCoolerHeight = cases.map((p) => p.maxCPUCoolerHeight.toDouble()).fold<double>(0, (max, val) => val > max ? val : max);
+                            _caseMaxCoolerHeightRange = RangeValues(0, maxCoolerHeight > 0 ? maxCoolerHeight : 200);
+                          }
+                        }
+                        // Get current build from provider if not provided
+                        final List<PcComponent> currentBuild = widget.currentBuild ?? ref.watch(buildProvider);
+                        
+                        return _LeftPanel(
+                          enableCompatibilityFilter: _enableCompatibilityFilter,
+                          onCompatibilityFilterChanged: (val) {
+                            setState(() {
+                              _enableCompatibilityFilter = val;
+                            });
+                          },
+                          currentBuild: currentBuild,
+                          allProducts: products,
+                          componentType: widget.componentType,
+                          // Filter state and callbacks
+                          selectedManufacturers: _selectedManufacturers,
+                          onManufacturerChanged: (val, sel) {
+                            setState(() {
+                              if (sel) {
+                                _selectedManufacturers.add(val);
+                              } else {
+                                _selectedManufacturers.remove(val);
+                              }
+                            });
+                          },
+                          priceRange: _priceRange ?? const RangeValues(0, 10000),
+                          onPriceRangeChanged: (range) {
+                            setState(() {
+                              _priceRange = range;
+                            });
+                          },
+                        // CPU filters
+                        selectedCpuSeries: _selectedCpuSeries,
+                        onCpuSeriesChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCpuSeries.add(val);
+                            } else {
+                              _selectedCpuSeries.remove(val);
+                            }
+                          });
+                        },
+                        selectedCpuSockets: _selectedCpuSockets,
+                        onCpuSocketChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCpuSockets.add(val);
+                            } else {
+                              _selectedCpuSockets.remove(val);
+                            }
+                          });
+                        },
+                        cpuIncludesCooler: _cpuIncludesCooler,
+                        onCpuIncludesCoolerChanged: (val) {
+                          setState(() {
+                            _cpuIncludesCooler = val;
+                          });
+                        },
+                        // Motherboard filters
+                        selectedMotherboardSockets: _selectedMotherboardSockets,
+                        onMotherboardSocketChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMotherboardSockets.add(val);
+                            } else {
+                              _selectedMotherboardSockets.remove(val);
+                            }
+                          });
+                        },
+                        selectedMotherboardChipsets: _selectedMotherboardChipsets,
+                        onMotherboardChipsetChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMotherboardChipsets.add(val);
+                            } else {
+                              _selectedMotherboardChipsets.remove(val);
+                            }
+                          });
+                        },
+                        selectedMotherboardFormFactors: _selectedMotherboardFormFactors,
+                        onMotherboardFormFactorChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMotherboardFormFactors.add(val);
+                            } else {
+                              _selectedMotherboardFormFactors.remove(val);
+                            }
+                          });
+                        },
+                        // RAM filters
+                        selectedRamTypes: _selectedRamTypes,
+                        onRamTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedRamTypes.add(val);
+                            } else {
+                              _selectedRamTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedRamModules: _selectedRamModules,
+                        onRamModuleChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedRamModules.add(val);
+                            } else {
+                              _selectedRamModules.remove(val);
+                            }
+                          });
+                        },
+                        ramHasRgb: _ramHasRgb,
+                        onRamHasRgbChanged: (val) {
+                          setState(() {
+                            _ramHasRgb = val;
+                          });
+                        },
+                        // Storage filters
+                        selectedStorageTypes: _selectedStorageTypes,
+                        onStorageTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedStorageTypes.add(val);
+                            } else {
+                              _selectedStorageTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedStorageInterfaces: _selectedStorageInterfaces,
+                        onStorageInterfaceChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedStorageInterfaces.add(val);
+                            } else {
+                              _selectedStorageInterfaces.remove(val);
+                            }
+                          });
+                        },
+                        // PSU filters
+                        selectedPsuWattages: _selectedPsuWattages,
+                        onPsuWattageChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedPsuWattages.add(val);
+                            } else {
+                              _selectedPsuWattages.remove(val);
+                            }
+                          });
+                        },
+                        selectedPsuEfficiencies: _selectedPsuEfficiencies,
+                        onPsuEfficiencyChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedPsuEfficiencies.add(val);
+                            } else {
+                              _selectedPsuEfficiencies.remove(val);
+                            }
+                          });
+                        },
+                        selectedPsuModularities: _selectedPsuModularities,
+                        onPsuModularityChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedPsuModularities.add(val);
+                            } else {
+                              _selectedPsuModularities.remove(val);
+                            }
+                          });
+                        },
+                        // Case filters
+                        selectedCaseFormFactors: _selectedCaseFormFactors,
+                        onCaseFormFactorChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCaseFormFactors.add(val);
+                            } else {
+                              _selectedCaseFormFactors.remove(val);
+                            }
+                          });
+                        },
+                        caseMaxGpuLengthRange: _caseMaxGpuLengthRange,
+                        onCaseMaxGpuLengthRangeChanged: (range) {
+                          setState(() {
+                            _caseMaxGpuLengthRange = range;
+                          });
+                        },
+                        caseMaxCoolerHeightRange: _caseMaxCoolerHeightRange,
+                        onCaseMaxCoolerHeightRangeChanged: (range) {
+                          setState(() {
+                            _caseMaxCoolerHeightRange = range;
+                          });
+                        },
+                        // GPU filters
+                        selectedGpuChipsets: _selectedGpuChipsets,
+                        onGpuChipsetChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedGpuChipsets.add(val);
+                            } else {
+                              _selectedGpuChipsets.remove(val);
+                            }
+                          });
+                        },
+                        gpuVramRange: _gpuVramRange,
+                        onGpuVramRangeChanged: (range) {
+                          setState(() {
+                            _gpuVramRange = range;
+                          });
+                        },
+                        selectedGpuMemoryTypes: _selectedGpuMemoryTypes,
+                        onGpuMemoryTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedGpuMemoryTypes.add(val);
+                            } else {
+                              _selectedGpuMemoryTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedGpuCoolingTypes: _selectedGpuCoolingTypes,
+                        onGpuCoolingTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedGpuCoolingTypes.add(val);
+                            } else {
+                              _selectedGpuCoolingTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedGpuFrameSyncs: _selectedGpuFrameSyncs,
+                        onGpuFrameSyncChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedGpuFrameSyncs.add(val);
+                            } else {
+                              _selectedGpuFrameSyncs.remove(val);
+                            }
+                          });
+                        },
+                        // Cooler filters
+                        coolerIsWaterCooled: _coolerIsWaterCooled,
+                        onCoolerIsWaterCooledChanged: (val) {
+                          setState(() {
+                            _coolerIsWaterCooled = val;
+                          });
+                        },
+                        coolerHeightRange: _coolerHeightRange,
+                        onCoolerHeightRangeChanged: (range) {
+                          setState(() {
+                            _coolerHeightRange = range;
+                          });
+                        },
+                        coolerRadiatorSizeRange: _coolerRadiatorSizeRange,
+                        onCoolerRadiatorSizeRangeChanged: (range) {
+                          setState(() {
+                            _coolerRadiatorSizeRange = range;
+                          });
+                        },
+                        coolerFanSizeRange: _coolerFanSizeRange,
+                        onCoolerFanSizeRangeChanged: (range) {
+                          setState(() {
+                            _coolerFanSizeRange = range;
+                          });
+                        },
+                        // Case Fan filters
+                        caseFanSizeRange: _caseFanSizeRange,
+                        onCaseFanSizeRangeChanged: (range) {
+                          setState(() {
+                            _caseFanSizeRange = range;
+                          });
+                        },
+                        selectedCaseFanLedTypes: _selectedCaseFanLedTypes,
+                        onCaseFanLedTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCaseFanLedTypes.add(val);
+                            } else {
+                              _selectedCaseFanLedTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedCaseFanFlowDirections: _selectedCaseFanFlowDirections,
+                        onCaseFanFlowDirectionChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCaseFanFlowDirections.add(val);
+                            } else {
+                              _selectedCaseFanFlowDirections.remove(val);
+                            }
+                          });
+                        },
+                        selectedCaseFanConnectorTypes: _selectedCaseFanConnectorTypes,
+                        onCaseFanConnectorTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedCaseFanConnectorTypes.add(val);
+                            } else {
+                              _selectedCaseFanConnectorTypes.remove(val);
+                            }
+                          });
+                        },
+                        // Monitor filters
+                        monitorScreenSizeRange: _monitorScreenSizeRange,
+                        onMonitorScreenSizeRangeChanged: (range) {
+                          setState(() {
+                            _monitorScreenSizeRange = range;
+                          });
+                        },
+                        selectedMonitorPanelTypes: _selectedMonitorPanelTypes,
+                        onMonitorPanelTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMonitorPanelTypes.add(val);
+                            } else {
+                              _selectedMonitorPanelTypes.remove(val);
+                            }
+                          });
+                        },
+                        monitorRefreshRateRange: _monitorRefreshRateRange,
+                        onMonitorRefreshRateRangeChanged: (range) {
+                          setState(() {
+                            _monitorRefreshRateRange = range;
+                          });
+                        },
+                        selectedMonitorAdaptiveSyncTypes: _selectedMonitorAdaptiveSyncTypes,
+                        onMonitorAdaptiveSyncTypeChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMonitorAdaptiveSyncTypes.add(val);
+                            } else {
+                              _selectedMonitorAdaptiveSyncTypes.remove(val);
+                            }
+                          });
+                        },
+                        selectedMonitorAspectRatios: _selectedMonitorAspectRatios,
+                        onMonitorAspectRatioChanged: (val, sel) {
+                          setState(() {
+                            if (sel) {
+                              _selectedMonitorAspectRatios.add(val);
+                            } else {
+                              _selectedMonitorAspectRatios.remove(val);
+                            }
+                          });
+                        },
+                      );
+                      },
                     ),
                   ),
                   const SizedBox(width: 32),
@@ -105,11 +843,49 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                     child: asyncComponents.when(
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(child: Text('Error: $err')),
-                      data: (products) => _ProductList(
-                        componentType: widget.componentType,
-                        searchController: _searchController,
-                        products: products, // Directly use the data from the provider
-                      ),
+                      data: (products) {
+                        // Get current build from provider if not provided
+                        final List<PcComponent> currentBuild = widget.currentBuild ?? ref.watch(buildProvider);
+                        
+                        // If compatibility filter is enabled, fetch compatible component IDs
+                        if (_enableCompatibilityFilter && currentBuild.isNotEmpty) {
+                          // Get all component IDs from current build
+                          final buildComponentIds = currentBuild
+                              .where((item) => item.selectedProduct != null)
+                              .map((item) => item.selectedProduct!.id)
+                              .toList();
+                          
+                          if (buildComponentIds.isNotEmpty) {
+                            // Use FutureBuilder to fetch compatible components
+                            return FutureBuilder<Set<String>>(
+                              future: _getCompatibleComponentIds(buildComponentIds, ref),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                
+                                final compatibleIds = snapshot.data ?? <String>{};
+                                final filteredProducts = _filterProducts(products, compatibleIds: compatibleIds);
+                                
+                                return _ProductList(
+                                  componentType: widget.componentType,
+                                  searchController: _searchController,
+                                  products: filteredProducts,
+                                  onComponentSelected: widget.onComponentSelected,
+                                );
+                              },
+                            );
+                          }
+                        }
+                        
+                        final filteredProducts = _filterProducts(products);
+                        return _ProductList(
+                          componentType: widget.componentType,
+                          searchController: _searchController,
+                          products: filteredProducts,
+                          onComponentSelected: widget.onComponentSelected,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -128,11 +904,187 @@ class _LeftPanel extends ConsumerWidget {
   final List<PcComponent> currentBuild;
   final List<BaseComponent> allProducts;
   final ComponentType componentType;
+  
+  // Filter state and callbacks
+  final Set<String> selectedManufacturers;
+  final Function(String, bool) onManufacturerChanged;
+  final RangeValues priceRange;
+  final Function(RangeValues) onPriceRangeChanged;
+  
+  // CPU filters
+  final Set<String> selectedCpuSeries;
+  final Function(String, bool) onCpuSeriesChanged;
+  final Set<String> selectedCpuSockets;
+  final Function(String, bool) onCpuSocketChanged;
+  final bool? cpuIncludesCooler;
+  final Function(bool?) onCpuIncludesCoolerChanged;
+  
+  // Motherboard filters
+  final Set<String> selectedMotherboardSockets;
+  final Function(String, bool) onMotherboardSocketChanged;
+  final Set<String> selectedMotherboardChipsets;
+  final Function(String, bool) onMotherboardChipsetChanged;
+  final Set<String> selectedMotherboardFormFactors;
+  final Function(String, bool) onMotherboardFormFactorChanged;
+  
+  // RAM filters
+  final Set<String> selectedRamTypes;
+  final Function(String, bool) onRamTypeChanged;
+  final Set<int> selectedRamModules;
+  final Function(int, bool) onRamModuleChanged;
+  final bool? ramHasRgb;
+  final Function(bool?) onRamHasRgbChanged;
+  
+  // Storage filters
+  final Set<String> selectedStorageTypes;
+  final Function(String, bool) onStorageTypeChanged;
+  final Set<String> selectedStorageInterfaces;
+  final Function(String, bool) onStorageInterfaceChanged;
+  
+  // PSU filters
+  final Set<String> selectedPsuWattages;
+  final Function(String, bool) onPsuWattageChanged;
+  final Set<String> selectedPsuEfficiencies;
+  final Function(String, bool) onPsuEfficiencyChanged;
+  final Set<String> selectedPsuModularities;
+  final Function(String, bool) onPsuModularityChanged;
+  
+  // Case filters
+  final Set<String> selectedCaseFormFactors;
+  final Function(String, bool) onCaseFormFactorChanged;
+  final RangeValues? caseMaxGpuLengthRange;
+  final Function(RangeValues) onCaseMaxGpuLengthRangeChanged;
+  final RangeValues? caseMaxCoolerHeightRange;
+  final Function(RangeValues) onCaseMaxCoolerHeightRangeChanged;
+  
+  // GPU filters
+  final Set<String> selectedGpuChipsets;
+  final Function(String, bool) onGpuChipsetChanged;
+  final RangeValues? gpuVramRange;
+  final Function(RangeValues) onGpuVramRangeChanged;
+  final Set<String> selectedGpuMemoryTypes;
+  final Function(String, bool) onGpuMemoryTypeChanged;
+  final Set<String> selectedGpuCoolingTypes;
+  final Function(String, bool) onGpuCoolingTypeChanged;
+  final Set<String> selectedGpuFrameSyncs;
+  final Function(String, bool) onGpuFrameSyncChanged;
+  
+  // Cooler filters
+  final bool? coolerIsWaterCooled;
+  final Function(bool?) onCoolerIsWaterCooledChanged;
+  final RangeValues? coolerHeightRange;
+  final Function(RangeValues) onCoolerHeightRangeChanged;
+  final RangeValues? coolerRadiatorSizeRange;
+  final Function(RangeValues) onCoolerRadiatorSizeRangeChanged;
+  final RangeValues? coolerFanSizeRange;
+  final Function(RangeValues) onCoolerFanSizeRangeChanged;
+  
+  // Case Fan filters
+  final RangeValues? caseFanSizeRange;
+  final Function(RangeValues) onCaseFanSizeRangeChanged;
+  final Set<String> selectedCaseFanLedTypes;
+  final Function(String, bool) onCaseFanLedTypeChanged;
+  final Set<String> selectedCaseFanFlowDirections;
+  final Function(String, bool) onCaseFanFlowDirectionChanged;
+  final Set<String> selectedCaseFanConnectorTypes;
+  final Function(String, bool) onCaseFanConnectorTypeChanged;
+  
+  // Monitor filters
+  final RangeValues? monitorScreenSizeRange;
+  final Function(RangeValues) onMonitorScreenSizeRangeChanged;
+  final Set<String> selectedMonitorPanelTypes;
+  final Function(String, bool) onMonitorPanelTypeChanged;
+  final RangeValues? monitorRefreshRateRange;
+  final Function(RangeValues) onMonitorRefreshRateRangeChanged;
+  final Set<String> selectedMonitorAdaptiveSyncTypes;
+  final Function(String, bool) onMonitorAdaptiveSyncTypeChanged;
+  final Set<String> selectedMonitorAspectRatios;
+  final Function(String, bool) onMonitorAspectRatioChanged;
+  
+  // Compatibility filter
+  final bool enableCompatibilityFilter;
+  final Function(bool) onCompatibilityFilterChanged;
 
   const _LeftPanel({
+    required this.enableCompatibilityFilter,
+    required this.onCompatibilityFilterChanged,
     required this.currentBuild,
     required this.allProducts,
     required this.componentType,
+    required this.selectedManufacturers,
+    required this.onManufacturerChanged,
+    required this.priceRange,
+    required this.onPriceRangeChanged,
+    required this.selectedCpuSeries,
+    required this.onCpuSeriesChanged,
+    required this.selectedCpuSockets,
+    required this.onCpuSocketChanged,
+    required this.cpuIncludesCooler,
+    required this.onCpuIncludesCoolerChanged,
+    required this.selectedMotherboardSockets,
+    required this.onMotherboardSocketChanged,
+    required this.selectedMotherboardChipsets,
+    required this.onMotherboardChipsetChanged,
+    required this.selectedMotherboardFormFactors,
+    required this.onMotherboardFormFactorChanged,
+    required this.selectedRamTypes,
+    required this.onRamTypeChanged,
+    required this.selectedRamModules,
+    required this.onRamModuleChanged,
+    required this.ramHasRgb,
+    required this.onRamHasRgbChanged,
+    required this.selectedStorageTypes,
+    required this.onStorageTypeChanged,
+    required this.selectedStorageInterfaces,
+    required this.onStorageInterfaceChanged,
+    required this.selectedPsuWattages,
+    required this.onPsuWattageChanged,
+    required this.selectedPsuEfficiencies,
+    required this.onPsuEfficiencyChanged,
+    required this.selectedPsuModularities,
+    required this.onPsuModularityChanged,
+    required this.selectedCaseFormFactors,
+    required this.onCaseFormFactorChanged,
+    required this.caseMaxGpuLengthRange,
+    required this.onCaseMaxGpuLengthRangeChanged,
+    required this.caseMaxCoolerHeightRange,
+    required this.onCaseMaxCoolerHeightRangeChanged,
+    required this.selectedGpuChipsets,
+    required this.onGpuChipsetChanged,
+    required this.gpuVramRange,
+    required this.onGpuVramRangeChanged,
+    required this.selectedGpuMemoryTypes,
+    required this.onGpuMemoryTypeChanged,
+    required this.selectedGpuCoolingTypes,
+    required this.onGpuCoolingTypeChanged,
+    required this.selectedGpuFrameSyncs,
+    required this.onGpuFrameSyncChanged,
+    required this.coolerIsWaterCooled,
+    required this.onCoolerIsWaterCooledChanged,
+    required this.coolerHeightRange,
+    required this.onCoolerHeightRangeChanged,
+    required this.coolerRadiatorSizeRange,
+    required this.onCoolerRadiatorSizeRangeChanged,
+    required this.coolerFanSizeRange,
+    required this.onCoolerFanSizeRangeChanged,
+    required this.caseFanSizeRange,
+    required this.onCaseFanSizeRangeChanged,
+    required this.selectedCaseFanLedTypes,
+    required this.onCaseFanLedTypeChanged,
+    required this.selectedCaseFanFlowDirections,
+    required this.onCaseFanFlowDirectionChanged,
+    required this.selectedCaseFanConnectorTypes,
+    required this.onCaseFanConnectorTypeChanged,
+    required this.monitorScreenSizeRange,
+    required this.onMonitorScreenSizeRangeChanged,
+    required this.selectedMonitorPanelTypes,
+    required this.onMonitorPanelTypeChanged,
+    required this.monitorRefreshRateRange,
+    required this.onMonitorRefreshRateRangeChanged,
+    required this.selectedMonitorAdaptiveSyncTypes,
+    required this.onMonitorAdaptiveSyncTypeChanged,
+    required this.selectedMonitorAspectRatios,
+    required this.onMonitorAspectRatioChanged,
   });
 
   /// A computed property that calculates the number of parts currently selected in the build.
@@ -160,14 +1112,15 @@ class _LeftPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// A checkbox to toggle the compatibility filter.
-        // TODO: Implement the actual compatibility filtering logic.
         CheckboxListTile(
           title: const Text(
             'Compatibility Filter',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          value: false, // TODO: Re-enable and implement compatibility logic.
-          onChanged: (val) {},
+          value: enableCompatibilityFilter,
+          onChanged: (val) {
+            onCompatibilityFilterChanged(val ?? false);
+          },
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
           activeColor: AppColorsDark.textPurple,
@@ -193,6 +1146,80 @@ class _LeftPanel extends ConsumerWidget {
             child: _FilterPanel(
               allProducts: allProducts,
               componentType: componentType,
+              selectedManufacturers: selectedManufacturers,
+              onManufacturerChanged: onManufacturerChanged,
+              priceRange: priceRange,
+              onPriceRangeChanged: onPriceRangeChanged,
+              selectedCpuSeries: selectedCpuSeries,
+              onCpuSeriesChanged: onCpuSeriesChanged,
+              selectedCpuSockets: selectedCpuSockets,
+              onCpuSocketChanged: onCpuSocketChanged,
+              cpuIncludesCooler: cpuIncludesCooler,
+              onCpuIncludesCoolerChanged: onCpuIncludesCoolerChanged,
+              selectedMotherboardSockets: selectedMotherboardSockets,
+              onMotherboardSocketChanged: onMotherboardSocketChanged,
+              selectedMotherboardChipsets: selectedMotherboardChipsets,
+              onMotherboardChipsetChanged: onMotherboardChipsetChanged,
+              selectedMotherboardFormFactors: selectedMotherboardFormFactors,
+              onMotherboardFormFactorChanged: onMotherboardFormFactorChanged,
+              selectedRamTypes: selectedRamTypes,
+              onRamTypeChanged: onRamTypeChanged,
+              selectedRamModules: selectedRamModules,
+              onRamModuleChanged: onRamModuleChanged,
+              ramHasRgb: ramHasRgb,
+              onRamHasRgbChanged: onRamHasRgbChanged,
+              selectedStorageTypes: selectedStorageTypes,
+              onStorageTypeChanged: onStorageTypeChanged,
+              selectedStorageInterfaces: selectedStorageInterfaces,
+              onStorageInterfaceChanged: onStorageInterfaceChanged,
+              selectedPsuWattages: selectedPsuWattages,
+              onPsuWattageChanged: onPsuWattageChanged,
+              selectedPsuEfficiencies: selectedPsuEfficiencies,
+              onPsuEfficiencyChanged: onPsuEfficiencyChanged,
+              selectedPsuModularities: selectedPsuModularities,
+              onPsuModularityChanged: onPsuModularityChanged,
+              selectedCaseFormFactors: selectedCaseFormFactors,
+              onCaseFormFactorChanged: onCaseFormFactorChanged,
+              caseMaxGpuLengthRange: caseMaxGpuLengthRange,
+              onCaseMaxGpuLengthRangeChanged: onCaseMaxGpuLengthRangeChanged,
+              caseMaxCoolerHeightRange: caseMaxCoolerHeightRange,
+              onCaseMaxCoolerHeightRangeChanged: onCaseMaxCoolerHeightRangeChanged,
+              selectedGpuChipsets: selectedGpuChipsets,
+              onGpuChipsetChanged: onGpuChipsetChanged,
+              gpuVramRange: gpuVramRange,
+              onGpuVramRangeChanged: onGpuVramRangeChanged,
+              selectedGpuMemoryTypes: selectedGpuMemoryTypes,
+              onGpuMemoryTypeChanged: onGpuMemoryTypeChanged,
+              selectedGpuCoolingTypes: selectedGpuCoolingTypes,
+              onGpuCoolingTypeChanged: onGpuCoolingTypeChanged,
+              selectedGpuFrameSyncs: selectedGpuFrameSyncs,
+              onGpuFrameSyncChanged: onGpuFrameSyncChanged,
+              coolerIsWaterCooled: coolerIsWaterCooled,
+              onCoolerIsWaterCooledChanged: onCoolerIsWaterCooledChanged,
+              coolerHeightRange: coolerHeightRange,
+              onCoolerHeightRangeChanged: onCoolerHeightRangeChanged,
+              coolerRadiatorSizeRange: coolerRadiatorSizeRange,
+              onCoolerRadiatorSizeRangeChanged: onCoolerRadiatorSizeRangeChanged,
+              coolerFanSizeRange: coolerFanSizeRange,
+              onCoolerFanSizeRangeChanged: onCoolerFanSizeRangeChanged,
+              caseFanSizeRange: caseFanSizeRange,
+              onCaseFanSizeRangeChanged: onCaseFanSizeRangeChanged,
+              selectedCaseFanLedTypes: selectedCaseFanLedTypes,
+              onCaseFanLedTypeChanged: onCaseFanLedTypeChanged,
+              selectedCaseFanFlowDirections: selectedCaseFanFlowDirections,
+              onCaseFanFlowDirectionChanged: onCaseFanFlowDirectionChanged,
+              selectedCaseFanConnectorTypes: selectedCaseFanConnectorTypes,
+              onCaseFanConnectorTypeChanged: onCaseFanConnectorTypeChanged,
+              monitorScreenSizeRange: monitorScreenSizeRange,
+              onMonitorScreenSizeRangeChanged: onMonitorScreenSizeRangeChanged,
+              selectedMonitorPanelTypes: selectedMonitorPanelTypes,
+              onMonitorPanelTypeChanged: onMonitorPanelTypeChanged,
+              monitorRefreshRateRange: monitorRefreshRateRange,
+              onMonitorRefreshRateRangeChanged: onMonitorRefreshRateRangeChanged,
+              selectedMonitorAdaptiveSyncTypes: selectedMonitorAdaptiveSyncTypes,
+              onMonitorAdaptiveSyncTypeChanged: onMonitorAdaptiveSyncTypeChanged,
+              selectedMonitorAspectRatios: selectedMonitorAspectRatios,
+              onMonitorAspectRatioChanged: onMonitorAspectRatioChanged,
             ),
           ),
         ),
@@ -273,10 +1300,180 @@ class _SummaryRow extends StatelessWidget {
 class _FilterPanel extends ConsumerWidget {
   final List<BaseComponent> allProducts;
   final ComponentType componentType;
+  
+  // Filter state and callbacks
+  final Set<String> selectedManufacturers;
+  final Function(String, bool) onManufacturerChanged;
+  final RangeValues priceRange;
+  final Function(RangeValues) onPriceRangeChanged;
+  
+  // CPU filters
+  final Set<String> selectedCpuSeries;
+  final Function(String, bool) onCpuSeriesChanged;
+  final Set<String> selectedCpuSockets;
+  final Function(String, bool) onCpuSocketChanged;
+  final bool? cpuIncludesCooler;
+  final Function(bool?) onCpuIncludesCoolerChanged;
+  
+  // Motherboard filters
+  final Set<String> selectedMotherboardSockets;
+  final Function(String, bool) onMotherboardSocketChanged;
+  final Set<String> selectedMotherboardChipsets;
+  final Function(String, bool) onMotherboardChipsetChanged;
+  final Set<String> selectedMotherboardFormFactors;
+  final Function(String, bool) onMotherboardFormFactorChanged;
+  
+  // RAM filters
+  final Set<String> selectedRamTypes;
+  final Function(String, bool) onRamTypeChanged;
+  final Set<int> selectedRamModules;
+  final Function(int, bool) onRamModuleChanged;
+  final bool? ramHasRgb;
+  final Function(bool?) onRamHasRgbChanged;
+  
+  // Storage filters
+  final Set<String> selectedStorageTypes;
+  final Function(String, bool) onStorageTypeChanged;
+  final Set<String> selectedStorageInterfaces;
+  final Function(String, bool) onStorageInterfaceChanged;
+  
+  // PSU filters
+  final Set<String> selectedPsuWattages;
+  final Function(String, bool) onPsuWattageChanged;
+  final Set<String> selectedPsuEfficiencies;
+  final Function(String, bool) onPsuEfficiencyChanged;
+  final Set<String> selectedPsuModularities;
+  final Function(String, bool) onPsuModularityChanged;
+  
+  // Case filters
+  final Set<String> selectedCaseFormFactors;
+  final Function(String, bool) onCaseFormFactorChanged;
+  final RangeValues? caseMaxGpuLengthRange;
+  final Function(RangeValues) onCaseMaxGpuLengthRangeChanged;
+  final RangeValues? caseMaxCoolerHeightRange;
+  final Function(RangeValues) onCaseMaxCoolerHeightRangeChanged;
+  
+  // GPU filters
+  final Set<String> selectedGpuChipsets;
+  final Function(String, bool) onGpuChipsetChanged;
+  final RangeValues? gpuVramRange;
+  final Function(RangeValues) onGpuVramRangeChanged;
+  final Set<String> selectedGpuMemoryTypes;
+  final Function(String, bool) onGpuMemoryTypeChanged;
+  final Set<String> selectedGpuCoolingTypes;
+  final Function(String, bool) onGpuCoolingTypeChanged;
+  final Set<String> selectedGpuFrameSyncs;
+  final Function(String, bool) onGpuFrameSyncChanged;
+  
+  // Cooler filters
+  final bool? coolerIsWaterCooled;
+  final Function(bool?) onCoolerIsWaterCooledChanged;
+  final RangeValues? coolerHeightRange;
+  final Function(RangeValues) onCoolerHeightRangeChanged;
+  final RangeValues? coolerRadiatorSizeRange;
+  final Function(RangeValues) onCoolerRadiatorSizeRangeChanged;
+  final RangeValues? coolerFanSizeRange;
+  final Function(RangeValues) onCoolerFanSizeRangeChanged;
+  
+  // Case Fan filters
+  final RangeValues? caseFanSizeRange;
+  final Function(RangeValues) onCaseFanSizeRangeChanged;
+  final Set<String> selectedCaseFanLedTypes;
+  final Function(String, bool) onCaseFanLedTypeChanged;
+  final Set<String> selectedCaseFanFlowDirections;
+  final Function(String, bool) onCaseFanFlowDirectionChanged;
+  final Set<String> selectedCaseFanConnectorTypes;
+  final Function(String, bool) onCaseFanConnectorTypeChanged;
+  
+  // Monitor filters
+  final RangeValues? monitorScreenSizeRange;
+  final Function(RangeValues) onMonitorScreenSizeRangeChanged;
+  final Set<String> selectedMonitorPanelTypes;
+  final Function(String, bool) onMonitorPanelTypeChanged;
+  final RangeValues? monitorRefreshRateRange;
+  final Function(RangeValues) onMonitorRefreshRateRangeChanged;
+  final Set<String> selectedMonitorAdaptiveSyncTypes;
+  final Function(String, bool) onMonitorAdaptiveSyncTypeChanged;
+  final Set<String> selectedMonitorAspectRatios;
+  final Function(String, bool) onMonitorAspectRatioChanged;
 
   const _FilterPanel({
     required this.allProducts,
     required this.componentType,
+    required this.selectedManufacturers,
+    required this.onManufacturerChanged,
+    required this.priceRange,
+    required this.onPriceRangeChanged,
+    required this.selectedCpuSeries,
+    required this.onCpuSeriesChanged,
+    required this.selectedCpuSockets,
+    required this.onCpuSocketChanged,
+    required this.cpuIncludesCooler,
+    required this.onCpuIncludesCoolerChanged,
+    required this.selectedMotherboardSockets,
+    required this.onMotherboardSocketChanged,
+    required this.selectedMotherboardChipsets,
+    required this.onMotherboardChipsetChanged,
+    required this.selectedMotherboardFormFactors,
+    required this.onMotherboardFormFactorChanged,
+    required this.selectedRamTypes,
+    required this.onRamTypeChanged,
+    required this.selectedRamModules,
+    required this.onRamModuleChanged,
+    required this.ramHasRgb,
+    required this.onRamHasRgbChanged,
+    required this.selectedStorageTypes,
+    required this.onStorageTypeChanged,
+    required this.selectedStorageInterfaces,
+    required this.onStorageInterfaceChanged,
+    required this.selectedPsuWattages,
+    required this.onPsuWattageChanged,
+    required this.selectedPsuEfficiencies,
+    required this.onPsuEfficiencyChanged,
+    required this.selectedPsuModularities,
+    required this.onPsuModularityChanged,
+    required this.selectedCaseFormFactors,
+    required this.onCaseFormFactorChanged,
+    required this.caseMaxGpuLengthRange,
+    required this.onCaseMaxGpuLengthRangeChanged,
+    required this.caseMaxCoolerHeightRange,
+    required this.onCaseMaxCoolerHeightRangeChanged,
+    required this.selectedGpuChipsets,
+    required this.onGpuChipsetChanged,
+    required this.gpuVramRange,
+    required this.onGpuVramRangeChanged,
+    required this.selectedGpuMemoryTypes,
+    required this.onGpuMemoryTypeChanged,
+    required this.selectedGpuCoolingTypes,
+    required this.onGpuCoolingTypeChanged,
+    required this.selectedGpuFrameSyncs,
+    required this.onGpuFrameSyncChanged,
+    required this.coolerIsWaterCooled,
+    required this.onCoolerIsWaterCooledChanged,
+    required this.coolerHeightRange,
+    required this.onCoolerHeightRangeChanged,
+    required this.coolerRadiatorSizeRange,
+    required this.onCoolerRadiatorSizeRangeChanged,
+    required this.coolerFanSizeRange,
+    required this.onCoolerFanSizeRangeChanged,
+    required this.caseFanSizeRange,
+    required this.onCaseFanSizeRangeChanged,
+    required this.selectedCaseFanLedTypes,
+    required this.onCaseFanLedTypeChanged,
+    required this.selectedCaseFanFlowDirections,
+    required this.onCaseFanFlowDirectionChanged,
+    required this.selectedCaseFanConnectorTypes,
+    required this.onCaseFanConnectorTypeChanged,
+    required this.monitorScreenSizeRange,
+    required this.onMonitorScreenSizeRangeChanged,
+    required this.selectedMonitorPanelTypes,
+    required this.onMonitorPanelTypeChanged,
+    required this.monitorRefreshRateRange,
+    required this.onMonitorRefreshRateRangeChanged,
+    required this.selectedMonitorAdaptiveSyncTypes,
+    required this.onMonitorAdaptiveSyncTypeChanged,
+    required this.selectedMonitorAspectRatios,
+    required this.onMonitorAspectRatioChanged,
   });
 
   /// A generic function to extract unique, non-null values for a specific property
@@ -304,8 +1501,8 @@ class _FilterPanel extends ConsumerWidget {
           items: _getUniqueValuesFor<String, BaseComponent>(
             (p) => p.manufacturer,
           ),
-          selectedItems: [], // Placeholder
-          onChanged: (val, sel) {}, // Placeholder
+          selectedItems: selectedManufacturers.toList(),
+          onChanged: onManufacturerChanged,
         ),
         _buildPriceFilter(context),
       ],
@@ -323,21 +1520,21 @@ class _FilterPanel extends ConsumerWidget {
           _buildFilterSection<String>(
             title: 'Series',
             items: _getUniqueValuesFor<String, CPUComponent>((p) => p.series),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedCpuSeries.toList(),
+            onChanged: onCpuSeriesChanged,
           ),
           _buildFilterSection<String>(
             title: 'Socket',
             items: _getUniqueValuesFor<String, CPUComponent>(
               (p) => p.socketType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedCpuSockets.toList(),
+            onChanged: onCpuSocketChanged,
           ),
           _buildBooleanFilter(
             title: 'Includes Cooler',
-            value: null, // Placeholder
-            onChanged: (val) {}, // Placeholder
+            value: cpuIncludesCooler,
+            onChanged: onCpuIncludesCoolerChanged,
           ),
         ];
       case ComponentType.motherboard:
@@ -347,24 +1544,24 @@ class _FilterPanel extends ConsumerWidget {
             items: _getUniqueValuesFor<String, MotherboardComponent>(
               (p) => p.socketType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedMotherboardSockets.toList(),
+            onChanged: onMotherboardSocketChanged,
           ),
           _buildFilterSection<String>(
             title: 'Chipset',
             items: _getUniqueValuesFor<String, MotherboardComponent>(
               (p) => p.chipsetType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedMotherboardChipsets.toList(),
+            onChanged: onMotherboardChipsetChanged,
           ),
           _buildFilterSection<String>(
             title: 'Form Factor',
             items: _getUniqueValuesFor<String, MotherboardComponent>(
               (p) => p.formFactor,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedMotherboardFormFactors.toList(),
+            onChanged: onMotherboardFormFactorChanged,
           ),
         ];
       case ComponentType.ram:
@@ -374,22 +1571,22 @@ class _FilterPanel extends ConsumerWidget {
             items: _getUniqueValuesFor<String, MemoryComponent>(
               (p) => p.ramType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedRamTypes.toList(),
+            onChanged: onRamTypeChanged,
           ),
           _buildFilterSection<int>(
             title: 'Modules',
             items: _getUniqueValuesFor<int, MemoryComponent>(
               (p) => p.moduleQuantity,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedRamModules.toList(),
+            onChanged: onRamModuleChanged,
             displayMapper: (val) => '$val module(s)',
           ),
           _buildBooleanFilter(
             title: 'RGB',
-            value: null, // Placeholder
-            onChanged: (val) {}, // Placeholder
+            value: ramHasRgb,
+            onChanged: onRamHasRgbChanged,
           ),
         ];
       case ComponentType.psu:
@@ -403,24 +1600,24 @@ class _FilterPanel extends ConsumerWidget {
               '751W - 1000W',
               '1000W+',
             ],
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedPsuWattages.toList(),
+            onChanged: onPsuWattageChanged,
           ),
           _buildFilterSection<String>(
             title: 'Efficiency',
             items: _getUniqueValuesFor<String, PowerSupplyComponent>(
               (p) => p.efficiencyRating!,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedPsuEfficiencies.toList(),
+            onChanged: onPsuEfficiencyChanged,
           ),
           _buildFilterSection<String>(
             title: 'Modularity',
             items: _getUniqueValuesFor<String, PowerSupplyComponent>(
               (p) => p.modularityType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedPsuModularities.toList(),
+            onChanged: onPsuModularityChanged,
           ),
         ];
       case ComponentType.storage:
@@ -430,16 +1627,16 @@ class _FilterPanel extends ConsumerWidget {
             items: _getUniqueValuesFor<String, StorageComponent>(
               (p) => p.driveType,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedStorageTypes.toList(),
+            onChanged: onStorageTypeChanged,
           ),
           _buildFilterSection<String>(
             title: 'Interface',
             items: _getUniqueValuesFor<String, StorageComponent>(
               (p) => p.interface,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedStorageInterfaces.toList(),
+            onChanged: onStorageInterfaceChanged,
           ),
         ];
       case ComponentType.pcCase:
@@ -449,8 +1646,249 @@ class _FilterPanel extends ConsumerWidget {
             items: _getUniqueValuesFor<String, CaseComponent>(
               (p) => p.formFactor,
             ),
-            selectedItems: [], // Placeholder
-            onChanged: (val, sel) {}, // Placeholder
+            selectedItems: selectedCaseFormFactors.toList(),
+            onChanged: onCaseFormFactorChanged,
+          ),
+          Builder(
+            builder: (context) {
+              final cases = allProducts.whereType<CaseComponent>().toList();
+              if (cases.isEmpty) return const SizedBox.shrink();
+              final maxGpuLength = cases.map((p) => p.maxVideoCardLength).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Max GPU Length (mm)',
+                range: caseMaxGpuLengthRange,
+                onRangeChanged: onCaseMaxGpuLengthRangeChanged,
+                min: 0,
+                max: maxGpuLength > 0 ? maxGpuLength : 500,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+          Builder(
+            builder: (context) {
+              final cases = allProducts.whereType<CaseComponent>().toList();
+              if (cases.isEmpty) return const SizedBox.shrink();
+              final maxCoolerHeight = cases.map((p) => p.maxCPUCoolerHeight.toDouble()).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Max Cooler Height (mm)',
+                range: caseMaxCoolerHeightRange,
+                onRangeChanged: onCaseMaxCoolerHeightRangeChanged,
+                min: 0,
+                max: maxCoolerHeight > 0 ? maxCoolerHeight : 200,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+        ];
+      case ComponentType.gpu:
+        return [
+          _buildFilterSection<String>(
+            title: 'Chipset',
+            items: _getUniqueValuesFor<String, GPUComponent>(
+              (p) => p.chipset,
+            ),
+            selectedItems: selectedGpuChipsets.toList(),
+            onChanged: onGpuChipsetChanged,
+          ),
+          Builder(
+            builder: (context) {
+              final gpus = allProducts.whereType<GPUComponent>().toList();
+              if (gpus.isEmpty) return const SizedBox.shrink();
+              final maxVram = gpus.map((p) => p.videoMemoryAmount).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'VRAM (GB)',
+                range: gpuVramRange,
+                onRangeChanged: onGpuVramRangeChanged,
+                min: 0,
+                max: maxVram > 0 ? maxVram : 24,
+                formatValue: (val) => '${val.toStringAsFixed(0)}GB',
+              );
+            },
+          ),
+          _buildFilterSection<String>(
+            title: 'Memory Type',
+            items: _getUniqueValuesFor<String, GPUComponent>(
+              (p) => p.videoMemoryType,
+            ),
+            selectedItems: selectedGpuMemoryTypes.toList(),
+            onChanged: onGpuMemoryTypeChanged,
+          ),
+          _buildFilterSection<String>(
+            title: 'Cooling Type',
+            items: _getUniqueValuesFor<String, GPUComponent>(
+              (p) => p.coolingType,
+            ),
+            selectedItems: selectedGpuCoolingTypes.toList(),
+            onChanged: onGpuCoolingTypeChanged,
+          ),
+          _buildFilterSection<String>(
+            title: 'Frame Sync',
+            items: _getUniqueValuesFor<String, GPUComponent>(
+              (p) => p.frameSync,
+            ),
+            selectedItems: selectedGpuFrameSyncs.toList(),
+            onChanged: onGpuFrameSyncChanged,
+          ),
+        ];
+      case ComponentType.cooler:
+        return [
+          _buildBooleanFilter(
+            title: 'Water Cooled',
+            value: coolerIsWaterCooled,
+            onChanged: onCoolerIsWaterCooledChanged,
+          ),
+          Builder(
+            builder: (context) {
+              final coolers = allProducts.whereType<CoolerComponent>().toList();
+              if (coolers.isEmpty) return const SizedBox.shrink();
+              final maxHeight = coolers.map((p) => p.height).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Height (mm)',
+                range: coolerHeightRange,
+                onRangeChanged: onCoolerHeightRangeChanged,
+                min: 0,
+                max: maxHeight > 0 ? maxHeight : 200,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+          Builder(
+            builder: (context) {
+              final coolers = allProducts.whereType<CoolerComponent>().where((p) => p.radiatorSize != null).toList();
+              if (coolers.isEmpty) return const SizedBox.shrink();
+              final maxRadiator = coolers.map((p) => p.radiatorSize!).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Radiator Size (mm)',
+                range: coolerRadiatorSizeRange,
+                onRangeChanged: onCoolerRadiatorSizeRangeChanged,
+                min: 0,
+                max: maxRadiator > 0 ? maxRadiator : 480,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+          Builder(
+            builder: (context) {
+              final coolers = allProducts.whereType<CoolerComponent>().where((p) => p.fanSize != null).toList();
+              if (coolers.isEmpty) return const SizedBox.shrink();
+              final maxFanSize = coolers.map((p) => p.fanSize!).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Fan Size (mm)',
+                range: coolerFanSizeRange,
+                onRangeChanged: onCoolerFanSizeRangeChanged,
+                min: 0,
+                max: maxFanSize > 0 ? maxFanSize : 140,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+        ];
+      case ComponentType.caseFan:
+        return [
+          Builder(
+            builder: (context) {
+              final fans = allProducts.whereType<CaseFanComponent>().toList();
+              if (fans.isEmpty) return const SizedBox.shrink();
+              final maxSize = fans.map((p) => p.size).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Size (mm)',
+                range: caseFanSizeRange,
+                onRangeChanged: onCaseFanSizeRangeChanged,
+                min: 0,
+                max: maxSize > 0 ? maxSize : 200,
+                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
+              );
+            },
+          ),
+          _buildFilterSection<String>(
+            title: 'LED Type',
+            items: _getUniqueValuesFor<String, CaseFanComponent>(
+              (p) => p.ledType ?? '',
+            ).where((v) => v.isNotEmpty).toList(),
+            selectedItems: selectedCaseFanLedTypes.toList(),
+            onChanged: onCaseFanLedTypeChanged,
+          ),
+          _buildFilterSection<String>(
+            title: 'Flow Direction',
+            items: _getUniqueValuesFor<String, CaseFanComponent>(
+              (p) => p.flowDirection,
+            ),
+            selectedItems: selectedCaseFanFlowDirections.toList(),
+            onChanged: onCaseFanFlowDirectionChanged,
+          ),
+          _buildFilterSection<String>(
+            title: 'Connector Type',
+            items: _getUniqueValuesFor<String, CaseFanComponent>(
+              (p) => p.connectorType ?? '',
+            ).where((v) => v.isNotEmpty).toList(),
+            selectedItems: selectedCaseFanConnectorTypes.toList(),
+            onChanged: onCaseFanConnectorTypeChanged,
+          ),
+        ];
+      case ComponentType.monitor:
+        return [
+          Builder(
+            builder: (context) {
+              final monitors = allProducts.whereType<MonitorComponent>().toList();
+              if (monitors.isEmpty) return const SizedBox.shrink();
+              final maxSize = monitors.map((p) => p.screenSize).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Screen Size (inches)',
+                range: monitorScreenSizeRange,
+                onRangeChanged: onMonitorScreenSizeRangeChanged,
+                min: 0,
+                max: maxSize > 0 ? maxSize : 50,
+                formatValue: (val) => '${val.toStringAsFixed(1)}"',
+              );
+            },
+          ),
+          _buildFilterSection<String>(
+            title: 'Panel Type',
+            items: _getUniqueValuesFor<String, MonitorComponent>(
+              (p) => p.panelType,
+            ),
+            selectedItems: selectedMonitorPanelTypes.toList(),
+            onChanged: onMonitorPanelTypeChanged,
+          ),
+          Builder(
+            builder: (context) {
+              final monitors = allProducts.whereType<MonitorComponent>().toList();
+              if (monitors.isEmpty) return const SizedBox.shrink();
+              final maxRefresh = monitors.map((p) => p.maxRefreshRate).fold<double>(0, (max, val) => val > max ? val : max);
+              return _buildRangeFilter<double>(
+                context: context,
+                title: 'Refresh Rate (Hz)',
+                range: monitorRefreshRateRange,
+                onRangeChanged: onMonitorRefreshRateRangeChanged,
+                min: 0,
+                max: maxRefresh > 0 ? maxRefresh : 240,
+                formatValue: (val) => '${val.toStringAsFixed(0)}Hz',
+              );
+            },
+          ),
+          _buildFilterSection<String>(
+            title: 'Adaptive Sync',
+            items: _getUniqueValuesFor<String, MonitorComponent>(
+              (p) => p.adaptiveSyncType,
+            ),
+            selectedItems: selectedMonitorAdaptiveSyncTypes.toList(),
+            onChanged: onMonitorAdaptiveSyncTypeChanged,
+          ),
+          _buildFilterSection<String>(
+            title: 'Aspect Ratio',
+            items: _getUniqueValuesFor<String, MonitorComponent>(
+              (p) => p.aspectRatio,
+            ),
+            selectedItems: selectedMonitorAspectRatios.toList(),
+            onChanged: onMonitorAspectRatioChanged,
           ),
         ];
       default:
@@ -460,6 +1898,12 @@ class _FilterPanel extends ConsumerWidget {
 
   /// Builds the price range slider filter.
   Widget _buildPriceFilter(BuildContext context) {
+    // Calculate max price from products
+    final maxPrice = allProducts
+        .map((p) => p.lowestPrice ?? 0)
+        .fold<double>(0, (max, price) => price > max ? price : max);
+    final actualMax = maxPrice > 0 ? maxPrice : 10000;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -479,15 +1923,18 @@ class _FilterPanel extends ConsumerWidget {
           ),
           // The actual RangeSlider widget.
           child: RangeSlider(
-            values: const RangeValues(0, 1000), // Placeholder
-            min: 0,
-            max: 1000,
-            divisions: 100,
-            labels: RangeLabels(
-              '\$0',
-              '\$1000',
+            values: RangeValues(
+              priceRange.start.clamp(0.0, actualMax).toDouble(),
+              priceRange.end.clamp(0.0, actualMax).toDouble(),
             ),
-            onChanged: (values) {}, // Placeholder
+            min: 0.0,
+            max: actualMax.toDouble(),
+            divisions: actualMax > 0 ? (actualMax / 50).round() : 100,
+            labels: RangeLabels(
+              '\$${priceRange.start.toStringAsFixed(0)}',
+              '\$${priceRange.end.toStringAsFixed(0)}',
+            ),
+            onChanged: onPriceRangeChanged,
           ),
         ),
         // Labels showing the current min and max values of the slider.
@@ -499,7 +1946,7 @@ class _FilterPanel extends ConsumerWidget {
               style: TextStyle(color: Colors.grey.shade400),
             ),
             Text(
-              '\$1000+',
+              '\$${actualMax.toStringAsFixed(0)}+',
               style: TextStyle(color: Colors.grey.shade400),
             ),
           ],
@@ -508,7 +1955,80 @@ class _FilterPanel extends ConsumerWidget {
     );
   }
 
-  /// A generic function to build a section of checkbox filters.
+  /// Builds a range slider filter for numeric values
+  Widget _buildRangeFilter<T extends num>({
+    required BuildContext context,
+    required String title,
+    required RangeValues? range,
+    required Function(RangeValues) onRangeChanged,
+    required T min,
+    required T max,
+    required String Function(T) formatValue,
+  }) {
+    if (max <= min) return const SizedBox.shrink();
+    
+    final actualRange = range ?? RangeValues(min.toDouble(), max.toDouble());
+    
+    // Helper to format double values
+    String formatDouble(double val) {
+      if (T == int) {
+        return formatValue(val.round() as T);
+      } else {
+        return formatValue(val as T);
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppColorsDark.textPurple,
+            inactiveTrackColor: Colors.grey.shade800,
+            thumbColor: AppColorsDark.textPurple,
+            overlayColor: AppColorsDark.textPurple.withAlpha(32),
+            valueIndicatorColor: AppColorsDark.buttonPurple,
+          ),
+          child: RangeSlider(
+            values: RangeValues(
+              actualRange.start.clamp(min.toDouble(), max.toDouble()).toDouble(),
+              actualRange.end.clamp(min.toDouble(), max.toDouble()).toDouble(),
+            ),
+            min: min.toDouble(),
+            max: max.toDouble(),
+            divisions: (max.toDouble() - min.toDouble() > 0) 
+                ? ((max.toDouble() - min.toDouble()) / 10).round().clamp(10, 100)
+                : 100,
+            labels: RangeLabels(
+              formatDouble(actualRange.start),
+              formatDouble(actualRange.end),
+            ),
+            onChanged: onRangeChanged,
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              formatValue(min),
+              style: TextStyle(color: Colors.grey.shade400),
+            ),
+            Text(
+              formatValue(max),
+              style: TextStyle(color: Colors.grey.shade400),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// A generic function to build a section of dropdown filters for accessibility.
   Widget _buildFilterSection<T>({
     required String title,
     required List<T> items,
@@ -518,29 +2038,21 @@ class _FilterPanel extends ConsumerWidget {
     String Function(T)? displayMapper,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
-    // Each filter section is a column containing a title and a list of checkboxes.
+    
+    // Build a multi-select dropdown for better accessibility
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        ...List.generate(items.length, (index) {
-          // Determine the text to display for the checkbox.
-          final item = items[index];
-          final displayItem =
-              displayMapper?.call(item) ??
-              displayItems?[index] ??
-              item.toString();
-          return CheckboxListTile(
-            title: Text(displayItem),
-            value: selectedItems.contains(item),
-            onChanged: (isSelected) => onChanged(item, isSelected ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            activeColor: AppColorsDark.textPurple,
-          );
-        }),
+        _MultiSelectDropdown<T>(
+          items: items,
+          displayItems: displayItems,
+          selectedItems: selectedItems,
+          onChanged: onChanged,
+          displayMapper: displayMapper,
+          title: title,
+        ),
         const Divider(height: 32, color: Colors.transparent),
       ],
     );
@@ -591,6 +2103,106 @@ class _FilterPanel extends ConsumerWidget {
   }
 }
 
+/// A multi-select dropdown widget for better accessibility.
+class _MultiSelectDropdown<T> extends StatefulWidget {
+  final List<T> items;
+  final List<String>? displayItems;
+  final List<T> selectedItems;
+  final Function(T, bool) onChanged;
+  final String Function(T)? displayMapper;
+  final String title;
+
+  const _MultiSelectDropdown({
+    required this.items,
+    this.displayItems,
+    required this.selectedItems,
+    required this.onChanged,
+    this.displayMapper,
+    required this.title,
+  });
+
+  @override
+  State<_MultiSelectDropdown<T>> createState() => _MultiSelectDropdownState<T>();
+}
+
+class _MultiSelectDropdownState<T> extends State<_MultiSelectDropdown<T>> {
+  @override
+  Widget build(BuildContext context) {
+    final selectedCount = widget.selectedItems.length;
+    final displayText = selectedCount == 0
+        ? 'Select ${widget.title}'
+        : selectedCount == widget.items.length
+            ? 'All selected'
+            : '$selectedCount selected';
+
+    return MenuAnchor(
+      menuChildren: widget.items.map((item) {
+        final index = widget.items.indexOf(item);
+        final displayItem = widget.displayMapper?.call(item) ??
+            widget.displayItems?[index] ??
+            item.toString();
+        final isSelected = widget.selectedItems.contains(item);
+
+        return MenuItemButton(
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) {
+                  widget.onChanged(item, value ?? false);
+                },
+                activeColor: AppColorsDark.textPurple,
+              ),
+              Expanded(
+                child: Text(displayItem),
+              ),
+            ],
+          ),
+          onPressed: () {
+            widget.onChanged(item, !isSelected);
+          },
+        );
+      }).toList(),
+      builder: (context, controller, child) {
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ),
+              alignment: Alignment.centerLeft,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    displayText,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+                Icon(
+                  controller.isOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// A custom chip widget used for the boolean ("Any", "Yes", "No") filters.
 class _BooleanChip extends StatelessWidget {
   final String label;
@@ -621,18 +2233,20 @@ class _BooleanChip extends StatelessWidget {
 }
 
 /// The right-side panel that displays the list of products.
-class _ProductList extends StatelessWidget {
+class _ProductList extends ConsumerWidget {
   final ComponentType componentType;
   final TextEditingController searchController;
   final List<BaseComponent> products;
+  final Function(BaseComponent)? onComponentSelected;
   const _ProductList({
     required this.componentType,
     required this.searchController,
     required this.products,
+    this.onComponentSelected,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -647,61 +2261,64 @@ class _ProductList extends StatelessWidget {
           child: products.isEmpty
               /// Display a message if no products match the filters.
               ? const Center(child: Text("No products match your criteria."))
-              : ListView.builder(
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-
-                    switch (product.type) {
-                      /// Dynamically choose the correct row widget based on the product type.
-                      case ComponentType.cpu:
-                        return _CpuProductRow(
-                            product: product as CPUComponent);
-                      case ComponentType.motherboard:
-                        return _MotherboardProductRow(
-                          product: product as MotherboardComponent,
-                        );
-                      case ComponentType.ram:
-                        return _RamProductRow(
-                          product: product as MemoryComponent,
-                        );
-                      case ComponentType.storage:
-                        return _StorageProductRow(
-                          product: product as StorageComponent,
-                        );
-                      case ComponentType.psu:
-                        return _PsuProductRow(
-                          product: product as PowerSupplyComponent,
-                        );
-                      case ComponentType.pcCase:
-                        return _CaseProductRow(
-                          product: product as CaseComponent,
-                        );
-                      case ComponentType.cooler:
-                        // TODO: Create a specific _CoolerProductRow widget for better details.
-                        return _GenericProductRow(product: product);
-                      case ComponentType.caseFan:
-                        // TODO: Create a specific _CaseFanProductRow widget for better details.
-                        return _GenericProductRow(product: product);
-                      case ComponentType.monitor:
-                        // TODO: Create a specific _MonitorProductRow widget for better details.
-                        return _GenericProductRow(product: product);
-                      case ComponentType.gpu:
-                        // TODO: Create a specific _GpuProductRow widget for better details.
-                        return _GenericProductRow(product: product);
-                      default:
-                        return Card(
-                          child: ListTile(
-                            title: Text(
-                              "Unsupported product type: ${product.name}",
-                            ),
-                          ),
-                        );
-                    }
-                  },
+              : _ProductListWithCompatibility(
+                  products: products,
+                  componentType: componentType,
+                  onComponentSelected: onComponentSelected,
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// Product list widget with batch compatibility checking
+class _ProductListWithCompatibility extends ConsumerWidget {
+  final List<BaseComponent> products;
+  final ComponentType componentType;
+  final Function(BaseComponent)? onComponentSelected;
+
+  const _ProductListWithCompatibility({
+    required this.products,
+    required this.componentType,
+    this.onComponentSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Compatibility check temporarily disabled due to API issues (400/429 errors)
+    // Show products without compatibility badges
+    return ListView.builder(
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+
+        final onComponentSelected = this.onComponentSelected;
+        switch (product.type) {
+          case ComponentType.cpu:
+            return _CpuProductRow(product: product as CPUComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.motherboard:
+            return _MotherboardProductRow(product: product as MotherboardComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.ram:
+            return _RamProductRow(product: product as MemoryComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.storage:
+            return _StorageProductRow(product: product as StorageComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.psu:
+            return _PsuProductRow(product: product as PowerSupplyComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.pcCase:
+            return _CaseProductRow(product: product as CaseComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.gpu:
+            return _GpuProductRow(product: product as GPUComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.cooler:
+            return _CoolerProductRow(product: product as CoolerComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.caseFan:
+            return _CaseFanProductRow(product: product as CaseFanComponent, onComponentSelected: onComponentSelected);
+          case ComponentType.monitor:
+            return _MonitorProductRow(product: product as MonitorComponent, onComponentSelected: onComponentSelected);
+          default:
+            return _GenericProductRow(product: product, onComponentSelected: onComponentSelected);
+        }
+      },
     );
   }
 }
@@ -821,6 +2438,22 @@ class _ProductListHeader extends StatelessWidget {
         headers = ['Product', 'Form Factor', 'Max GPU', 'Max Cooler', 'Price'];
         flexValues = [5, 3, 2, 2, 3];
         break;
+      case ComponentType.gpu:
+        headers = ['Product', 'Chipset', 'VRAM', 'Memory Type', 'Base/Boost', 'TDP', 'Length', 'Price'];
+        flexValues = [4, 2, 1, 2, 2, 1, 1, 3];
+        break;
+      case ComponentType.cooler:
+        headers = ['Product', 'Type', 'Height', 'Radiator', 'Fan Size', 'Fan Qty', 'Price'];
+        flexValues = [4, 2, 1, 1, 1, 1, 3];
+        break;
+      case ComponentType.caseFan:
+        headers = ['Product', 'Size', 'Airflow', 'Noise', 'PWM', 'LED', 'Price'];
+        flexValues = [4, 1, 2, 1, 1, 1, 3];
+        break;
+      case ComponentType.monitor:
+        headers = ['Product', 'Size', 'Resolution', 'Refresh', 'Panel', 'Sync', 'Price'];
+        flexValues = [4, 1, 2, 1, 2, 2, 3];
+        break;
       default:
         headers = const ['Product', 'Details', 'Price'];
         flexValues = const [4, 4, 3];
@@ -845,54 +2478,147 @@ class _ProductListHeader extends StatelessWidget {
 }
 
 /// An abstract base class for all product row widgets to reduce code duplication.
-abstract class _ProductRow extends StatelessWidget {
+abstract class _ProductRow extends ConsumerWidget {
   final BaseComponent product;
-  const _ProductRow({super.key, required this.product});
+  final Function(BaseComponent)? onComponentSelected;
+  const _ProductRow({required this.product, this.onComponentSelected});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // The base structure for every product row is a Card with a Row inside.
     return Card(
       color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: buildRow(context),
+      child: InkWell(
+        onTap: () => _showSpecsDialog(context, product),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: buildRow(context, ref),
+          ),
         ),
       ),
     );
   }
 
+  /// Shows a dialog with all specifications for the component
+  void _showSpecsDialog(BuildContext context, BaseComponent component) {
+    showDialog(
+      context: context,
+      builder: (context) => _ComponentSpecsDialog(component: component),
+    );
+  }
+
   /// Abstract method to be implemented by subclasses to define the row's content.
-  List<Widget> buildRow(BuildContext context);
+  List<Widget> buildRow(BuildContext context, WidgetRef ref);
 
   /// A reusable widget for the first cell in a row, typically showing the product image and name.
-  /// It includes an error builder for the network image.
-  Widget buildNameCell({int flex = 5}) {
+  /// It includes an error builder for the network image and compatibility badge.
+  Widget buildNameCell(BuildContext context, WidgetRef ref, {int flex = 5}) {
+    // For now, just use product.imageUrl to avoid infinite loops
+    // Image uploads will be handled by backend updating component.imageUrl
+    final rawImageUrl = product.imageUrl.trim();
+    String? imageUrl;
+    
+    if (rawImageUrl.isNotEmpty) {
+      // Check if it's a GUID (image ID) or a URL
+      final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') || rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
+    
     return Expanded(
       flex: flex,
       child: Row(
         children: [
-          Image.network(
-            product.imageUrl,
-            width: 40,
-            height: 40,
-            errorBuilder: (c, o, s) =>
-                Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
-          ),
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              width: 40,
+              height: 40,
+              errorBuilder: (c, o, s) =>
+                  Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
+            )
+          else
+            Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  product.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                _buildCompatibilityBadge(context, ref),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Builds the compatibility badge if component is compatible with current build
+  /// Temporarily disabled due to API rate limiting and validation issues
+  Widget _buildCompatibilityBadge(BuildContext context, WidgetRef ref) {
+    // Temporarily disabled to prevent 400/429 errors
+    // TODO: Fix backend API validation or implement proper batch endpoint
+    return const SizedBox.shrink();
+    
+    // Original implementation (disabled):
+    // final build = ref.watch(buildProvider);
+    // final selectedIds = build
+    //     .where((pc) => pc.selectedProduct != null)
+    //     .map((pc) => pc.selectedProduct!.id)
+    //     .toList();
+    //
+    // // Don't show badge if no components are selected
+    // if (selectedIds.isEmpty) return const SizedBox.shrink();
+    //
+    // // Use compatibility map if available, otherwise don't show badge
+    // final isCompatible = compatibilityMap?[product.id] ?? false;
+    //
+    // if (!isCompatible) return const SizedBox.shrink();
+    //
+    // return Container(
+    //   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    //   decoration: BoxDecoration(
+    //     color: Colors.green.withValues(alpha: 0.9),
+    //     borderRadius: BorderRadius.circular(8),
+    //   ),
+    //   child: Row(
+    //     mainAxisSize: MainAxisSize.min,
+    //     children: [
+    //       const Icon(
+    //         Icons.check_circle,
+    //         size: 12,
+    //         color: Colors.white,
+    //       ),
+    //       const SizedBox(width: 4),
+    //       Text(
+    //         'Compatible',
+    //         style: const TextStyle(
+    //           color: Colors.white,
+    //           fontSize: 10,
+    //           fontWeight: FontWeight.bold,
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
   }
 
   /// A reusable widget for a simple text cell with a specified flex factor.
@@ -902,7 +2628,7 @@ abstract class _ProductRow extends StatelessWidget {
 
   /// A reusable widget for the last cell, showing the price and an "Add" button.
   /// When the "Add" button is pressed, it pops the current page and returns the selected `product`.
-  Widget buildPriceCell(BuildContext context, {int flex = 3}) {
+  Widget buildPriceCell(BuildContext context, WidgetRef ref, {int flex = 3}) {
     return Expanded(
       flex: flex,
       child: Row(
@@ -919,25 +2645,20 @@ abstract class _ProductRow extends StatelessWidget {
           const SizedBox(width: 24),
           ElevatedButton.icon(
             onPressed: () {
-              // Pop the navigator and pass the selected product back to the previous screen (`BuildNowPage`).
-              Navigator.pop(context, product);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${product.name} added to your build!',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  backgroundColor: AppColorsDark.success,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                ),
-              );
+              // If callback is provided (e.g., from edit page), use it instead of buildProvider
+              if (onComponentSelected != null) {
+                onComponentSelected!(product);
+                Navigator.pop(context);
+              } else {
+                // Default behavior: Add component to buildProvider and navigate to build-now
+                ref.read(buildProvider.notifier).addComponent(product);
+                // Navigate to build-now page
+                context.go('/build-now');
+                // Also pop if we came from a navigation stack
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColorsDark.buttonGreen,
@@ -958,15 +2679,15 @@ abstract class _ProductRow extends StatelessWidget {
 
 /// A concrete implementation of [_ProductRow] for displaying CPU details.
 class _CpuProductRow extends _ProductRow {
-  const _CpuProductRow({required CPUComponent product})
-    : super(product: product);
+  const _CpuProductRow({required CPUComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type to access its properties.
     final p = product as CPUComponent;
     return [
-      buildNameCell(flex: 4),
+      buildNameCell(context, ref, flex: 4),
       buildTextCell(p.coreTotal.toString(), flex: 1),
       buildTextCell(
         '${p.basePerformanceSpeed}/${p.boostPerformanceSpeed} GHz',
@@ -976,120 +2697,220 @@ class _CpuProductRow extends _ProductRow {
       buildTextCell('${p.thermalDesignPower.toInt()}W', flex: 1),
       buildTextCell(p.graphics, flex: 2),
       Expanded(flex: 2, child: _RatingStars(rating: p.averageRating ?? 0)),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A concrete implementation of [_ProductRow] for displaying Motherboard details.
 class _MotherboardProductRow extends _ProductRow {
-  const _MotherboardProductRow({required MotherboardComponent product})
-    : super(product: product);
+  const _MotherboardProductRow({required MotherboardComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type.
     final p = product as MotherboardComponent;
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell(p.formFactor, flex: 3),
       buildTextCell(p.socketType, flex: 2),
       buildTextCell('${p.ramSlotsAmount}', flex: 2),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A concrete implementation of [_ProductRow] for displaying RAM details.
 class _RamProductRow extends _ProductRow {
-  const _RamProductRow({required MemoryComponent product})
-    : super(product: product);
+  const _RamProductRow({required MemoryComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type.
     final p = product as MemoryComponent;
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell('${p.speed.toInt()} MHz', flex: 2),
       buildTextCell(p.ramType, flex: 2),
       buildTextCell(
         '${p.moduleQuantity}x${p.moduleCapacity.toInt() / 1000}GB',
         flex: 2,
       ),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A concrete implementation of [_ProductRow] for displaying Storage details.
 class _StorageProductRow extends _ProductRow {
-  const _StorageProductRow({required StorageComponent product})
-    : super(product: product);
+  const _StorageProductRow({required StorageComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type.
     final p = product as StorageComponent;
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell('${p.capacity.toInt()} GB', flex: 2),
       buildTextCell(p.driveType, flex: 2),
       buildTextCell(p.interface, flex: 3),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A concrete implementation of [_ProductRow] for displaying PSU details.
 class _PsuProductRow extends _ProductRow {
-  const _PsuProductRow({required PowerSupplyComponent product})
-    : super(product: product);
+  const _PsuProductRow({required PowerSupplyComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type.
     final p = product as PowerSupplyComponent;
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell('${p.powerOutput.toInt()}W', flex: 2),
       buildTextCell(p.efficiencyRating ?? 'N/A', flex: 3),
       buildTextCell(p.modularityType, flex: 3),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A concrete implementation of [_ProductRow] for displaying PC Case details.
 class _CaseProductRow extends _ProductRow {
-  const _CaseProductRow({required CaseComponent product})
-    : super(product: product);
+  const _CaseProductRow({required CaseComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     // Cast the product to the specific type.
     final p = product as CaseComponent;
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell(p.formFactor, flex: 3),
       buildTextCell('${p.maxVideoCardLength.toInt()}mm', flex: 2),
       buildTextCell('${p.maxCPUCoolerHeight.toInt()}mm', flex: 2),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
+    ];
+  }
+}
+
+/// A concrete implementation of [_ProductRow] for displaying GPU details.
+class _GpuProductRow extends _ProductRow {
+  const _GpuProductRow({required GPUComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
+
+  @override
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
+    final p = product as GPUComponent;
+    return [
+      buildNameCell(context, ref, flex: 4),
+      buildTextCell(p.chipset, flex: 2),
+      buildTextCell('${p.videoMemoryAmount.toStringAsFixed(0)}GB', flex: 1),
+      buildTextCell(p.videoMemoryType, flex: 2),
+      buildTextCell(
+        '${p.coreBaseClockSpeed.toStringAsFixed(0)}/${p.coreBoostClockSpeed.toStringAsFixed(0)} MHz',
+        flex: 2,
+      ),
+      buildTextCell('${p.thermalDesignPower.toInt()}W', flex: 1),
+      buildTextCell('${p.length.toStringAsFixed(0)}mm', flex: 1),
+      buildPriceCell(context, ref, flex: 3),
+    ];
+  }
+}
+
+/// A concrete implementation of [_ProductRow] for displaying Cooler details.
+class _CoolerProductRow extends _ProductRow {
+  const _CoolerProductRow({required CoolerComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
+
+  @override
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
+    final p = product as CoolerComponent;
+    return [
+      buildNameCell(context, ref, flex: 4),
+      buildTextCell(p.isWaterCooled ? 'Water' : 'Air', flex: 2),
+      buildTextCell('${p.height.toStringAsFixed(0)}mm', flex: 1),
+      buildTextCell(
+        p.radiatorSize != null ? '${p.radiatorSize!.toStringAsFixed(0)}mm' : 'N/A',
+        flex: 1,
+      ),
+      buildTextCell(
+        p.fanSize != null ? '${p.fanSize!.toStringAsFixed(0)}mm' : 'N/A',
+        flex: 1,
+      ),
+      buildTextCell('${p.fanQuantity}', flex: 1),
+      buildPriceCell(context, ref, flex: 3),
+    ];
+  }
+}
+
+/// A concrete implementation of [_ProductRow] for displaying Case Fan details.
+class _CaseFanProductRow extends _ProductRow {
+  const _CaseFanProductRow({required CaseFanComponent product, Function(BaseComponent)? onComponentSelected})
+    : super(product: product, onComponentSelected: onComponentSelected);
+
+  @override
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
+    final p = product as CaseFanComponent;
+    return [
+      buildNameCell(context, ref, flex: 4),
+      buildTextCell('${p.size.toStringAsFixed(0)}mm', flex: 1),
+      buildTextCell(
+        p.maxAirflow != null
+            ? '${p.minAirflow.toStringAsFixed(0)}-${p.maxAirflow!.toStringAsFixed(0)} CFM'
+            : '${p.minAirflow.toStringAsFixed(0)} CFM',
+        flex: 2,
+      ),
+      buildTextCell(
+        p.maxNoiseLevel != null
+            ? '${p.minNoiseLevel.toStringAsFixed(1)}-${p.maxNoiseLevel!.toStringAsFixed(1)} dBA'
+            : '${p.minNoiseLevel.toStringAsFixed(1)} dBA',
+        flex: 1,
+      ),
+      buildTextCell(p.pulseWidthModulation ? 'Yes' : 'No', flex: 1),
+      buildTextCell(p.ledType ?? 'None', flex: 1),
+      buildPriceCell(context, ref, flex: 3),
+    ];
+  }
+}
+
+/// A concrete implementation of [_ProductRow] for displaying Monitor details.
+class _MonitorProductRow extends _ProductRow {
+  const _MonitorProductRow({required MonitorComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
+
+  @override
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
+    final p = product as MonitorComponent;
+    return [
+      buildNameCell(context, ref, flex: 4),
+      buildTextCell('${p.screenSize.toStringAsFixed(1)}"', flex: 1),
+      buildTextCell('${p.horizontalResolution}x${p.verticalResolution}', flex: 2),
+      buildTextCell('${p.maxRefreshRate.toStringAsFixed(0)}Hz', flex: 1),
+      buildTextCell(p.panelType, flex: 2),
+      buildTextCell(p.adaptiveSyncType, flex: 2),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
 
 /// A generic fallback implementation of [_ProductRow] for component types without a specific row widget.
 class _GenericProductRow extends _ProductRow {
-  const _GenericProductRow({required BaseComponent product})
-      : super(product: product);
+  const _GenericProductRow({required BaseComponent product, Function(BaseComponent)? onComponentSelected})
+      : super(product: product, onComponentSelected: onComponentSelected);
 
   @override
-  List<Widget> buildRow(BuildContext context) {
+  List<Widget> buildRow(BuildContext context, WidgetRef ref) {
     return [
-      buildNameCell(flex: 5),
+      buildNameCell(context, ref, flex: 5),
       buildTextCell(product.manufacturer, flex: 4),
-      buildPriceCell(context, flex: 3),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
@@ -1114,5 +2935,568 @@ class _RatingStars extends StatelessWidget {
         }
       }),
     );
+  }
+}
+
+/// A dialog widget that displays all specifications for a component
+class _ComponentSpecsDialog extends ConsumerWidget {
+  final BaseComponent component;
+  const _ComponentSpecsDialog({required this.component});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    
+    // For now, just use component.imageUrl to avoid infinite loops
+    // Image uploads will be handled by backend updating component.imageUrl
+    final rawImageUrl = component.imageUrl.trim();
+    String? imageUrl;
+    
+    if (rawImageUrl.isNotEmpty) {
+      // Check if it's a GUID (image ID) or a URL
+      final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') || rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
+    
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    Image.network(
+                      imageUrl,
+                      width: 60,
+                      height: 60,
+                      errorBuilder: (c, o, s) => Icon(
+                        Icons.broken_image,
+                        size: 60,
+                        color: Colors.grey.shade700,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.broken_image,
+                      size: 60,
+                      color: Colors.grey.shade700,
+                    ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          component.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          component.manufacturer,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildSpecsContent(context, theme),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecsContent(BuildContext context, ThemeData theme) {
+    switch (component.type) {
+      case ComponentType.cpu:
+        return _buildCpuSpecs(component as CPUComponent, theme);
+      case ComponentType.gpu:
+        return _buildGpuSpecs(component as GPUComponent, theme);
+      case ComponentType.motherboard:
+        return _buildMotherboardSpecs(component as MotherboardComponent, theme);
+      case ComponentType.ram:
+        return _buildRamSpecs(component as MemoryComponent, theme);
+      case ComponentType.storage:
+        return _buildStorageSpecs(component as StorageComponent, theme);
+      case ComponentType.psu:
+        return _buildPsuSpecs(component as PowerSupplyComponent, theme);
+      case ComponentType.pcCase:
+        return _buildCaseSpecs(component as CaseComponent, theme);
+      case ComponentType.cooler:
+        return _buildCoolerSpecs(component as CoolerComponent, theme);
+      case ComponentType.caseFan:
+        return _buildCaseFanSpecs(component as CaseFanComponent, theme);
+      case ComponentType.monitor:
+        return _buildMonitorSpecs(component as MonitorComponent, theme);
+      default:
+        return _buildGenericSpecs(component, theme);
+    }
+  }
+
+  Widget _buildSpecSection(String title, List<MapEntry<String, String>> specs, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...specs.map((entry) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 180,
+                child: Text(
+                  entry.key,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  entry.value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildCpuSpecs(CPUComponent cpu, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final performanceSpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Series', cpu.series),
+      MapEntry('Microarchitecture', cpu.microarchitecture),
+      MapEntry('Core Family', cpu.coreFamily),
+      MapEntry('Socket Type', cpu.socketType),
+      MapEntry('Total Cores', cpu.coreTotal.toString()),
+      if (cpu.performanceAmount != null)
+        MapEntry('Performance Cores', cpu.performanceAmount.toString()),
+      if (cpu.efficiencyAmount != null)
+        MapEntry('Efficiency Cores', cpu.efficiencyAmount.toString()),
+      MapEntry('Total Threads', cpu.threadsAmount.toString()),
+      MapEntry('Includes Cooler', cpu.includesCooler ? 'Yes' : 'No'),
+      MapEntry('Lithography', cpu.lithography),
+      MapEntry('SMT Support', cpu.supportsSimultaneousMultithreading ? 'Yes' : 'No'),
+      MapEntry('Memory Type', cpu.memoryType),
+      MapEntry('Packaging', cpu.packagingType),
+      MapEntry('ECC Support', cpu.supportsECC ? 'Yes' : 'No'),
+      MapEntry('TDP', '${cpu.thermalDesignPower.toStringAsFixed(0)}W'),
+      MapEntry('Integrated Graphics', cpu.graphics),
+    ]);
+
+    performanceSpecs.addAll([
+      if (cpu.basePerformanceSpeed != null)
+        MapEntry('Base Clock (P-cores)', '${cpu.basePerformanceSpeed} GHz'),
+      if (cpu.boostPerformanceSpeed != null)
+        MapEntry('Boost Clock (P-cores)', '${cpu.boostPerformanceSpeed} GHz'),
+      if (cpu.baseEfficiencySpeed != null)
+        MapEntry('Base Clock (E-cores)', '${cpu.baseEfficiencySpeed} GHz'),
+      if (cpu.boostEfficiencySpeed != null)
+        MapEntry('Boost Clock (E-cores)', '${cpu.boostEfficiencySpeed} GHz'),
+      if (cpu.l1 != null) MapEntry('L1 Cache', '${cpu.l1} MB'),
+      if (cpu.l2 != null) MapEntry('L2 Cache', '${cpu.l2} MB'),
+      if (cpu.l3 != null) MapEntry('L3 Cache', '${cpu.l3} MB'),
+      if (cpu.l4 != null) MapEntry('L4 Cache', '${cpu.l4} MB'),
+      if (cpu.release != null)
+        MapEntry('Release Date', cpu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('General Information', generalSpecs, theme),
+        if (performanceSpecs.isNotEmpty)
+          _buildSpecSection('Performance', performanceSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildGpuSpecs(GPUComponent gpu, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Chipset', gpu.chipset),
+      MapEntry('VRAM', '${gpu.videoMemoryAmount.toStringAsFixed(0)} GB'),
+      MapEntry('Memory Type', gpu.videoMemoryType),
+      MapEntry('Base Clock', '${gpu.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Boost Clock', '${gpu.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Core Count', gpu.coreCount.toString()),
+      MapEntry('Memory Clock', '${gpu.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
+      MapEntry('Memory Bus Width', '${gpu.memoryBusWidth} bits'),
+      MapEntry('Frame Sync', gpu.frameSync),
+      MapEntry('Length', '${gpu.length.toStringAsFixed(0)} mm'),
+      MapEntry('TDP', '${gpu.thermalDesignPower.toStringAsFixed(0)}W'),
+      MapEntry('Slot Width', '${gpu.caseExpansionSlotWidth} slots'),
+      MapEntry('Total Slots', gpu.totalSlotAmount.toString()),
+      MapEntry('Cooling Type', gpu.coolingType),
+      if (gpu.release != null)
+        MapEntry('Release Date', gpu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('GPU Specifications', specs, theme);
+  }
+
+  Widget _buildMotherboardSpecs(MotherboardComponent mb, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final connectivitySpecs = <MapEntry<String, String>>[];
+    final headersSpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Socket Type', mb.socketType),
+      MapEntry('Form Factor', mb.formFactor),
+      MapEntry('Chipset', mb.chipsetType),
+      MapEntry('RAM Type', mb.ramType),
+      MapEntry('RAM Slots', mb.ramSlotsAmount.toString()),
+      MapEntry('Max RAM', '${mb.maxRAMAmount} GB'),
+      MapEntry('Audio Chipset', mb.audioChipset),
+      MapEntry('Max Audio Channels', mb.maxAudioChannels.toString()),
+    ]);
+
+    connectivitySpecs.addAll([
+      MapEntry('SATA 6 Gb/s Ports', mb.sata6GBsAmount.toString()),
+      MapEntry('SATA 3 Gb/s Ports', mb.sata3GBsAmount.toString()),
+      MapEntry('U.2 Ports', mb.u2PortAmount.toString()),
+      MapEntry('Wireless Standard', mb.wirelessNetworkingStandard),
+      if (mb.mainPowerType != null)
+        MapEntry('Main Power Connector', mb.mainPowerType!),
+    ]);
+
+    headersSpecs.addAll([
+      if (mb.cpuFanHeaderAmount != null)
+        MapEntry('CPU Fan Headers', mb.cpuFanHeaderAmount.toString()),
+      if (mb.caseFanHeaderAmount != null)
+        MapEntry('Case Fan Headers', mb.caseFanHeaderAmount.toString()),
+      if (mb.pumpHeaderAmount != null)
+        MapEntry('Pump Headers', mb.pumpHeaderAmount.toString()),
+      if (mb.cpuOptionalFanHeaderAmount != null)
+        MapEntry('Optional CPU Fan Headers', mb.cpuOptionalFanHeaderAmount.toString()),
+      if (mb.argb5vHeaderAmount != null)
+        MapEntry('ARGB 5V Headers', mb.argb5vHeaderAmount.toString()),
+      if (mb.rgb12vHeaderAmount != null)
+        MapEntry('RGB 12V Headers', mb.rgb12vHeaderAmount.toString()),
+      if (mb.temperatureSensorHeaderAmount != null)
+        MapEntry('Temperature Sensor Headers', mb.temperatureSensorHeaderAmount.toString()),
+      if (mb.thunderboltHeaderAmount != null)
+        MapEntry('Thunderbolt Headers', mb.thunderboltHeaderAmount.toString()),
+      if (mb.comPortHeaderAmount != null)
+        MapEntry('COM Port Headers', mb.comPortHeaderAmount.toString()),
+      MapEntry('Power Button Header', mb.hasPowerButtonHeader ? 'Yes' : 'No'),
+      MapEntry('Reset Button Header', mb.hasResetButtonHeader ? 'Yes' : 'No'),
+      MapEntry('Power LED Header', mb.hasPowerLEDHeader ? 'Yes' : 'No'),
+      MapEntry('HDD LED Header', mb.hasHDDLEDHeader ? 'Yes' : 'No'),
+    ]);
+
+    final featuresSpecs = <MapEntry<String, String>>[
+      MapEntry('ECC Support', mb.hasECCSupport ? 'Yes' : 'No'),
+      MapEntry('RAID Support', mb.hasRAIDSupport ? 'Yes' : 'No'),
+      MapEntry('BIOS Flashback', mb.hasFlashback ? 'Yes' : 'No'),
+      MapEntry('Clear CMOS', mb.hasCMOS ? 'Yes' : 'No'),
+      if (mb.release != null)
+        MapEntry('Release Date', mb.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ];
+
+    return Column(
+      children: [
+        _buildSpecSection('General', generalSpecs, theme),
+        _buildSpecSection('Connectivity', connectivitySpecs, theme),
+        _buildSpecSection('Headers & Connectors', headersSpecs, theme),
+        _buildSpecSection('Features', featuresSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildRamSpecs(MemoryComponent ram, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Speed', '${ram.speed.toStringAsFixed(0)} MHz'),
+      MapEntry('Type', ram.ramType),
+      MapEntry('Form Factor', ram.formFactor),
+      MapEntry('Total Capacity', '${ram.capacity.toStringAsFixed(0)} GB'),
+      MapEntry('CAS Latency', ram.casLatency.toStringAsFixed(0)),
+      if (ram.timings != null) MapEntry('Timings', ram.timings!),
+      MapEntry('Module Quantity', ram.moduleQuantity.toString()),
+      MapEntry('Module Capacity', '${ram.moduleCapacity.toStringAsFixed(0)} GB'),
+      MapEntry('ECC', ram.ecc.toString()),
+      MapEntry('Registered Type', ram.registeredType),
+      MapEntry('Heat Spreader', ram.haveHeatSpreader ? 'Yes' : 'No'),
+      MapEntry('RGB', ram.haveRGB ? 'Yes' : 'No'),
+      MapEntry('Height', '${ram.height.toStringAsFixed(0)} mm'),
+      MapEntry('Voltage', '${ram.voltage.toStringAsFixed(2)}V'),
+      if (ram.release != null)
+        MapEntry('Release Date', ram.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Memory Specifications', specs, theme);
+  }
+
+  Widget _buildStorageSpecs(StorageComponent storage, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Series', storage.series),
+      MapEntry('Capacity', '${storage.capacity.toStringAsFixed(0)} GB'),
+      MapEntry('Type', storage.driveType),
+      MapEntry('Form Factor', storage.formFactor),
+      MapEntry('Interface', storage.interface),
+      MapEntry('NVMe', storage.hasNVMe ? 'Yes' : 'No'),
+      if (storage.release != null)
+        MapEntry('Release Date', storage.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Storage Specifications', specs, theme);
+  }
+
+  Widget _buildPsuSpecs(PowerSupplyComponent psu, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Power Output', '${psu.powerOutput.toStringAsFixed(0)}W'),
+      MapEntry('Form Factor', psu.formFactor),
+      if (psu.efficiencyRating != null)
+        MapEntry('Efficiency Rating', psu.efficiencyRating!),
+      MapEntry('Modularity', psu.modularityType),
+      MapEntry('Length', '${psu.length.toStringAsFixed(0)} mm'),
+      MapEntry('Fanless Mode', psu.isFanless ? 'Yes' : 'No'),
+      if (psu.release != null)
+        MapEntry('Release Date', psu.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Power Supply Specifications', specs, theme);
+  }
+
+  Widget _buildCaseSpecs(CaseComponent case_, ThemeData theme) {
+    final generalSpecs = <MapEntry<String, String>>[];
+    final dimensionsSpecs = <MapEntry<String, String>>[];
+    final compatibilitySpecs = <MapEntry<String, String>>[];
+    
+    generalSpecs.addAll([
+      MapEntry('Form Factor', case_.formFactor),
+      MapEntry('Power Supply Shrouded', case_.powerSupplyShrouded ? 'Yes' : 'No'),
+      if (case_.powerSupplyAmount != null)
+        MapEntry('Included PSU', '${case_.powerSupplyAmount!.toStringAsFixed(0)}W'),
+      MapEntry('Transparent Side Panel', case_.hasTransparentSidePanel ? 'Yes' : 'No'),
+      if (case_.sidePanelType != null)
+        MapEntry('Side Panel Type', case_.sidePanelType!),
+      MapEntry('Rear Connecting MB Support', case_.supportsRearConnectingMotherboard ? 'Yes' : 'No'),
+    ]);
+
+    dimensionsSpecs.addAll([
+      MapEntry('Width', '${case_.width.toStringAsFixed(0)} mm'),
+      MapEntry('Height', '${case_.height.toStringAsFixed(0)} mm'),
+      MapEntry('Depth', '${case_.depth.toStringAsFixed(0)} mm'),
+      MapEntry('Volume', '${case_.volume.toStringAsFixed(1)} L'),
+      MapEntry('Weight', '${case_.weight.toStringAsFixed(2)} kg'),
+    ]);
+
+    compatibilitySpecs.addAll([
+      MapEntry('Max GPU Length', '${case_.maxVideoCardLength.toStringAsFixed(0)} mm'),
+      MapEntry('Max Cooler Height', '${case_.maxCPUCoolerHeight} mm'),
+      MapEntry('Internal 3.5" Bays', case_.internal35BayAmount.toString()),
+      MapEntry('Internal 2.5" Bays', case_.internal25BayAmount.toString()),
+      MapEntry('External 3.5" Bays', case_.external35BayAmount.toString()),
+      MapEntry('External 5.25" Bays', case_.external525BayAmount.toString()),
+      MapEntry('Expansion Slots', case_.expansionSlotAmount.toString()),
+      if (case_.release != null)
+        MapEntry('Release Date', case_.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('General', generalSpecs, theme),
+        _buildSpecSection('Dimensions', dimensionsSpecs, theme),
+        _buildSpecSection('Compatibility', compatibilitySpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildCoolerSpecs(CoolerComponent cooler, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Type', cooler.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
+      MapEntry('Height', '${cooler.height.toStringAsFixed(0)} mm'),
+      if (cooler.radiatorSize != null)
+        MapEntry('Radiator Size', '${cooler.radiatorSize!.toStringAsFixed(0)} mm'),
+      if (cooler.fanSize != null)
+        MapEntry('Fan Size', '${cooler.fanSize!.toStringAsFixed(0)} mm'),
+      MapEntry('Fan Quantity', cooler.fanQuantity.toString()),
+      if (cooler.minFanRotationSpeed != null)
+        MapEntry('Min Fan Speed', '${cooler.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+      if (cooler.maxFanRotationSpeed != null)
+        MapEntry('Max Fan Speed', '${cooler.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+      if (cooler.minNoiseLevel != null)
+        MapEntry('Min Noise', '${cooler.minNoiseLevel!.toStringAsFixed(1)} dBA'),
+      if (cooler.maxNoiseLevel != null)
+        MapEntry('Max Noise', '${cooler.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+      MapEntry('Fanless Operation', cooler.canOperateFanless ? 'Yes' : 'No'),
+      if (cooler.release != null)
+        MapEntry('Release Date', cooler.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Cooler Specifications', specs, theme);
+  }
+
+  Widget _buildCaseFanSpecs(CaseFanComponent fan, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[];
+    
+    specs.addAll([
+      MapEntry('Size', '${fan.size.toStringAsFixed(0)} mm'),
+      MapEntry('Quantity', fan.quantity.toString()),
+      MapEntry('Min Airflow', '${fan.minAirflow.toStringAsFixed(0)} CFM'),
+      if (fan.maxAirflow != null)
+        MapEntry('Max Airflow', '${fan.maxAirflow!.toStringAsFixed(0)} CFM'),
+      MapEntry('Min Noise', '${fan.minNoiseLevel.toStringAsFixed(1)} dBA'),
+      if (fan.maxNoiseLevel != null)
+        MapEntry('Max Noise', '${fan.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
+      MapEntry('PWM', fan.pulseWidthModulation ? 'Yes' : 'No'),
+      MapEntry('LED Type', fan.ledType ?? 'None'),
+      MapEntry('Connector Type', fan.connectorType ?? 'N/A'),
+      MapEntry('Controller Type', fan.controllerType),
+      MapEntry('Static Pressure', '${fan.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
+      MapEntry('Flow Direction', fan.flowDirection),
+      if (fan.release != null)
+        MapEntry('Release Date', fan.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return _buildSpecSection('Case Fan Specifications', specs, theme);
+  }
+
+  Widget _buildMonitorSpecs(MonitorComponent monitor, ThemeData theme) {
+    final displaySpecs = <MapEntry<String, String>>[];
+    final performanceSpecs = <MapEntry<String, String>>[];
+    
+    displaySpecs.addAll([
+      MapEntry('Screen Size', '${monitor.screenSize.toStringAsFixed(1)}"'),
+      MapEntry('Resolution', '${monitor.horizontalResolution}x${monitor.verticalResolution}'),
+      MapEntry('Aspect Ratio', monitor.aspectRatio),
+      MapEntry('Panel Type', monitor.panelType),
+      MapEntry('Viewing Angle', monitor.viewingAngle),
+      if (monitor.maxBrightness != null)
+        MapEntry('Max Brightness', '${monitor.maxBrightness!.toStringAsFixed(0)} nits'),
+      if (monitor.highDynamicRangeType != null)
+        MapEntry('HDR', monitor.highDynamicRangeType!),
+    ]);
+
+    performanceSpecs.addAll([
+      MapEntry('Refresh Rate', '${monitor.maxRefreshRate.toStringAsFixed(0)} Hz'),
+      MapEntry('Response Time', '${monitor.responseTime.toStringAsFixed(1)} ms'),
+      MapEntry('Adaptive Sync', monitor.adaptiveSyncType),
+      if (monitor.release != null)
+        MapEntry('Release Date', monitor.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ]);
+
+    return Column(
+      children: [
+        _buildSpecSection('Display', displaySpecs, theme),
+        _buildSpecSection('Performance', performanceSpecs, theme),
+      ],
+    );
+  }
+
+  Widget _buildGenericSpecs(BaseComponent component, ThemeData theme) {
+    final specs = <MapEntry<String, String>>[
+      MapEntry('Manufacturer', component.manufacturer),
+      if (component.release != null)
+        MapEntry('Release Date', component.release!.toString().split(' ')[0]),
+      if (component.lowestPrice != null)
+        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+      if (component.averageRating != null)
+        MapEntry('Rating', '${component.averageRating!.toStringAsFixed(1)}/5.0'),
+    ];
+
+    return _buildSpecSection('General Information', specs, theme);
   }
 }

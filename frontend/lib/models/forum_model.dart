@@ -21,30 +21,29 @@ class PostReply {
   /// The date and time when the reply was created.
   final DateTime createdAt;
 
+  /// The ID of the parent comment this reply is responding to, if any.
+  final String? parentCommentId;
+
   /// Creates an instance of a post reply.
   PostReply({
     required this.id,
     required this.authorId,
     required this.content,
     required this.createdAt,
+    this.parentCommentId,
   });
 
   /// Creates a `PostReply` instance from a JSON map.
-  /// This is used when parsing replies included with a ForumPost or from UserComments endpoint.
+  /// This is used when parsing replies included with a ForumPost.
   factory PostReply.fromJson(Map<String, dynamic> json) {
-    // Handle both lowercase and capitalized field names (C# backend may return capitalized)
-    final id = json['id'] ?? json['Id'];
-    final userId = json['userId'] ?? json['UserId'];
-    final content = json['content'] ?? json['Content'];
-    final postedAt = json['postedAt'] ?? json['PostedAt'];
-    
     return PostReply(
-      id: id?.toString() ?? '',
-      authorId: userId?.toString() ?? '',
-      content: content ?? '',
-      createdAt: postedAt != null 
-          ? (postedAt is DateTime ? postedAt : DateTime.parse(postedAt.toString()))
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      authorId: json['userId']?.toString() ?? json['UserId']?.toString() ?? '',
+      content: json['content'] ?? json['Content'] ?? '',
+      createdAt: json['postedAt'] != null || json['PostedAt'] != null
+          ? DateTime.parse(json['postedAt'] ?? json['PostedAt'])
           : DateTime.now(),
+      parentCommentId: json['parentCommentId']?.toString() ?? json['ParentCommentId']?.toString(),
     );
   }
 }
@@ -76,6 +75,9 @@ class ForumPost {
   /// A list of all replies to this post.
   final List<PostReply> replies;
 
+  /// The number of replies/comments for this post (from backend).
+  final int replyCount;
+
   /// The ID of the reply that has been marked as the accepted answer. Null if none.
   final String? acceptedReplyId;
 
@@ -95,6 +97,7 @@ class ForumPost {
     required this.createdAt,
     // Defaults to an empty list if not provided.
     this.replies = const [],
+    this.replyCount = 0,
     this.acceptedReplyId,
     this.tags = const [],
     this.build,
@@ -115,6 +118,8 @@ class ForumPost {
               ?.map((replyJson) => PostReply.fromJson(replyJson))
               .toList() ??
           const [],
+      // Get reply count from backend, fallback to replies list length if not provided
+      replyCount: json['replyCount'] ?? (json['comments'] as List<dynamic>?)?.length ?? 0,
       tags: (json['tags'] as List<dynamic>?)?.map((tag) => tag.toString()).toList() ?? const [],
       // Parse the nested build object if it exists.
       build: json['build'] != null ? Build.fromJson(json['build']) : null,

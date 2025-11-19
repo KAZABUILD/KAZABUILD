@@ -74,19 +74,36 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
         });
 
         try {
+          // Read file bytes (works for both web and mobile)
+          final fileBytes = await image.readAsBytes();
+          
+          // Get file name
+          var fileName = image.name;
+          if (fileName.isEmpty || !fileName.contains('.')) {
+            fileName = 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          }
+          
+          // Create FormData
+          final formData = FormData.fromMap({
+            'File': MultipartFile.fromBytes(
+              fileBytes,
+              filename: fileName,
+            ),
+            'TargetId': widget.targetId,
+            'LocationType': widget.locationType,
+            'Name': 'upload_${DateTime.now().millisecondsSinceEpoch}',
+          });
+          
           // Upload the image
-          final imageResponse = await ref.read(authProvider.notifier).getDioInstance().post(
+          final dio = ref.read(authProvider.notifier).getDioInstance();
+          final imageResponse = await dio.post(
             '/Images/add',
-            data: {
-              'File': await MultipartFile.fromFile(image.path, filename: image.name),
-              'TargetId': widget.targetId,
-              'LocationType': widget.locationType,
-              'Name': 'upload_${image.name}',
-            },
+            data: formData,
           );
 
-          final imageId = imageResponse.data['id'];
-          final imageUrl = '${Uri.base.origin}/Images/download/$imageId';
+          final imageId = imageResponse.data['id'] ?? imageResponse.data['Id'];
+          final apiBaseUrl = dio.options.baseUrl;
+          final imageUrl = '$apiBaseUrl/Images/download/$imageId';
 
           if (mounted) {
             widget.onImageUploaded?.call(imageUrl);
@@ -143,7 +160,7 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(widget.size / 2),
                   ),
                   child: const Center(

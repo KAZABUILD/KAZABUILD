@@ -19,6 +19,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/core/constants/app_color.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the login page.
 /// It's a `ConsumerStatefulWidget` to interact with Riverpod providers for state management.
@@ -80,6 +82,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
     
     // Listen to the authProvider for state changes (e.g., errors, success).
     // This is used for side effects like showing SnackBars or navigating.
@@ -88,7 +93,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         // If an error occurs, show a SnackBar with the error message.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error.toString()),
+            content: Text(getUserFriendlyError(next.error)),
             backgroundColor: theme.colorScheme.error,
           ),
         );
@@ -100,164 +105,466 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: false),
-      // Sets the background color of the Scaffold based on the current theme.
-      backgroundColor: theme.colorScheme.background,
-      body: Column(
+      body: Stack(
         children: [
-          /// The main navigation bar for the application.
-          /// Configured not to show the profile area on the login page,
-          /// as the user is not yet authenticated.
-          CustomNavigationBar(
-            showProfileArea: false,
-            scaffoldKey: _scaffoldKey,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32.0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                                /// Displays the application's logo and title.
-                                /// This is a reusable widget from `auth_widgets.dart`.
-                                const Header(),
-                                const SizedBox(height: 32),
-
-                                /// A custom widget providing toggle buttons for "Sign In" and "Sign Up".
-                                /// It visually indicates the active authentication mode and handles
-                                /// navigation to the sign-up page.
-                                _AuthToggleButtons(
-                                  isSignIn: true,
-                                  onSignUpTap: () {
-                                    // Use go_router for consistent navigation.
-                                    context.go('/signup');
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-
-                                /// Welcome message for returning users.
-                                Text(
-                                  'Welcome Back',
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.headlineSmall,
-                                ),
-                                const SizedBox(height: 8),
-
-                                /// Encouraging subtitle for the login page.
-                                Text(
-                                  'Continue building your dream PC',
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 24),
-
-                                /// Custom text field for entering the user's username or email.
-                                /// Includes validation to ensure the field is not empty.
-                                CustomTextField(
-                                  controller: _emailController,
-                                  label: 'Username or Email',
-                                  icon: Icons.person_outline,
-                                  autovalidateMode: AutovalidateMode.disabled,
-                                  validator: (value) =>
-                                      (value == null || value.isEmpty)
-                                      ? 'This field cannot be empty'
-                                      : null,
-                                ),
-                                const SizedBox(height: 16),
-
-                                /// Custom text field for entering the user's password.
-                                /// It's configured as a password field with a visibility toggle and validation.
-                                CustomTextField(
-                                  controller: _passwordController,
-                                  label: 'Password',
-                                  icon: Icons.lock_outline,
-                                  isPassword: true,
-                                  autovalidateMode: AutovalidateMode.disabled,
-                                  validator: (value) =>
-                                      (value == null || value.isEmpty)
-                                      ? 'This field cannot be empty'
-                                      : null,
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    /// A checkbox for the "Remember me" functionality.
-                                    Row(
-                                      children: [
-                                        Checkbox(
-                                          value: _rememberMe,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _rememberMe = value ?? false;
-                                            });
-                                          },
-                                        ),
-                                        const Text('Remember me'),
-                                      ],
-                                    ), // "Forgot password?" link.
-                                    /// A [TextButton] to navigate to the [ForgotPasswordPage].
-                                    TextButton(
-                                      onPressed: () => GoRouter.of(context).go('/forgot-password'),
-                                      child: const Text('Forgot password?'),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-
-                                /// The primary button to initiate the sign-in process.
-                                /// It triggers form validation and, upon success,
-                                /// would typically call an authentication service.
-                                _SignInButton(
-                                  formKey: _formKey,
-                                  emailController: _emailController,
-                                  passwordController: _passwordController,
-                                  isLoading: authState.isLoading,
-                                  rememberMe: _rememberMe,
-                                ),
-
-                                /// A visual separator with "OR" text, typically used between
-                                /// credential-based login and social login options.
-                                const OrDivider(),
-
-                                /// Button for signing in with Google.
-                                SocialButton(
-                                  text: 'Continue with Google',
-                                  iconPath: 'google_icon.svg.webp',
-                                  onPressed: authState.isLoading
-                                      ? null
-                                      : () async {
-                                          await ref.read(authProvider.notifier).signInWithGoogleWeb();
-                                        },
-                                ),
-                                const SizedBox(height: 12),
-
-                                /// Button for signing in with GitHub.
-                                const SocialButton(
-                                  text: 'Continue with GitHub',
-                                  iconPath: 'github_icon.svg',
-                                ),
-                                const SizedBox(height: 12),
-
-                                /// Button for signing in with Discord.
-                                const SocialButton(
-                                  text: 'Continue with Discord',
-                                  iconPath: 'discord_icon.svg',
-                                ),
+          // Animated gradient background
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        AppColorsDark.backgroundPrimary,
+                        AppColorsDark.backgroundSecondary,
+                        AppColorsDark.buttonPurple.withValues(alpha: 0.3),
+                      ]
+                    : [
+                        AppColorsLight.backgroundPrimary,
+                        AppColorsLight.backgroundSecondary.withValues(alpha: 0.5),
+                        AppColorsLight.buttonPurple.withValues(alpha: 0.2),
                       ],
-                    ),
-                  ),
+              ),
+            ),
+          ),
+          // Decorative circles
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColorsDark.buttonBlue.withValues(alpha: 0.1),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
           ),
+          Positioned(
+            bottom: -150,
+            left: -150,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColorsDark.buttonPurple.withValues(alpha: 0.1),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Main content
+          Column(
+            children: [
+              CustomNavigationBar(
+                showProfileArea: false,
+                scaffoldKey: _scaffoldKey,
+              ),
+              Expanded(
+                child: isMobile
+                    ? _buildMobileLayout(context, theme, authState, isDark)
+                    : _buildDesktopLayout(context, theme, authState, isDark, screenWidth),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    ThemeData theme,
+    AsyncValue<AppUser?> authState,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 800),
+          child: _buildLoginCard(context, theme, authState, isDark),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    ThemeData theme,
+    AsyncValue<AppUser?> authState,
+    bool isDark,
+    double screenWidth,
+  ) {
+    final showLeftSide = screenWidth >= 900;
+    
+    return Row(
+      children: [
+        // Left side - Visual/Illustration area
+        if (showLeftSide)
+          Expanded(
+            flex: 1,
+            child: Container(
+            padding: const EdgeInsets.all(60),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo and branding
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColorsDark.buttonBlue.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/logo/kaza.png',
+                        width: 56,
+                        height: 56,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColorsDark.buttonBlue,
+                                  AppColorsDark.buttonPurple,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.computer,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'KAZABUILD',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                Text(
+                  'Welcome Back!',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Build your dream PC with our comprehensive platform.\nJoin thousands of PC enthusiasts and share your builds.',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                // Feature highlights
+                _buildFeatureItem(
+                  Icons.speed,
+                  'Lightning Fast',
+                  'Quick access to all your builds',
+                  isDark,
+                ),
+                const SizedBox(height: 20),
+                _buildFeatureItem(
+                  Icons.people,
+                  'Community Driven',
+                  'Connect with PC building enthusiasts',
+                  isDark,
+                ),
+                const SizedBox(height: 20),
+                _buildFeatureItem(
+                  Icons.security,
+                  'Secure & Private',
+                  'Your data is safe with us',
+                  isDark,
+                ),
+              ],
+            ),
+          ),
+          ),
+        // Right side - Login form
+        Expanded(
+          flex: showLeftSide ? 1 : 2,
+          child: Container(
+            padding: const EdgeInsets.all(60),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 450, maxHeight: 1000),
+                child: _buildLoginCard(context, theme, authState, isDark),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    bool isDark,
+  ) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: AppColorsDark.buttonBlue,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark
+                      ? AppColorsDark.textWhite
+                      : AppColorsLight.textBlack,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginCard(
+    BuildContext context,
+    ThemeData theme,
+    AsyncValue<AppUser?> authState,
+    bool isDark,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+            // Header section
+            Column(
+              children: [
+                Text(
+                  'Welcome Back',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to continue your journey',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+
+            // Toggle buttons
+            _AuthToggleButtons(
+              isSignIn: true,
+              onSignUpTap: () {
+                context.go('/signup');
+              },
+            ),
+            const SizedBox(height: 28),
+
+            // Form fields
+            CustomTextField(
+              controller: _emailController,
+              label: 'Username or Email',
+              icon: Icons.person_outline,
+              autovalidateMode: AutovalidateMode.disabled,
+              validator: (value) =>
+                  (value == null || value.isEmpty)
+                      ? 'This field cannot be empty'
+                      : null,
+            ),
+            const SizedBox(height: 18),
+
+            CustomTextField(
+              controller: _passwordController,
+              label: 'Password',
+              icon: Icons.lock_outline,
+              isPassword: true,
+              autovalidateMode: AutovalidateMode.disabled,
+              validator: (value) =>
+                  (value == null || value.isEmpty)
+                      ? 'This field cannot be empty'
+                      : null,
+            ),
+            const SizedBox(height: 14),
+
+            // Remember me and Forgot password
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        checkboxTheme: CheckboxThemeData(
+                          fillColor: MaterialStateProperty.resolveWith((states) {
+                            if (states.contains(MaterialState.selected)) {
+                              return AppColorsDark.buttonBlue;
+                            }
+                            return null;
+                          }),
+                        ),
+                      ),
+                      child: Checkbox(
+                        value: _rememberMe,
+                        onChanged: (value) {
+                          setState(() {
+                            _rememberMe = value ?? false;
+                          });
+                        },
+                      ),
+                    ),
+                    Text(
+                      'Remember me',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () => GoRouter.of(context).go('/forgot-password'),
+                  child: Text(
+                    'Forgot password?',
+                    style: TextStyle(
+                      color: AppColorsDark.buttonBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Sign in button
+            _SignInButton(
+              formKey: _formKey,
+              emailController: _emailController,
+              passwordController: _passwordController,
+              isLoading: authState.isLoading,
+              rememberMe: _rememberMe,
+            ),
+            const SizedBox(height: 20),
+
+            // Divider
+            const OrDivider(),
+            const SizedBox(height: 20),
+
+            // Social login button - Only Google
+            SocialButton(
+              text: 'Continue with Google',
+              iconPath: 'google_icon.svg.webp',
+              onPressed: authState.isLoading
+                  ? null
+                  : () async {
+                      await ref.read(authProvider.notifier).signInWithGoogleWeb();
+                    },
+            ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -281,48 +588,90 @@ class _AuthToggleButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    /// Defines the visual style for the currently selected (active) button.
-    final selectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: colorScheme.primary,
-      foregroundColor: colorScheme.onPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-    );
-
-    /// Defines the visual style for the unselected (inactive) button.
-    final unselectedStyle = ElevatedButton.styleFrom(
-      backgroundColor: colorScheme.surface,
-      foregroundColor: colorScheme.onSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-    );
-
-    /// A container that holds the two toggle buttons, providing a consistent
-    /// background and rounded corners.
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        color: isDark
+            ? AppColorsDark.backgroundTertiary
+            : AppColorsLight.backgroundTertiary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
+        ),
       ),
       child: Row(
         children: [
-          /// The "Sign In" button. Its style changes based on the `isSignIn` flag.
-          /// It has an empty `onPressed` as it's the current page.
           Expanded(
-            child: ElevatedButton(
-              onPressed: () {},
-              style: isSignIn ? selectedStyle : unselectedStyle,
-              child: const Text('Sign In'),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: isSignIn
+                    ? LinearGradient(
+                        colors: [
+                          AppColorsDark.buttonBlue,
+                          AppColorsDark.buttonPurple,
+                        ],
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSignIn ? Colors.transparent : Colors.transparent,
+                  foregroundColor: isSignIn ? Colors.white : (isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7)),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Sign In',
+                  style: TextStyle(
+                    fontWeight: isSignIn ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
             ),
           ),
-
-          /// The "Sign Up" button. Its style changes based on the `isSignIn` flag.
-          /// Tapping it triggers the `onSignUpTap` callback.
           Expanded(
-            child: ElevatedButton(
-              onPressed: onSignUpTap,
-              style: !isSignIn ? selectedStyle : unselectedStyle,
-              child: const Text('Sign Up'),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: !isSignIn
+                    ? LinearGradient(
+                        colors: [
+                          AppColorsDark.buttonBlue,
+                          AppColorsDark.buttonPurple,
+                        ],
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ElevatedButton(
+                onPressed: onSignUpTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: !isSignIn ? Colors.white : (isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7)),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Sign Up',
+                  style: TextStyle(
+                    fontWeight: !isSignIn ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -350,26 +699,77 @@ class _SignInButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PrimaryButton(
-      // Show a loading indicator text and disable the button during sign-in.
-      text: isLoading ? 'Signing In...' : 'Sign In',
-      icon: isLoading ? null : Icons.arrow_forward,
-      onPressed: isLoading
-          ? null
-          : () {
-              // Hide the keyboard.
-              FocusScope.of(context).unfocus();
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColorsDark.buttonBlue,
+            AppColorsDark.buttonPurple,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColorsDark.buttonBlue.withValues(alpha: 0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading
+            ? null
+            : () {
+                // Hide the keyboard.
+                FocusScope.of(context).unfocus();
 
-              // Validate the form before proceeding.
-              if (formKey.currentState!.validate()) {
-                // Call the signIn method from the auth provider with user credentials.
-                ref.read(authProvider.notifier).signIn(
-                      emailController.text.trim(),
-                      passwordController.text,
-                      rememberMe: rememberMe,
-                    );
-              }
-            },
+                // Validate the form before proceeding.
+                if (formKey.currentState!.validate()) {
+                  // Call the signIn method from the auth provider with user credentials.
+                  ref.read(authProvider.notifier).signIn(
+                        emailController.text.trim(),
+                        passwordController.text,
+                        rememberMe: rememberMe,
+                      );
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
