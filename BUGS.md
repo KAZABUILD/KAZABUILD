@@ -304,3 +304,8 @@
 - Type: incorrect implementation
 - Status: FIXED
 - Source: frontend
+
+[00047] Add limit for the images and gifs per components.
+- Type: missing feature
+- Status: pending
+- Source: backend

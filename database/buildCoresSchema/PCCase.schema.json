@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": ["object", "null"],
+  "title": "PC Case Schema",
+  "description": "Schema for PC case components",
+  "required": ["metadata"],
+  "properties": {
+    "opendb_id": {
+      "type": ["string", "null"],
+      "description": "Unique identifier for the document (UUID v4)"
+    },
+    "form_factor": {
+      "type": ["string", "null"],
+      "description": "The form factor of the case (e.g., ATX Mid Tower, Full Tower, Mini-ITX)"
+    },
+    "color": {
+      "type": ["array", "null"],
+      "items": {
+        "type": ["string", "null"]
+      },
+      "description": "The color of this product (e.g., ['Black', 'Red']). Each color of the product should be included in the array."
+    },
+    "power_supply": {
+      "type": ["string", "null"],
+      "description": "If included with the case, could detail the PSU model"
+    },
+    "power_supply_included": {
+      "type": ["boolean", "null"],
+      "description": "Whether the case includes a power supply"
+    },
+    "supported_power_supply_form_factors": {
+      "type": ["array", "null"],
+      "items": {
+        "type": ["string", "null"]
+      },
+      "description": "The PSU form factors that the case can support (e.g., ['ATX', 'SFX', 'SFX-L'])"
+    },
+    "side_panel": {
+      "type": ["string", "null"],
+      "description": "The type of side panel (e.g., Tempered Glass, Acrylic, Solid)"
+    },
+    "has_transparent_side_panel": {
+      "type": ["boolean", "null"],
+      "description": "Whether the case has a transparent side panel"
+    },
+    "front_panel_usb": {
+      "type": ["string", "null"],
+      "description": "DEPRECATED: Use front_usb_ports instead. Description of front panel USB ports (e.g., 'USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A')"
+    },
+    "front_usb_ports": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of front panel USB port types (e.g., ['USB 3.2 Gen 2 Type-C', 'USB 3.2 Gen 1 Type-A', 'USB 2.0'])"
+    },
+    "max_video_card_length": {
+      "type": ["number", "null"],
+      "description": "The maximum supported video card length in mm"
+    },
+    "max_cpu_cooler_height": {
+      "type": ["number", "null"],
+      "description": "The maximum supported CPU cooler height in mm"
+    },
+    "internal_3_5_bays": {
+      "type": ["number", "null"],
+      "description": "The number of internal 3.5\" drive bays"
+    },
+    "internal_2_5_bays": {
+      "type": ["number", "null"],
+      "description": "The number of internal 2.5\" drive bays"
+    },
+    "external_3_5_bays": {
+      "type": ["number", "null"],
+      "description": "The number of external 3.5\" drive bays"
+    },
+    "external_5_25_bays": {
+      "type": ["number", "null"],
+      "description": "The number of external 5.25\" drive bays"
+    },
+    "power_supply_shroud": {
+      "type": ["boolean", "null"],
+      "description": "Whether the case has a power supply shroud"
+    },
+    "expansion_slots": {
+      "type": ["number", "null"],
+      "description": "The number of expansion slots"
+    },
+    "riser_expansion_slots": {
+      "type": ["number", "null"],
+      "description": "The number of riser expansion slots"
+    },
+    "supports_rear_connecting_motherboard": {
+      "type": ["boolean", "null"],
+      "description": "Whether the case supports rear connecting motherboard (BTF, Project Zero, etc)"
+    },
+    "dimensions": {
+      "type": ["string", "null"],
+      "description": "The dimensions of the case in mm (e.g., '466 x 290 x 495')"
+    },
+    "dimensions_mm": {
+      "type": ["object", "null"],
+      "properties": {
+        "width": {
+          "type": ["number", "null"],
+          "description": "Width in mm"
+        },
+        "height": {
+          "type": ["number", "null"],
+          "description": "Height in mm"
+        },
+        "depth": {
+          "type": ["number", "null"],
+          "description": "Depth in mm"
+        }
+      },
+      "description": "The dimensions of the case in mm (e.g., { width: 466, height: 290, depth: 495 })"
+    },
+    "volume": {
+      "type": ["number", "null"],
+      "description": "The internal volume of the case in liters"
+    },
+    "weight": {
+      "type": ["number", "null"],
+      "description": "Weight in pounds"
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full product name"
+        },
+        "manufacturer": {
+          "type": ["string", "null"],
+          "description": "Product manufacturer"
+        },
+        "part_numbers": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of manufacturer's part numbers/SKUs"
+        },
+        "series": {
+          "type": ["string", "null"],
+          "description": "Product series name"
+        },
+        "variant": {
+          "type": ["string", "null"],
+          "description": "Specific variant in the series"
+        },
+        "releaseYear": {
+          "type": ["number", "null"],
+          "description": "Year of release"
+        }
+      }
+    },
+    "general_product_information": {
+      "type": ["object", "null"],
+      "description": "General product information and retailer SKUs",
+      "properties": {
+        "amazon_sku": {
+          "type": ["string", "null"],
+          "description": "Amazon product SKU"
+        },
+        "newegg_sku": {
+          "type": ["string", "null"],
+          "description": "Newegg product SKU"
+        },
+        "bestbuy_sku": {
+          "type": ["number", "null"],
+          "description": "Best Buy product SKU"
+        },
+        "walmart_sku": {
+          "type": ["number", "null"],
+          "description": "Walmart product SKU"
+        },
+        "adorama_sku": {
+          "type": ["string", "null"],
+          "description": "Adorama product SKU"
+        },
+        "ibuypower_sku": {
+          "type": ["string", "null"],
+          "description": "iBuyPower product SKU"
+        },
+        "hyte_sku": {
+          "type": ["string", "null"],
+          "description": "HYTE product SKU"
+        },
+        "manufacturer_url": {
+          "type": ["string", "null"],
+          "description": "Official manufacturer product URL"
+        }
+      }
+    }
+  }
+}

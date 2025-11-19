@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": [
+    "object",
+    "null"
+  ],
+  "title": "Storage Schema",
+  "description": "Schema for storage components",
+  "required": [
+    "metadata"
+  ],
+  "properties": {
+    "opendb_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Unique identifier for the document (UUID v4)"
+    },
+    "capacity": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The storage capacity of the drive in GB (e.g., 4000 GB)"
+    },
+    "type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The type of storage drive (either HDD or SSD)"
+    },
+    "form_factor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The physical size and shape of the drive (e.g., M.2-2280, 2.5\", 3.5\")"
+    },
+    "interface": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The interface used by the drive (e.g., M.2 PCIe 4.0 X4, SATA 6Gb/s)"
+    },
+    "cache": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The cache size of the drive in MB"
+    },
+    "nvme": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Whether the drive uses the NVMe protocol. Only applicable to SSDs"
+    },
+    "metadata": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full product name"
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product manufacturer"
+        },
+        "part_numbers": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of manufacturer's part numbers/SKUs"
+        },
+        "series": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product series name"
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Specific variant in the series"
+        },
+        "releaseYear": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Year of release"
+        }
+      }
+    },
+    "general_product_information": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "General product information and retailer SKUs",
+      "properties": {
+        "amazon_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Amazon product SKU"
+        },
+        "newegg_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Newegg product SKU"
+        },
+        "bestbuy_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Best Buy product SKU"
+        },
+        "walmart_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Walmart product SKU"
+        },
+        "adorama_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Adorama product SKU"
+        },
+        "ibuypower_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "iBuyPower product SKU"
+        },
+        "hyte_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "HYTE product SKU"
+        },
+        "manufacturer_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Official manufacturer product URL"
+        }
+      }
+    }
+  }
+}
