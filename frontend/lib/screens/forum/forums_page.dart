@@ -58,8 +58,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   int _currentPage = 1;
   ForumPostsParams? _lastSuccessfulParams;
   static const int _pageSize = 10;
-  int? _totalPages;
-  bool _isCheckingTotalPages = false;
+  bool _hasMorePages = false;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   final ScrollController _scrollController = ScrollController();
@@ -93,7 +92,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
           setState(() {
             _searchQuery = _searchController.text.trim();
             _currentPage = 1;
-            _totalPages = null;
+            _hasMorePages = false;
             // Clear last successful params when search changes
             _lastSuccessfulParams = null;
           });
@@ -104,7 +103,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   
   void _goToPage(int page) {
     if (page < 1) return;
-    if (_totalPages != null && page > _totalPages!) return;
     
     setState(() {
       _currentPage = page;
@@ -140,77 +138,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
     return [l10n.newest, l10n.oldest];
   }
 
-  Future<void> _checkTotalPages() async {
-    if (_isCheckingTotalPages || _totalPages != null) return;
-    
-    _isCheckingTotalPages = true;
-    
-    try {
-      final allText = AppLocalizations.of(context)!.all;
-      final selectedCat = _selectedCategory ?? allText;
-      final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
-      
-      final forumService = ref.read(forumServiceProvider);
-      
-      // Start checking from page 2
-      int checkPage = 2;
-      bool foundLastPage = false;
-      
-      while (!foundLastPage && checkPage <= 100) { // Limit to 100 pages max
-        final filter = {
-          'Paging': true,
-          'Page': checkPage,
-          'PageLength': _pageSize,
-          'SortDirection': selectedSort == 'Newest' ? 'desc' : 'asc',
-          'OrderBy': 'PostedAt',
-        };
-        
-        if (selectedCat != allText && _selectedCategory != null) {
-          filter['Topic'] = [_selectedCategory];
-        }
-        
-        if (_searchQuery.isNotEmpty) {
-          filter['Query'] = _searchQuery.trim();
-        }
-        
-        final posts = await forumService.getPosts(filter);
-        
-        if (posts.isEmpty) {
-          // Empty page means previous page was the last page
-          foundLastPage = true;
-          if (mounted) {
-            setState(() {
-              _totalPages = checkPage - 1;
-            });
-          }
-        } else if (posts.length < _pageSize) {
-          // We got fewer posts than page size (but not empty), so this is the last page
-          foundLastPage = true;
-          if (mounted) {
-            setState(() {
-              _totalPages = checkPage;
-            });
-          }
-        } else {
-          // Full page, continue checking
-          if (mounted) {
-            setState(() {
-              _totalPages = checkPage + 1; // At least one more page
-            });
-          }
-          checkPage++;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking total pages: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCheckingTotalPages = false;
-        });
-      }
-    }
-  }
 
   Widget _buildPostsList(bool isDarkMode, ThemeData theme) {
     final allText = AppLocalizations.of(context)!.all;
@@ -232,25 +159,13 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
         // Mark these params as successful
         _lastSuccessfulParams = params;
         
-        // Update total pages based on the number of posts received
+        // Update hasMorePages based on the number of posts received
+        // If we got a full page, there might be more pages
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (posts.isEmpty && _currentPage > 1) {
-            // Empty page means previous page was the last page
+          if (mounted) {
             setState(() {
-              _totalPages = _currentPage - 1;
+              _hasMorePages = posts.length >= _pageSize;
             });
-          } else if (posts.length < _pageSize && posts.isNotEmpty) {
-            // We got fewer posts than page size (but not empty), so this is the last page
-            setState(() {
-              _totalPages = _currentPage;
-            });
-          } else if (posts.length == _pageSize && _currentPage == 1 && _totalPages == null) {
-            // First page has full results, start checking total pages
-            _checkTotalPages();
-          } else if (posts.length == _pageSize && _totalPages != null && _currentPage >= _totalPages!) {
-            // We're on what we thought was the last page, but got full results
-            // Check if there are more pages
-            _checkTotalPages();
           }
         });
 
@@ -345,49 +260,43 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   }
 
   Widget _buildPaginationControls(bool isDarkMode, ThemeData theme) {
-    // Show pagination if we have at least 2 pages (or if current page > 1, meaning we know there are more)
-    // Also show if totalPages is set and > 1
-    final shouldShowPagination = (_totalPages != null && _totalPages! > 1) || _currentPage > 1;
+    // Show pagination if we're on page > 1 or if there are more pages
+    final shouldShowPagination = _currentPage > 1 || _hasMorePages;
     
     if (!shouldShowPagination) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
-    // If totalPages is null but we're on page > 1, estimate it as currentPage + 1
-    final totalPages = _totalPages ?? (_currentPage + 1);
-    final currentPage = _currentPage;
 
     return SliverToBoxAdapter(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Previous button
             _PaginationButton(
               icon: Icons.chevron_left,
-              onTap: currentPage > 1 ? () => _goToPage(currentPage - 1) : null,
+              onTap: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
               isDarkMode: isDarkMode,
               theme: theme,
             ),
             
-            // All page numbers from 1 to totalPages
-            for (int i = 1; i <= totalPages; i++) ...[
-              _PaginationNumberButton(
-                page: i,
-                isSelected: currentPage == i,
-                onTap: () => _goToPage(i),
-                isDarkMode: isDarkMode,
-                theme: theme,
+            const SizedBox(width: 16),
+            
+            // Current page indicator
+            Text(
+              'Page $_currentPage',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-            ],
+            ),
+            
+            const SizedBox(width: 16),
             
             // Next button
             _PaginationButton(
               icon: Icons.chevron_right,
-              onTap: currentPage < totalPages ? () => _goToPage(currentPage + 1) : null,
+              onTap: _hasMorePages ? () => _goToPage(_currentPage + 1) : null,
               isDarkMode: isDarkMode,
               theme: theme,
             ),
@@ -447,7 +356,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                           setState(() {
                             _selectedCategory = category;
                             _currentPage = 1;
-                            _totalPages = null;
+                            _hasMorePages = false;
                             // Clear last successful params when switching categories
                             // to prevent showing errors from previous category
                             _lastSuccessfulParams = null;
@@ -459,7 +368,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                           setState(() {
                             _selectedSortOption = option;
                             _currentPage = 1;
-                            _totalPages = null;
+                            _hasMorePages = false;
                             // Clear last successful params when changing sort
                             _lastSuccessfulParams = null;
                           });

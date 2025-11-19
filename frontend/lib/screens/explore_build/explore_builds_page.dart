@@ -522,6 +522,16 @@ class _Header extends StatelessWidget {
             onDateRangeChanged: onDateRangeChanged,
             selectedUserIds: selectedUserIds,
             onUserIdsChanged: onUserIdsChanged,
+            currentParams: ExploreBuildsParams(
+              searchQuery: null,
+              selectedTags: null,
+              selectedStatuses: null,
+              dateRange: null,
+              selectedUserIds: null,
+              sortBy: 'Latest',
+              page: 1,
+              pageLength: 50,
+            ),
           ),
         ],
       ],
@@ -539,6 +549,7 @@ class _FilterPanel extends ConsumerWidget {
   final Function(String?) onDateRangeChanged;
   final Set<String> selectedUserIds;
   final Function(Set<String>) onUserIdsChanged;
+  final ExploreBuildsParams currentParams;
 
   const _FilterPanel({
     required this.selectedTags,
@@ -549,12 +560,25 @@ class _FilterPanel extends ConsumerWidget {
     required this.onDateRangeChanged,
     required this.selectedUserIds,
     required this.onUserIdsChanged,
+    required this.currentParams,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final buildsAsync = ref.watch(allBuildsProvider);
+    // Use paginated provider with a larger page size to get more builds for filter options
+    // But limit to first page only to avoid loading all builds
+    final filterParams = ExploreBuildsParams(
+      searchQuery: null,
+      selectedTags: null,
+      selectedStatuses: null,
+      dateRange: null,
+      selectedUserIds: null,
+      sortBy: 'Latest',
+      page: 1,
+      pageLength: 50, // Get first 50 builds for filter options
+    );
+    final buildsAsync = ref.watch(exploreBuildsProvider(filterParams));
 
     return buildsAsync.when(
       data: (builds) {

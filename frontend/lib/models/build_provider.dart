@@ -207,7 +207,8 @@ class BuildService {
   }
 
   /// Fetches builds from the backend based on a given filter map.
-  Future<List<Build>> getBuilds(Map<String, dynamic> filter, {String? currentUserId}) async {
+  /// [skipRatings] if true, skips fetching ratings to reduce API calls (useful for list views).
+  Future<List<Build>> getBuilds(Map<String, dynamic> filter, {String? currentUserId, bool skipRatings = false}) async {
     try {
       final response = await _dio.post('$apiBaseUrl/Builds/get', data: filter);
       final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
@@ -236,58 +237,66 @@ class BuildService {
         // This ensures builds are still displayed even without images
       }
       
-      // Fetch ratings for all builds in parallel
-      final ratingFutures = buildIds.map((buildId) async {
-        try {
-          final ratingsCount = await _getBuildRatingsCount(buildId);
-          double? averageRating;
-          if (ratingsCount > 0) {
-            averageRating = await _getBuildAverageRating(buildId);
-          }
-          return {
-            'buildId': buildId,
-            'ratingsCount': ratingsCount,
-            'averageRating': averageRating,
-          };
-        } catch (e) {
-          debugPrint('Error fetching ratings for build $buildId: $e');
-          return {
-            'buildId': buildId,
-            'ratingsCount': 0,
-            'averageRating': null,
-          };
-        }
-      });
-      
-      final ratingResults = await Future.wait(ratingFutures);
-      for (var result in ratingResults) {
-        final buildId = result['buildId'] as String;
-        ratingsCountByBuildId[buildId] = result['ratingsCount'] as int;
-        averageRatingByBuildId[buildId] = result['averageRating'] as double?;
-      }
-      
-      // Fetch user ratings if currentUserId is provided
-      if (currentUserId != null && currentUserId.isNotEmpty) {
-        final userRatingFutures = buildIds.map((buildId) async {
+      // Fetch ratings for all builds in parallel (skip if skipRatings is true)
+      if (!skipRatings) {
+        final ratingFutures = buildIds.map((buildId) async {
           try {
-            final userRating = await _getUserRatingForBuild(buildId, currentUserId);
+            final ratingsCount = await _getBuildRatingsCount(buildId);
+            double? averageRating;
+            if (ratingsCount > 0) {
+              averageRating = await _getBuildAverageRating(buildId);
+            }
             return {
               'buildId': buildId,
-              'userRating': userRating,
+              'ratingsCount': ratingsCount,
+              'averageRating': averageRating,
             };
           } catch (e) {
-            debugPrint('Error fetching user rating for build $buildId: $e');
+            debugPrint('Error fetching ratings for build $buildId: $e');
             return {
               'buildId': buildId,
-              'userRating': null,
+              'ratingsCount': 0,
+              'averageRating': null,
             };
           }
         });
         
-        final userRatingResults = await Future.wait(userRatingFutures);
-        for (var result in userRatingResults) {
+        final ratingResults = await Future.wait(ratingFutures);
+        for (var result in ratingResults) {
           final buildId = result['buildId'] as String;
-          userRatingByBuildId[buildId] = result['userRating'] as double?;
+          ratingsCountByBuildId[buildId] = result['ratingsCount'] as int;
+          averageRatingByBuildId[buildId] = result['averageRating'] as double?;
+        }
+        
+        // Fetch user ratings if currentUserId is provided
+        if (currentUserId != null && currentUserId.isNotEmpty) {
+          final userRatingFutures = buildIds.map((buildId) async {
+            try {
+              final userRating = await _getUserRatingForBuild(buildId, currentUserId);
+              return {
+                'buildId': buildId,
+                'userRating': userRating,
+              };
+            } catch (e) {
+              debugPrint('Error fetching user rating for build $buildId: $e');
+              return {
+                'buildId': buildId,
+                'userRating': null,
+              };
+            }
+          });
+          
+          final userRatingResults = await Future.wait(userRatingFutures);
+          for (var result in userRatingResults) {
+            final buildId = result['buildId'] as String;
+            userRatingByBuildId[buildId] = result['userRating'] as double?;
+          }
+        }
+      } else {
+        // If skipping ratings, set default values (0 for count, 0.0 for average)
+        for (final buildId in buildIds) {
+          ratingsCountByBuildId[buildId] = 0;
+          averageRatingByBuildId[buildId] = 0.0;
         }
       }
       
@@ -897,7 +906,8 @@ final buildServiceProvider = Provider<BuildService>((ref) {
 final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, userId) async {
   final buildService = ref.watch(buildServiceProvider);
   // We want all builds for the profile page, so no paging.
-  return buildService.getBuilds({'userId': [userId], 'paging': false});
+  // Skip ratings for list views to reduce API calls
+  return buildService.getBuilds({'userId': [userId], 'paging': false}, skipRatings: true);
 });
 
 /// A provider that fetches all public builds for the "Explore" page.
@@ -905,7 +915,8 @@ final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, user
 final allBuildsProvider = FutureProvider<List<Build>>((ref) async {
   final buildService = ref.watch(buildServiceProvider);
   // Fetch only published builds and disable paging to get all of them.
-  return buildService.getBuilds({'status': ['PUBLISHED'], 'paging': false});
+  // Skip ratings for list views to reduce API calls
+  return buildService.getBuilds({'status': ['PUBLISHED'], 'paging': false}, skipRatings: true);
 });
 
 /// Parameters for exploring builds with server-side pagination, search, filtering, and sorting
@@ -1052,7 +1063,9 @@ final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsPa
   filter['OrderBy'] = orderBy;
   filter['SortDirection'] = sortDirection;
 
-  return buildService.getBuilds(filter, currentUserId: currentUserId);
+  // Skip ratings for list views to reduce API calls and avoid rate limiting
+  // Ratings will be fetched when user views build detail page
+  return buildService.getBuilds(filter, currentUserId: currentUserId, skipRatings: true);
 });
 
 /// A provider that lazily fetches components for specific build IDs.

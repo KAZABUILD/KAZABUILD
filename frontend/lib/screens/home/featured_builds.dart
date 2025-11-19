@@ -40,7 +40,19 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final buildsAsync = ref.watch(allBuildsProvider);
+    // Use paginated provider to get first page of builds
+    // Request larger page size to have more builds to filter from
+    final params = ExploreBuildsParams(
+      searchQuery: null,
+      selectedTags: null,
+      selectedStatuses: null,
+      dateRange: null,
+      selectedUserIds: null,
+      sortBy: 'Latest',
+      page: 1,
+      pageLength: 50, // Get first 50 builds, then filter for KazaBuild
+    );
+    final buildsAsync = ref.watch(exploreBuildsProvider(params));
 
     return buildsAsync.when(
       data: (builds) {

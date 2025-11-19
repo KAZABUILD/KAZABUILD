@@ -22,7 +22,19 @@ class PartCategoriesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final buildsAsync = ref.watch(allBuildsProvider);
+    // Use paginated provider with Popular sort to get top-rated builds
+    // Request first page with larger page size to get top builds
+    final params = ExploreBuildsParams(
+      searchQuery: null,
+      selectedTags: null,
+      selectedStatuses: null,
+      dateRange: null,
+      selectedUserIds: null,
+      sortBy: 'Popular', // Popular sort should give us top-rated builds
+      page: 1,
+      pageLength: 20, // Get first 20 builds, then take top 5 by rating
+    );
+    final buildsAsync = ref.watch(exploreBuildsProvider(params));
 
     return buildsAsync.when(
       data: (builds) {
@@ -33,7 +45,7 @@ class PartCategoriesSection extends ConsumerWidget {
 
         // Sort builds by average rating in descending order and take the top 5.
         final sortedBuilds = List<Build>.from(builds)
-          ..sort((a, b) => (b.averageRating ?? 0).compareTo(a.averageRating ?? 0));
+          ..sort((a, b) => b.averageRating.compareTo(a.averageRating));
         final topBuilds = sortedBuilds.take(5).toList();
 
         if (topBuilds.isEmpty) {
@@ -142,7 +154,6 @@ class _HoverAnimatedCard extends StatefulWidget {
   final TextStyle? titleStyle;
 
   const _HoverAnimatedCard({
-    super.key,
     required this.build,
     required this.height,
     this.titleStyle,
