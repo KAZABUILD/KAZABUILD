@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/admin_provider.dart';
+import '../../utils/error_utils.dart';
 
 class AdminForumsPage extends ConsumerStatefulWidget {
   const AdminForumsPage({super.key});
@@ -629,7 +630,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to delete post: ${e.toString()}'),
+                      content: Text(getUserFriendlyError(e)),
                       backgroundColor: AppColorsDark.error,
                     ),
                   );

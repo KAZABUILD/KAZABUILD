@@ -22,6 +22,7 @@ import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/component_compatibility_provider.dart' as compatibility;
+import 'package:frontend/models/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
@@ -2027,7 +2028,7 @@ class _FilterPanel extends ConsumerWidget {
     );
   }
 
-  /// A generic function to build a section of checkbox filters.
+  /// A generic function to build a section of dropdown filters for accessibility.
   Widget _buildFilterSection<T>({
     required String title,
     required List<T> items,
@@ -2037,29 +2038,21 @@ class _FilterPanel extends ConsumerWidget {
     String Function(T)? displayMapper,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
-    // Each filter section is a column containing a title and a list of checkboxes.
+    
+    // Build a multi-select dropdown for better accessibility
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        ...List.generate(items.length, (index) {
-          // Determine the text to display for the checkbox.
-          final item = items[index];
-          final displayItem =
-              displayMapper?.call(item) ??
-              displayItems?[index] ??
-              item.toString();
-          return CheckboxListTile(
-            title: Text(displayItem),
-            value: selectedItems.contains(item),
-            onChanged: (isSelected) => onChanged(item, isSelected ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            activeColor: AppColorsDark.textPurple,
-          );
-        }),
+        _MultiSelectDropdown<T>(
+          items: items,
+          displayItems: displayItems,
+          selectedItems: selectedItems,
+          onChanged: onChanged,
+          displayMapper: displayMapper,
+          title: title,
+        ),
         const Divider(height: 32, color: Colors.transparent),
       ],
     );
@@ -2106,6 +2099,106 @@ class _FilterPanel extends ConsumerWidget {
         ),
         const Divider(height: 32, color: Colors.transparent),
       ],
+    );
+  }
+}
+
+/// A multi-select dropdown widget for better accessibility.
+class _MultiSelectDropdown<T> extends StatefulWidget {
+  final List<T> items;
+  final List<String>? displayItems;
+  final List<T> selectedItems;
+  final Function(T, bool) onChanged;
+  final String Function(T)? displayMapper;
+  final String title;
+
+  const _MultiSelectDropdown({
+    required this.items,
+    this.displayItems,
+    required this.selectedItems,
+    required this.onChanged,
+    this.displayMapper,
+    required this.title,
+  });
+
+  @override
+  State<_MultiSelectDropdown<T>> createState() => _MultiSelectDropdownState<T>();
+}
+
+class _MultiSelectDropdownState<T> extends State<_MultiSelectDropdown<T>> {
+  @override
+  Widget build(BuildContext context) {
+    final selectedCount = widget.selectedItems.length;
+    final displayText = selectedCount == 0
+        ? 'Select ${widget.title}'
+        : selectedCount == widget.items.length
+            ? 'All selected'
+            : '$selectedCount selected';
+
+    return MenuAnchor(
+      menuChildren: widget.items.map((item) {
+        final index = widget.items.indexOf(item);
+        final displayItem = widget.displayMapper?.call(item) ??
+            widget.displayItems?[index] ??
+            item.toString();
+        final isSelected = widget.selectedItems.contains(item);
+
+        return MenuItemButton(
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) {
+                  widget.onChanged(item, value ?? false);
+                },
+                activeColor: AppColorsDark.textPurple,
+              ),
+              Expanded(
+                child: Text(displayItem),
+              ),
+            ],
+          ),
+          onPressed: () {
+            widget.onChanged(item, !isSelected);
+          },
+        );
+      }).toList(),
+      builder: (context, controller, child) {
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ),
+              alignment: Alignment.centerLeft,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    displayText,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+                Icon(
+                  controller.isOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -2425,17 +2518,39 @@ abstract class _ProductRow extends ConsumerWidget {
   /// A reusable widget for the first cell in a row, typically showing the product image and name.
   /// It includes an error builder for the network image and compatibility badge.
   Widget buildNameCell(BuildContext context, WidgetRef ref, {int flex = 5}) {
+    // For now, just use product.imageUrl to avoid infinite loops
+    // Image uploads will be handled by backend updating component.imageUrl
+    final rawImageUrl = product.imageUrl.trim();
+    String? imageUrl;
+    
+    if (rawImageUrl.isNotEmpty) {
+      // Check if it's a GUID (image ID) or a URL
+      final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') || rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
+    
     return Expanded(
       flex: flex,
       child: Row(
         children: [
-          Image.network(
-            product.imageUrl,
-            width: 40,
-            height: 40,
-            errorBuilder: (c, o, s) =>
-                Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
-          ),
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              width: 40,
+              height: 40,
+              errorBuilder: (c, o, s) =>
+                  Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
+            )
+          else
+            Icon(Icons.broken_image, size: 40, color: Colors.grey.shade700),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -2824,13 +2939,32 @@ class _RatingStars extends StatelessWidget {
 }
 
 /// A dialog widget that displays all specifications for a component
-class _ComponentSpecsDialog extends StatelessWidget {
+class _ComponentSpecsDialog extends ConsumerWidget {
   final BaseComponent component;
   const _ComponentSpecsDialog({required this.component});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    
+    // For now, just use component.imageUrl to avoid infinite loops
+    // Image uploads will be handled by backend updating component.imageUrl
+    final rawImageUrl = component.imageUrl.trim();
+    String? imageUrl;
+    
+    if (rawImageUrl.isNotEmpty) {
+      // Check if it's a GUID (image ID) or a URL
+      final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') || rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
     
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2851,16 +2985,23 @@ class _ComponentSpecsDialog extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Image.network(
-                    component.imageUrl,
-                    width: 60,
-                    height: 60,
-                    errorBuilder: (c, o, s) => Icon(
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    Image.network(
+                      imageUrl,
+                      width: 60,
+                      height: 60,
+                      errorBuilder: (c, o, s) => Icon(
+                        Icons.broken_image,
+                        size: 60,
+                        color: Colors.grey.shade700,
+                      ),
+                    )
+                  else
+                    Icon(
                       Icons.broken_image,
                       size: 60,
                       color: Colors.grey.shade700,
                     ),
-                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

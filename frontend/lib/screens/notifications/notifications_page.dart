@@ -11,6 +11,7 @@ import 'package:frontend/models/notification_model.dart';
 import 'package:frontend/models/notification_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the notifications page.
 class NotificationsPage extends ConsumerStatefulWidget {
@@ -249,7 +250,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             } catch (e) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error marking notification as read: $e')),
+                  SnackBar(content: Text(getUserFriendlyError(e))),
                 );
               }
             }
@@ -355,7 +356,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                             } catch (e) {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error updating notification: $e')),
+                                  SnackBar(content: Text(getUserFriendlyError(e))),
                                 );
                               }
                             }
@@ -398,7 +399,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                               } catch (e) {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error deleting notification: $e')),
+                                    SnackBar(content: Text(getUserFriendlyError(e))),
                                   );
                                 }
                               }

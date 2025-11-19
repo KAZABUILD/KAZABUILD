@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 /// A widget that displays text with clickable links.
 ///
@@ -32,6 +33,9 @@ class LinkableText extends StatelessWidget {
   /// Line height multiplier.
   final double? height;
 
+  /// Map of username to user ID for @mention resolution
+  final Map<String, String>? usernameToUserIdMap;
+
   const LinkableText({
     super.key,
     required this.text,
@@ -40,6 +44,7 @@ class LinkableText extends StatelessWidget {
     this.maxLines,
     this.overflow,
     this.height,
+    this.usernameToUserIdMap,
   });
 
   /// Regular expression to match URLs.
@@ -47,21 +52,67 @@ class LinkableText extends StatelessWidget {
   static final RegExp _urlRegex = RegExp(
     r'(?:(?:https?|ftp):\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
   );
+  
+  /// Regular expression to match @mentions (e.g., @username)
+  static final RegExp _mentionRegex = RegExp(
+    r'@([a-zA-Z0-9_]+)',
+  );
 
-  /// Splits the text into segments (regular text and URLs).
+  /// Splits the text into segments (regular text, URLs, and mentions).
   List<_TextSegment> _parseText(String text) {
     final List<_TextSegment> segments = [];
-    final matches = _urlRegex.allMatches(text);
-
-    if (matches.isEmpty) {
-      // No URLs found, return the entire text as a single segment
+    
+    // Find all URLs and mentions
+    final urlMatches = _urlRegex.allMatches(text);
+    final mentionMatches = _mentionRegex.allMatches(text);
+    
+    // Combine all matches with their positions
+    final List<_MatchInfo> allMatches = [];
+    
+    for (final match in urlMatches) {
+      allMatches.add(_MatchInfo(
+        start: match.start,
+        end: match.end,
+        text: match.group(0)!,
+        isUrl: true,
+        isMention: false,
+      ));
+    }
+    
+    for (final match in mentionMatches) {
+      // Check if this mention is already part of a URL (email)
+      bool isPartOfUrl = false;
+      for (final urlMatch in urlMatches) {
+        if (match.start >= urlMatch.start && match.end <= urlMatch.end) {
+          isPartOfUrl = true;
+          break;
+        }
+      }
+      
+      if (!isPartOfUrl) {
+        allMatches.add(_MatchInfo(
+          start: match.start,
+          end: match.end,
+          text: match.group(0)!,
+          username: match.group(1),
+          isUrl: false,
+          isMention: true,
+        ));
+      }
+    }
+    
+    // Sort matches by position
+    allMatches.sort((a, b) => a.start.compareTo(b.start));
+    
+    if (allMatches.isEmpty) {
+      // No URLs or mentions found, return the entire text as a single segment
       segments.add(_TextSegment(text: text, isUrl: false));
       return segments;
     }
 
     int lastEnd = 0;
-    for (final match in matches) {
-      // Add text before the URL
+    for (final match in allMatches) {
+      // Add text before the match
       if (match.start > lastEnd) {
         segments.add(
           _TextSegment(
@@ -71,32 +122,44 @@ class LinkableText extends StatelessWidget {
         );
       }
 
-      // Add the URL
-      String urlText = match.group(0)!;
-      // Ensure URL has a protocol
-      String fullUrl = urlText;
-      if (!urlText.startsWith('http://') && !urlText.startsWith('https://') && !urlText.startsWith('ftp://')) {
-        if (urlText.contains('@')) {
-          // Email address
-          fullUrl = 'mailto:$urlText';
-        } else {
-          // Web URL
-          fullUrl = 'https://$urlText';
+      if (match.isUrl) {
+        // Add the URL
+        String urlText = match.text;
+        // Ensure URL has a protocol
+        String fullUrl = urlText;
+        if (!urlText.startsWith('http://') && !urlText.startsWith('https://') && !urlText.startsWith('ftp://')) {
+          if (urlText.contains('@')) {
+            // Email address
+            fullUrl = 'mailto:$urlText';
+          } else {
+            // Web URL
+            fullUrl = 'https://$urlText';
+          }
         }
-      }
 
-      segments.add(
-        _TextSegment(
-          text: urlText,
-          isUrl: true,
-          url: fullUrl,
-        ),
-      );
+        segments.add(
+          _TextSegment(
+            text: urlText,
+            isUrl: true,
+            url: fullUrl,
+          ),
+        );
+      } else if (match.isMention) {
+        // Add the mention
+        segments.add(
+          _TextSegment(
+            text: match.text,
+            isUrl: false,
+            isMention: true,
+            mentionUsername: match.username,
+          ),
+        );
+      }
 
       lastEnd = match.end;
     }
 
-    // Add remaining text after the last URL
+    // Add remaining text after the last match
     if (lastEnd < text.length) {
       segments.add(
         _TextSegment(
@@ -156,6 +219,27 @@ class LinkableText extends StatelessWidget {
                   _launchUrl(segment.url!);
                 },
             );
+          } else if (segment.isMention && segment.mentionUsername != null) {
+            return TextSpan(
+              text: segment.text,
+              style: (style ?? DefaultTextStyle.of(context).style).copyWith(
+                color: theme.colorScheme.primary,
+                decoration: TextDecoration.underline,
+                decorationColor: theme.colorScheme.primary,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  // Navigate to user profile using user ID if available, otherwise use username
+                  final router = GoRouter.of(context);
+                  final userId = usernameToUserIdMap?[segment.mentionUsername];
+                  if (userId != null && userId.isNotEmpty) {
+                    router.push('/profile/$userId');
+                  } else {
+                    // Fallback to username if user ID not found
+                    router.push('/profile/${segment.mentionUsername}');
+                  }
+                },
+            );
           } else {
             return TextSpan(
               text: segment.text,
@@ -168,17 +252,38 @@ class LinkableText extends StatelessWidget {
   }
 }
 
-/// Helper class to represent a segment of text (either regular text or a URL).
+/// Helper class to store match information
+class _MatchInfo {
+  final int start;
+  final int end;
+  final String text;
+  final String? username;
+  final bool isUrl;
+  final bool isMention;
+  
+  _MatchInfo({
+    required this.start,
+    required this.end,
+    required this.text,
+    this.username,
+    required this.isUrl,
+    required this.isMention,
+  });
+}
+
+/// Helper class to represent a segment of text (either regular text, a URL, or a mention).
 class _TextSegment {
   final String text;
   final bool isUrl;
   final String? url;
+  final bool isMention;
+  final String? mentionUsername;
 
   _TextSegment({
     required this.text,
     required this.isUrl,
     this.url,
+    this.isMention = false,
+    this.mentionUsername,
   });
 }
-
-

@@ -5,14 +5,19 @@
 /// users to submit new replies.
 library;
 
+import 'dart:typed_data';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/widgets/linkable_text.dart';
+import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/models/image_provider.dart';
 
 import 'package:intl/intl.dart';
 import 'package:frontend/utils/error_utils.dart';
@@ -141,6 +146,10 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
   
   /// Whether comments are currently loading
   bool _isLoadingComments = false;
+  
+  /// Track which comment we're replying to
+  String? _replyingToCommentId;
+  String? _replyingToAuthorName;
 
   @override
   void initState() {
@@ -191,7 +200,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
       setState(() => _isLoadingComments = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading comments: $e')),
+          SnackBar(content: Text(getUserFriendlyError(e))),
         );
       }
     }
@@ -277,43 +286,126 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                     )
                   else
                     /// Otherwise, build a list of reply cards with staggered animations.
-                    SliverList.builder(
-                      itemCount: _allComments.length + (_hasMoreComments ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        // Show "Load More" button at the end if there are more comments
-                        if (index == _allComments.length) {
-                          return Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Center(
-                              child: _isLoadingComments
-                                  ? const CircularProgressIndicator()
-                                  : ElevatedButton(
-                                      onPressed: _loadComments,
-                                      child: const Text('Load More Comments'),
-                                    ),
-                            ),
-                          );
+                    Builder(
+                      builder: (context) {
+                        // Create username to user ID mapping for @mention resolution
+                        // We need to fetch user info for all comments to build the mapping
+                        final Map<String, String> usernameToUserIdMap = {};
+                        
+                        // Organize comments into a tree structure
+                        final Map<String, List<PostReply>> commentTree = {};
+                        final List<PostReply> topLevelComments = [];
+                        final Map<String, PostReply> commentMap = {};
+                        
+                        // First, create a map of all comments by ID for quick lookup
+                        for (final comment in _allComments) {
+                          commentMap[comment.id] = comment;
+                          // Store authorId for username mapping (we'll need to fetch displayName separately)
+                          if (comment.authorId.isNotEmpty) {
+                            // We'll build the mapping using authorId, but we need displayName
+                            // For now, we'll use authorId directly as a fallback
+                            usernameToUserIdMap[comment.authorId] = comment.authorId;
+                          }
                         }
                         
-                        final animation = CurvedAnimation(
-                          parent: _controller,
+                        // Then organize into tree structure
+                        for (final comment in _allComments) {
+                          if (comment.parentCommentId != null && comment.parentCommentId!.isNotEmpty) {
+                            // Check if parent exists in our loaded comments
+                            if (commentMap.containsKey(comment.parentCommentId)) {
+                              // This is a reply to another comment
+                              commentTree.putIfAbsent(comment.parentCommentId!, () => []).add(comment);
+                            } else {
+                              // Parent not loaded yet, treat as top-level for now
+                              topLevelComments.add(comment);
+                            }
+                          } else {
+                            // This is a top-level comment
+                            topLevelComments.add(comment);
+                          }
+                        }
+                        
+                        // Sort top-level comments by creation date (oldest first, matching backend sort)
+                        topLevelComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                        
+                        // Sort replies for each parent by creation date
+                        for (final key in commentTree.keys) {
+                          commentTree[key]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                        }
+                        
+                        // Build flat list with nested structure
+                        final List<PostReply> organizedComments = [];
+                        void addCommentWithReplies(PostReply comment, int depth) {
+                          organizedComments.add(comment);
+                          final replies = commentTree[comment.id] ?? [];
+                          for (final reply in replies) {
+                            addCommentWithReplies(reply, depth + 1);
+                          }
+                        }
+                        
+                        for (final topLevel in topLevelComments) {
+                          addCommentWithReplies(topLevel, 0);
+                        }
+                        
+                        return SliverList.builder(
+                          itemCount: organizedComments.length + (_hasMoreComments ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            // Show "Load More" button at the end if there are more comments
+                            if (index == organizedComments.length) {
+                              return Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Center(
+                                  child: _isLoadingComments
+                                      ? const CircularProgressIndicator()
+                                      : ElevatedButton(
+                                          onPressed: _loadComments,
+                                          child: const Text('Load More Comments'),
+                                        ),
+                                ),
+                              );
+                            }
+                            
+                            final reply = organizedComments[index];
+                            // A comment is a reply only if it has a parentCommentId AND the parent exists in our loaded comments
+                            final isReply = reply.parentCommentId != null && 
+                                          reply.parentCommentId!.isNotEmpty && 
+                                          commentMap.containsKey(reply.parentCommentId);
+                            
+                            final animation = CurvedAnimation(
+                              parent: _controller,
 
-                          /// Each reply card animates in slightly after the previous one.
-                          curve: Interval(
-                            0.3 + (0.6 * index / (_allComments.length + 1)),
-                            1.0,
-                            curve: Curves.easeOut,
-                          ),
-                        );
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.1),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: _ReplyCard(reply: _allComments[index]),
-                          ),
+                              /// Each reply card animates in slightly after the previous one.
+                              curve: Interval(
+                                0.3 + (0.6 * index / (organizedComments.length + 1)),
+                                1.0,
+                                curve: Curves.easeOut,
+                              ),
+                            );
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.1),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: isReply ? 32.0 : 0.0),
+                                  child: _ReplyCard(
+                                    reply: reply,
+                                    onReply: (commentId, authorName) {
+                                      final newReplyingToId = _replyingToCommentId == commentId ? null : commentId;
+                                      setState(() {
+                                        _replyingToCommentId = newReplyingToId;
+                                        _replyingToAuthorName = newReplyingToId != null ? authorName : null;
+                                      });
+                                    },
+                                    replyingToCommentId: _replyingToCommentId,
+                                    usernameToUserIdMap: usernameToUserIdMap,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -324,17 +416,47 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
             /// The input section at the bottom for submitting a new reply.
             _ReplyInputSection(
               post: post,
-              onReplySubmitted: () {
-                // Reset comments and reload from page 1
+              replyingToCommentId: _replyingToCommentId,
+              replyingToAuthorName: _replyingToAuthorName,
+              onReplyStateChanged: (commentId) {
                 setState(() {
-                  _allComments.clear();
-                  _currentPage = 1;
-                  _hasMoreComments = true;
+                  _replyingToCommentId = commentId;
+                  _replyingToAuthorName = null;
+                });
+              },
+              onReplySubmitted: (reply) {
+                // Add the new reply optimistically to the list immediately (at the end since comments are sorted oldest first)
+                setState(() {
+                  _allComments.add(reply);
                 });
                 // Invalidate the provider to refetch the post
                 ref.invalidate(postDetailProvider(postId));
-                // Reload comments
-                _loadComments();
+                // Reload comments in the background to get the real data from server
+                // The optimistic comment will be replaced by the real one when it arrives
+                Future.microtask(() async {
+                  final optimisticId = reply.id;
+                  
+                  setState(() {
+                    _currentPage = 1;
+                    _hasMoreComments = true;
+                    _allComments.clear();
+                  });
+                  
+                  await _loadComments();
+                  
+                  // If the optimistic comment wasn't included in the reload (shouldn't happen, but just in case),
+                  // and it's not a duplicate, add it back
+                  if (mounted && !_allComments.any((c) => c.id == optimisticId)) {
+                    setState(() {
+                      _allComments.add(reply);
+                    });
+                  }
+                });
+                // Clear reply state after posting
+                setState(() {
+                  _replyingToCommentId = null;
+                  _replyingToAuthorName = null;
+                });
               },
             ),
           ],
@@ -488,6 +610,44 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
                 ),
               ),
 
+              /// Display images attached to the post
+              ref.watch(forumPostImagesProvider(post.id)).when(
+                data: (imageUrls) {
+                  if (imageUrls.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: imageUrls.map((imageUrl) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              imageUrl,
+                              width: 200,
+                              height: 200,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: theme.colorScheme.surfaceVariant,
+                                  child: const Icon(Icons.broken_image),
+                                );
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (e, s) => const SizedBox.shrink(),
+              ),
+
               /// If the post is linked to a build, show a tappable card.
               if (post.build != null) ...[
                 const SizedBox(height: 16),
@@ -566,7 +726,15 @@ class _LinkedBuildCard extends StatelessWidget {
 /// A card widget that displays a single reply to the post.
 class _ReplyCard extends ConsumerWidget {
   final PostReply reply;
-  const _ReplyCard({required this.reply});
+  final Function(String, String)? onReply;
+  final String? replyingToCommentId;
+  final Map<String, String>? usernameToUserIdMap;
+  const _ReplyCard({
+    required this.reply,
+    this.onReply,
+    this.replyingToCommentId,
+    this.usernameToUserIdMap,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -683,12 +851,127 @@ class _ReplyCard extends ConsumerWidget {
                 const SizedBox(height: 8),
 
                 /// The content of the reply with clickable links.
-                LinkableText(
-                  text: reply.content,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    height: 1.5,
-                    color: theme.colorScheme.onSurface,
+                // Only show text if it's not the placeholder
+                if (reply.content != '[Image]')
+                  LinkableText(
+                    text: reply.content,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.5,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    usernameToUserIdMap: usernameToUserIdMap,
                   ),
+                const SizedBox(height: 8),
+                // Reply button
+                if (onReply != null)
+                  authorAsync.when(
+                    data: (author) {
+                      final displayName = author?.displayName.isNotEmpty == true 
+                          ? author!.displayName 
+                          : (author?.username ?? 'Unknown User');
+                      return TextButton.icon(
+                        onPressed: () {
+                          onReply!(reply.id, displayName);
+                        },
+                        icon: Icon(
+                          replyingToCommentId == reply.id ? Icons.close : Icons.reply,
+                          size: 16,
+                        ),
+                        label: Text(
+                          replyingToCommentId == reply.id ? 'Cancel' : 'Reply',
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, s) => const SizedBox.shrink(),
+                  ),
+
+                /// Display images attached to the comment
+                ref.watch(commentImagesProvider(reply.id)).when(
+                  data: (imageUrls) {
+                    if (imageUrls.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: imageUrls.map((imageUrl) {
+                            return GestureDetector(
+                              onTap: () {
+                                // Show fullscreen image viewer
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    insetPadding: const EdgeInsets.all(20),
+                                    child: Stack(
+                                      children: [
+                                        Center(
+                                          child: InteractiveViewer(
+                                            minScale: 0.5,
+                                            maxScale: 4.0,
+                                            child: Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  width: 300,
+                                                  height: 300,
+                                                  color: theme.colorScheme.surfaceVariant,
+                                                  child: const Icon(Icons.broken_image, size: 64),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 10,
+                                          right: 10,
+                                          child: IconButton(
+                                            icon: const Icon(Icons.close, color: Colors.white),
+                                            onPressed: () => Navigator.of(context).pop(),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: Colors.black54,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 150,
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 150,
+                                      height: 150,
+                                      color: theme.colorScheme.surfaceVariant,
+                                      child: const Icon(Icons.broken_image),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, s) => const SizedBox.shrink(),
                 ),
               ],
             ),
@@ -703,8 +986,17 @@ class _ReplyCard extends ConsumerWidget {
 /// It handles both authenticated users and guests.
 class _ReplyInputSection extends ConsumerStatefulWidget {
   final ForumPost post;
-  final VoidCallback onReplySubmitted;
-  const _ReplyInputSection({required this.post, required this.onReplySubmitted});
+  final Function(PostReply) onReplySubmitted;
+  final String? replyingToCommentId;
+  final String? replyingToAuthorName;
+  final Function(String?)? onReplyStateChanged;
+  const _ReplyInputSection({
+    required this.post, 
+    required this.onReplySubmitted,
+    this.replyingToCommentId,
+    this.replyingToAuthorName,
+    this.onReplyStateChanged,
+  });
 
   @override
   ConsumerState<_ReplyInputSection> createState() => _ReplyInputSectionState();
@@ -716,57 +1008,224 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
   final _replyController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
+  final List<XFile> _selectedImages = [];
+  final ImagePicker _imagePicker = ImagePicker();
+
+  Future<void> _uploadImages(String commentId) async {
+    final dio = ref.read(authProvider.notifier).getDioInstance();
+    
+    for (int i = 0; i < _selectedImages.length; i++) {
+      final image = _selectedImages[i];
+      try {
+        debugPrint('Uploading comment image ${i + 1}/${_selectedImages.length}: ${image.name}');
+        final fileBytes = await image.readAsBytes();
+        var fileName = image.name;
+        if (fileName.isEmpty || !fileName.contains('.')) {
+          fileName = 'image_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        }
+        
+        final formData = FormData.fromMap({
+          'File': MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+          ),
+          'TargetId': commentId,
+          'LocationType': 'COMMENT',
+          'Name': 'forum_reply_${DateTime.now().millisecondsSinceEpoch}_$i',
+        });
+        
+        final response = await dio.post('$apiBaseUrl/Images/add', data: formData);
+        debugPrint('Comment image ${i + 1} uploaded successfully: ${response.data}');
+      } catch (e, stackTrace) {
+        debugPrint('Error uploading comment image ${i + 1}: $e');
+        debugPrint('Stack trace: $stackTrace');
+        // Re-throw to be caught by caller
+        throw Exception('Failed to upload image ${i + 1}: $e');
+      }
+    }
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images);
+          // Limit to 5 images
+          if (_selectedImages.length > 5) {
+            _selectedImages.removeRange(5, _selectedImages.length);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maximum 5 images allowed. Only first 5 will be uploaded.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to replyingToCommentId changes and update the text field
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateReplyText();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_ReplyInputSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update text field when replyingToCommentId or replyingToAuthorName changes
+    if (widget.replyingToCommentId != oldWidget.replyingToCommentId ||
+        widget.replyingToAuthorName != oldWidget.replyingToAuthorName) {
+      _updateReplyText();
+    }
+  }
+
+  void _updateReplyText() {
+    if (widget.replyingToCommentId != null && widget.replyingToAuthorName != null) {
+      _replyController.text = '@${widget.replyingToAuthorName} ';
+      _replyController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _replyController.text.length),
+      );
+    } else if (widget.replyingToCommentId == null) {
+      // Clear text if not replying anymore
+      _replyController.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
 
   /// Validates the form and submits the new reply.
   void _submitReply() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      /// Check if a user is logged in via the authProvider.
-      final currentUser = ref.read(authProvider).value;
+    // Allow submitting with just images (no text required)
+    final text = _replyController.text.trim();
+    if (text.isEmpty && _selectedImages.isEmpty) {
+      // Show error if both are empty
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a comment or attach an image'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // Validate form if text is provided, otherwise just proceed
+    if (text.isNotEmpty && (_formKey.currentState?.validate() ?? false) == false) {
+      return;
+    }
+    
+    /// Check if a user is logged in via the authProvider.
+    final currentUser = ref.read(authProvider).value;
 
-      /// If no user is logged in, create a temporary "guest" user object.
-      final authorId = currentUser?.uid;
-      final replyContent = _replyController.text.trim();
+    /// If no user is logged in, create a temporary "guest" user object.
+    final authorId = currentUser?.uid;
 
-      // Guest users are not supported by the backend for comments
-      if (authorId == null || authorId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You must be logged in to post a comment.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
+    // Guest users are not supported by the backend for comments
+    if (authorId == null || authorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to post a comment.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator if needed
+    // setState(() => _isLoading = true); // If you add a loading state to _ReplyInputSection
+
+    try {
+      // Call the API to create the reply
+      // Backend requires a valid user ID (guest comments not supported)
+      // Use text or placeholder if only images
+      final replyText = text.isEmpty ? '[Image]' : text;
+      final reply = await ref.read(forumProvider.notifier).createForumReply(
+        widget.post.id,
+        replyText,
+        authorId,
+        parentCommentId: widget.replyingToCommentId,
+      );
+      // Clear reply state after posting
+      if (widget.onReplyStateChanged != null) {
+        widget.onReplyStateChanged!(null);
       }
 
-      // Show loading indicator if needed
-      // setState(() => _isLoading = true); // If you add a loading state to _ReplyInputSection
-
-      try {
-        // Call the API to create the reply
-        // Backend requires a valid user ID (guest comments not supported)
-        final responseMessage = await ref.read(forumProvider.notifier).createForumReply(
-          widget.post.id,
-          replyContent,
-          authorId,
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(responseMessage), backgroundColor: Colors.green),
-        );
-
-        // Clear the reply input
-        _replyController.clear();
-        FocusScope.of(context).unfocus();
-        
-        // Call the callback to invalidate and refetch
-        widget.onReplySubmitted();
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getUserFriendlyError(e)), backgroundColor: Colors.red),
-        );
-      } finally {
-        // setState(() => _isLoading = false); // If you add a loading state
+      debugPrint('Comment created with ID: ${reply.id}');
+      
+      // Upload images if any were selected
+      if (_selectedImages.isNotEmpty) {
+        if (reply.id.isEmpty) {
+          debugPrint('Warning: Comment ID is empty, cannot upload images');
+        } else {
+          try {
+            await _uploadImages(reply.id);
+            debugPrint('Images uploaded successfully');
+          } catch (e) {
+            debugPrint('Error uploading images: $e');
+            // Show warning but don't fail the whole operation
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Reply posted but some images failed to upload: $e'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          }
+        }
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reply posted successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Clear the reply input and images
+      _replyController.clear();
+      setState(() {
+        _selectedImages.clear();
+      });
+      FocusScope.of(context).unfocus();
+      
+      // Call the callback with the new reply to add it optimistically
+      widget.onReplySubmitted(reply);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(getUserFriendlyError(e)), backgroundColor: Colors.red),
+      );
+    } finally {
+      // setState(() => _isLoading = false); // If you add a loading state
     }
   }
 
@@ -824,6 +1283,78 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                 ),
                 const SizedBox(height: 12),
               ],
+              if (_selectedImages.isNotEmpty) ...[
+                SizedBox(
+                  height: 80,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _selectedImages.length,
+                    itemBuilder: (context, index) {
+                      final image = _selectedImages[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8, bottom: 8),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: FutureBuilder<Uint8List>(
+                                future: image.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return Container(
+                                      width: 80,
+                                      height: 80,
+                                      color: theme.colorScheme.surfaceVariant,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    );
+                                  }
+                                  if (snapshot.hasError || !snapshot.hasData) {
+                                    return Container(
+                                      width: 80,
+                                      height: 80,
+                                      color: theme.colorScheme.surfaceVariant,
+                                      child: const Icon(Icons.broken_image),
+                                    );
+                                  }
+                                  return Image.memory(
+                                    snapshot.data!,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  );
+                                },
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Material(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                                child: InkWell(
+                                  onTap: () => _removeImage(index),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -866,7 +1397,14 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                           : null,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+                  if (currentUser.value != null && _selectedImages.length < 5)
+                    IconButton(
+                      icon: const Icon(Icons.add_photo_alternate),
+                      onPressed: _pickImages,
+                      tooltip: 'Add images',
+                    ),
+                  const SizedBox(width: 4),
                   Container(
                     /// The submit button.
                     height: 55,

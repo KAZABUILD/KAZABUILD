@@ -327,18 +327,6 @@ class _HeroVisual extends StatelessWidget {
 
   const _HeroVisual({required this.controller, required this.isRotating});
 
-  void _pauseRotation() {
-    if (isRotating) {
-      controller.pauseRotation();
-    }
-  }
-
-  void _resumeRotation() {
-    if (isRotating) {
-      controller.startRotation(rotationSpeed: 30);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -363,25 +351,15 @@ class _HeroVisual extends StatelessWidget {
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 620),
-            child: Listener(
-              onPointerSignal: (event) {
-                if (event is PointerScrollEvent) {
-                  // absorb scroll to prevent zoom on web
-                }
-              },
-              child: GestureDetector(
-                onPanStart: (_) => _pauseRotation(),
-                onPanEnd: (_) => _resumeRotation(),
-                onPanCancel: _resumeRotation,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: Flutter3DViewer(
-                      src: 'assets/3d_models/pc.glb',
-                      controller: controller,
-                      enableTouch: true,
-                    ),
+            child: IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Flutter3DViewer(
+                    src: 'assets/3d_models/pc.glb',
+                    controller: controller,
+                    enableTouch: false,
                   ),
                 ),
               ),

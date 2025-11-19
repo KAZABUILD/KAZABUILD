@@ -189,13 +189,13 @@
 
 [00007-A] The 3d model display still allows user interaction - the bug was not fixed.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The 3d model should be immutable.
 
 [00032] Price is not loaded for the components correctly.
 - Type: incorrect implementation/error/missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: There can be several prices for a components so the lowest one should be chosen (or some other metric).
 
@@ -222,19 +222,19 @@
 
 [00035] The forum posts sorting by categories doesn't work.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Error loading posts message appears despite the posts loading in the "all" category. The error seems to disappear after a while but it should not appear at all.
 
 [00036] Paging should be applied for users when sending new messages.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: There should be a limited number of users displayed.
 
 [00037] The user should be able to attach images to Users/Forum Posts/Comments/Builds.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Additionally an admin should be able to attach images to Components/SubComponents.
 
@@ -263,12 +263,12 @@
 
 [00040] Posted comments don't appear until the webpage is refreshed.
 - Type: incorrect implementation/error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00041] The user cannot reply to a comment.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: The user should be able to choose a comment they are replying to using "ParentCommentId" in the comment model.
 
@@ -296,11 +296,11 @@
 
 [00027-A] The errors displayed to the users shouldn't contain error output - bug not fully fixed.
 - Type: incorrect implementation
-- Status: pending
+- Status: pending 
 - Source: frontend
 - Details: User readable errors either should have simplified output or no output displayed at all. Example - the error for when the connection to the server fails.
 
 [00046] The filters in the parts webpage should be a dropdown for accessibility.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend

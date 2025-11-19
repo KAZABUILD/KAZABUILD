@@ -414,9 +414,7 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
 
   Widget _buildComponentCard(BuildContext context, WidgetRef ref, ThemeData theme, BaseComponent component) {
     final buildComponentId = _buildComponentIdMap[component.id];
-    final lowestPrice = component.prices.isNotEmpty
-        ? component.prices.map((p) => p.price).reduce((a, b) => a < b ? a : b)
-        : null;
+    final lowestPrice = component.lowestPrice;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
