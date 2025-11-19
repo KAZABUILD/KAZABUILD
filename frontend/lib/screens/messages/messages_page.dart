@@ -3,6 +3,7 @@
 /// Shows all conversations (grouped by other user) with the current user.
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/screens/messages/message_detail_page.dart';
 import 'package:frontend/models/admin_provider.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the messages page.
 class MessagesPage extends ConsumerStatefulWidget {
@@ -34,145 +36,19 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
     super.dispose();
   }
 
-  Widget _buildUserList({
-    required bool isLoading,
-    required String? error,
-    required List<AppUser>? filteredUsers,
-    required String searchQuery,
-    required BuildContext dialogContext,
-    required BuildContext parentContext,
-  }) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (error != null) {
-      return Center(child: Text('Error: $error'));
-    }
-    if (filteredUsers == null || filteredUsers.isEmpty) {
-      return Center(
-        child: Text(
-          searchQuery.isEmpty
-              ? 'No users found'
-              : 'No users match your search',
-        ),
-      );
-    }
-    return ListView.builder(
-      itemCount: filteredUsers.length,
-      itemBuilder: (itemContext, index) {
-        final user = filteredUsers[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: user.photoURL != null &&
-                    UserImageUtils.getUserImageUrl(user.photoURL) != null
-                ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
-                : null,
-            child: user.photoURL == null ||
-                    UserImageUtils.getUserImageUrl(user.photoURL) == null
-                ? Text(
-                    user.displayName.substring(0, 1).toUpperCase(),
-                  )
-                : null,
-          ),
-          title: Text(user.displayName),
-          subtitle: user.email != null ? Text(user.email) : null,
-          onTap: () {
-            Navigator.pop(dialogContext);
-            // Use parentContext for navigation, not dialog context
-            parentContext.push('/messages/${user.uid}');
-          },
-        );
-      },
-    );
-  }
 
   /// Shows a dialog to select a user and start a new conversation
   Future<void> _showNewMessageDialog(BuildContext parentContext, WidgetRef ref, String currentUserId) async {
-    final adminService = ref.read(adminServiceProvider);
-    List<AppUser>? users;
-    bool isLoading = true;
-    String? error;
-
-    // Fetch users
-    try {
-      final response = await adminService.getUsers();
-      if (response.statusCode == 200 && response.data is List) {
-        users = (response.data as List)
-            .map((json) => AppUser.fromJson(json))
-            .where((user) => user.uid != currentUserId) // Exclude current user
-            .toList();
-      }
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      isLoading = false;
-    }
-
     if (!parentContext.mounted) return;
 
     await showDialog(
       context: parentContext,
       builder: (dialogContext) {
-        String searchQuery = '';
-        final searchController = TextEditingController();
-        
-        return StatefulBuilder(
-          builder: (dialogBuilderContext, setState) {
-            final filteredUsers = searchQuery.isEmpty
-                ? users
-                : users?.where((user) {
-                    final queryLower = searchQuery.toLowerCase();
-                    return user.displayName.toLowerCase().contains(queryLower) ||
-                        user.username.toLowerCase().contains(queryLower) ||
-                        (user.email != null && user.email.toLowerCase().contains(queryLower));
-                  }).toList();
-
-            return AlertDialog(
-              title: const Text('New Message'),
-              content: SizedBox(
-                width: 400,
-                height: 500,
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search users...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: _buildUserList(
-                        isLoading: isLoading,
-                        error: error,
-                        filteredUsers: filteredUsers,
-                        searchQuery: searchQuery,
-                        dialogContext: dialogContext,
-                        parentContext: parentContext,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    searchController.dispose();
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Cancel'),
-                ),
-              ],
-            );
+        return _UserSelectionDialog(
+          currentUserId: currentUserId,
+          onUserSelected: (user) {
+            Navigator.pop(dialogContext);
+            parentContext.push('/messages/${user.uid}');
           },
         );
       },
@@ -565,7 +441,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              error.toString(),
+                              getUserFriendlyError(error),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -651,5 +527,339 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
     } else {
       return DateFormat('MMM d').format(dateTime);
     }
+  }
+}
+
+/// Dialog widget for selecting a user to message with pagination support
+class _UserSelectionDialog extends ConsumerStatefulWidget {
+  final String currentUserId;
+  final Function(AppUser) onUserSelected;
+
+  const _UserSelectionDialog({
+    required this.currentUserId,
+    required this.onUserSelected,
+  });
+
+  @override
+  ConsumerState<_UserSelectionDialog> createState() => _UserSelectionDialogState();
+}
+
+class _UserSelectionDialogState extends ConsumerState<_UserSelectionDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _debouncedSearchQuery = '';
+  Timer? _searchDebounce;
+  int _currentPage = 1;
+  static const int _pageSize = 20;
+  int? _totalPages;
+  Future<dynamic>? _usersFuture;
+  String? _lastQuery;
+  int? _lastPage;
+  bool _isCheckingTotalPages = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _debouncedSearchQuery = _searchQuery;
+    _loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadUsers() {
+    final adminService = ref.read(adminServiceProvider);
+    final query = _debouncedSearchQuery.trim().isEmpty ? null : _debouncedSearchQuery.trim();
+    
+    // Only create new future if query or page changed
+    if (_lastQuery != query || _lastPage != _currentPage) {
+      _lastQuery = query;
+      _lastPage = _currentPage;
+      
+      setState(() {
+        _usersFuture = adminService.getUsers(
+          query: query,
+          page: _currentPage,
+          pageLength: _pageSize,
+          orderBy: 'DisplayName',
+          sortDirection: 'asc',
+        );
+      });
+    }
+  }
+
+  void _goToPage(int page) {
+    if (page < 1) return;
+    if (_totalPages != null && page > _totalPages!) return;
+    
+    setState(() {
+      _currentPage = page;
+    });
+    _loadUsers();
+  }
+
+  Future<void> _checkTotalPages(String? query, int currentPage) async {
+    if (_isCheckingTotalPages || _totalPages != null) return;
+    
+    _isCheckingTotalPages = true;
+    
+    try {
+      final adminService = ref.read(adminServiceProvider);
+      // Check next page to see if there are more users
+      final nextPageResponse = await adminService.getUsers(
+        query: query,
+        page: currentPage + 1,
+        pageLength: _pageSize,
+        orderBy: 'DisplayName',
+        sortDirection: 'asc',
+      );
+      
+      if (nextPageResponse.statusCode == 200) {
+        final nextPageUsers = (nextPageResponse.data as List<dynamic>? ?? [])
+            .map((json) => AppUser.fromJson(json))
+            .where((user) => user.uid != widget.currentUserId)
+            .toList();
+        
+        if (mounted) {
+          setState(() {
+            if (nextPageUsers.isEmpty) {
+              // Next page is empty, so current page is the last
+              _totalPages = currentPage;
+            } else if (nextPageUsers.length < _pageSize) {
+              // Next page has fewer users, so next page is the last
+              _totalPages = currentPage + 1;
+            }
+            // If next page has full results, we don't know total yet
+            _isCheckingTotalPages = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingTotalPages = false;
+        });
+      }
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+      _currentPage = 1; // Reset to first page on search
+      _totalPages = null; // Reset total pages
+      _isCheckingTotalPages = false; // Reset checking flag
+    });
+
+    // Cancel previous debounce timer
+    _searchDebounce?.cancel();
+    
+    // Create new debounce timer
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _debouncedSearchQuery = value;
+        });
+        _loadUsers();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    // Ensure future is loaded
+    if (_usersFuture == null) {
+      _loadUsers();
+    }
+
+    return AlertDialog(
+      title: const Text('New Message'),
+      content: SizedBox(
+        width: 400,
+        height: 500,
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search users...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: _onSearchChanged,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder(
+                future: _usersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading users',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            getUserFriendlyError(snapshot.error),
+                            style: theme.textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {}); // Retry
+                            },
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.statusCode != 200) {
+                    return Center(
+                      child: Text(
+                        'No users found',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    );
+                  }
+                  
+                  final response = snapshot.data!;
+                  final usersList = response.data as List<dynamic>? ?? [];
+                  
+                  // Filter out current user and convert to AppUser
+                  final users = usersList
+                      .map((json) => AppUser.fromJson(json))
+                      .where((user) => user.uid != widget.currentUserId)
+                      .toList();
+                  
+                  // Update total pages based on response
+                  // If we got fewer users than page size, this is the last page
+                  if (users.length < _pageSize) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _totalPages = _currentPage;
+                        });
+                      }
+                    });
+                  } else if (users.length == _pageSize && _totalPages == null && !_isCheckingTotalPages) {
+                    // We got a full page, check if there are more pages
+                    final query = _debouncedSearchQuery.trim().isEmpty ? null : _debouncedSearchQuery.trim();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _checkTotalPages(query, _currentPage);
+                    });
+                  }
+                  
+                  // Determine if there might be more pages
+                  final hasMorePages = users.length == _pageSize;
+                  
+                  if (users.isEmpty) {
+                    return Center(
+                      child: Text(
+                        _debouncedSearchQuery.isEmpty
+                            ? 'No users found'
+                            : 'No users match your search',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    );
+                  }
+                  
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: users.length,
+                          itemBuilder: (context, index) {
+                            final user = users[index];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: user.photoURL != null &&
+                                        UserImageUtils.getUserImageUrl(user.photoURL) != null
+                                    ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
+                                    : null,
+                                child: user.photoURL == null ||
+                                        UserImageUtils.getUserImageUrl(user.photoURL) == null
+                                    ? Text(
+                                        user.displayName.substring(0, 1).toUpperCase(),
+                                      )
+                                    : null,
+                              ),
+                              title: Text(user.displayName),
+                              subtitle: user.email.isNotEmpty 
+                                  ? Text(user.email) 
+                                  : null,
+                              onTap: () {
+                                widget.onUserSelected(user);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      // Pagination controls - show if on page > 1 or if there might be more pages
+                      if (_currentPage > 1 || hasMorePages)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.chevron_left),
+                                onPressed: _currentPage > 1
+                                    ? () => _goToPage(_currentPage - 1)
+                                    : null,
+                                tooltip: 'Previous page',
+                              ),
+                              Text(
+                                'Page $_currentPage${_totalPages != null ? ' of $_totalPages' : ''}',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.chevron_right),
+                                onPressed: (_totalPages == null && hasMorePages) || 
+                                          (_totalPages != null && _currentPage < _totalPages!)
+                                    ? () => _goToPage(_currentPage + 1)
+                                    : null,
+                                tooltip: 'Next page',
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }

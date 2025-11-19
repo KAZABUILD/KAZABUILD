@@ -12,6 +12,7 @@ class BuildComment {
   final String? userId;
   final String text;
   final DateTime createdAt;
+  final String? parentCommentId;
 
   BuildComment({
     required this.id,
@@ -19,6 +20,7 @@ class BuildComment {
     this.userId,
     required this.text,
     required this.createdAt,
+    this.parentCommentId,
   });
 
   factory BuildComment.fromJson(Map<String, dynamic> json) {
@@ -30,6 +32,7 @@ class BuildComment {
       createdAt: (json['postedAt'] ?? json['PostedAt']) != null
           ? DateTime.parse(json['postedAt'] ?? json['PostedAt'])
           : DateTime.now(),
+      parentCommentId: json['parentCommentId']?.toString() ?? json['ParentCommentId']?.toString(),
     );
   }
 
@@ -90,18 +93,31 @@ class CommentsService {
     }
   }
 
-  Future<BuildComment> addComment(String buildId, String text, String userId) async {
+  Future<BuildComment> addComment(String buildId, String text, String userId, {String? parentCommentId}) async {
     try {
+      final Map<String, dynamic> requestData = {
+        'UserId': userId,
+        'Content': text,
+        'CommentTargetType': 'BUILD',
+        'TargetId': buildId,
+        'PostedAt': DateTime.now().toIso8601String(),
+      };
+      
+      if (parentCommentId != null && parentCommentId.isNotEmpty) {
+        requestData['ParentCommentId'] = parentCommentId;
+      }
+      
       final response = await _dio.post(
         '$apiBaseUrl/UserComments/add',
-        data: {
-          'UserId': userId,
-          'Content': text,
-          'CommentTargetType': 'BUILD',
-          'TargetId': buildId,
-          'PostedAt': DateTime.now().toIso8601String(),
-        },
+        data: requestData,
       );
+      
+      // Extract the comment ID from the response
+      final responseData = response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      final commentId = (responseData['id'] ?? responseData['Id'] ?? DateTime.now().millisecondsSinceEpoch.toString()).toString();
+      final now = DateTime.now();
       
       // Fetch user information for the newly added comment
       try {
@@ -109,21 +125,24 @@ class CommentsService {
         final userData = userResponse.data as Map<String, dynamic>? ?? {};
         final authorName = userData['displayName'] ?? 'Unknown User';
         
-        final data = response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : <String, dynamic>{'id': DateTime.now().millisecondsSinceEpoch.toString(), 'content': text, 'postedAt': DateTime.now().toIso8601String()};
-        
+        // Construct the comment with all required fields
         return BuildComment.fromJson({
-          ...data,
+          'id': commentId,
+          'content': text,
+          'postedAt': now.toIso8601String(),
           'authorName': authorName,
           'userId': userId,
+          'parentCommentId': parentCommentId,
         });
       } catch (e) {
         print('Error fetching user info for new comment: $e');
-        final data = response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : <String, dynamic>{'id': DateTime.now().millisecondsSinceEpoch.toString(), 'content': text, 'postedAt': DateTime.now().toIso8601String()};
-        return BuildComment.fromJson(data);
+        // Construct the comment without user info
+        return BuildComment.fromJson({
+          'id': commentId,
+          'content': text,
+          'postedAt': now.toIso8601String(),
+          'parentCommentId': parentCommentId,
+        });
       }
     } catch (e) {
       print('Error adding comment: $e');
@@ -165,8 +184,10 @@ class BuildCommentsNotifier extends StateNotifier<AsyncValue<List<BuildComment>>
     await _load();
   }
 
-  Future<void> add(String authorName, String text, String userId) async {
-    if (text.trim().isEmpty) return;
+  Future<BuildComment> add(String authorName, String text, String userId, {String? parentCommentId}) async {
+    if (text.trim().isEmpty) {
+      throw Exception('Comment text cannot be empty');
+    }
     final previous = state.value ?? [];
     try {
       // Optimistic UI update
@@ -175,17 +196,21 @@ class BuildCommentsNotifier extends StateNotifier<AsyncValue<List<BuildComment>>
         authorName: authorName,
         text: text.trim(),
         createdAt: DateTime.now(),
+        parentCommentId: parentCommentId,
       );
       state = AsyncValue.data([...previous, optimistic]);
 
-      final created = await _service.addComment(_buildId, text.trim(), userId);
+      final created = await _service.addComment(_buildId, text.trim(), userId, parentCommentId: parentCommentId);
 
       // Replace optimistic with created
       final updated = [...previous, created];
       state = AsyncValue.data(updated);
+      
+      return created;
     } catch (e, st) {
       state = AsyncValue.data(previous);
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 }

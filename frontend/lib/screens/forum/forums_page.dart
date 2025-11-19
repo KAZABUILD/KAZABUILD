@@ -10,13 +10,11 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'package:frontend/screens/forum/new_post_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import '../../core/constants/app_color.dart';
-import '../../utils/error_utils.dart';
 import 'dart:math' as math;
 
 /// A provider to fetch the author's details based on their ID.
@@ -58,6 +56,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   String _searchQuery = '';
   String? _selectedSortOption;
   int _currentPage = 1;
+  ForumPostsParams? _lastSuccessfulParams;
   static const int _pageSize = 10;
   int? _totalPages;
   bool _isCheckingTotalPages = false;
@@ -95,6 +94,8 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
             _searchQuery = _searchController.text.trim();
             _currentPage = 1;
             _totalPages = null;
+            // Clear last successful params when search changes
+            _lastSuccessfulParams = null;
           });
         }
       });
@@ -228,6 +229,9 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
 
     return postsAsync.when(
       data: (posts) {
+        // Mark these params as successful
+        _lastSuccessfulParams = params;
+        
         // Update total pages based on the number of posts received
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (posts.isEmpty && _currentPage > 1) {
@@ -280,39 +284,63 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
           ),
         );
       },
-      loading: () => const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stack) => SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
-              const SizedBox(height: 16),
-              Text(
-                'Error loading posts',
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Unable to load forums. Please try again.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+      loading: () {
+        // If we have previous successful data, show it while loading instead of spinner
+        if (_lastSuccessfulParams != null && _lastSuccessfulParams == params) {
+          // This shouldn't happen as params changed, but handle it gracefully
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return const SliverFillRemaining(
+          child: Center(child: CircularProgressIndicator()),
+        );
+      },
+      error: (error, stack) {
+        // Only show error if it's for the current params
+        // This prevents showing errors from previous category switches
+        if (params != _lastSuccessfulParams) {
+          // If we have previous successful data, show loading instead of error
+          // This handles the case where switching categories causes a brief error
+          // but the new request is still loading
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        // Show error only if it's for params that previously succeeded
+        // or if we have no previous successful params
+        return SliverFillRemaining(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading posts',
+                  style: theme.textTheme.headlineSmall,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  ref.invalidate(forumPostsProvider(params));
-                },
-                child: const Text('Retry'),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Unable to load forums. Please try again.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.invalidate(forumPostsProvider(params));
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -420,6 +448,9 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                             _selectedCategory = category;
                             _currentPage = 1;
                             _totalPages = null;
+                            // Clear last successful params when switching categories
+                            // to prevent showing errors from previous category
+                            _lastSuccessfulParams = null;
                           });
                         },
                         sortOptions: _getSortOptions(context),
@@ -429,6 +460,8 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                             _selectedSortOption = option;
                             _currentPage = 1;
                             _totalPages = null;
+                            // Clear last successful params when changing sort
+                            _lastSuccessfulParams = null;
                           });
                         },
                         isDarkMode: isDarkMode,
@@ -715,10 +748,7 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
           animation: Listenable.merge([_glowAnimation, _shimmerController]),
           builder: (context, child) {
             return GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewPostPage()),
-              ),
+              onTap: () => context.go('/forums/new'),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),

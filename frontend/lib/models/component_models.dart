@@ -178,6 +178,25 @@ class ComponentPrice {
     required this.lastEditedAt,
     this.note,
   });
+
+  /// Creates a `ComponentPrice` instance from a JSON map.
+  factory ComponentPrice.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return ComponentPrice(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      sourceUrl: json['sourceUrl']?.toString() ?? json['SourceUrl']?.toString() ?? '',
+      componentId: json['componentId']?.toString() ?? json['ComponentId']?.toString() ?? '',
+      vendorName: json['vendorName']?.toString() ?? json['VendorName']?.toString() ?? '',
+      fetchedAt: parseDate(json['fetchedAt']?.toString() ?? json['FetchedAt']?.toString()) ?? DateTime.now(),
+      price: ((json['price'] ?? json['Price'] ?? 0) as num).toDouble(),
+      currency: json['currency']?.toString() ?? json['Currency']?.toString() ?? 'USD',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+    );
+  }
 }
 
 /// Represents a user-submitted or professional review for a component.
@@ -600,6 +619,16 @@ class CaseComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return CaseComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -627,6 +656,7 @@ class CaseComponent extends BaseComponent {
       supportsRearConnectingMotherboard: json['supportsRearConnectingMotherboard'] ?? json['SupportsRearConnectingMotherboard'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -702,6 +732,16 @@ class CaseFanComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return CaseFanComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -723,6 +763,7 @@ class CaseFanComponent extends BaseComponent {
       flowDirection: json['flowDirection']?.toString() ?? json['FlowDirection']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -790,6 +831,16 @@ class CoolerComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return CoolerComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -809,6 +860,7 @@ class CoolerComponent extends BaseComponent {
       fanQuantity: ((json['fanQuantity'] ?? json['FanQuantity'] ?? 0) as num).toInt(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -969,8 +1021,16 @@ class CPUComponent extends BaseComponent {
       l4: (json['l4'] ?? json['L4'] as num?)?.toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
-      // TODO: Parse prices, variants, reviews, and parts from JSON if they are included in the response.
-      prices: const [],
+      // Helper to parse prices from JSON
+      prices: () {
+        final pricesJson = json['prices'] ?? json['Prices'];
+        if (pricesJson == null) return const <ComponentPrice>[];
+        if (pricesJson is! List) return const <ComponentPrice>[];
+        return pricesJson
+            .whereType<Map<String, dynamic>>()
+            .map((p) => ComponentPrice.fromJson(p))
+            .toList();
+      }(),
       variants: const [],
       reviews: const [],
       parts: const [],
@@ -1057,6 +1117,16 @@ class GPUComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return GPUComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1081,6 +1151,7 @@ class GPUComponent extends BaseComponent {
       coolingType: json['coolingType']?.toString() ?? json['CoolingType']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -1164,6 +1235,16 @@ class MemoryComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return MemoryComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1187,6 +1268,7 @@ class MemoryComponent extends BaseComponent {
       voltage: ((json['voltage'] ?? json['Voltage'] ?? 0) as num).toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -1258,6 +1340,16 @@ class MonitorComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return MonitorComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1278,6 +1370,7 @@ class MonitorComponent extends BaseComponent {
       adaptiveSyncType: json['adaptiveSyncType']?.toString() ?? json['AdaptiveSyncType']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -1432,6 +1525,16 @@ class MotherboardComponent extends BaseComponent {
       return null;
     }
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return MotherboardComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1471,6 +1574,7 @@ class MotherboardComponent extends BaseComponent {
       maxAudioChannels: ((json['maxAudioChannels'] ?? json['MaxAudioChannels'] ?? 0) as num).toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -1522,6 +1626,16 @@ class PowerSupplyComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return PowerSupplyComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1537,6 +1651,7 @@ class PowerSupplyComponent extends BaseComponent {
       isFanless: json['isFanless'] ?? json['IsFanless'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }
@@ -1588,6 +1703,16 @@ class StorageComponent extends BaseComponent {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
     return StorageComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
@@ -1603,6 +1728,7 @@ class StorageComponent extends BaseComponent {
       hasNVMe: json['hasNVMe'] ?? json['HasNVMe'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
 }

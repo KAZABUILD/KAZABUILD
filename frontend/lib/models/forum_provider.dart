@@ -94,7 +94,8 @@ class ForumService {
   /// Creates a new forum post.
   Future<Response> createPost(Map<String, dynamic> postData) async {
     try {
-      return await _dio.post('$apiBaseUrl/ForumPosts/add', data: postData);
+      final response = await _dio.post('$apiBaseUrl/ForumPosts/add', data: postData);
+      return response;
     } catch (e) {
       rethrow;
     }
@@ -225,7 +226,8 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
   ForumNotifier(this._forumService, this._ref) : super(const AsyncValue.data(null));
 
   /// Creates a new forum post.
-  Future<String> createForumPost(Map<String, dynamic> data) async {
+  /// Returns a map with 'message' and 'id' (post ID) if successful.
+  Future<Map<String, dynamic>> createForumPost(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     try {
       final response = await _forumService.createPost(data);
@@ -237,7 +239,23 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
       // Note: This will invalidate all instances of forumPostsProvider
       // In a more sophisticated implementation, we could track the current params
       _ref.invalidate(forumPostsProvider);
-      return response.data['message'] ?? 'Post created successfully!';
+      
+      // Extract post ID from response
+      final responseData = response.data;
+      String? postId;
+      if (responseData is Map<String, dynamic>) {
+        postId = responseData['id']?.toString() ?? 
+                 responseData['Id']?.toString() ??
+                 responseData['postId']?.toString() ??
+                 responseData['PostId']?.toString();
+      }
+      
+      return {
+        'message': responseData is Map<String, dynamic> 
+            ? (responseData['message'] ?? 'Post created successfully!')
+            : 'Post created successfully!',
+        'id': postId,
+      };
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
       rethrow;
@@ -245,7 +263,8 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Creates a new reply to a forum post.
-  Future<String> createForumReply(String forumPostId, String content, String? userId) async {
+  /// Returns a PostReply object if successful.
+  Future<PostReply> createForumReply(String forumPostId, String content, String? userId, {String? parentCommentId}) async {
     state = const AsyncValue.loading();
     try {
       // Backend expects: TargetId (capitalized, as Guid), UserId (capitalized, required Guid),
@@ -255,22 +274,40 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
         throw Exception('You must be logged in to post a comment');
       }
       
-      final response = await _forumService.createReply({
+      final Map<String, dynamic> requestData = {
         'TargetId': forumPostId, // Backend expects capitalized TargetId (must be valid GUID)
         'Content': content, // Backend expects capitalized Content
         'CommentTargetType': 'FORUM', // Enum value as string, capitalized
         'UserId': userId, // Backend expects capitalized UserId, must be a valid user GUID
         'PostedAt': DateTime.now().toIso8601String(), // Include PostedAt, capitalized
-      });
-      state = const AsyncValue.data(null);
-      // Invalidate the provider for the specific post to refetch its details and replies.
-      // This requires the postDetailProvider to be accessible, which it is not directly.
-      // The UI will handle invalidation.
-      if (response.data is Map<String, dynamic> && response.data.containsKey('message')) {
-        return response.data['message'];
+      };
+      
+      if (parentCommentId != null && parentCommentId.isNotEmpty) {
+        requestData['ParentCommentId'] = parentCommentId;
       }
-      // Provide a generic success message if the backend response is not as expected.
-      return 'Reply posted successfully!';
+      
+      final response = await _forumService.createReply(requestData);
+      state = const AsyncValue.data(null);
+      
+      // Extract comment ID from response
+      final responseData = response.data;
+      String? commentId;
+      if (responseData is Map<String, dynamic>) {
+        commentId = responseData['id']?.toString() ?? 
+                     responseData['Id']?.toString() ??
+                     responseData['commentId']?.toString() ??
+                     responseData['CommentId']?.toString();
+      }
+      
+      // Construct PostReply with all required fields
+      final now = DateTime.now();
+      return PostReply(
+        id: commentId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        authorId: userId,
+        content: content,
+        createdAt: now,
+        parentCommentId: parentCommentId,
+      );
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
       rethrow;

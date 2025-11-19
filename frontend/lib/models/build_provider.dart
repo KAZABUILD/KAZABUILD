@@ -207,7 +207,7 @@ class BuildService {
   }
 
   /// Fetches builds from the backend based on a given filter map.
-  Future<List<Build>> getBuilds(Map<String, dynamic> filter) async {
+  Future<List<Build>> getBuilds(Map<String, dynamic> filter, {String? currentUserId}) async {
     try {
       final response = await _dio.post('$apiBaseUrl/Builds/get', data: filter);
       final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
@@ -219,8 +219,15 @@ class BuildService {
           .where((id) => id.isNotEmpty)
           .toList();
       
-      // Fetch images only (tags are not fetched for explore builds page)
+      if (buildIds.isEmpty) {
+        return [];
+      }
+      
+      // Fetch images and ratings in parallel
       Map<String, String?> imageUrlsByBuildId = {};
+      Map<String, int> ratingsCountByBuildId = {};
+      Map<String, double?> averageRatingByBuildId = {};
+      Map<String, double?> userRatingByBuildId = {};
       
       try {
         imageUrlsByBuildId = await getBuildImages(buildIds);
@@ -229,13 +236,85 @@ class BuildService {
         // This ensures builds are still displayed even without images
       }
       
-      // Add imageUrl to build JSON (tags are not added)
+      // Fetch ratings for all builds in parallel
+      final ratingFutures = buildIds.map((buildId) async {
+        try {
+          final ratingsCount = await _getBuildRatingsCount(buildId);
+          double? averageRating;
+          if (ratingsCount > 0) {
+            averageRating = await _getBuildAverageRating(buildId);
+          }
+          return {
+            'buildId': buildId,
+            'ratingsCount': ratingsCount,
+            'averageRating': averageRating,
+          };
+        } catch (e) {
+          debugPrint('Error fetching ratings for build $buildId: $e');
+          return {
+            'buildId': buildId,
+            'ratingsCount': 0,
+            'averageRating': null,
+          };
+        }
+      });
+      
+      final ratingResults = await Future.wait(ratingFutures);
+      for (var result in ratingResults) {
+        final buildId = result['buildId'] as String;
+        ratingsCountByBuildId[buildId] = result['ratingsCount'] as int;
+        averageRatingByBuildId[buildId] = result['averageRating'] as double?;
+      }
+      
+      // Fetch user ratings if currentUserId is provided
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        final userRatingFutures = buildIds.map((buildId) async {
+          try {
+            final userRating = await _getUserRatingForBuild(buildId, currentUserId);
+            return {
+              'buildId': buildId,
+              'userRating': userRating,
+            };
+          } catch (e) {
+            debugPrint('Error fetching user rating for build $buildId: $e');
+            return {
+              'buildId': buildId,
+              'userRating': null,
+            };
+          }
+        });
+        
+        final userRatingResults = await Future.wait(userRatingFutures);
+        for (var result in userRatingResults) {
+          final buildId = result['buildId'] as String;
+          userRatingByBuildId[buildId] = result['userRating'] as double?;
+        }
+      }
+      
+      // Add imageUrl and rating data to build JSON
       for (var json in buildsJson) {
         if (json is Map<String, dynamic>) {
           final buildId = (json['id'] ?? json['Id'] ?? '').toString();
+          
           if (imageUrlsByBuildId.containsKey(buildId)) {
             json['imageUrl'] = imageUrlsByBuildId[buildId];
             json['ImageUrl'] = imageUrlsByBuildId[buildId];
+          }
+          
+          // Add rating metadata
+          final ratingsCount = ratingsCountByBuildId[buildId] ?? 0;
+          final averageRating = averageRatingByBuildId[buildId] ?? 0.0;
+          json['ratingsCount'] = ratingsCount;
+          json['RatingsCount'] = ratingsCount;
+          json['averageRating'] = averageRating;
+          json['AverageRating'] = averageRating;
+          
+          if (userRatingByBuildId.containsKey(buildId)) {
+            final userRating = userRatingByBuildId[buildId];
+            if (userRating != null && userRating > 0) {
+              json['userRating'] = userRating;
+              json['UserRating'] = userRating;
+            }
           }
         }
       }
@@ -834,6 +913,8 @@ class ExploreBuildsParams {
   final String? searchQuery;
   final Set<String>? selectedTags;
   final Set<String>? selectedStatuses;
+  final String? dateRange; // '7days', '30days', '3months', null
+  final Set<String>? selectedUserIds; // User IDs to filter by
   final String sortBy; // 'Latest', 'Popular', 'Price'
   final int page;
   final int pageLength;
@@ -842,6 +923,8 @@ class ExploreBuildsParams {
     this.searchQuery,
     this.selectedTags,
     this.selectedStatuses,
+    this.dateRange,
+    this.selectedUserIds,
     this.sortBy = 'Latest',
     this.page = 1,
     this.pageLength = 16,
@@ -855,6 +938,8 @@ class ExploreBuildsParams {
           searchQuery == other.searchQuery &&
           _setEquals(selectedTags, other.selectedTags) &&
           _setEquals(selectedStatuses, other.selectedStatuses) &&
+          dateRange == other.dateRange &&
+          _setEquals(selectedUserIds, other.selectedUserIds) &&
           sortBy == other.sortBy &&
           page == other.page &&
           pageLength == other.pageLength;
@@ -874,6 +959,8 @@ class ExploreBuildsParams {
       searchQuery.hashCode ^
       (selectedTags?.length ?? 0) ^
       (selectedStatuses?.length ?? 0) ^
+      (dateRange?.hashCode ?? 0) ^
+      (selectedUserIds?.length ?? 0) ^
       sortBy.hashCode ^
       page.hashCode ^
       pageLength.hashCode;
@@ -882,6 +969,10 @@ class ExploreBuildsParams {
 /// A provider that fetches builds for the "Explore" page with server-side pagination, search, filtering, and sorting.
 final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsParams>((ref, params) async {
   final buildService = ref.watch(buildServiceProvider);
+  
+  // Get current user ID for fetching user ratings
+  final currentUser = ref.watch(authProvider).valueOrNull;
+  final currentUserId = currentUser?.uid;
   
   // Build the filter map for the API
   final filter = <String, dynamic>{
@@ -899,6 +990,32 @@ final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsPa
   // Add tag filter if provided
   if (params.selectedTags != null && params.selectedTags!.isNotEmpty) {
     filter['Tag'] = params.selectedTags!.toList();
+  }
+
+  // Add date range filter if provided
+  if (params.dateRange != null) {
+    final now = DateTime.now().toUtc();
+    DateTime? startDate;
+    switch (params.dateRange) {
+      case '7days':
+        startDate = now.subtract(const Duration(days: 7));
+        break;
+      case '30days':
+        startDate = now.subtract(const Duration(days: 30));
+        break;
+      case '3months':
+        startDate = now.subtract(const Duration(days: 90));
+        break;
+    }
+    if (startDate != null) {
+      filter['PublishedAtStart'] = startDate.toIso8601String();
+      filter['PublishedAtEnd'] = now.toIso8601String();
+    }
+  }
+
+  // Add user filter if provided
+  if (params.selectedUserIds != null && params.selectedUserIds!.isNotEmpty) {
+    filter['UserId'] = params.selectedUserIds!.toList();
   }
 
   // Note: Explore page only shows PUBLISHED builds
@@ -935,7 +1052,7 @@ final exploreBuildsProvider = FutureProvider.family<List<Build>, ExploreBuildsPa
   filter['OrderBy'] = orderBy;
   filter['SortDirection'] = sortDirection;
 
-  return buildService.getBuilds(filter);
+  return buildService.getBuilds(filter, currentUserId: currentUserId);
 });
 
 /// A provider that lazily fetches components for specific build IDs.

@@ -577,6 +577,96 @@ class ImageService {
   }
 
   /// Constructs the download URL for an image ID.
+  /// Fetches images for a forum post.
+  /// Returns a list of image URLs.
+  Future<List<String>> getForumPostImages(String postId) async {
+    try {
+      final url = '$apiBaseUrl/Images/get';
+      final body = {
+        'locationType': ['FORUM'],
+        'forumPostId': [postId],
+        'paging': false,
+      };
+
+      if (kDebugMode) {
+        print('Fetching images for forum post: $postId');
+      }
+
+      final response = await _dio.post(url, data: body);
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> images = response.data;
+        final List<String> imageUrls = [];
+        
+        for (var imgJson in images) {
+          if (imgJson is Map<String, dynamic>) {
+            final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
+            if (imageId.isNotEmpty) {
+              imageUrls.add('$apiBaseUrl/Images/download/$imageId');
+            }
+          }
+        }
+        
+        if (kDebugMode) {
+          print('Found ${imageUrls.length} images for forum post $postId');
+        }
+        return imageUrls;
+      }
+
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching forum post images: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Fetches images for a comment.
+  /// Returns a list of image URLs.
+  Future<List<String>> getCommentImages(String commentId) async {
+    try {
+      final url = '$apiBaseUrl/Images/get';
+      final body = {
+        'locationType': ['COMMENT'],
+        'userCommentId': [commentId],
+        'paging': false,
+      };
+
+      if (kDebugMode) {
+        print('Fetching images for comment: $commentId');
+      }
+
+      final response = await _dio.post(url, data: body);
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> images = response.data;
+        final List<String> imageUrls = [];
+        
+        for (var imgJson in images) {
+          if (imgJson is Map<String, dynamic>) {
+            final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
+            if (imageId.isNotEmpty) {
+              imageUrls.add('$apiBaseUrl/Images/download/$imageId');
+            }
+          }
+        }
+        
+        if (kDebugMode) {
+          print('Found ${imageUrls.length} images for comment $commentId');
+        }
+        return imageUrls;
+      }
+
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching comment images: $e');
+      }
+      return [];
+    }
+  }
+
   static String getImageUrl(String? imageId) {
     if (imageId == null || imageId.isEmpty) return '';
     return '$apiBaseUrl/Images/download/$imageId';
@@ -602,4 +692,16 @@ final buildImageMapProvider = FutureProvider.autoDispose.family<Map<String, Stri
   final imageService = ref.watch(imageServiceProvider);
   // We only need the buildIds for the service call. The key is for forcing re-evaluation.
   return await imageService.getBuildImageIds(params.buildIds);
+});
+
+/// Provider for fetching forum post images
+final forumPostImagesProvider = FutureProvider.autoDispose.family<List<String>, String>((ref, postId) async {
+  final imageService = ref.watch(imageServiceProvider);
+  return await imageService.getForumPostImages(postId);
+});
+
+/// Provider for fetching comment images
+final commentImagesProvider = FutureProvider.autoDispose.family<List<String>, String>((ref, commentId) async {
+  final imageService = ref.watch(imageServiceProvider);
+  return await imageService.getCommentImages(commentId);
 });

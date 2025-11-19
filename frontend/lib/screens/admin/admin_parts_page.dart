@@ -799,4 +799,3 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
-

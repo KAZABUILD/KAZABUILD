@@ -10,7 +10,8 @@ class AdminService {
 
   AdminService(this._dio);
 
-  /// Gets all users with filtering (no pagination - all results)
+  /// Gets users with filtering and optional pagination
+  /// If page and pageLength are provided, pagination is enabled
   Future<Response> getUsers({
     String? query,
     List<String>? genders,
@@ -23,10 +24,18 @@ class AdminService {
     final data = <String, dynamic>{
       'Query': query ?? '',
       'SortDirection': sortDirection,
-      'Paging': false,
     };
     
-    print('AdminService.getUsers: Getting all users (no pagination)');
+    // Enable pagination if both page and pageLength are provided
+    if (page != null && pageLength != null && page > 0 && pageLength > 0) {
+      data['Paging'] = true;
+      data['Page'] = page;
+      data['PageLength'] = pageLength;
+      print('AdminService.getUsers: Getting users with pagination (page: $page, pageLength: $pageLength)');
+    } else {
+      data['Paging'] = false;
+      print('AdminService.getUsers: Getting all users (no pagination)');
+    }
 
     if (orderBy != null && orderBy.isNotEmpty) {
       data['OrderBy'] = orderBy;

@@ -11,6 +11,7 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main page for viewing all PC parts grouped by type.
 class AllPartsPage extends ConsumerStatefulWidget {
@@ -79,7 +80,7 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
                             child: CircularProgressIndicator(),
                           ),
                         ),
-                        error: (error, stack) => _ErrorState(error: error.toString()),
+                        error: (error, stack) => _ErrorState(error: getUserFriendlyError(error)),
                       ),
                     ],
                   ),
@@ -469,7 +470,8 @@ class _ComponentCardState extends ConsumerState<_ComponentCard> {
     final theme = Theme.of(context);
     final rawImageUrl = widget.component.imageUrl.trim();
     
-    // Validate image URL
+    // For now, just use component.imageUrl to avoid infinite loops
+    // Image uploads will be handled by backend updating component.imageUrl
     if (rawImageUrl.isEmpty) {
       return Icon(
         Icons.image_not_supported,

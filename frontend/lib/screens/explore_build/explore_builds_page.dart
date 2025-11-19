@@ -20,6 +20,8 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:intl/intl.dart';
+import 'package:frontend/screens/forum/post_detail_page.dart' show userProvider;
 
 /// The main widget for the "Explore Builds" screen.
 class ExploreBuildsPage extends ConsumerStatefulWidget {
@@ -39,6 +41,8 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   String _sortBy = 'Latest';
   Set<String> _selectedTags = {};
   Set<String> _selectedStatuses = {};
+  String? _selectedDateRange; // '7days', '30days', '3months', null
+  Set<String> _selectedUserIds = {};
   bool _showFilters = false;
   int _currentPage = 1;
   static const int _itemsPerPage = 16;
@@ -101,6 +105,20 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
     });
   }
 
+  void _onDateRangeChanged(String? dateRange) {
+    setState(() {
+      _selectedDateRange = dateRange;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
+  void _onUserIdsChanged(Set<String> userIds) {
+    setState(() {
+      _selectedUserIds = userIds;
+      _currentPage = 1; // Reset to first page when filters change
+    });
+  }
+
   void _onPageChanged(int page) {
     setState(() {
       _currentPage = page;
@@ -159,6 +177,10 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                         onTagsChanged: _onTagsChanged,
                         selectedStatuses: _selectedStatuses,
                         onStatusesChanged: _onStatusesChanged,
+                        selectedDateRange: _selectedDateRange,
+                        onDateRangeChanged: _onDateRangeChanged,
+                        selectedUserIds: _selectedUserIds,
+                        onUserIdsChanged: _onUserIdsChanged,
                       ),
                       const SizedBox(height: 32),
                       _buildBuildsContent(crossAxisCount, theme),
@@ -179,6 +201,8 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
       searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
       selectedTags: _selectedTags.isEmpty ? null : _selectedTags,
       selectedStatuses: _selectedStatuses.isEmpty ? null : _selectedStatuses,
+      dateRange: _selectedDateRange,
+      selectedUserIds: _selectedUserIds.isEmpty ? null : _selectedUserIds,
       sortBy: _sortBy,
       page: _currentPage,
       pageLength: _itemsPerPage,
@@ -297,6 +321,10 @@ class _Header extends StatelessWidget {
   final Function(Set<String>) onTagsChanged;
   final Set<String> selectedStatuses;
   final Function(Set<String>) onStatusesChanged;
+  final String? selectedDateRange;
+  final Function(String?) onDateRangeChanged;
+  final Set<String> selectedUserIds;
+  final Function(Set<String>) onUserIdsChanged;
 
   const _Header({
     required this.searchController,
@@ -310,6 +338,10 @@ class _Header extends StatelessWidget {
     required this.onTagsChanged,
     required this.selectedStatuses,
     required this.onStatusesChanged,
+    required this.selectedDateRange,
+    required this.onDateRangeChanged,
+    required this.selectedUserIds,
+    required this.onUserIdsChanged,
   });
 
   @override
@@ -486,6 +518,10 @@ class _Header extends StatelessWidget {
             onTagsChanged: onTagsChanged,
             selectedStatuses: selectedStatuses,
             onStatusesChanged: onStatusesChanged,
+            selectedDateRange: selectedDateRange,
+            onDateRangeChanged: onDateRangeChanged,
+            selectedUserIds: selectedUserIds,
+            onUserIdsChanged: onUserIdsChanged,
           ),
         ],
       ],
@@ -499,12 +535,20 @@ class _FilterPanel extends ConsumerWidget {
   final Function(Set<String>) onTagsChanged;
   final Set<String> selectedStatuses;
   final Function(Set<String>) onStatusesChanged;
+  final String? selectedDateRange;
+  final Function(String?) onDateRangeChanged;
+  final Set<String> selectedUserIds;
+  final Function(Set<String>) onUserIdsChanged;
 
   const _FilterPanel({
     required this.selectedTags,
     required this.onTagsChanged,
     required this.selectedStatuses,
     required this.onStatusesChanged,
+    required this.selectedDateRange,
+    required this.onDateRangeChanged,
+    required this.selectedUserIds,
+    required this.onUserIdsChanged,
   });
 
   @override
@@ -516,9 +560,20 @@ class _FilterPanel extends ConsumerWidget {
       data: (builds) {
         // Collect all unique statuses from builds
         final allStatuses = <String>{};
+        // Collect unique authors from builds
+        final authorsMap = <String, AppUser>{};
         for (final build in builds) {
           allStatuses.add(build.status);
+          if (build.author != null && build.userId.isNotEmpty) {
+            authorsMap[build.userId] = build.author!;
+          }
         }
+        final authors = authorsMap.values.toList();
+        authors.sort((a, b) {
+          final nameA = a.displayName.isNotEmpty ? a.displayName : a.username;
+          final nameB = b.displayName.isNotEmpty ? b.displayName : b.username;
+          return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+        });
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -543,6 +598,93 @@ class _FilterPanel extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // Date Range Filter
+              Text(
+                'Date Range',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _DateRangeChip(
+                    label: 'Last 7 Days',
+                    value: '7days',
+                    selected: selectedDateRange == '7days',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '7days' : null);
+                    },
+                  ),
+                  _DateRangeChip(
+                    label: 'Last 30 Days',
+                    value: '30days',
+                    selected: selectedDateRange == '30days',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '30days' : null);
+                    },
+                  ),
+                  _DateRangeChip(
+                    label: 'Last 3 Months',
+                    value: '3months',
+                    selected: selectedDateRange == '3months',
+                    onSelected: (selected) {
+                      onDateRangeChanged(selected ? '3months' : null);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Author Filter
+              if (authors.isNotEmpty) ...[
+                Text(
+                  'Author',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: authors.map((author) {
+                    final authorName = author.displayName.isNotEmpty 
+                        ? author.displayName 
+                        : author.username;
+                    final isSelected = selectedUserIds.contains(author.uid);
+                    return FilterChip(
+                      avatar: CircleAvatar(
+                        radius: 12,
+                        backgroundImage: author.photoURL != null
+                            ? NetworkImage(author.photoURL!)
+                            : null,
+                        child: author.photoURL == null
+                            ? Text(
+                                authorName.isNotEmpty
+                                    ? authorName.substring(0, 1).toUpperCase()
+                                    : '?',
+                                style: const TextStyle(fontSize: 12),
+                              )
+                            : null,
+                      ),
+                      label: Text(authorName),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        final newUserIds = Set<String>.from(selectedUserIds);
+                        if (selected) {
+                          newUserIds.add(author.uid);
+                        } else {
+                          newUserIds.remove(author.uid);
+                        }
+                        onUserIdsChanged(newUserIds);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
               // Status Filter
               if (allStatuses.isNotEmpty) ...[
                 Text(
@@ -574,11 +716,15 @@ class _FilterPanel extends ConsumerWidget {
                 ),
               ],
               // Clear Filters Button
-              if (selectedStatuses.isNotEmpty) ...[
+              if (selectedStatuses.isNotEmpty || 
+                  selectedDateRange != null || 
+                  selectedUserIds.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 TextButton.icon(
                   onPressed: () {
                     onStatusesChanged({});
+                    onDateRangeChanged(null);
+                    onUserIdsChanged({});
                   },
                   icon: const Icon(Icons.clear_all),
                   label: Text(AppLocalizations.of(context)!.clearAllFilters),
@@ -590,6 +736,30 @@ class _FilterPanel extends ConsumerWidget {
       },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Date range chip widget
+class _DateRangeChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool selected;
+  final Function(bool) onSelected;
+
+  const _DateRangeChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: onSelected,
     );
   }
 }
@@ -903,14 +1073,31 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
 
     try {
       final service = ref.read(buildServiceProvider);
-      await service.rateBuild(widget.buildData.id, ratingToSubmit, currentUser.uid);
+      final result = await service.rateBuild(widget.buildData.id, ratingToSubmit, currentUser.uid);
       
-      // Refresh only the build detail page, not the entire list
-      // This prevents the list from re-sorting when a rating is given
+      // Check if backend returned rating statistics
+      final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
+      final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
+      
       if (mounted) {
+        // Update local state with backend response if available
+        if (newAvg != null && newCount != null) {
+          setState(() {
+            // Backend returns 0-100; normalize to 0-5
+            final avgDouble = (newAvg as num).toDouble();
+            _averageRating = avgDouble > 5.0 ? (avgDouble / 20.0) : avgDouble;
+            _ratingsCount = (newCount as num).toInt();
+          });
+        }
+        
+        // Refresh build detail page
         ref.invalidate(buildDetailProvider(widget.buildData.id));
-        // Don't invalidate allBuildsProvider to prevent re-sorting
-        // The local state update is already done optimistically
+        
+        // Invalidate explore builds provider to refresh rating data
+        // This ensures the build cards show the correct rating information
+        // We invalidate all explore builds providers to ensure consistency
+        ref.invalidate(exploreBuildsProvider);
+        
         widget.onRatingChanged?.call();
       }
     } catch (e) {
@@ -995,6 +1182,28 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
     return null;
   }
 
+  /// Formats the publish date for display
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return months == 1 ? '1 month ago' : '$months months ago';
+    } else {
+      return DateFormat('MMM yyyy').format(date);
+    }
+  }
+
   /// Builds a placeholder image widget when no image is available
   Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
     return Container(
@@ -1067,96 +1276,176 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  if (widget.buildData.author != null)
-                    InkWell(
-                      onTap: () {
-                        context.go('/profile/${widget.buildData.author!.uid}');
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 12,
-                              backgroundImage: widget.buildData.author!.photoURL != null
-                                  ? NetworkImage(widget.buildData.author!.photoURL!)
-                                  : null,
-                              child: widget.buildData.author!.photoURL == null
-                                  ? Text(
-                                      widget.buildData.author!.username.substring(0, 1).toUpperCase(),
+                  // Author information - fetch if not available
+                  widget.buildData.author != null
+                      ? InkWell(
+                          onTap: () {
+                            context.go('/profile/${widget.buildData.author!.uid}');
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundImage: widget.buildData.author!.photoURL != null
+                                      ? NetworkImage(widget.buildData.author!.photoURL!)
+                                      : null,
+                                  child: widget.buildData.author!.photoURL == null
+                                      ? Text(
+                                          widget.buildData.author!.username.isNotEmpty
+                                              ? widget.buildData.author!.username.substring(0, 1).toUpperCase()
+                                              : '?',
+                                          style: TextStyle(
+                                            color: theme.colorScheme.onPrimary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    widget.buildData.author!.displayName.isNotEmpty
+                                        ? widget.buildData.author!.displayName
+                                        : widget.buildData.author!.username,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ref.watch(userProvider(widget.buildData.userId)).when(
+                          data: (author) {
+                            if (author == null) {
+                              return Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    child: Text(
+                                      '?',
                                       style: TextStyle(
                                         color: theme.colorScheme.onPrimary,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.buildData.author!.username,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  if (widget.buildData.tags.isNotEmpty) ...[
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: widget.buildData.tags.take(10).map((tag) {
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              // Navigate to explore builds page with this tag selected
-                              context.go('/explore?tag=${Uri.encodeComponent(tag)}');
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.label,
-                                    size: 14,
-                                    color: theme.colorScheme.onPrimaryContainer,
+                                    ),
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    tag,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 11,
-                                      color: theme.colorScheme.onPrimaryContainer,
-                                      fontWeight: FontWeight.w600,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Unknown User',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
+                              );
+                            }
+                            return InkWell(
+                              onTap: () {
+                                context.go('/profile/${author.uid}');
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundImage: author.photoURL != null
+                                          ? NetworkImage(author.photoURL!)
+                                          : null,
+                                      child: author.photoURL == null
+                                          ? Text(
+                                              author.username.isNotEmpty
+                                                  ? author.username.substring(0, 1).toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                color: theme.colorScheme.onPrimary,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        author.displayName.isNotEmpty
+                                            ? author.displayName
+                                            : author.username,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                            );
+                          },
+                          loading: () => Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                child: SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Loading...',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                          error: (_, __) => Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                child: Text(
+                                  '?',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Unknown User',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                   const SizedBox(height: 12),
+                  // Rating section with interactive stars and display
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1188,35 +1477,66 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                           }),
                         ),
                       ),
-                      Row(
-                        children: [
-                          if (_averageRating > 0) ...[
+                      // Rating display - show as "X.X/5" format
+                      if (_averageRating > 0 || _ratingsCount > 0)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              _averageRating.toStringAsFixed(1),
+                              '${_averageRating.toStringAsFixed(1)}/5',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                             if (_ratingsCount > 0) ...[
+                              const SizedBox(width: 4),
                               Text(
-                                ' ($_ratingsCount)',
+                                '($_ratingsCount)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 10,
                                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
-                          ] else ...[
+                          ],
+                        )
+                      else
+                        const SizedBox.shrink(),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Publish date and status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Publish date
+                      if (widget.buildData.databaseEntryAt != null)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              AppLocalizations.of(context)!.newText,
+                              _formatDate(widget.buildData.databaseEntryAt!),
                               style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
                                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
-                        ],
-                      ),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      // Status badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(

@@ -12,6 +12,7 @@ import 'package:frontend/models/message_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// Provider to fetch user details
 final conversationUserProvider =
@@ -97,7 +98,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error sending message: $e'),
+            content: Text(getUserFriendlyError(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -208,7 +209,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error deleting message: ${e.toString()}'),
+            content: Text(getUserFriendlyError(e)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -262,7 +263,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error updating message: $e'),
+              content: Text(getUserFriendlyError(e)),
               backgroundColor: Colors.red,
             ),
           );

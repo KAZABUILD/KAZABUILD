@@ -21,22 +21,29 @@ class PostReply {
   /// The date and time when the reply was created.
   final DateTime createdAt;
 
+  /// The ID of the parent comment this reply is responding to, if any.
+  final String? parentCommentId;
+
   /// Creates an instance of a post reply.
   PostReply({
     required this.id,
     required this.authorId,
     required this.content,
     required this.createdAt,
+    this.parentCommentId,
   });
 
   /// Creates a `PostReply` instance from a JSON map.
   /// This is used when parsing replies included with a ForumPost.
   factory PostReply.fromJson(Map<String, dynamic> json) {
     return PostReply(
-      id: json['id'],
-      authorId: json['userId'], // Backend UserComment model uses 'userId'
-      content: json['content'],
-      createdAt: DateTime.parse(json['postedAt']), // Assuming replies also have 'postedAt'
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      authorId: json['userId']?.toString() ?? json['UserId']?.toString() ?? '',
+      content: json['content'] ?? json['Content'] ?? '',
+      createdAt: json['postedAt'] != null || json['PostedAt'] != null
+          ? DateTime.parse(json['postedAt'] ?? json['PostedAt'])
+          : DateTime.now(),
+      parentCommentId: json['parentCommentId']?.toString() ?? json['ParentCommentId']?.toString(),
     );
   }
 }

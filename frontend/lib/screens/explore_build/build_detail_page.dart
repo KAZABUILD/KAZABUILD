@@ -23,6 +23,10 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:frontend/models/image_provider.dart';
+import 'package:frontend/widgets/linkable_text.dart';
+import 'dart:typed_data';
 
 /// Provider to fetch user details based on their ID
 final buildUserProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
@@ -72,7 +76,7 @@ class BuildDetailPage extends ConsumerWidget {
             child: buildAsyncValue.when(
               data: (build) => _buildContentView(context, ref, build),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text(AppLocalizations.of(context)!.errorLoadingBuilds ?? 'Unable to load build. Please try again.')),
+              error: (err, stack) => Center(child: Text(AppLocalizations.of(context)!.errorLoadingBuilds)),
             ),
           ),
         ],
@@ -500,11 +504,7 @@ class _ComponentsSection extends ConsumerWidget {
 
   void _showComponentDetails(BuildContext context, BaseComponent component) {
     final theme = Theme.of(context);
-    final lowestPrice = component.prices.isNotEmpty
-        ? component.prices
-            .map((p) => p.price)
-            .reduce((a, b) => a < b ? a : b)
-        : null;
+    final lowestPrice = component.lowestPrice;
     
     showDialog(
       context: context,
@@ -1060,11 +1060,7 @@ class _ComponentsSection extends ConsumerWidget {
             )
           else
             ...components.whereType<BaseComponent>().map((component) {
-              final lowestPrice = component.prices.isNotEmpty
-                  ? component.prices
-                      .map((p) => p.price)
-                      .reduce((a, b) => a < b ? a : b)
-                  : null;
+              final lowestPrice = component.lowestPrice;
               
               return InkWell(
                 onTap: () => _showComponentDetails(context, component),
@@ -1376,11 +1372,74 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
 class _CommentsSectionState extends ConsumerState<_CommentsSection> {
   final TextEditingController _controller = TextEditingController();
   bool _posting = false;
+  final List<XFile> _selectedImages = [];
+  final ImagePicker _imagePicker = ImagePicker();
+  String? _replyingToCommentId; // Track which comment we're replying to
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images);
+          if (_selectedImages.length > 5) {
+            _selectedImages.removeRange(5, _selectedImages.length);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maximum 5 images allowed. Only first 5 will be uploaded.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+  }
+
+  Future<void> _uploadImages(String commentId) async {
+    final dio = ref.read(authProvider.notifier).getDioInstance();
+    for (int i = 0; i < _selectedImages.length; i++) {
+      final image = _selectedImages[i];
+      try {
+        final fileBytes = await image.readAsBytes();
+        var fileName = image.name;
+        if (fileName.isEmpty || !fileName.contains('.')) {
+          fileName = 'image_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        }
+        final formData = FormData.fromMap({
+          'File': MultipartFile.fromBytes(fileBytes, filename: fileName),
+          'TargetId': commentId,
+          'LocationType': 'COMMENT',
+          'Name': 'build_comment_${DateTime.now().millisecondsSinceEpoch}_$i',
+        });
+        await dio.post('$apiBaseUrl/Images/add', data: formData);
+      } catch (e) {
+        debugPrint('Failed to upload image ${i + 1}: $e');
+      }
+    }
   }
 
   @override
@@ -1436,57 +1495,164 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
             ),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                UserImageUtils.buildUserAvatar(
-                  username: userAsync.valueOrNull?.username,
-                  userId: userAsync.valueOrNull?.uid,
-                  radius: 16,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    UserImageUtils.buildUserAvatar(
+                      username: userAsync.valueOrNull?.username,
+                      userId: userAsync.valueOrNull?.uid,
+                      radius: 16,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: AppLocalizations.of(context)!.writeComment,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_selectedImages.length < 5)
+                      IconButton(
+                        icon: const Icon(Icons.add_photo_alternate),
+                        onPressed: _pickImages,
+                        tooltip: 'Add images',
+                      ),
+                    const SizedBox(width: 4),
+                    ElevatedButton(
+                      onPressed: _posting
+                          ? null
+                          : () async {
+                              final text = _controller.text.trim();
+                              // Allow posting with just images (no text required)
+                              if (text.isEmpty && _selectedImages.isEmpty) return;
+                              setState(() => _posting = true);
+                            try {
+                              final user = userAsync.valueOrNull;
+                              if (user == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
+                                );
+                                return;
+                              }
+                              final authorName = user.username;
+                              // Use text or placeholder if only images
+                              final commentText = text.isEmpty ? '[Image]' : text;
+                              final comment = await ref.read(buildCommentsProvider(widget.buildId).notifier).add(
+                                authorName, 
+                                commentText, 
+                                user.uid,
+                                parentCommentId: _replyingToCommentId,
+                              );
+                              // Clear reply state after posting
+                              setState(() {
+                                _replyingToCommentId = null;
+                              });
+                              final commentId = comment.id;
+                              
+                              // Upload images if any
+                              if (_selectedImages.isNotEmpty && commentId.isNotEmpty) {
+                                await _uploadImages(commentId).catchError((e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Comment posted but images failed: ${getUserFriendlyError(e)}'),
+                                        backgroundColor: Colors.orange,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                });
+                              }
+                              
+                              _controller.clear();
+                              setState(() => _selectedImages.clear());
+                            } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(getUserFriendlyError(e))),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _posting = false);
+                              }
+                            },
+                      child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(AppLocalizations.of(context)!.post),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: AppLocalizations.of(context)!.writeComment,
-                      border: const OutlineInputBorder(),
+                if (_selectedImages.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 80,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _selectedImages.length,
+                      itemBuilder: (context, index) {
+                        final image = _selectedImages[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: FutureBuilder<Uint8List>(
+                                  future: image.readAsBytes(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: theme.colorScheme.surfaceVariant,
+                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      );
+                                    }
+                                    if (snapshot.hasError || !snapshot.hasData) {
+                                      return Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: theme.colorScheme.surfaceVariant,
+                                        child: const Icon(Icons.broken_image),
+                                      );
+                                    }
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () => _removeImage(index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _posting
-                      ? null
-                      : () async {
-                          final text = _controller.text.trim();
-                          if (text.isEmpty) return;
-                          setState(() => _posting = true);
-                        try {
-                          final user = userAsync.valueOrNull;
-                          if (user == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
-                            );
-                            return;
-                          }
-                          final authorName = user.username;
-                          await ref.read(buildCommentsProvider(widget.buildId).notifier).add(authorName, text, user.uid);
-                          _controller.clear();
-                        } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(getUserFriendlyError(e))),
-                              );
-                            }
-                          } finally {
-                            if (mounted) setState(() => _posting = false);
-                          }
-                        },
-                  child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(AppLocalizations.of(context)!.post),
-                ),
+                ],
               ],
             ),
           ),
@@ -1509,16 +1675,56 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   child: Text(AppLocalizations.of(context)!.noCommentsYet, style: theme.textTheme.bodyMedium),
                 );
               }
+              
+              // Create username to user ID mapping for @mention resolution
+              final Map<String, String> usernameToUserIdMap = {};
+              for (final comment in comments) {
+                if (comment.userId != null && comment.authorName.isNotEmpty) {
+                  usernameToUserIdMap[comment.authorName] = comment.userId!;
+                }
+              }
+              
+              // Organize comments into a tree structure
+              final Map<String, List<BuildComment>> commentTree = {};
+              final List<BuildComment> topLevelComments = [];
+              
+              for (final comment in comments) {
+                if (comment.parentCommentId != null && comment.parentCommentId!.isNotEmpty) {
+                  // This is a reply to another comment
+                  commentTree.putIfAbsent(comment.parentCommentId!, () => []).add(comment);
+                } else {
+                  // This is a top-level comment
+                  topLevelComments.add(comment);
+                }
+              }
+              
+              // Build flat list with nested structure
+              final List<BuildComment> organizedComments = [];
+              void addCommentWithReplies(BuildComment comment, int depth) {
+                organizedComments.add(comment);
+                final replies = commentTree[comment.id] ?? [];
+                for (final reply in replies) {
+                  addCommentWithReplies(reply, depth + 1);
+                }
+              }
+              
+              for (final topLevel in topLevelComments) {
+                addCommentWithReplies(topLevel, 0);
+              }
+              
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: comments.length,
+                itemCount: organizedComments.length,
                 separatorBuilder: (_, __) => const Divider(height: 24),
                 itemBuilder: (context, index) {
-                  final c = comments[index];
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+                  final c = organizedComments[index];
+                  final isReply = c.parentCommentId != null && c.parentCommentId!.isNotEmpty;
+                  return Padding(
+                    padding: EdgeInsets.only(left: isReply ? 32.0 : 0.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
                       if (c.userId != null)
                         InkWell(
                           onTap: () {
@@ -1560,11 +1766,130 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(c.text, style: theme.textTheme.bodyMedium),
+                            // Only show text if it's not the placeholder
+                            if (c.text != '[Image]')
+                              LinkableText(
+                                text: c.text,
+                                style: theme.textTheme.bodyMedium,
+                                usernameToUserIdMap: usernameToUserIdMap,
+                              ),
+                            const SizedBox(height: 8),
+                            // Reply button
+                            if (isLoggedIn)
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _replyingToCommentId = _replyingToCommentId == c.id ? null : c.id;
+                                    if (_replyingToCommentId == c.id) {
+                                      _controller.text = '@${c.authorName} ';
+                                      _controller.selection = TextSelection.fromPosition(
+                                        TextPosition(offset: _controller.text.length),
+                                      );
+                                    } else {
+                                      _controller.clear();
+                                    }
+                                  });
+                                },
+                                icon: Icon(
+                                  _replyingToCommentId == c.id ? Icons.close : Icons.reply,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _replyingToCommentId == c.id ? 'Cancel' : 'Reply',
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            // Display images attached to the comment
+                            ref.watch(commentImagesProvider(c.id)).when(
+                              data: (imageUrls) {
+                                if (imageUrls.isEmpty) return const SizedBox.shrink();
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: imageUrls.map((imageUrl) {
+                                        return GestureDetector(
+                                          onTap: () {
+                                            // Show fullscreen image viewer
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => Dialog(
+                                                backgroundColor: Colors.transparent,
+                                                insetPadding: const EdgeInsets.all(20),
+                                                child: Stack(
+                                                  children: [
+                                                    Center(
+                                                      child: InteractiveViewer(
+                                                        minScale: 0.5,
+                                                        maxScale: 4.0,
+                                                        child: Image.network(
+                                                          imageUrl,
+                                                          fit: BoxFit.contain,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return Container(
+                                                              width: 300,
+                                                              height: 300,
+                                                              color: theme.colorScheme.surfaceVariant,
+                                                              child: const Icon(Icons.broken_image, size: 64),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      top: 10,
+                                                      right: 10,
+                                                      child: IconButton(
+                                                        icon: const Icon(Icons.close, color: Colors.white),
+                                                        onPressed: () => Navigator.of(context).pop(),
+                                                        style: IconButton.styleFrom(
+                                                          backgroundColor: Colors.black54,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              imageUrl,
+                                              width: 150,
+                                              height: 150,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  width: 150,
+                                                  height: 150,
+                                                  color: theme.colorScheme.surfaceVariant,
+                                                  child: const Icon(Icons.broken_image),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (e, s) => const SizedBox.shrink(),
+                            ),
                           ],
                         ),
                       ),
                     ],
+                  ),
                   );
                 },
               );

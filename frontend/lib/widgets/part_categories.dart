@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the part categories section.
 ///
@@ -93,7 +94,7 @@ class PartCategoriesSection extends ConsumerWidget {
       loading: () => const SizedBox(
           height: 424, child: Center(child: CircularProgressIndicator())),
       error: (err, stack) => SizedBox(
-          height: 424, child: Center(child: Text('Error: ${err.toString()}'))),
+          height: 424, child: Center(child: Text(getUserFriendlyError(err)))),
     );
   }
 }
