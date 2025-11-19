@@ -1,0 +1,371 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": [
+    "object",
+    "null"
+  ],
+  "title": "GPU Schema",
+  "description": "Schema for GPU components",
+  "required": [
+    "metadata"
+  ],
+  "properties": {
+    "opendb_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Unique identifier for the document (UUID v4)"
+    },
+    "chipset_manufacturer": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Manufacturer of the GPU chipset (e.g., NVIDIA, AMD, Intel)"
+    },
+    "chipset": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The specific GPU chipset (e.g., GeForce RTX 4090, Radeon RX 7900 XTX, ARC B580, etc)"
+    },
+    "memory": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The amount of video memory in GB"
+    },
+    "memory_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The type of video memory (e.g., GDDR6X, GDDR6)"
+    },
+    "core_base_clock": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The base clock speed of the GPU core in MHz"
+    },
+    "core_boost_clock": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The boost clock speed of the GPU core in MHz"
+    },
+    "core_count": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Number of cores/shaders in the GPU"
+    },
+    "effective_memory_clock": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Effective memory clock in MHz"
+    },
+    "memory_bus": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Memory bus width in bits"
+    },
+    "interface": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The interface used by the graphics card (e.g., PCIe 4.0 x16, PCIe 5.0 x16)"
+    },
+    "color": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "description": "The color of this product (e.g., ['Black', 'Red']). Each color of the product should be included in the array."
+    },
+    "frame_sync": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The frame synchronization technology supported (e.g., G-Sync, FreeSync, None)"
+    },
+    "length": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The length of the graphics card in mm"
+    },
+    "tdp": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The Thermal Design Power of the graphics card in Watts"
+    },
+    "case_expansion_slot_width": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The number of case expansion slot widths the card occupies"
+    },
+    "total_slot_width": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The total slot width the card occupies, accounting for cooler size"
+    },
+    "cooling": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The type of cooling solution (e.g., 3 Fans, 2 Fans, Blower, Water Cooled)"
+    },
+    "power_connectors": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "pcie_6_pin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of 6-pin PCIe connectors (75W each)"
+        },
+        "pcie_8_pin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of 8-pin PCIe connectors (150W each). A 16-pin PCIe connector is 2x 8-pin PCIe connectors"
+        },
+        "pcie_12VHPWR": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of 12VHPWR PCIe connectors (12VHPWR/PCIe 5.0, 600W)"
+        },
+        "pcie_12V_2x6": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of 12V_2x6 PCIe connectors (12V-2x6/ATX 3.1, 600W)"
+        }
+      }
+    },
+    "video_outputs": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "hdmi_2_2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of HDMI 2.2 ports"
+        },
+        "hdmi_2_1": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of HDMI 2.1 ports"
+        },
+        "hdmi_2_0": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of HDMI 2.0 ports"
+        },
+        "displayport_2_1": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of DisplayPort 2.1 ports"
+        },
+        "displayport_2_1a": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of DisplayPort 2.1a ports"
+        },
+        "displayport_1_4a": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of DisplayPort 1.4a ports"
+        },
+        "displayport_2_1_b": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of DisplayPort 2.1b ports"
+        },
+        "dvi_d": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of DVI-D ports"
+        },
+        "vga": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Number of VGA ports"
+        }
+      }
+    },
+    "general_product_information": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "General product information and retailer SKUs",
+      "properties": {
+        "amazon_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Amazon product SKU"
+        },
+        "newegg_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Newegg product SKU"
+        },
+        "bestbuy_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Best Buy product SKU"
+        },
+        "walmart_sku": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Walmart product SKU"
+        },
+        "adorama_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Adorama product SKU"
+        },
+        "ibuypower_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "iBuyPower product SKU"
+        },
+        "hyte_sku": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "HYTE product SKU"
+        },
+        "manufacturer_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Official manufacturer product URL"
+        }
+      }
+    },
+    "metadata": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full product name"
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product manufacturer"
+        },
+        "part_numbers": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of manufacturer's part numbers/SKUs"
+        },
+        "series": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Product series name"
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Specific variant in the series"
+        },
+        "releaseYear": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Year of release"
+        }
+      }
+    }
+  }
+}
