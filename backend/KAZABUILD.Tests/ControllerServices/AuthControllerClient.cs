@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Auth;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class AuthControllerClient
+public class AuthControllerClient: BaseApiControllerService
 {
     private readonly HttpClient _client;
     private readonly string? _ipAddress;

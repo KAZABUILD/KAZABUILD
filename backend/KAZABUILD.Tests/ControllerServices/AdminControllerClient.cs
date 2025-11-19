@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Admin;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class AdminControllerClient(HttpClient _client)
+public class AdminControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> ResetSystemAdmin()
     {

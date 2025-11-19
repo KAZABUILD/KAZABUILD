@@ -2,7 +2,7 @@
 using KAZABUILD.Application.DTOs.Users.ForumPost;
 
 namespace KAZABUILD.Tests.ControllerServices;
-public class ForumPostsControllerClient
+public class ForumPostsControllerClient: BaseApiControllerService
 {
     private readonly HttpClient _client;
 

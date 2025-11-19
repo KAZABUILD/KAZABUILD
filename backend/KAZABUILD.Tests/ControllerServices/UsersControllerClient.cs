@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.User;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UsersControllerClient
+public class UsersControllerClient: BaseApiControllerService
 {
     private readonly HttpClient _client;
 
@@ -37,7 +37,7 @@ public class UsersControllerClient
         return await _client.PutAsJsonAsync("/Users/"+userId+"/change-password", dto);
     }
 
-    public async Task<HttpResponseMessage> GetUsers(UpdateUserDto dto)
+    public async Task<HttpResponseMessage> GetUsers(GetUserDto dto)
     {
         return await _client.PutAsJsonAsync("/Users/get", dto);
     }

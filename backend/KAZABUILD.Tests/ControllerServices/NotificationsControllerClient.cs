@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.Notification;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class NotificationsControllerClient(HttpClient _client)
+public class NotificationsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddNotification(CreateNotificationDto dto)
     {

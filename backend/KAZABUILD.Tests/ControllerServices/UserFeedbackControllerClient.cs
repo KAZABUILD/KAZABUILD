@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserFeedback;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserFeedbackControllerClient(HttpClient _client)
+public class UserFeedbackControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserFeedback(CreateUserFeedbackDto dto)
     {

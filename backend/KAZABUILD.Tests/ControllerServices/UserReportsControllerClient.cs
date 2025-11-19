@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserReport;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserReportsControllerClient(HttpClient _client)
+public class UserReportsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserReport(CreateUserReportDto dto)
     {

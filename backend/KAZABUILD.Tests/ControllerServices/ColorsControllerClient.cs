@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Components.Color;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ColorsControllerClient(HttpClient _client)
+public class ColorsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddColor(CreateColorDto dto)
     {

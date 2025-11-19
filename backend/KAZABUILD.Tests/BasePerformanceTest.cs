@@ -14,7 +14,7 @@ public abstract class BasePerformanceTest
     protected AdminControllerClient _superAdminControllerClient;
     protected UsersControllerClient _superUserControllerClient;
     protected IConfiguration _configuration = null!;
-
+    protected Uri _baseAddress;
     protected BasePerformanceTest()
     {
         _configuration = new ConfigurationBuilder()
@@ -23,9 +23,11 @@ public abstract class BasePerformanceTest
             .AddEnvironmentVariables()
             .Build();
 
+        _baseAddress = new Uri(_configuration["backend:Host"]);
+
         _superAdminHttpClient = new HttpClient
         {
-            BaseAddress = new Uri(_configuration["backend:Host"])
+            BaseAddress = _baseAddress
         };
     }
 

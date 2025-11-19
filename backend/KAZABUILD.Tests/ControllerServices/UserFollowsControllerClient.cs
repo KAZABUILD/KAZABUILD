@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserFollow;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserFollowsControllerClient(HttpClient _client)
+public class UserFollowsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserFollow(CreateUserFollowDto dto)
     {
