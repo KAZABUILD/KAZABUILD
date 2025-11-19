@@ -34,7 +34,7 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IMemoryCache _cache = cache;
 
         /// <summary>
-        /// API Endpoint for creating a new UserFollow
+        /// API Endpoint for creating a new UserFollow.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>

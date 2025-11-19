@@ -8,6 +8,9 @@ namespace KAZABUILD.Application.Helpers
     //Handles Search functionality in controllers
     public static partial class SearchHelper
     {
+        // Configuration flag - set this in your test factory
+        public static bool UseInMemorySearch { get; set; } = false;
+
         //Helper for searching in queries, takes in the search string and all the fields used for search;
         //Split search string into tokens and apply them one by one.
         //Tokens with ":" are treated as field-specific (field:value),

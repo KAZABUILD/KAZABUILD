@@ -5,7 +5,9 @@ namespace KAZABUILD.Application.DTOs.Users.UserPreference
     public class GetUserPreferenceDto
     {
         //Filter By fields
-        public List<Guid>? UserId { get; set; }
+        public List<Guid>? UserPreferenceAnswerId { get; set; }
+
+        public List<string>? Question { get; set; } = default!;
 
         //Paging related fields
         /// <summary>

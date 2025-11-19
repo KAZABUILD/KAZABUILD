@@ -9,7 +9,6 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -154,9 +153,22 @@ namespace KAZABUILD.Infrastructure.Services
             }
             else if (typeof(T) == typeof(UserPreference))
             {
-                var userIds = ids1 ?? [Guid.Empty];
+                var userPreferenceAnswerIds = ids1 ?? [Guid.Empty];
 
-                return (Faker<T>)(object)GetUserPreferenceFaker(userIds);
+                return (Faker<T>)(object)GetUserPreferenceFaker(userPreferenceAnswerIds);
+            }
+            else if (typeof(T) == typeof(UserPreferenceAnswer))
+            {
+                var userPreferenceIds = ids1 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserPreferenceAnswerFaker(userPreferenceIds);
+            }
+            else if (typeof(T) == typeof(UserAnswer))
+            {
+                var userIds = ids1 ?? [Guid.Empty];
+                var userPreferenceAnswerIds = ids2 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserAnswerFaker(userIds, userPreferenceAnswerIds);
             }
             else if (typeof(T) == typeof(UserActivity))
             {
@@ -472,9 +484,34 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(f => f.LastEditedAt, (f, fo) => f.Date.Between(fo.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(f => f.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
-        private Faker<UserPreference> GetUserPreferenceFaker(List<Guid> userIds) => new Faker<UserPreference>("en")
+        private Faker<UserPreference> GetUserPreferenceFaker(List<Guid> userPreferenceAnswerIds) => new Faker<UserPreference>("en")
+            .RuleFor(p => p.Id, f => Guid.NewGuid())
+            .RuleFor(p => p.UserPreferenceAnswerId, f => f.PickRandom(userPreferenceAnswerIds))
+            .RuleFor(p => p.Question, f =>
+            {
+                var question = f.Lorem.Sentence(3);
+                return question[..Math.Min(question.Length, 127)] + "?";
+            })
+            .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<UserPreferenceAnswer> GetUserPreferenceAnswerFaker(List<Guid> userPreferenceIds) => new Faker<UserPreferenceAnswer>("en")
+            .RuleFor(p => p.Id, f => Guid.NewGuid())
+            .RuleFor(p => p.UserPreferenceId, f => f.PickRandom(userPreferenceIds))
+            .RuleFor(p => p.Answer, f =>
+            {
+                var answer = f.Lorem.Sentence(1);
+                return answer[..Math.Min(answer.Length, 32)];
+            })
+            .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<UserAnswer> GetUserAnswerFaker(List<Guid> userIds, List<Guid> userPreferenceAnswerIds) => new Faker<UserAnswer>("en")
             .RuleFor(p => p.Id, f => Guid.NewGuid())
             .RuleFor(p => p.UserId, f => f.PickRandom(userIds))
+            .RuleFor(p => p.UserPreferenceAnswerId, f => f.PickRandom(userPreferenceAnswerIds))
             .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);

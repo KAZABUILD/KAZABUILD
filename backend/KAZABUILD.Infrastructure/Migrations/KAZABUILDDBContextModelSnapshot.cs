@@ -1003,6 +1003,37 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.ToTable("UserActivities");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserPreferenceAnswerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserPreferenceAnswerId");
+
+                    b.ToTable("UserAnswers");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserBlock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1215,14 +1246,52 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<Guid?>("UserPreferenceAnswerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserPreferenceAnswerId")
+                        .IsUnique()
+                        .HasFilter("[UserPreferenceAnswerId] IS NOT NULL");
 
                     b.ToTable("UserPreferences");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreferenceAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserPreferenceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserPreferenceId");
+
+                    b.ToTable("UserPreferenceAnswers");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserReport", b =>
@@ -2400,6 +2469,25 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserAnswer", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
+                        .WithMany("UserAnswers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserPreferenceAnswer", "UserPreferenceAnswer")
+                        .WithMany("UserAnswers")
+                        .HasForeignKey("UserPreferenceAnswerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserPreferenceAnswer");
+                });
+
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserBlock", b =>
                 {
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "BlockedUser")
@@ -2516,13 +2604,22 @@ namespace KAZABUILD.Infrastructure.Migrations
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>
                 {
-                    b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
-                        .WithMany("UserPreferences")
-                        .HasForeignKey("UserId")
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserPreferenceAnswer", "UserPreferenceAnswer")
+                        .WithOne("SubUserPreference")
+                        .HasForeignKey("KAZABUILD.Domain.Entities.Users.UserPreference", "UserPreferenceAnswerId");
+
+                    b.Navigation("UserPreferenceAnswer");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreferenceAnswer", b =>
+                {
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserPreference", "UserPreference")
+                        .WithMany("UserPreferenceAnswers")
+                        .HasForeignKey("UserPreferenceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
+                    b.Navigation("UserPreference");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserReport", b =>
@@ -2873,13 +2970,13 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("UserActivities");
 
+                    b.Navigation("UserAnswers");
+
                     b.Navigation("UserCommentInteractions");
 
                     b.Navigation("UserComments");
 
                     b.Navigation("UserFeedback");
-
-                    b.Navigation("UserPreferences");
 
                     b.Navigation("UserTokens");
                 });
@@ -2893,6 +2990,19 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("UserCommentInteractions");
 
                     b.Navigation("UserReports");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>
+                {
+                    b.Navigation("UserPreferenceAnswers");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreferenceAnswer", b =>
+                {
+                    b.Navigation("SubUserPreference")
+                        .IsRequired();
+
+                    b.Navigation("UserAnswers");
                 });
 #pragma warning restore 612, 618
         }

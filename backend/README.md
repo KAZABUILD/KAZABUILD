@@ -196,7 +196,24 @@ All models have protections against adding invalid values but any call made shou
  
  - UserPreference (data from polls and quizzes)
    - `Id` -> automatically assigned GUID
-   - `UserId` -> GUID storing the user's id the preference is for
+   - `UserPreferenceAnswerId` -> GUID storing the id of the answer to the question this preference is subject to
+   - `Question` -> string storing the content of the preference
+   - `DatabaseEntryAt` -> date object storing when the user was created in the database
+   - `LastEditedAt` -> date object storing when the user was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserPreferenceAnswer (data from polls and quizzes)
+   - `Id` -> automatically assigned GUID
+   - `UserPreferenceId` -> GUID storing the id of the question this is an answer to
+   - `Answer` -> string storing the content of the answer
+   - `DatabaseEntryAt` -> date object storing when the user was created in the database
+   - `LastEditedAt` -> date object storing when the user was last edited
+   - `Note` -> nullable string storing any staff-only information
+ 
+ - UserAnswer (data from polls and quizzes)
+   - `Id` -> automatically assigned GUID
+   - `UserId` -> GUID storing the id of the user choosing a preference
+   - `UserPreferenceAnswerId` -> GUID storing the answer the user chose
    - `DatabaseEntryAt` -> date object storing when the user was created in the database
    - `LastEditedAt` -> date object storing when the user was last edited
    - `Note` -> nullable string storing any staff-only information

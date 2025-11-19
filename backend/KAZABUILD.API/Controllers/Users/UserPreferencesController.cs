@@ -1,4 +1,5 @@
 using KAZABUILD.Application.DTOs.Users.UserPreference;
+using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
@@ -8,6 +9,8 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -15,7 +18,7 @@ namespace KAZABUILD.API.Controllers.Users
 {
     /// <summary>
     /// Controller for User Preference related endpoints.
-    /// Used to save user answered questionnaires.
+    /// Used to set the questionnaire questions.
     /// </summary>
     /// <param name="db"></param>
     /// <param name="logger"></param>
@@ -30,12 +33,12 @@ namespace KAZABUILD.API.Controllers.Users
         private readonly IRabbitMQPublisher _publisher = publisher;
 
         /// <summary>
-        /// API Endpoint for creating a new UserPreference.
+        /// API Endpoint for creating a new UserPreference for admins.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost("add")]
-        [Authorize(Policy = "AllUsers")]
+        [Authorize(Policy = "Admins")]
         public async Task<IActionResult> AddUserPreference([FromBody] CreateUserPreferenceDto dto)
         {
             //Get user id from the request
@@ -46,50 +49,34 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the user exists
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
-            if (user == null)
+            //Only check if sub-preference
+            if(dto.UserPreferenceAnswerId != null)
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserPreference",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Assigned User Doesn't Exist"
-                );
+                //Check if the answer exists
+                var answer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId);
+                if (answer == null)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "UserPreference",
+                        ip,
+                        Guid.Empty,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - UserPreferenceAnswers Doesn't Exist"
+                    );
 
-                //Return proper error response
-                return BadRequest(new { message = "User not found!" });
-            }
-
-            //Check if current user has staff permissions or if they are creating a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == dto.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserPreference",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
+                    //Return proper error response
+                    return BadRequest(new { message = "Main preference not found!" });
+                }
             }
 
             //Create a userPreference to add
             UserPreference userPreference = new()
             {
+                UserPreferenceAnswerId = dto.UserPreferenceAnswerId,
+                Question = dto.Question,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -123,8 +110,7 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        /// API endpoint for updating the selected UserPreference.
-        /// User can modify only their own Preferences, while admins can modify all.
+        /// API endpoint for updating the selected UserPreference for admins.
         /// </summary>
         /// <param name="id"></param>
         /// <param name="dto"></param>
@@ -164,6 +150,21 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
+            if(!string.IsNullOrWhiteSpace(dto.Question))
+            {
+                changedFields.Add("Question: " + userPreference.Question);
+
+                userPreference.Question = dto.Question;
+            }
+            if (dto.UserPreferenceAnswerId != null && (await _db.UserPreferenceAnswers.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId)) != null)
+            {
+                changedFields.Add("UserPreferenceAnswerId: " + userPreference.UserPreferenceAnswerId);
+
+                if (dto.UserPreferenceAnswerId == Guid.Empty)
+                    userPreference.UserPreferenceAnswerId = null;
+                else
+                    userPreference.UserPreferenceAnswerId = dto.UserPreferenceAnswerId;
+            }
             if (dto.Note != null)
             {
                 changedFields.Add("Note: " + userPreference.Note);
@@ -251,27 +252,8 @@ namespace KAZABUILD.API.Controllers.Users
             //Declare response variable
             UserPreferenceResponseDto response;
 
-            //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == userPreference.UserId;
+            //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-
-            //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isSelf && !isPrivileged)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "UserPreference",
-                    ip,
-                    id,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return not found response
-                return Forbid();
-            }
 
             //Check if has staff privilege
             if (!isPrivileged)
@@ -283,7 +265,8 @@ namespace KAZABUILD.API.Controllers.Users
                 response = new UserPreferenceResponseDto
                 {
                     Id = userPreference.Id,
-                    UserId = userPreference.UserId
+                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
+                    Question = userPreference.Question
                 };
             }
             else
@@ -295,7 +278,8 @@ namespace KAZABUILD.API.Controllers.Users
                 response = new UserPreferenceResponseDto
                 {
                     Id = userPreference.Id,
-                    UserId = userPreference.UserId,
+                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
+                    Question = userPreference.Question,
                     DatabaseEntryAt = userPreference.DatabaseEntryAt,
                     LastEditedAt = userPreference.LastEditedAt,
                     Note = userPreference.Note,
@@ -349,15 +333,15 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserPreferences.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserPreferenceAnswerId != null)
             {
-                query = query.Where(p => dto.UserId.Contains(p.UserId));
+                query = query.Where(p => p.UserPreferenceAnswerId != null && dto.UserPreferenceAnswerId.Contains((Guid)p.UserPreferenceAnswerId));
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                //query = query.Search(dto.Query, );
+                query = query.Search(dto.Query, p => p.Question);
             }
 
             //Order by specified field if provided
@@ -377,7 +361,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserPreference> userPreferences = await query.Where(p => p.UserId == currentUserId || isPrivileged).ToListAsync();
+            List<UserPreference> userPreferences = await query.ToListAsync();
 
             //Declare response variable
             List<UserPreferenceResponseDto> responses;
@@ -395,7 +379,8 @@ namespace KAZABUILD.API.Controllers.Users
                     return new UserPreferenceResponseDto
                     {
                         Id = userPreference.Id,
-                        UserId = userPreference.UserId
+                        UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
+                        Question = userPreference.Question
                     };
                 })];
             }
@@ -408,7 +393,8 @@ namespace KAZABUILD.API.Controllers.Users
                 responses = [.. userPreferences.Select(userPreference => new UserPreferenceResponseDto
                 {
                     Id = userPreference.Id,
-                    UserId = userPreference.UserId,
+                    UserPreferenceAnswerId = userPreference.UserPreferenceAnswerId,
+                    Question = userPreference.Question,
                     DatabaseEntryAt = userPreference.DatabaseEntryAt,
                     LastEditedAt = userPreference.LastEditedAt,
                     Note = userPreference.Note
@@ -439,13 +425,12 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        /// API endpoint for deleting the selected UserPreference.
-        /// Staff can delete all preferences, while users only their own.
+        /// API endpoint for deleting the selected UserPreference for admins.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:Guid}")]
-        [Authorize(Policy = "AllUsers")]
+        [Authorize(Policy = "Admins")]
         public async Task<IActionResult> DeleteUserPreference(Guid id)
         {
             //Get userPreference id and role from the request claims
@@ -473,28 +458,6 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { message = "UserPreference not found!" });
-            }
-
-            //Check if current user has staff permissions or if they are deleting their own preference
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
-            var isSelf = currentUserId == userPreference.UserId;
-
-            //Check if the user has correct permission
-            if (!isPrivileged && !isSelf)
-            {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "UserPreference",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
-
-                //Return proper unauthorized response
-                return Forbid();
             }
 
             //Delete the userPreference

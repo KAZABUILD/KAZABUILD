@@ -1,0 +1,606 @@
+﻿using System.Net;
+using System.Net.Http.Json;
+using KAZABUILD.Application.DTOs.Users.Message;
+using KAZABUILD.Application.Interfaces;
+using KAZABUILD.Domain.Entities.Users;
+using KAZABUILD.Domain.Enums;
+using KAZABUILD.Tests.ControllerServices;
+using KAZABUILD.Tests.Utils;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace KAZABUILD.Tests.Users;
+
+
+[Collection("Sequential")]
+public class MessagesControllerTests : BaseIntegrationTest
+{
+    private MessagesControllerClient _messagesClient = null!;
+    private User _testUser1 = null!;
+    private User _testUser2 = null!;
+    private HttpClient _testUser1HttpClient = null!;
+    private HttpClient _testUser2HttpClient = null!;
+    private IEncryptionService _encryptionService = null!;
+
+    public MessagesControllerTests(KazaWebApplicationFactory factory) : base(factory)
+    {
+    }
+
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+
+        // Get encryption service
+        _encryptionService = _factory.Services.GetRequiredService<IEncryptionService>();
+
+        // Create test users
+        _testUser1 = _context.Users.First(u => u.UserRole == UserRole.USER);
+        _testUser2 = _context.Users.First(u => u.UserRole == UserRole.USER && u.Id != _testUser1.Id);
+
+        await _context.SaveChangesAsync();
+
+        // Create HTTP clients for test users
+        _testUser1HttpClient = await HttpClientFactory.Create(_factory, _testUser1, password: "password123!");
+        _testUser2HttpClient = await HttpClientFactory.Create(_factory, _testUser2, password: "password123!");
+
+        // Initialize clients
+        _messagesClient = new MessagesControllerClient(_testUser1HttpClient);
+    }
+
+    #region AddMessage Tests
+
+    [Fact]
+    public async Task AddMessage_WithValidData_ReturnsOk()
+    {
+        // Arrange
+        var dto = new CreateMessageDto
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            Content = "Hello, this is a test message!",
+            Title = "Test Message",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER
+        };
+
+        // Act
+        var response = await _messagesClient.SendMessage(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.NotNull(content);
+
+        // Parse response to get message ID
+        var jsonDoc = System.Text.Json.JsonDocument.Parse(content);
+        var messageId = Guid.Parse(jsonDoc.RootElement.GetProperty("id").GetString()!);
+
+        // Verify message was created in database
+        var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
+        Assert.NotNull(message);
+        Assert.NotNull(message.CipherText);
+        Assert.NotNull(message.IV);
+
+        // Decrypt and verify content
+        var decryptedContent = _encryptionService.Decrypt(message.CipherText, message.IV);
+        Assert.Equal(dto.Content, decryptedContent);
+
+        Assert.Equal(dto.Title, message.Title);
+        Assert.Equal(_testUser1.Id, message.SenderId);
+        Assert.Equal(_testUser2.Id, message.ReceiverId);
+    }
+
+    [Fact]
+    public async Task AddMessage_AsOtherUser_ReturnsForbidden()
+    {
+        // Arrange
+        var dto = new CreateMessageDto
+        {
+            SenderId = _testUser2.Id, // Trying to send as different user
+            ReceiverId = _testUser1.Id,
+            Content = "Test message",
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            MessageType = MessageType.USER
+        };
+
+        // Act
+        var response = await _messagesClient.SendMessage(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddMessage_AsAdmin_CanSendForOtherUser()
+    {
+        // Arrange
+        var adminClient = new MessagesControllerClient(_superAdminHttpClient);
+        var dto = new CreateMessageDto
+        {
+            SenderId = _testUser2.Id,
+            ReceiverId = _testUser1.Id,
+            Content = "Admin sending for another user",
+            Title = "Admin Message",
+            SentAt = DateTime.UtcNow,
+            MessageType = MessageType.ADMIN
+        };
+
+        // Act
+        var response = await adminClient.SendMessage(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddMessage_WithReplyToParentMessage_ReturnsOk()
+    {
+        // Arrange - Create parent message first
+        var parentDto = new CreateMessageDto
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            Content = "Parent message",
+            Title = "Parent",
+            SentAt = DateTime.UtcNow,
+            MessageType = MessageType.USER
+        };
+        var parentResponse = await _messagesClient.SendMessage(parentDto);
+        var parentContent = await parentResponse.Content.ReadAsStringAsync();
+        var parentJsonDoc = System.Text.Json.JsonDocument.Parse(parentContent);
+        var parentMessageId = Guid.Parse(parentJsonDoc.RootElement.GetProperty("id").GetString()!);
+
+        // Create reply message
+        var replyDto = new CreateMessageDto
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            Content = "This is a reply",
+            Title = "Reply",
+            SentAt = DateTime.UtcNow,
+            ParentMessageId = parentMessageId,
+            MessageType = MessageType.USER
+        };
+
+        // Act
+        var response = await _messagesClient.SendMessage(replyDto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var replyContent = await response.Content.ReadAsStringAsync();
+        var replyJsonDoc = System.Text.Json.JsonDocument.Parse(replyContent);
+        var replyMessageId = Guid.Parse(replyJsonDoc.RootElement.GetProperty("id").GetString()!);
+
+        var replyMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == replyMessageId);
+        Assert.NotNull(replyMessage);
+        Assert.Equal(parentMessageId, replyMessage.ParentMessageId);
+    }
+
+    #endregion
+
+    #region UpdateMessage Tests
+
+    [Fact]
+    public async Task UpdateMessage_AsNonReceiver_ReturnsForbidden()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        var dto = new UpdateMessageDto { IsRead = true };
+
+        // Act - Try to update as sender (not receiver)
+        var response = await _messagesClient.UpdateMessage(message.Id.ToString(), dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateMessage_NonExistentMessage_ReturnsNotFound()
+    {
+        // Arrange
+        var dto = new UpdateMessageDto { IsRead = true };
+
+        // Act
+        var response = await _messagesClient.UpdateMessage(Guid.NewGuid().ToString(), dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+
+    #region GetMessage Tests
+
+    [Fact]
+    public async Task GetMessage_AsSender_ReturnsOk()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var response = await _messagesClient.GetMessage(message.Id.ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<MessageResponseDto>();
+        Assert.NotNull(content);
+        Assert.Equal(message.Id, content.Id);
+
+        // Content should be decrypted in the response
+        Assert.Equal("Test message", content.Content);
+        Assert.Null(content.DatabaseEntryAt); // Regular user shouldn't see this
+    }
+
+    [Fact]
+    public async Task GetMessage_AsAdmin_ReturnsFullDetails()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow,
+            Note = "Admin note"
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        var adminClient = new MessagesControllerClient(_superAdminHttpClient);
+
+        // Act
+        var response = await adminClient.GetMessage(message.Id.ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<MessageResponseDto>();
+        Assert.NotNull(content);
+        Assert.NotNull(content.DatabaseEntryAt); // Admin should see this
+        Assert.NotNull(content.LastEditedAt);
+        Assert.Equal("Admin note", content.Note);
+    }
+
+    [Fact]
+    public async Task GetMessage_NonExistentMessage_ReturnsNotFound()
+    {
+        // Act
+        var response = await _messagesClient.GetMessage(Guid.NewGuid().ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+
+    #region GetMessages Tests
+
+    [Fact]
+    public async Task GetMessages_WithSenderIdFilter_ReturnsFilteredResults()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Message 1");
+        var message1 = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test 1",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+
+        _context.Messages.Add(message1);
+        await _context.SaveChangesAsync();
+
+        var adminClient = new MessagesControllerClient(_superAdminHttpClient);
+        var dto = new GetMessageDto
+        {
+            SenderId = new List<Guid> { _testUser1.Id }
+        };
+
+        // Act
+        var response = await adminClient.GetMessages(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
+        Assert.NotNull(content);
+        Assert.All(content, m => Assert.Equal(_testUser1.Id, m.SenderId));
+    }
+
+    [Fact]
+    public async Task GetMessages_WithIsReadFilter_ReturnsFilteredResults()
+    {
+        // Arrange
+        var (cipherText1, iv1) = _encryptionService.Encrypt("Read message");
+        var readMessage = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText1,
+            IV = iv1,
+            Title = "Read",
+            SentAt = DateTime.UtcNow,
+            IsRead = true,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+
+        var (cipherText2, iv2) = _encryptionService.Encrypt("Unread message");
+        var unreadMessage = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText2,
+            IV = iv2,
+            Title = "Unread",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+
+        _context.Messages.AddRange(readMessage, unreadMessage);
+        await _context.SaveChangesAsync();
+
+        var dto = new GetMessageDto { IsRead = false };
+
+        // Act
+        var response = await _messagesClient.GetMessages(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
+        Assert.NotNull(content);
+        Assert.All(content, m => Assert.False(m.IsRead));
+    }
+
+    [Fact]
+    public async Task GetMessages_WithPagination_ReturnsPaginatedResults()
+    {
+        // Arrange - Create multiple messages
+        for (int i = 0; i < 5; i++)
+        {
+            var (cipherText, iv) = _encryptionService.Encrypt($"Message {i}");
+            var message = new Message
+            {
+                SenderId = _testUser1.Id,
+                ReceiverId = _testUser2.Id,
+                CipherText = cipherText,
+                IV = iv,
+                Title = $"Test {i}",
+                SentAt = DateTime.UtcNow.AddMinutes(-i),
+                IsRead = false,
+                MessageType = MessageType.USER,
+                DatabaseEntryAt = DateTime.UtcNow,
+                LastEditedAt = DateTime.UtcNow
+            };
+            _context.Messages.Add(message);
+        }
+        await _context.SaveChangesAsync();
+
+        var dto = new GetMessageDto
+        {
+            Paging = true,
+            Page = 1,
+            PageLength = 2
+        };
+
+        // Act
+        var response = await _messagesClient.GetMessages(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
+        Assert.NotNull(content);
+        Assert.Equal(2, content.Count);
+    }
+
+    [Fact]
+    public async Task GetMessages_WithOrderBy_ReturnsSortedResults()
+    {
+        // Arrange
+        var (cipherText1, iv1) = _encryptionService.Encrypt("Message A");
+        var message1 = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText1,
+            IV = iv1,
+            Title = "Alpha",
+            SentAt = DateTime.UtcNow.AddDays(-2),
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+
+        var (cipherText2, iv2) = _encryptionService.Encrypt("Message B");
+        var message2 = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText2,
+            IV = iv2,
+            Title = "Beta",
+            SentAt = DateTime.UtcNow.AddDays(-1),
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+
+        _context.Messages.AddRange(message1, message2);
+        await _context.SaveChangesAsync();
+
+        var dto = new GetMessageDto
+        {
+            OrderBy = "SentAt",
+            SortDirection = "desc"
+        };
+
+        // Act
+        var response = await _messagesClient.GetMessages(dto);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsync<List<MessageResponseDto>>();
+        Assert.NotNull(content);
+        Assert.True(content[0].SentAt >= content[1].SentAt);
+    }
+
+    #endregion
+
+    #region DeleteMessage Tests
+
+    [Fact]
+    public async Task DeleteMessage_AsSender_ReturnsOk()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var response = await _messagesClient.DeleteMessage(message.Id.ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var deletedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
+        Assert.Null(deletedMessage);
+    }
+
+    [Fact]
+    public async Task DeleteMessage_AsReceiver_ReturnsForbidden()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        var user2Client = new MessagesControllerClient(_testUser2HttpClient);
+
+        // Act
+        var response = await user2Client.DeleteMessage(message.Id.ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteMessage_AsAdmin_ReturnsOk()
+    {
+        // Arrange
+        var (cipherText, iv) = _encryptionService.Encrypt("Test message");
+        var message = new Message
+        {
+            SenderId = _testUser1.Id,
+            ReceiverId = _testUser2.Id,
+            CipherText = cipherText,
+            IV = iv,
+            Title = "Test",
+            SentAt = DateTime.UtcNow,
+            IsRead = false,
+            MessageType = MessageType.USER,
+            DatabaseEntryAt = DateTime.UtcNow,
+            LastEditedAt = DateTime.UtcNow
+        };
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
+
+        var adminClient = new MessagesControllerClient(_superAdminHttpClient);
+
+        // Act
+        var response = await adminClient.DeleteMessage(message.Id.ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var deletedMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
+        Assert.Null(deletedMessage);
+    }
+
+    [Fact]
+    public async Task DeleteMessage_NonExistentMessage_ReturnsNotFound()
+    {
+        // Act
+        var response = await _messagesClient.DeleteMessage(Guid.NewGuid().ToString());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+}
