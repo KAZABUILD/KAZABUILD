@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace KAZABUILD.Domain.Entities.Users
 {
     /// <summary>
-    /// Model storing an answer user selected while answering a questionnaire.
+    /// Model storing an answer user selected while answering a question in the questionnaire.
     /// </summary>
     public class UserAnswer
     {

@@ -704,8 +704,8 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Check if the preference exists
-            var preference = await _db.UserPreferences.OrderBy(p => p.DatabaseEntryAt).FirstOrDefaultAsync(u => u.UserId == currentUserId);
-            if (preference == null)
+            var answers = await _db.UserAnswers.FirstOrDefaultAsync(u => u.UserId == currentUserId);
+            if (answers == null)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -719,7 +719,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 );
 
                 //Return proper error response
-                return BadRequest(new { message = "User preference not found!" });
+                return BadRequest(new { message = "User has not answered the questionnaire!" });
             }
 
             List<Build> generatedBuilds = [];
