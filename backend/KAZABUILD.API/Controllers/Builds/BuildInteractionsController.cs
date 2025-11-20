@@ -676,7 +676,7 @@ namespace KAZABUILD.API.Controllers.Builds
         /// <returns></returns>
         [HttpPost("get-count")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<BuildInteractionResponseDto>>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
+        public async Task<ActionResult<double>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
         {
             //Get buildInteraction id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

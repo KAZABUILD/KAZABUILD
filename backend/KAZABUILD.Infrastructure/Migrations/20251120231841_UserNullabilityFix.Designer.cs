@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KAZABUILD.Infrastructure.Migrations
 {
     [DbContext(typeof(KAZABUILDDBContext))]
-    partial class KAZABUILDDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251120231841_UserNullabilityFix")]
+    partial class UserNullabilityFix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2357,7 +2360,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Creator")
                         .WithMany("ForumPosts")
                         .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Creator");
                 });
@@ -2511,32 +2514,32 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
                         .WithMany("Comments")
                         .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
                         .WithMany("Comments")
                         .HasForeignKey("ComponentId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Components.ComponentReview", "ComponentReview")
                         .WithMany("Comments")
                         .HasForeignKey("ComponentReviewId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
                         .WithMany("Comments")
                         .HasForeignKey("ForumPostId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "ParentComment")
                         .WithMany("ChildComments")
                         .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserComments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Build");
 

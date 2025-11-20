@@ -203,37 +203,37 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(c => c.User)
                 .WithMany(u => u.UserComments)
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ForumPost)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ForumPostId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.Component)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ComponentReview)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ComponentReviewId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.Build)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.BuildId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ParentComment)
                 .WithMany(pc => pc.ChildComments)
                 .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== USER COMMENT INTERACTION ======================================//
 
@@ -257,7 +257,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(p => p.Creator)
                 .WithMany(u => u.ForumPosts)
                 .HasForeignKey(p => p.CreatorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== MESSAGE ======================================//
 

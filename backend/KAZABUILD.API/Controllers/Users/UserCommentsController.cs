@@ -544,7 +544,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(c => dto.UserId.Contains(c.UserId));
+                query = query.Where(c => c.UserId != null && dto.UserId.Contains((Guid)c.UserId));
             }
             if (dto.PostedAtStart != null)
             {
@@ -761,7 +761,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userComment to delete
-            var userComment = await _db.UserComments.Include(c => c.Images).FirstOrDefaultAsync(c => c.Id == id);
+            var userComment = await _db.UserComments.Include(c => c.Images).Include(c => c.ChildComments).FirstOrDefaultAsync(c => c.Id == id);
             if (userComment == null)
             {
                 //Log failure
@@ -813,6 +813,12 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Delete all related images
                 _db.Images.RemoveRange(userComment.Images);
+            }
+
+            //Set the ParentCommentId field to null for all children
+            foreach (var child in userComment.ChildComments)
+            {
+                child.ParentCommentId = null;
             }
 
             //Delete the userComment

@@ -3,6 +3,7 @@ using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
+using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -703,9 +704,18 @@ namespace KAZABUILD.API.Controllers.Builds
                 return BadRequest(new { message = "User not found!" });
             }
 
-            //Check if the preference exists
-            var answers = await _db.UserAnswers.FirstOrDefaultAsync(u => u.UserId == currentUserId);
-            if (answers == null)
+            //Get user preference
+            var answers = await _db.UserAnswers
+                .OrderByDescending(a => a.DatabaseEntryAt)
+                .Include(a => a.UserPreferenceAnswer)
+                    .ThenInclude(pa => pa.UserPreference)
+                .Where(u => u.UserId == currentUserId)
+                .ToListAsync();
+
+            //Check if the required preferences have been set
+            if (!answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you plan to use your PC for?") ||
+                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you do for work?") ||
+                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What’s your budget?"))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -722,9 +732,252 @@ namespace KAZABUILD.API.Controllers.Builds
                 return BadRequest(new { message = "User has not answered the questionnaire!" });
             }
 
+            //Declare a list for generated builds
             List<Build> generatedBuilds = [];
 
-            //TODO generate the build
+            //Create a dictionary for calculating price ranges
+            Dictionary<int, float> priceLimits = [];
+
+            //Get the answers for the budget question
+            var priceAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What’s your budget?").Select(a => a.UserPreferenceAnswer);
+
+            //Declare initial bounds
+            var bounds = new float[4]
+            {
+                2000.0f,
+                0.0f,
+                0.0f,
+                200.0f
+            };
+
+            //Adjust the price bound accordingly
+            if(priceAnswers.Select(a => a.Answer).Contains("$400–$600 (Entry Level)"))
+            {
+                bounds[0] = 400.0f;
+                bounds[3] = 600.0f;
+            }
+            if (priceAnswers.Select(a => a.Answer).Contains("$600–$900 (Balanced Value)"))
+            {
+                if(bounds[0] > 600.0f)
+                    bounds[0] = 600.0f;
+
+                if (bounds[3] < 900.0f)
+                    bounds[3] = 900.0f;
+            }
+            if (priceAnswers.Select(a => a.Answer).Contains("$900–$1200 (Upper Mid Range)"))
+            {
+                if (bounds[0] > 900.0f)
+                    bounds[0] = 900.0f;
+
+                if (bounds[3] < 1200.0f)
+                    bounds[3] = 1200.0f;
+            }
+            if (priceAnswers.Select(a => a.Answer).Contains("$1200–$1800 (Performance Tier)"))
+            {
+                if (bounds[0] > 1200.0f)
+                    bounds[0] = 1200.0f;
+
+                if (bounds[3] < 1800.0f)
+                    bounds[3] = 1800.0f;
+            }
+            if (priceAnswers.Select(a => a.Answer).Contains("$1800+ (Enthusiast / Future-proof)"))
+            {
+                if (bounds[0] > 1800.0f)
+                    bounds[0] = 1800.0f;
+
+                if (bounds[3] < 3000.0f)
+                    bounds[3] = 3000.0f;
+            }
+
+            //Calculate middle bounds for the 3 price ranges
+            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1/3));
+            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2/3));
+
+            //Check for generation fail
+            bool failed = false;
+
+            //Generate each build
+            for (int i = 0; i < 3; i++)
+            {
+                //Declare point values for calculating the price distribution relative to each other
+                float caseScore = 0.4f;
+                float caseFanScore = 0.05f;
+                float coolerScore = 0.25f;
+                float cpuScore = 1.0f;
+                float gpuScore = 2.5f;
+                float memoryScore = 2.2f;
+                float monitorScore = 1.0f;
+                float motherboardScore = 1.0f;
+                float powerSupplyScore = 0.45f;
+                float storageScore = 0.7f;
+
+                //Declare a list of components for the build
+                List<BaseComponent> components = [];
+
+                //Create a build to add
+                Build build = new()
+                {
+                    UserId = currentUserId,
+                    Name = $"Generated build nr.{i+1} for {user.DisplayName}",
+                    Description = "",
+                    Status = BuildStatus.GENERATED,
+                    PublishedAt = null,
+                    DatabaseEntryAt = DateTime.UtcNow,
+                    LastEditedAt = DateTime.UtcNow
+                };
+
+                //Go through every answer to every question and adjust the scores accordingly
+
+                //Get the answers to all questions
+                var hobbyAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you enjoy doing the most in your free time?").Select(a => a.UserPreferenceAnswer);
+                var usageAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you plan to use your PC for?").Select(a => a.UserPreferenceAnswer);
+                var jobAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you do for work?").Select(a => a.UserPreferenceAnswer);
+                var priorityAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you prioritize the most in your PC?").Select(a => a.UserPreferenceAnswer);
+
+                //Adjust the scores base on the answers to the questions
+                foreach (var answer in hobbyAnswers)
+                {
+                    var p = BuildGenerationHelper.HobbyAdjustments[answer.Answer];
+                    gpuScore += p.gpu;
+                    cpuScore += p.cpu;
+                    memoryScore += p.memory;
+                    storageScore += p.storage;
+                    monitorScore += p.monitor;
+                    coolerScore += p.cooler;
+                }
+                foreach (var answer in usageAnswers)
+                {
+                    var p = BuildGenerationHelper.UsageAdjustments[answer.Answer];
+                    gpuScore += p.gpu;
+                    cpuScore += p.cpu;
+                    memoryScore += p.memory;
+                    storageScore += p.storage;
+                    monitorScore += p.monitor;
+                    coolerScore += p.cooler;
+                }
+                foreach (var answer in jobAnswers)
+                {
+                    var p = BuildGenerationHelper.JobAdjustments[answer.Answer];
+                    gpuScore += p.gpu;
+                    cpuScore += p.cpu;
+                    memoryScore += p.memory;
+                    storageScore += p.storage;
+                    monitorScore += p.monitor;
+                    coolerScore += p.cooler;
+                }
+                foreach (var answer in priorityAnswers)
+                {
+                    var p = BuildGenerationHelper.PriorityAdjustments[answer.Answer];
+                    gpuScore += p.gpu;
+                    cpuScore += p.cpu;
+                    memoryScore += p.memory;
+                    storageScore += p.storage;
+                    monitorScore += p.monitor;
+                    coolerScore += p.cooler;
+                }
+
+                //Make non-standard adjustments based on the answers
+                if (hobbyAnswers.Select(a => a.Answer).Contains("Looks"))
+                {
+                    caseScore += 0.2f;
+                }
+
+                //Get the components based on the scores and price bounds
+
+                //Get the total score for all components
+                float totalScore = caseScore + caseFanScore + coolerScore + cpuScore + gpuScore + memoryScore + monitorScore + motherboardScore + powerSupplyScore + storageScore;
+
+                //Get the price maximum for all the components
+                var (caseMinPrice, caseMaxPrice) = BuildGenerationHelper.AllocateBudget(caseScore, totalScore, bounds[i], bounds[i + 1]);
+                var (caseFanMinPrice, caseFanMaxPrice) = BuildGenerationHelper.AllocateBudget(caseFanScore, totalScore, bounds[i], bounds[i + 1]);
+                var (coolerMinPrice, coolerMaxPrice) = BuildGenerationHelper.AllocateBudget(coolerScore, totalScore, bounds[i], bounds[i + 1]);
+                var (cpuMinPrice, cpuMaxPrice) = BuildGenerationHelper.AllocateBudget(cpuScore, totalScore, bounds[i], bounds[i + 1]);
+                var (gpuMinPrice, gpuMaxPrice) = BuildGenerationHelper.AllocateBudget(gpuScore, totalScore, bounds[i], bounds[i + 1]);
+                var (memoryMinPrice, memoryMaxPrice) = BuildGenerationHelper.AllocateBudget(memoryScore, totalScore, bounds[i], bounds[i + 1]);
+                var (monitorMinPrice, monitorMaxPrice) = BuildGenerationHelper.AllocateBudget(monitorScore, totalScore, bounds[i], bounds[i + 1]);
+                var (motherboardMinPrice, motherboardMaxPrice) = BuildGenerationHelper.AllocateBudget(motherboardScore, totalScore, bounds[i], bounds[i + 1]);
+                var (powerSupplyMinPrice, powerSupplyMaxPrice) = BuildGenerationHelper.AllocateBudget(powerSupplyScore, totalScore, bounds[i], bounds[i + 1]);
+                var (storageMinPrice, storageMaxPrice) = BuildGenerationHelper.AllocateBudget(storageScore, totalScore, bounds[i], bounds[i + 1]);
+
+                //Get all components that fit the criteria
+
+                //Get the case component
+                var caseComponent = await _db.Components
+                    .OfType<CaseComponent>()
+                    .Include(c => c.Prices)
+                    .Where(
+                        c => c.Prices.FirstOrDefault() != null &&
+                        c.Type == ComponentType.CASE &&
+                        c.Prices.Min(p => p.Price) < (decimal)caseMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)caseMinPrice
+                    )
+                    .OrderBy(r => Guid.NewGuid())
+                    .FirstOrDefaultAsync();
+                if (caseComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(caseComponent);
+
+                //TODO all component generation
+
+                //Get the power supply component adjusting for the power usage in other components
+                var powerSupplyComponent = await _db.Components
+                    .OfType<PowerSupplyComponent>()
+                    .Include(c => c.Prices)
+                    .Include(c => c.CompatibleComponents)
+                    .Where(
+                        c => c.Prices.FirstOrDefault() != null &&
+                        c.Type == ComponentType.POWER_SUPPLY &&
+                        c.Prices.Min(p => p.Price) < (decimal)powerSupplyMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)powerSupplyMinPrice &&
+                        c.CompatibleComponents.Select(cc => cc.CompatibleComponentId).Intersect(components.Select(comp => comp.Id)).Count() == components.Count() &&
+                        c.PowerOutput > 100.0m //Adjust for GPU, CPU + 100 extra
+                    )
+                    .OrderBy(r => Guid.NewGuid())
+                    .FirstOrDefaultAsync();
+                if (powerSupplyComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(powerSupplyComponent);
+
+                //Add all the components to the build
+                foreach(BaseComponent component in components)
+                {
+                    BuildComponent buildComponent = new()
+                    {
+                        BuildId = build.Id,
+                        ComponentId = component.Id,
+                        Quantity = 1
+                    };
+
+                    _db.BuildComponents.Add(buildComponent);
+                }    
+            }
+
+            //Check if the components aren't null
+            if (failed)
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Build",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Some Component(s) Do(es) Not Exist"
+                );
+
+                //Return proper error response
+                return BadRequest(new { message = "No components found that fit the criteria!" });
+            }
+
+            //Save changes to the database
+            await _db.SaveChangesAsync();
 
             //Log the generation
             await _logger.LogAsync(

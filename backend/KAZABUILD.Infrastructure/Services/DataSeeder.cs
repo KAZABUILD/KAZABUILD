@@ -134,7 +134,7 @@ namespace KAZABUILD.Infrastructure.Services
                 var componentReviewIds = ids5 ?? [Guid.Empty];
 
                 //Get comments from the same generation batch
-                var commentIds = await _context.UserComments.Where(c => userIds.Contains(c.UserId)).Select(c => c.Id).ToListAsync();
+                var commentIds = await _context.UserComments.Where(c => userIds.Contains((Guid)c.UserId!)).Select(c => c.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildIds, componentIds, componentReviewIds, commentTargetTypes, commentIds);
             }
