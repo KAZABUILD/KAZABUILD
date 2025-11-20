@@ -215,7 +215,7 @@ final forumPostsProvider = FutureProvider.family<List<ForumPost>, ForumPostsPara
 final allForumPostsProvider = FutureProvider<List<ForumPost>>((ref) async {
   final forumService = ref.watch(forumServiceProvider);
   // Fetch all posts, disable paging to get all of them for now.
-  return forumService.getPosts({'paging': false});
+  return forumService.getPosts({'paging': true, 'page': 1, 'pageLength': 10});
 });
 
 /// Manages the state for creating a new forum post.

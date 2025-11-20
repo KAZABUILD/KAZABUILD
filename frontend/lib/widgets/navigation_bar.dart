@@ -115,7 +115,6 @@ class CustomNavigationBar extends ConsumerWidget {
                   );
                 },
               ),
-              _NavButton(title: AppLocalizations.of(context)!.aboutUs, route: '/about'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -437,7 +436,7 @@ class CustomDrawer extends ConsumerWidget {
               children: [
                 Image.asset("assets/logo/kaza.png", width: 45, height: 45),
                 Text(
-                  'azaBuild',
+                  'KazaBuild',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimary,
                     fontSize: 24,
@@ -590,19 +589,6 @@ class CustomDrawer extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(AppLocalizations.of(context)!.aboutUs),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 8,
-            ),
-            minVerticalPadding: 12,
-            onTap: () {
-              Navigator.pop(context);
-              context.go('/about');
             },
           ),
           const Divider(),

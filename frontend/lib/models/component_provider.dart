@@ -12,82 +12,113 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/component_models.dart';
 
+const int _defaultComponentPageLength = 50;
+const int _bulkFetchPageLength = 250;
+
+String _mapTypeToDiscriminator(ComponentType type) {
+  switch (type) {
+    case ComponentType.cpu:
+      return 'CPU';
+    case ComponentType.gpu:
+      return 'GPU';
+    case ComponentType.motherboard:
+      return 'Motherboard';
+    case ComponentType.ram:
+      return 'Memory';
+    case ComponentType.storage:
+      return 'Storage';
+    case ComponentType.psu:
+      return 'PowerSupply';
+    case ComponentType.cooler:
+      return 'Cooler';
+    case ComponentType.pcCase:
+      return 'Case';
+    case ComponentType.caseFan:
+      return 'CaseFan';
+    case ComponentType.monitor:
+      return 'Monitor';
+  }
+}
+
+String _mapTypeToBackendEnum(ComponentType type) {
+  switch (type) {
+    case ComponentType.cpu:
+      return 'CPU';
+    case ComponentType.gpu:
+      return 'GPU';
+    case ComponentType.motherboard:
+      return 'MOTHERBOARD';
+    case ComponentType.ram:
+      return 'MEMORY';
+    case ComponentType.storage:
+      return 'STORAGE';
+    case ComponentType.psu:
+      return 'POWER_SUPPLY';
+    case ComponentType.cooler:
+      return 'COOLER';
+    case ComponentType.pcCase:
+      return 'CASE';
+    case ComponentType.caseFan:
+      return 'CASE_FAN';
+    case ComponentType.monitor:
+      return 'MONITOR';
+  }
+}
+
+@immutable
+class ComponentPageResult {
+  final List<BaseComponent> items;
+  final int page;
+  final int pageLength;
+  final bool hasMore;
+
+  ComponentPageResult({
+    required List<BaseComponent> items,
+    required this.page,
+    required this.pageLength,
+    required this.hasMore,
+  }) : items = List.unmodifiable(items);
+}
+
 /// A service class to handle API requests related to PC components.
 class ComponentService {
   final Dio _dio;
 
   ComponentService(this._dio);
 
-  /// Fetches a list of components of a specific type from the backend.
+  /// Fetches all available components of a specific type by traversing each page.
   Future<List<BaseComponent>> getComponents(ComponentType componentType) async {
+    final List<BaseComponent> allComponents = [];
+    var page = 1;
+    var hasMore = true;
+
+    while (hasMore) {
+      final pageResult = await getComponentsPage(
+        componentType,
+        page: page,
+        pageLength: _bulkFetchPageLength,
+      );
+
+      allComponents.addAll(pageResult.items);
+      hasMore = pageResult.hasMore && pageResult.items.isNotEmpty;
+      page++;
+    }
+
+    return allComponents;
+  }
+
+  /// Fetches a single page of components for the provided [componentType].
+  Future<ComponentPageResult> getComponentsPage(
+    ComponentType componentType, {
+    int page = 1,
+    int pageLength = _defaultComponentPageLength,
+  }) async {
     final url = '$apiBaseUrl/Components/get';
-
-    // Helper to map the frontend enum to backend DTO discriminator value.
-    // The discriminator values match the JsonDerivedType attributes in GetBaseComponentDto.
-    // System.Text.Json uses these simple string values for polymorphic deserialization.
-    String _mapTypeToDiscriminator(ComponentType type) {
-      switch (type) {
-        case ComponentType.cpu:
-          return 'CPU';
-        case ComponentType.gpu:
-          return 'GPU';
-        case ComponentType.motherboard:
-          return 'Motherboard';
-        case ComponentType.ram:
-          return 'Memory';
-        case ComponentType.storage:
-          return 'Storage';
-        case ComponentType.psu:
-          return 'PowerSupply';
-        case ComponentType.cooler:
-          return 'Cooler';
-        case ComponentType.pcCase:
-          return 'Case';
-        case ComponentType.caseFan:
-          return 'CaseFan';
-        case ComponentType.monitor:
-          return 'Monitor';
-      }
-    }
-
-    // Map ComponentType to backend enum value for Type filter
-    String _mapTypeToBackendEnum(ComponentType type) {
-      switch (type) {
-        case ComponentType.cpu:
-          return 'CPU';
-        case ComponentType.gpu:
-          return 'GPU';
-        case ComponentType.motherboard:
-          return 'MOTHERBOARD';
-        case ComponentType.ram:
-          return 'MEMORY';
-        case ComponentType.storage:
-          return 'STORAGE';
-        case ComponentType.psu:
-          return 'POWER_SUPPLY';
-        case ComponentType.cooler:
-          return 'COOLER';
-        case ComponentType.pcCase:
-          return 'CASE';
-        case ComponentType.caseFan:
-          return 'CASE_FAN';
-        case ComponentType.monitor:
-          return 'MONITOR';
-      }
-    }
-
-    // Prepare the request body for backend polymorphic deserializer.
-    // Property names must be PascalCase to match .NET's default JSON naming policy.
-    // We enable pagination with a very large pageLength to ensure we get all results.
-    
-    // The Type filter ensures only the requested component type is returned
-    final body = {
-      r'$type': _mapTypeToDiscriminator(componentType),
-      'Type': [_mapTypeToBackendEnum(componentType)], // Explicitly filter by component type
-      'Paging': true,
-      'Page': 1,
-      'PageLength': 10000,  // Large number to get all results
-    };
+    final body = _buildRequestBody(
+      componentType,
+      page: page,
+      pageLength: pageLength,
+    );
 
     if (kDebugMode) {
       print('Sending request to $url');
@@ -99,71 +130,39 @@ class ComponentService {
 
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> data = response.data;
-        
+
         if (kDebugMode) {
-          print('Received ${data.length} components for type: $componentType');
+          print(
+            'Received ${data.length} components for type: $componentType (page $page)',
+          );
         }
 
-        final parsedComponents = data.map((json) {
-          try {
-            final typeString = (json['type'] ?? json['Type'])?.toString().toUpperCase();
-            if (kDebugMode && typeString == null) {
-              print('Warning: Component missing type field: ${json.keys}');
-            }
-            switch (typeString) {
-              case 'CPU':
-                return CPUComponent.fromJson(json);
-              case 'GPU':
-                return GPUComponent.fromJson(json);
-              case 'MOTHERBOARD':
-                return MotherboardComponent.fromJson(json);
-              case 'MEMORY':
-              case 'RAM':
-                return MemoryComponent.fromJson(json);
-              case 'STORAGE':
-                return StorageComponent.fromJson(json);
-              case 'POWERSUPPLY':
-              case 'PSU':
-              case 'POWER_SUPPLY':  // Backend enum format
-                return PowerSupplyComponent.fromJson(json);
-              case 'CASE':
-              case 'PCCASE':
-                return CaseComponent.fromJson(json);
-              case 'COOLER':
-                return CoolerComponent.fromJson(json);
-              case 'CASEFAN':
-              case 'CASE_FAN':  // Backend enum format
-                return CaseFanComponent.fromJson(json);
-              case 'MONITOR':
-                return MonitorComponent.fromJson(json);
-              default:
-                if (kDebugMode) {
-                  print('Unsupported component type received: $typeString');
-                  print('Component data: ${json['name'] ?? json['Name']}');
-                }
-                return null;
-            }
-          } catch (e, stackTrace) {
-            if (kDebugMode) {
-              print('Error parsing component: $e');
-              print('Component JSON: $json');
-              print('Stack trace: $stackTrace');
-            }
-            return null;
-          }
-        }).whereType<BaseComponent>().toList();
-        
+        final parsedComponents = _parseComponents(data, componentType);
+
         if (kDebugMode) {
-          print('Successfully parsed ${parsedComponents.length} out of ${data.length} components for type: $componentType');
+          print(
+            'Successfully parsed ${parsedComponents.length} out of ${data.length} components for type: $componentType',
+          );
         }
-        
-        return parsedComponents;
+
+        final hasMore = parsedComponents.length == pageLength;
+
+        return ComponentPageResult(
+          items: parsedComponents,
+          page: page,
+          pageLength: pageLength,
+          hasMore: hasMore,
+        );
       } else {
         if (kDebugMode) {
-          print('Failed to load components: Status code ${response.statusCode}');
+          print(
+            'Failed to load components: Status code ${response.statusCode}',
+          );
           print('Response data: ${response.data}');
         }
-        throw Exception('Failed to load components: Status code ${response.statusCode}');
+        throw Exception(
+          'Failed to load components: Status code ${response.statusCode}',
+        );
       }
     } on DioException catch (e) {
       if (kDebugMode) {
@@ -171,7 +170,6 @@ class ComponentService {
         if (e.response != null) {
           print('Response status: ${e.response?.statusCode}');
           print('Response data: ${e.response?.data}');
-          // Try to extract validation errors
           try {
             final responseData = e.response?.data;
             if (responseData is Map<String, dynamic>) {
@@ -192,6 +190,83 @@ class ComponentService {
     }
   }
 
+  Map<String, dynamic> _buildRequestBody(
+    ComponentType componentType, {
+    required int page,
+    required int pageLength,
+  }) {
+    return {
+      r'$type': _mapTypeToDiscriminator(componentType),
+      'Type': [_mapTypeToBackendEnum(componentType)],
+      'Paging': true,
+      'Page': page,
+      'PageLength': pageLength,
+    };
+  }
+
+  List<BaseComponent> _parseComponents(
+    List<dynamic> data,
+    ComponentType componentType,
+  ) {
+    return data
+        .map((json) {
+          try {
+            final typeString = (json['type'] ?? json['Type'])
+                ?.toString()
+                .toUpperCase();
+            if (kDebugMode && typeString == null) {
+              print(
+                'Warning: Component missing type field for $componentType: ${json.keys}',
+              );
+            }
+            switch (typeString) {
+              case 'CPU':
+                return CPUComponent.fromJson(json);
+              case 'GPU':
+                return GPUComponent.fromJson(json);
+              case 'MOTHERBOARD':
+                return MotherboardComponent.fromJson(json);
+              case 'MEMORY':
+              case 'RAM':
+                return MemoryComponent.fromJson(json);
+              case 'STORAGE':
+                return StorageComponent.fromJson(json);
+              case 'POWERSUPPLY':
+              case 'PSU':
+              case 'POWER_SUPPLY':
+                return PowerSupplyComponent.fromJson(json);
+              case 'CASE':
+              case 'PCCASE':
+                return CaseComponent.fromJson(json);
+              case 'COOLER':
+                return CoolerComponent.fromJson(json);
+              case 'CASEFAN':
+              case 'CASE_FAN':
+                return CaseFanComponent.fromJson(json);
+              case 'MONITOR':
+                return MonitorComponent.fromJson(json);
+              default:
+                if (kDebugMode) {
+                  print(
+                    'Unsupported component type received for $componentType: $typeString',
+                  );
+                  print('Component data: ${json['name'] ?? json['Name']}');
+                }
+                return null;
+            }
+          } catch (e, stackTrace) {
+            if (kDebugMode) {
+              print('Error parsing component: $e');
+              print('Component JSON: $json');
+              print('Stack trace: $stackTrace');
+            }
+            return null;
+          }
+        })
+        .whereType<BaseComponent>()
+        .toList();
+  }
+
   /// Fetches all components of all types from the backend.
   Future<List<BaseComponent>> getAllComponents() async {
     // Fetch all component types in parallel
@@ -207,29 +282,206 @@ class ComponentService {
       getComponents(ComponentType.pcCase),
       getComponents(ComponentType.monitor),
     ]);
-    
+
     // Flatten the list of lists into a single list
     return results.expand((list) => list).toList();
   }
 }
 
 /// Provider for ComponentService using authenticated Dio.
-final componentServiceProvider = Provider<ComponentService>((ref) {
+final componentServiceProvider = Provider.autoDispose<ComponentService>((ref) {
   final dio = ref.watch(authProvider.notifier).getDioInstance();
   return ComponentService(dio);
 });
 
 /// Provider that fetches components by type (with caching, loading/error support).
-final componentsProvider = FutureProvider.family<List<BaseComponent>, ComponentType>((ref, type) {
-  final componentService = ref.watch(componentServiceProvider);
-  return componentService.getComponents(type);
-});
+final componentsProvider = FutureProvider.autoDispose
+    .family<List<BaseComponent>, ComponentType>((ref, type) {
+      final componentService = ref.watch(componentServiceProvider);
+      return componentService.getComponents(type);
+    });
 
 /// Provider that fetches all components (all types combined).
-final allComponentsProvider = FutureProvider<List<BaseComponent>>((ref) {
+final allComponentsProvider = FutureProvider.autoDispose<List<BaseComponent>>((
+  ref,
+) {
   final componentService = ref.watch(componentServiceProvider);
   return componentService.getAllComponents();
 });
+
+@immutable
+class ComponentPagingState {
+  static const Object _sentinel = Object();
+
+  final List<BaseComponent> items;
+  final bool isLoading;
+  final bool isRefreshing;
+  final bool hasMore;
+  final int currentPage;
+  final bool hasLoadedAtLeastOnce;
+  final String? errorMessage;
+  final bool isLoadMoreError;
+
+  bool get isInitialLoading => !hasLoadedAtLeastOnce && isLoading;
+
+  ComponentPagingState({
+    required List<BaseComponent> items,
+    required this.isLoading,
+    required this.isRefreshing,
+    required this.hasMore,
+    required this.currentPage,
+    required this.hasLoadedAtLeastOnce,
+    required this.isLoadMoreError,
+    this.errorMessage,
+  }) : items = List.unmodifiable(items);
+
+  factory ComponentPagingState.initial() => ComponentPagingState(
+    items: const [],
+    isLoading: false,
+    isRefreshing: false,
+    hasMore: true,
+    currentPage: 0,
+    hasLoadedAtLeastOnce: false,
+    errorMessage: null,
+    isLoadMoreError: false,
+  );
+
+  ComponentPagingState copyWith({
+    List<BaseComponent>? items,
+    bool? isLoading,
+    bool? isRefreshing,
+    bool? hasMore,
+    int? currentPage,
+    bool? hasLoadedAtLeastOnce,
+    bool? isLoadMoreError,
+    Object? errorMessage = _sentinel,
+  }) {
+    return ComponentPagingState(
+      items: items ?? this.items,
+      isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      hasLoadedAtLeastOnce: hasLoadedAtLeastOnce ?? this.hasLoadedAtLeastOnce,
+      errorMessage: identical(errorMessage, _sentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
+      isLoadMoreError: isLoadMoreError ?? this.isLoadMoreError,
+    );
+  }
+}
+
+class ComponentPagingNotifier extends StateNotifier<ComponentPagingState> {
+  ComponentPagingNotifier(
+    this._service,
+    this._componentType, {
+    this.pageLength = _defaultComponentPageLength,
+  }) : super(ComponentPagingState.initial());
+
+  final ComponentService _service;
+  final ComponentType _componentType;
+  final int pageLength;
+  bool _isDisposed = false;
+
+  Future<void> ensurePage(int page) {
+    final safePage = page < 1 ? 1 : page;
+    if (state.isLoading && state.currentPage == safePage) {
+      return Future.value();
+    }
+    if (state.hasLoadedAtLeastOnce &&
+        state.currentPage == safePage &&
+        !state.isRefreshing) {
+      return Future.value();
+    }
+    return _loadPage(reset: true, targetPage: safePage);
+  }
+
+  Future<void> goToPage(int page) => _loadPage(reset: true, targetPage: page);
+
+  Future<void> refresh() {
+    final targetPage = state.currentPage > 0 ? state.currentPage : 1;
+    return _loadPage(reset: true, targetPage: targetPage);
+  }
+
+  Future<void> loadMore() {
+    if (!state.hasMore) return Future.value();
+    final nextPage = state.currentPage + 1;
+    return _loadPage(reset: true, targetPage: nextPage);
+  }
+
+  Future<void> retry() {
+    final targetPage = state.currentPage > 0 ? state.currentPage : 1;
+    return _loadPage(reset: true, targetPage: targetPage);
+  }
+
+  Future<void> _loadPage({required bool reset, int? targetPage}) async {
+    if (_isDisposed) return;
+    if (state.isLoading) return;
+    if (!reset && !state.hasMore) return;
+
+    final nextPage = (targetPage ?? (reset ? 1 : state.currentPage + 1)).clamp(
+      1,
+      0x7fffffff,
+    );
+    final previousItems = state.items;
+
+    state = state.copyWith(
+      isLoading: true,
+      isRefreshing: reset && state.hasLoadedAtLeastOnce,
+      errorMessage: reset ? null : state.errorMessage,
+      isLoadMoreError: false,
+    );
+
+    try {
+      final pageResult = await _service.getComponentsPage(
+        _componentType,
+        page: nextPage,
+        pageLength: pageLength,
+      );
+
+      final updatedItems = reset
+          ? pageResult.items
+          : [...previousItems, ...pageResult.items];
+
+      state = state.copyWith(
+        items: updatedItems,
+        isLoading: false,
+        isRefreshing: false,
+        hasMore: pageResult.hasMore && pageResult.items.isNotEmpty,
+        currentPage: nextPage,
+        hasLoadedAtLeastOnce: true,
+        errorMessage: null,
+        isLoadMoreError: false,
+      );
+    } catch (e) {
+      final message = e is DioException
+          ? (e.message ?? 'Failed to load components')
+          : e.toString();
+
+      state = state.copyWith(
+        isLoading: false,
+        isRefreshing: false,
+        errorMessage: message,
+        isLoadMoreError: !reset && previousItems.isNotEmpty,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+}
+
+final componentPagingProvider = StateNotifierProvider.autoDispose
+    .family<ComponentPagingNotifier, ComponentPagingState, ComponentType>((
+      ref,
+      type,
+    ) {
+      final service = ref.watch(componentServiceProvider);
+      return ComponentPagingNotifier(service, type);
+    });
 
 /// Service for fetching component compatibility information.
 class ComponentCompatibilityService {
@@ -277,19 +529,26 @@ class ComponentCompatibilityService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> compatibilities = response.data;
         final compatibleIds = compatibilities
-            .map((c) => (c['compatibleComponentId'] ?? c['CompatibleComponentId'])?.toString())
+            .map(
+              (c) => (c['compatibleComponentId'] ?? c['CompatibleComponentId'])
+                  ?.toString(),
+            )
             .whereType<String>()
             .toSet();
 
         if (kDebugMode) {
-          print('Found ${compatibleIds.length} compatible components for $componentId');
+          print(
+            'Found ${compatibleIds.length} compatible components for $componentId',
+          );
         }
 
         return compatibleIds;
       }
 
       if (kDebugMode) {
-        print('Unexpected response status or format: ${response.statusCode}, data type: ${response.data.runtimeType}');
+        print(
+          'Unexpected response status or format: ${response.statusCode}, data type: ${response.data.runtimeType}',
+        );
       }
 
       return {};
@@ -307,7 +566,9 @@ class ComponentCompatibilityService {
 
   /// Fetches compatible component IDs for multiple components.
   /// Returns a map of componentId -> Set of compatible component IDs.
-  Future<Map<String, Set<String>>> getCompatibleComponentIdsBatch(List<String> componentIds) async {
+  Future<Map<String, Set<String>>> getCompatibleComponentIdsBatch(
+    List<String> componentIds,
+  ) async {
     if (componentIds.isEmpty) return {};
 
     final Map<String, Set<String>> result = {};
@@ -330,14 +591,20 @@ class ComponentCompatibilityService {
 
   /// Checks if a component is compatible with any of the selected components in the build.
   /// Returns true if the component is compatible with at least one selected component.
-  Future<bool> isCompatibleWithBuild(String componentId, List<String> selectedComponentIds) async {
-    if (selectedComponentIds.isEmpty) return true; // No selection means all are compatible
+  Future<bool> isCompatibleWithBuild(
+    String componentId,
+    List<String> selectedComponentIds,
+  ) async {
+    if (selectedComponentIds.isEmpty)
+      return true; // No selection means all are compatible
 
     // Get all compatible IDs for this component
     final compatibleIds = await getCompatibleComponentIds(componentId);
 
     // Check if any selected component is in the compatible list
-    return selectedComponentIds.any((selectedId) => compatibleIds.contains(selectedId));
+    return selectedComponentIds.any(
+      (selectedId) => compatibleIds.contains(selectedId),
+    );
   }
 
   /// Batch checks compatibility for multiple components with selected components.
@@ -362,7 +629,7 @@ class ComponentCompatibilityService {
     if (validComponentIds.isEmpty) return {};
 
     final Map<String, bool> result = {};
-    
+
     // Fetch compatibilities sequentially to avoid rate limiting
     // Process one at a time with delays to be respectful to the server
     for (final componentId in validComponentIds) {
@@ -377,9 +644,11 @@ class ComponentCompatibilityService {
         }
 
         final compatibleIds = await getCompatibleComponentIds(componentId);
-        final isCompatible = selectedComponentIds.any((selectedId) => compatibleIds.contains(selectedId));
+        final isCompatible = selectedComponentIds.any(
+          (selectedId) => compatibleIds.contains(selectedId),
+        );
         result[componentId] = isCompatible;
-        
+
         // Add delay between requests to avoid rate limiting
         await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
@@ -404,33 +673,49 @@ class ComponentCompatibilityService {
 }
 
 /// Provider for ComponentCompatibilityService using authenticated Dio.
-final componentCompatibilityServiceProvider = Provider<ComponentCompatibilityService>((ref) {
-  final dio = ref.watch(authProvider.notifier).getDioInstance();
-  return ComponentCompatibilityService(dio);
-});
+final componentCompatibilityServiceProvider =
+    Provider.autoDispose<ComponentCompatibilityService>((ref) {
+      final dio = ref.watch(authProvider.notifier).getDioInstance();
+      return ComponentCompatibilityService(dio);
+    });
 
 /// Provider that gets compatible component IDs for a single component.
-final compatibleComponentIdsProvider = FutureProvider.family<Set<String>, String>((ref, componentId) async {
-  final service = ref.watch(componentCompatibilityServiceProvider);
-  return await service.getCompatibleComponentIds(componentId);
-});
-
+final compatibleComponentIdsProvider = FutureProvider.autoDispose
+    .family<Set<String>, String>((ref, componentId) async {
+      final service = ref.watch(componentCompatibilityServiceProvider);
+      return await service.getCompatibleComponentIds(componentId);
+    });
 
 /// Provider that checks if a component is compatible with selected components.
 /// Takes componentId and selectedComponentIds, returns true if compatible.
-final componentCompatibilityCheckProvider = FutureProvider.family<bool, ({String componentId, List<String> selectedIds})>((ref, params) async {
-  final service = ref.watch(componentCompatibilityServiceProvider);
-  
-  if (params.selectedIds.isEmpty) return true; // No selection means compatible
+final componentCompatibilityCheckProvider = FutureProvider.autoDispose
+    .family<bool, ({String componentId, List<String> selectedIds})>((
+      ref,
+      params,
+    ) async {
+      final service = ref.watch(componentCompatibilityServiceProvider);
 
-  return await service.isCompatibleWithBuild(params.componentId, params.selectedIds);
-});
+      if (params.selectedIds.isEmpty)
+        return true; // No selection means compatible
+
+      return await service.isCompatibleWithBuild(
+        params.componentId,
+        params.selectedIds,
+      );
+    });
 
 /// Provider that batch checks compatibility for multiple components.
 /// Takes list of componentIds and selectedComponentIds, returns map of componentId -> isCompatible.
 /// This is more efficient than checking each component individually.
-final batchCompatibilityCheckProvider = FutureProvider.family<Map<String, bool>, ({List<String> componentIds, List<String> selectedIds})>((ref, params) async {
-  final service = ref.watch(componentCompatibilityServiceProvider);
-  
-  return await service.batchCheckCompatibilityWithBuild(params.componentIds, params.selectedIds);
-});
+final batchCompatibilityCheckProvider = FutureProvider.autoDispose
+    .family<
+      Map<String, bool>,
+      ({List<String> componentIds, List<String> selectedIds})
+    >((ref, params) async {
+      final service = ref.watch(componentCompatibilityServiceProvider);
+
+      return await service.batchCheckCompatibilityWithBuild(
+        params.componentIds,
+        params.selectedIds,
+      );
+    });
