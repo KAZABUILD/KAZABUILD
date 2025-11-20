@@ -12,7 +12,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get language => 'Polski';
 
   @override
-  String get appTitle => 'Kaza Build';
+  String get appTitle => 'KazaBuild';
 
   @override
   String get exploreBuilds => 'Przeglądaj Buildy';

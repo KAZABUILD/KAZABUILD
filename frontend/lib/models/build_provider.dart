@@ -1131,7 +1131,8 @@ class ComponentCacheNotifier extends StateNotifier<Map<String, Map<String, dynam
 }
 
 /// A provider that fetches the details of a single build by its ID.
-final buildDetailProvider = FutureProvider.family<Build, String>((ref, buildId) async {
+/// Uses autoDispose to prevent caching - data will be refetched each time the page is opened.
+final buildDetailProvider = FutureProvider.autoDispose.family<Build, String>((ref, buildId) async {
   final buildService = ref.watch(buildServiceProvider);
   final currentUser = ref.watch(authProvider).valueOrNull;
   // Use the new, more direct method to fetch a single build.

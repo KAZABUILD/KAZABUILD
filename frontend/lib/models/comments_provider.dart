@@ -215,7 +215,8 @@ class BuildCommentsNotifier extends StateNotifier<AsyncValue<List<BuildComment>>
   }
 }
 
-final buildCommentsProvider = StateNotifierProvider.family<BuildCommentsNotifier, AsyncValue<List<BuildComment>>, String>((ref, buildId) {
+/// Provider for build comments. Uses autoDispose to prevent caching - comments will be refetched each time the page is opened.
+final buildCommentsProvider = StateNotifierProvider.autoDispose.family<BuildCommentsNotifier, AsyncValue<List<BuildComment>>, String>((ref, buildId) {
   final service = ref.watch(commentsServiceProvider);
   return BuildCommentsNotifier(service, buildId);
 });

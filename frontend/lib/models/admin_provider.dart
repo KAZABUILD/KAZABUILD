@@ -170,11 +170,11 @@ final adminUsersProvider = FutureProvider.autoDispose.family<List<AdminUser>, Ma
     final paramStr = 'query:${params['query']}, page:${params['page']}, pageLength:${params['pageLength']}';
     print('AdminUsersProvider: Fetching users with params: $paramStr');
     
-    // Ensure page and pageLength are always provided for pagination
+    // Fetch only the requested page
     final page = params['page'] as int? ?? 1;
     final pageLength = params['pageLength'] as int? ?? 20;
     
-    print('AdminUsersProvider: page=$page, pageLength=$pageLength');
+    print('AdminUsersProvider: Fetching page $page with pageLength $pageLength');
     
     final response = await adminService.getUsers(
       query: params['query'] as String?,
@@ -185,7 +185,7 @@ final adminUsersProvider = FutureProvider.autoDispose.family<List<AdminUser>, Ma
       orderBy: params['orderBy'] as String?,
       sortDirection: params['sortDirection'] as String? ?? 'asc',
     );
-
+    
     print('AdminUsersProvider: Response status: ${response.statusCode}');
     print('AdminUsersProvider: Response data type: ${response.data.runtimeType}');
 

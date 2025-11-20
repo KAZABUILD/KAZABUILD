@@ -22,7 +22,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   String _selectedCategory = 'All';
   final List<String> _categories = ['All', 'CPU', 'GPU', 'MEMORY', 'MOTHERBOARD', 'STORAGE', 'POWER_SUPPLY', 'CASE', 'COOLER', 'CASE_FAN', 'MONITOR'];
   int _currentPage = 1;
-  final int _pageSize = 12;
+  final int _pageSize = 20; // Show 20 components per page
   String? _orderBy;
   String _sortDirection = 'desc';
   
@@ -177,14 +177,13 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   }
 
   Map<String, dynamic> _buildQueryParams() {
-    // Don't send pagination params to backend - get all components and paginate on client side
     final newParams = {
       'query': _searchController.text.isEmpty ? null : _searchController.text,
       'componentTypes': _selectedCategory == 'All' 
           ? null 
           : [_selectedCategory],
-      'page': null, // Don't paginate on backend
-      'pageLength': null, // Get all components
+      'page': _currentPage,
+      'pageLength': _pageSize,
       'orderBy': _orderBy ?? 'DatabaseEntryAt',
       'sortDirection': _sortDirection,
     };
@@ -244,22 +243,10 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   _buildTableHeader(isDark),
                   Expanded(
                     child: componentsAsync.when(
-                      data: (allComponents) {
-                        print('AdminPartsPage: Received ${allComponents.length} total components');
+                      data: (components) {
+                        print('AdminPartsPage: Received ${components.length} components from backend');
                         
-                        // Client-side pagination
-                        final startIndex = (_currentPage - 1) * _pageSize;
-                        final endIndex = startIndex + _pageSize;
-                        final components = allComponents.length > startIndex
-                            ? allComponents.sublist(
-                                startIndex,
-                                endIndex > allComponents.length ? allComponents.length : endIndex,
-                              )
-                            : <AdminComponent>[];
-                        
-                        print('AdminPartsPage: Showing ${components.length} components (page $_currentPage, ${allComponents.length} total)');
-                        
-                        if (allComponents.isEmpty) {
+                        if (components.isEmpty) {
                           return Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -287,16 +274,23 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                         }
                         
                         print('AdminPartsPage: Rendering ${components.length} components in ListView');
-                        return ListView.separated(
-                          itemCount: components.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 0),
-                          itemBuilder: (context, index) {
-                            final component = components[index];
-                            if (index < 5) {
-                              print('AdminPartsPage: Building row $index for component ${component.name ?? component.id}');
-                            }
-                            return _buildPartRow(component, isDark);
-                          },
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: components.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 0),
+                                itemBuilder: (context, index) {
+                                  final component = components[index];
+                                  if (index < 5) {
+                                    print('AdminPartsPage: Building row $index for component ${component.name ?? component.id}');
+                                  }
+                                  return _buildPartRow(component, isDark);
+                                },
+                              ),
+                            ),
+                            _buildPagination(isDark, componentsAsync),
+                          ],
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
@@ -325,7 +319,6 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                       ),
                     ),
                   ),
-                  _buildPagination(isDark, componentsAsync),
                 ],
               ),
             ),
@@ -645,26 +638,14 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
 
   Widget _buildPagination(bool isDark, AsyncValue<List<AdminComponent>> componentsAsync) {
     return componentsAsync.when(
-      data: (allComponents) {
-        final totalComponents = allComponents.length;
-        final totalPages = totalComponents > 0 ? (totalComponents / _pageSize).ceil() : 1;
+      data: (components) {
+        final currentPageComponents = components.length;
+        final start = currentPageComponents > 0 ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final end = currentPageComponents > 0 ? start + currentPageComponents - 1 : 0;
         
-        // Client-side pagination için hesaplama
-        final startIndex = (_currentPage - 1) * _pageSize;
-        final endIndex = startIndex + _pageSize;
-        final currentPageItems = allComponents.length > startIndex
-            ? allComponents.sublist(
-                startIndex,
-                endIndex > allComponents.length ? allComponents.length : endIndex,
-              )
-            : <AdminComponent>[];
-        
-        final start = totalComponents > 0 && currentPageItems.isNotEmpty 
-            ? startIndex + 1 
-            : 0;
-        final end = totalComponents > 0 && currentPageItems.isNotEmpty
-            ? startIndex + currentPageItems.length
-            : 0;
+        // If we got a full page, there might be more pages
+        // If we got less than pageSize, we're on the last page
+        final hasMore = currentPageComponents == _pageSize;
         
         return Container(
           padding: const EdgeInsets.all(16),
@@ -681,8 +662,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                totalComponents > 0
-                    ? 'Showing $start-$end of $totalComponents components (Page $_currentPage / $totalPages)'
+                currentPageComponents > 0
+                    ? 'Showing $start-$end components (Page $_currentPage${hasMore ? '+' : ''})'
                     : 'No components',
                 style: TextStyle(
                   color: isDark
@@ -698,13 +679,13 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                         ? () {
                             setState(() {
                               _currentPage--;
-                              _cachedQueryParams = null; // Invalidate cache
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
                             });
                           }
                         : null,
                   ),
                   Text(
-                    'Page $_currentPage / $totalPages',
+                    'Page $_currentPage',
                     style: TextStyle(
                       color: isDark
                           ? AppColorsDark.textWhite
@@ -713,12 +694,11 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right),
-                    // Client-side pagination: currentPage < totalPages kontrolü yeterli
-                    onPressed: _currentPage < totalPages
+                    onPressed: hasMore || currentPageComponents == _pageSize
                         ? () {
                             setState(() {
                               _currentPage++;
-                              _cachedQueryParams = null; // Invalidate cache
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
                             });
                           }
                         : null,

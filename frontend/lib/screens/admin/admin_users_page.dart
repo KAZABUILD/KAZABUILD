@@ -21,6 +21,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   final TextEditingController _searchController = TextEditingController();
   String? _orderBy;
   String _sortDirection = 'asc';
+  int _currentPage = 1;
+  final int _pageSize = 20; // Show 20 users per page
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
@@ -127,6 +129,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   ),
                   onChanged: (value) {
                     setState(() {
+                      _currentPage = 1; // Reset to first page on search
                       _cachedQueryParams = null; // Invalidate cache
                     });
                   },
@@ -146,6 +149,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       'query': _searchController.text.isEmpty ? null : _searchController.text,
       'orderBy': _orderBy ?? 'DatabaseEntryAt',
       'sortDirection': _sortDirection,
+      'page': _currentPage,
+      'pageLength': _pageSize,
     };
     
     // Check if params actually changed to prevent unnecessary rebuilds
@@ -242,6 +247,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                           },
                         ),
                       ),
+                      _buildPagination(isDark, usersAsync),
                     ],
                   );
                 },
@@ -679,6 +685,84 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildPagination(bool isDark, AsyncValue<List<AdminUser>> usersAsync) {
+    return usersAsync.when(
+      data: (users) {
+        final currentPageUsers = users.length;
+        final start = currentPageUsers > 0 ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final end = currentPageUsers > 0 ? start + currentPageUsers - 1 : 0;
+        
+        // If we got a full page, there might be more pages
+        // If we got less than pageSize, we're on the last page
+        final hasMore = currentPageUsers == _pageSize;
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                currentPageUsers > 0
+                    ? 'Showing $start-$end users (Page $_currentPage${hasMore ? '+' : ''})'
+                    : 'No users',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                ),
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 1
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                  Text(
+                    'Page $_currentPage',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: hasMore || currentPageUsers == _pageSize
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
   }
 }
 

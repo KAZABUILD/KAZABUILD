@@ -12,7 +12,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get language => 'Türkçe';
 
   @override
-  String get appTitle => 'Kaza Build';
+  String get appTitle => 'KazaBuild';
 
   @override
   String get exploreBuilds => 'Build\'leri Keşfet';

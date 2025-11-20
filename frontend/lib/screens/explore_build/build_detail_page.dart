@@ -29,7 +29,8 @@ import 'package:frontend/widgets/linkable_text.dart';
 import 'dart:typed_data';
 
 /// Provider to fetch user details based on their ID
-final buildUserProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+/// Uses autoDispose to prevent caching - data will be refetched each time the page is opened.
+final buildUserProvider = FutureProvider.autoDispose.family<AppUser?, String>((ref, userId) async {
   try {
     final authService = ref.read(authServiceProvider);
     final userResponse = await authService.getUserById(userId);
