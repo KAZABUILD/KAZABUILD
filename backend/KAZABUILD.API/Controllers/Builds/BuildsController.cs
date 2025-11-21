@@ -10,6 +10,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -569,7 +570,12 @@ namespace KAZABUILD.API.Controllers.Builds
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the build to delete
-            var build = await _db.Builds.Include(b => b.Images).Include(b => b.Comments).FirstOrDefaultAsync(b => b.Id == id);
+            var build = await _db.Builds
+                .Include(b => b.Images)
+                .Include(b => b.Comments)
+                .Include(b => b.Components)
+                .Include(b => b.Interactions)
+                .FirstOrDefaultAsync(b => b.Id == id);
             if (build == null)
             {
                 //Log failure
@@ -633,10 +639,25 @@ namespace KAZABUILD.API.Controllers.Builds
             //Get all tags
             var tags = await _db.BuildTags.Where(f => f.BuildId == build.Id).ToListAsync();
 
-            //Remove all compatibilities containing the component id of the component to be deleted
+            //Remove all related tags
             if (tags.Count != 0)
             {
                 _db.BuildTags.RemoveRange(tags);
+            }
+
+            //Set all related interactions foreign key field to null
+            if (build.Interactions.Count != 0)
+            {
+                foreach(var interaction in  build.Interactions)
+                {
+                    interaction.BuildId = null;
+                }
+            }
+
+            //Remove all of the build's components
+            if (build.Components.Count != 0)
+            {
+                _db.BuildComponents.RemoveRange(build.Components);
             }
 
             //Delete the build
@@ -799,17 +820,29 @@ namespace KAZABUILD.API.Controllers.Builds
             //Generate each build
             for (int i = 0; i < 3; i++)
             {
+                //Declare point values for calculating the price distribution ratios relative to each other
+                float caseRatio = 0.4f;
+                float caseFanRatio = 0.05f;
+                float coolerRatio = 0.25f;
+                float cpuRatio = 1.0f;
+                float gpuRatio = 2.5f;
+                float memoryRatio = 2.2f;
+                float monitorRatio = 1.0f;
+                float motherboardRatio = 1.0f;
+                float powerSupplyRatio = 0.45f;
+                float storageRatio = 0.7f;
+
                 //Declare point values for calculating the price distribution relative to each other
-                float caseScore = 0.4f;
-                float caseFanScore = 0.05f;
-                float coolerScore = 0.25f;
-                float cpuScore = 1.0f;
-                float gpuScore = 2.5f;
-                float memoryScore = 2.2f;
-                float monitorScore = 1.0f;
-                float motherboardScore = 1.0f;
-                float powerSupplyScore = 0.45f;
-                float storageScore = 0.7f;
+                int caseScore = 0;
+                int caseFanScore = 0;
+                int coolerScore = 0;
+                int cpuScore = 0;
+                int gpuScore = 0;
+                int memoryScore = 0;
+                int monitorScore = 0;
+                int motherboardScore = 0;
+                int powerSupplyScore = 0;
+                int storageScore = 0;
 
                 //Declare a list of components for the build
                 List<BaseComponent> components = [];
@@ -876,10 +909,13 @@ namespace KAZABUILD.API.Controllers.Builds
                     coolerScore += p.cooler;
                 }
 
+                //Adjust the ratios based on the scores
+
+
                 //Make non-standard adjustments based on the answers
                 if (hobbyAnswers.Select(a => a.Answer).Contains("Looks"))
                 {
-                    caseScore += 0.2f;
+                    caseRatio += 0.2f;
                 }
 
                 //Get the components based on the scores and price bounds

@@ -248,7 +248,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(i => i.UserComment)
                 .WithMany(u => u.UserCommentInteractions)
                 .HasForeignKey(i => i.UserCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== FORUM POST ======================================//
 
@@ -308,7 +308,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(a => a.User)
                 .WithMany(u => u.UserActivities)
                 .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== USER FEEDBACK ======================================//
 
@@ -317,7 +317,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(a => a.User)
                 .WithMany(u => u.UserFeedback)
                 .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== USER REPORT ======================================//
 
@@ -531,7 +531,7 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== BUILD COMPONENT ======================================//
 
-            //Register relationships, disable cascade delete for components, should remain in database until the user deletes it
+            //Register relationships, disable cascade delete for components, must be handled in API calls
             modelBuilder.Entity<BuildComponent>()
                 .HasOne(c => c.Build)
                 .WithMany(u => u.Components)
@@ -542,7 +542,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(c => c.Component)
                 .WithMany(u => u.Builds)
                 .HasForeignKey(c => c.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== BUILD INTERACTION ======================================//
 

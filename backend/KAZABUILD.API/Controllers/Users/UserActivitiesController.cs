@@ -327,7 +327,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(a => dto.UserId.Contains(a.UserId));
+                query = query.Where(a => a.UserId != null && dto.UserId.Contains((Guid)a.UserId));
             }
             if (dto.ActivityType != null)
             {
@@ -485,7 +485,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(a => dto.UserId.Contains(a.UserId));
+                query = query.Where(a => a.UserId != null && dto.UserId.Contains((Guid)a.UserId));
             }
             if (dto.ActivityType != null)
             {

@@ -540,7 +540,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -699,7 +699,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -793,7 +793,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {

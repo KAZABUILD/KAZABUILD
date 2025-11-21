@@ -550,7 +550,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.UserCommentId != null)
             {
-                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
+                query = query.Where(i => i.UserCommentId != null && dto.UserCommentId.Contains((Guid)i.UserCommentId));
             }
             if (dto.IsLiked != null)
             {
@@ -696,7 +696,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.UserCommentId != null)
             {
-                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
+                query = query.Where(i => i.UserCommentId != null && dto.UserCommentId.Contains((Guid)i.UserCommentId));
             }
             if (dto.IsLiked != null)
             {

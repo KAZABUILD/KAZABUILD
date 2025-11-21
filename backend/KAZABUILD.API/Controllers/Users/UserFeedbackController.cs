@@ -393,7 +393,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(f => dto.UserId.Contains(f.UserId));
+                query = query.Where(f => f.UserId != null && dto.UserId.Contains((Guid)f.UserId));
             }
 
             //Apply search based on provided query string

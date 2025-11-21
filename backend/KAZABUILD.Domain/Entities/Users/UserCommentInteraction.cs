@@ -19,9 +19,9 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// Id of the Comment the user Interacted with.
+        /// It is set to null only if the comment gets deleted.
         /// </summary>
-        [Required]
-        public Guid UserCommentId { get; set; } = default!;
+        public Guid? UserCommentId { get; set; }
 
         /// <summary>
         /// Whether the user Liked the Comment.
