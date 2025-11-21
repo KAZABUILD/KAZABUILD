@@ -453,11 +453,11 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.SenderId != null)
             {
-                query = query.Where(m => dto.SenderId.Contains(m.SenderId));
+                query = query.Where(m => m.SenderId != null && dto.SenderId.Contains((Guid)m.SenderId));
             }
             if (dto.ReceiverId != null)
             {
-                query = query.Where(m => dto.ReceiverId.Contains(m.ReceiverId));
+                query = query.Where(m => m.ReceiverId != null && dto.ReceiverId.Contains((Guid)m.ReceiverId));
             }
             if (dto.IsRead != null)
             {
@@ -598,7 +598,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the message to delete
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
+            var message = await _db.Messages.Include(m => m.ChildMessages).FirstOrDefaultAsync(m => m.Id == id);
             if (message == null)
             {
                 //Log failure
@@ -636,6 +636,12 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper unauthorized response
                 return Forbid();
+            }
+
+            //Set all child message foreign keys to null
+            foreach(var child in message.ChildMessages)
+            {
+                child.ParentMessageId = null;
             }
 
             //Delete the message

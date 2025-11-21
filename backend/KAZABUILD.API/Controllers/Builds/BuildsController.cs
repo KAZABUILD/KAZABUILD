@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -654,12 +655,6 @@ namespace KAZABUILD.API.Controllers.Builds
                 }
             }
 
-            //Remove all of the build's components
-            if (build.Components.Count != 0)
-            {
-                _db.BuildComponents.RemoveRange(build.Components);
-            }
-
             //Delete the build
             _db.Builds.Remove(build);
 
@@ -756,9 +751,6 @@ namespace KAZABUILD.API.Controllers.Builds
             //Declare a list for generated builds
             List<Build> generatedBuilds = [];
 
-            //Create a dictionary for calculating price ranges
-            Dictionary<int, float> priceLimits = [];
-
             //Get the answers for the budget question
             var priceAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What’s your budget?").Select(a => a.UserPreferenceAnswer);
 
@@ -811,8 +803,8 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Calculate middle bounds for the 3 price ranges
-            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1/3));
-            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2/3));
+            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f/3f));
+            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f/3f));
 
             //Check for generation fail
             bool failed = false;
@@ -833,15 +825,11 @@ namespace KAZABUILD.API.Controllers.Builds
                 float storageRatio = 0.7f;
 
                 //Declare point values for calculating the price distribution relative to each other
-                int caseScore = 0;
-                int caseFanScore = 0;
                 int coolerScore = 0;
                 int cpuScore = 0;
                 int gpuScore = 0;
                 int memoryScore = 0;
                 int monitorScore = 0;
-                int motherboardScore = 0;
-                int powerSupplyScore = 0;
                 int storageScore = 0;
 
                 //Declare a list of components for the build
@@ -858,6 +846,13 @@ namespace KAZABUILD.API.Controllers.Builds
                     DatabaseEntryAt = DateTime.UtcNow,
                     LastEditedAt = DateTime.UtcNow
                 };
+
+                //Add the build to the database
+                _db.Builds.Add(build);
+                await _db.SaveChangesAsync();
+
+                //Add the build id to list for rabbitMQ publishing
+                generatedBuilds.Add(build);
 
                 //Go through every answer to every question and adjust the scores accordingly
 
@@ -910,43 +905,229 @@ namespace KAZABUILD.API.Controllers.Builds
                 }
 
                 //Adjust the ratios based on the scores
+                float averageScore = (float)(gpuScore + cpuScore + memoryScore + storageScore + monitorScore + coolerScore) / 6.0f;
+                int totalScore = gpuScore + cpuScore + memoryScore + storageScore + monitorScore + coolerScore;
+                gpuRatio *= 1 + (gpuScore - averageScore) / totalScore;
+                cpuRatio *= 1 + (cpuScore - averageScore) / totalScore;
+                memoryRatio *= 1 + (memoryScore - averageScore) / totalScore;
+                storageRatio *= 1 + (storageScore - averageScore) / totalScore;
+                monitorRatio *= 1 + (monitorScore - averageScore) / totalScore;
+                coolerRatio *= 1 + (coolerScore - averageScore) / totalScore;
+                motherboardRatio *= 1 + ((gpuRatio+cpuRatio)/2 - averageScore) / totalScore;
 
+                //Additional criteria for filtering components
+                decimal additionalPower = 0.0m;
+                bool filterForExtraCores = false;
+                bool filterFor4k = false;
+                bool filterForQuietFans = false;
+                bool filterForSSD = false;
+                bool filterForRGB = false;
 
-                //Make non-standard adjustments based on the answers
-                if (hobbyAnswers.Select(a => a.Answer).Contains("Looks"))
+                //Make non-standard adjustments to ratios based on the answers
+                if (priorityAnswers.Select(a => a.Answer).Contains("Reliability"))
+                {
+                    filterForSSD = true;
+                }
+                if (priorityAnswers.Select(a => a.Answer).Contains("Quiet Operation"))
+                {
+                    filterForQuietFans = true;
+                }
+                if (priorityAnswers.Select(a => a.Answer).Contains("Strong Graphics"))
+                {
+                    filterFor4k = true;
+                }
+                if (priorityAnswers.Select(a => a.Answer).Contains("Fast Multitasking"))
+                {
+                    filterForExtraCores = true;
+                }
+                if (priorityAnswers.Select(a => a.Answer).Contains("Looks"))
                 {
                     caseRatio += 0.2f;
+                    caseFanRatio += 0.1f;
+                    filterForRGB = true;
+                }
+                if (usageAnswers.Select(a => a.Answer).Contains("AI Training"))
+                {
+                    additionalPower += 50.0m;
+                    powerSupplyRatio += 0.1f;
                 }
 
                 //Get the components based on the scores and price bounds
 
-                //Get the total score for all components
-                float totalScore = caseScore + caseFanScore + coolerScore + cpuScore + gpuScore + memoryScore + monitorScore + motherboardScore + powerSupplyScore + storageScore;
+                //Get the total ratio for all components
+                float totalRatio = caseRatio + caseFanRatio + coolerRatio + cpuRatio + gpuRatio + memoryRatio + monitorRatio + motherboardRatio + powerSupplyRatio + storageRatio;
 
-                //Get the price maximum for all the components
-                var (caseMinPrice, caseMaxPrice) = BuildGenerationHelper.AllocateBudget(caseScore, totalScore, bounds[i], bounds[i + 1]);
-                var (caseFanMinPrice, caseFanMaxPrice) = BuildGenerationHelper.AllocateBudget(caseFanScore, totalScore, bounds[i], bounds[i + 1]);
-                var (coolerMinPrice, coolerMaxPrice) = BuildGenerationHelper.AllocateBudget(coolerScore, totalScore, bounds[i], bounds[i + 1]);
-                var (cpuMinPrice, cpuMaxPrice) = BuildGenerationHelper.AllocateBudget(cpuScore, totalScore, bounds[i], bounds[i + 1]);
-                var (gpuMinPrice, gpuMaxPrice) = BuildGenerationHelper.AllocateBudget(gpuScore, totalScore, bounds[i], bounds[i + 1]);
-                var (memoryMinPrice, memoryMaxPrice) = BuildGenerationHelper.AllocateBudget(memoryScore, totalScore, bounds[i], bounds[i + 1]);
-                var (monitorMinPrice, monitorMaxPrice) = BuildGenerationHelper.AllocateBudget(monitorScore, totalScore, bounds[i], bounds[i + 1]);
-                var (motherboardMinPrice, motherboardMaxPrice) = BuildGenerationHelper.AllocateBudget(motherboardScore, totalScore, bounds[i], bounds[i + 1]);
-                var (powerSupplyMinPrice, powerSupplyMaxPrice) = BuildGenerationHelper.AllocateBudget(powerSupplyScore, totalScore, bounds[i], bounds[i + 1]);
-                var (storageMinPrice, storageMaxPrice) = BuildGenerationHelper.AllocateBudget(storageScore, totalScore, bounds[i], bounds[i + 1]);
+                //Get the price maximum and minimum for all the components
+                var (caseMinPrice, caseMaxPrice) = BuildGenerationHelper.AllocateBudget(caseRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (caseFanMinPrice, caseFanMaxPrice) = BuildGenerationHelper.AllocateBudget(caseFanRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (coolerMinPrice, coolerMaxPrice) = BuildGenerationHelper.AllocateBudget(coolerRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (cpuMinPrice, cpuMaxPrice) = BuildGenerationHelper.AllocateBudget(cpuRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (gpuMinPrice, gpuMaxPrice) = BuildGenerationHelper.AllocateBudget(gpuRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (memoryMinPrice, memoryMaxPrice) = BuildGenerationHelper.AllocateBudget(memoryRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (monitorMinPrice, monitorMaxPrice) = BuildGenerationHelper.AllocateBudget(monitorRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (motherboardMinPrice, motherboardMaxPrice) = BuildGenerationHelper.AllocateBudget(motherboardRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (powerSupplyMinPrice, powerSupplyMaxPrice) = BuildGenerationHelper.AllocateBudget(powerSupplyRatio, totalRatio, bounds[i], bounds[i + 1]);
+                var (storageMinPrice, storageMaxPrice) = BuildGenerationHelper.AllocateBudget(storageRatio, totalRatio, bounds[i], bounds[i + 1]);
 
                 //Get all components that fit the criteria
+
+                //Get the CPU component
+                var cpuComponent = await _db.Components
+                    .OfType<CPUComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.CPU)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)cpuMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)cpuMinPrice
+                    )
+                    .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterForExtraCores, c => c.CoreTotal)
+                    .FirstOrDefaultAsync();
+                if (cpuComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(cpuComponent);
+
+                //Get the motherboard component
+                var motherboardComponent = await _db.Components
+                    .OfType<MotherboardComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.MOTHERBOARD)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)motherboardMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)motherboardMinPrice
+                    )
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id))
+                    .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
+                    .FirstOrDefaultAsync();
+                if (motherboardComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(motherboardComponent);
+
+                //Get the cooler component
+                var coolerComponent = await _db.Components
+                    .OfType<CoolerComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.COOLER)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)coolerMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)coolerMinPrice
+                    )
+                    .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
+                    .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
+                    .FirstOrDefaultAsync();
+                if (coolerComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(coolerComponent);
+
+                //Get the memory component
+                var memoryComponent = await _db.Components
+                    .OfType<MemoryComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.MEMORY)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)memoryMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)memoryMinPrice
+                    )
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
+                    .OrderBy(r => Guid.NewGuid())
+                    .FirstOrDefaultAsync();
+                if (memoryComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(memoryComponent);
+
+                //Get the storage component
+                var storageComponent = await _db.Components
+                    .OfType<StorageComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.STORAGE)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)storageMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)storageMinPrice
+                    )
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
+                    .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
+                    .FirstOrDefaultAsync();
+                if (storageComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(storageComponent);
+
+                //Get the GPU component
+                var gpuComponent = await _db.Components
+                    .OfType<GPUComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.GPU)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)gpuMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)gpuMinPrice
+                    )
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
+                    .OrderBy(r => Guid.NewGuid())
+                    .FirstOrDefaultAsync();
+                if (gpuComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(gpuComponent);
+
+                //Get the power supply component adjusting for the power usage in other components
+                var powerSupplyComponent = await _db.Components
+                    .OfType<PowerSupplyComponent>()
+                    .Include(c => c.Prices)
+                    .Include(c => c.CompatibleComponents)
+                    .Where(c => c.Type == ComponentType.POWER_SUPPLY)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)powerSupplyMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)powerSupplyMinPrice
+                    )
+                    .Where(c => (new[] { (BaseComponent)gpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
+                    .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower) //Adjust for GPU, CPU + 100 extra + if any extra needed
+                    .OrderBy(r => Guid.NewGuid())
+                    .FirstOrDefaultAsync();
+                if (powerSupplyComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(powerSupplyComponent);
 
                 //Get the case component
                 var caseComponent = await _db.Components
                     .OfType<CaseComponent>()
                     .Include(c => c.Prices)
-                    .Where(
-                        c => c.Prices.FirstOrDefault() != null &&
-                        c.Type == ComponentType.CASE &&
+                    .Where(c => c.Type == ComponentType.CASE)
+                     .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
                         c.Prices.Min(p => p.Price) < (decimal)caseMaxPrice &&
                         c.Prices.Min(p => p.Price) > (decimal)caseMinPrice
                     )
+                    .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent })
+                                    .All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
                     .FirstOrDefaultAsync();
                 if (caseComponent == null)
@@ -956,29 +1137,47 @@ namespace KAZABUILD.API.Controllers.Builds
                 }
                 components.Add(caseComponent);
 
-                //TODO all component generation
-
-                //Get the power supply component adjusting for the power usage in other components
-                var powerSupplyComponent = await _db.Components
-                    .OfType<PowerSupplyComponent>()
+                //Get the case fan component
+                var caseFanComponent = await _db.Components
+                    .OfType<CaseFanComponent>()
                     .Include(c => c.Prices)
-                    .Include(c => c.CompatibleComponents)
-                    .Where(
-                        c => c.Prices.FirstOrDefault() != null &&
-                        c.Type == ComponentType.POWER_SUPPLY &&
-                        c.Prices.Min(p => p.Price) < (decimal)powerSupplyMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)powerSupplyMinPrice &&
-                        c.CompatibleComponents.Select(cc => cc.CompatibleComponentId).Intersect(components.Select(comp => comp.Id)).Count() == components.Count() &&
-                        c.PowerOutput > 100.0m //Adjust for GPU, CPU + 100 extra
+                    .Where(c => c.Type == ComponentType.CASE_FAN)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)caseFanMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)caseFanMinPrice
                     )
+                    .Where(c => (new[] { (BaseComponent)caseComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
                     .FirstOrDefaultAsync();
-                if (powerSupplyComponent == null)
+                if (caseFanComponent == null)
                 {
                     failed = true;
                     break;
                 }
-                components.Add(powerSupplyComponent);
+                components.Add(caseFanComponent);
+
+                //Get the monitor component
+                var monitorComponent = await _db.Components
+                    .OfType<MonitorComponent>()
+                    .Include(c => c.Prices)
+                    .Where(c => c.Type == ComponentType.MONITOR)
+                    .Where(c =>
+                        c.Prices.FirstOrDefault() != null &&
+                        c.Prices.Min(p => p.Price) < (decimal)monitorMaxPrice &&
+                        c.Prices.Min(p => p.Price) > (decimal)monitorMinPrice
+                    )
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id))
+                    .OrderBy(r => Guid.NewGuid())
+                        .ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
+                    .FirstOrDefaultAsync();
+                if (monitorComponent == null)
+                {
+                    failed = true;
+                    break;
+                }
+                components.Add(monitorComponent);
 
                 //Add all the components to the build
                 foreach(BaseComponent component in components)
@@ -991,7 +1190,11 @@ namespace KAZABUILD.API.Controllers.Builds
                     };
 
                     _db.BuildComponents.Add(buildComponent);
-                }    
+                }
+
+                //Add a description to the build
+                var price = components.Select(c => c.Prices.Min(p => p.Price)).Sum();
+                build.Description = $"A Build generated just for you for the lowest possible price of {price}. Remember to verify the prices on your own as they can differ from vendor to vendor!";
             }
 
             //Check if the components aren't null
@@ -1005,8 +1208,14 @@ namespace KAZABUILD.API.Controllers.Builds
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - Some Component(s) Do(es) Not Exist"
+                    "Operation Failed - No Components Found That Fit The Selected Quiz Answers"
                 );
+
+                //Remove the generated builds from the database
+                _db.Builds.RemoveRange(generatedBuilds);
+
+                //Save changes to the database
+                await _db.SaveChangesAsync();
 
                 //Return proper error response
                 return BadRequest(new { message = "No components found that fit the criteria!" });

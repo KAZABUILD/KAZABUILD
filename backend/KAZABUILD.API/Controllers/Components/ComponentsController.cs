@@ -3395,7 +3395,11 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the component to delete
-            var component = await _db.Components.Include(c => c.Images).Include(c => c.Comments).FirstOrDefaultAsync(u => u.Id == id);
+            var component = await _db.Components
+                .Include(c => c.Images)
+                .Include(c => c.Comments)
+                .Include(c => c.Builds)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (component == null)
             {
                 //Log failure
@@ -3431,6 +3435,15 @@ namespace KAZABUILD.API.Controllers.Components
             if (component.Comments.Count != 0)
             {
                 _db.UserComments.RemoveRange(component.Comments);
+            }
+
+            //Set it to null in all builds it's used in
+            if (component.Builds.Count != 0)
+            {
+                foreach(var buildComponent in component.Builds)
+                {
+                    buildComponent.ComponentId = null;
+                }    
             }
 
             //Handle deleting compatible components to avoid conflicts with cascade deletes
