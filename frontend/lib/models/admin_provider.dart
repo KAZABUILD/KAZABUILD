@@ -525,6 +525,7 @@ class AdminComponent {
   final String componentType;
   final DateTime? release;
   final int? numberOfParts;
+  final String? note;
 
   AdminComponent({
     required this.id,
@@ -533,6 +534,7 @@ class AdminComponent {
     required this.componentType,
     this.release,
     this.numberOfParts,
+    this.note,
   });
 
   factory AdminComponent.fromJson(Map<String, dynamic> json) {
@@ -579,6 +581,7 @@ class AdminComponent {
         componentType: componentTypeStr,
         release: parseDateTime(json['release'] ?? json['Release']),
         numberOfParts: json['numberOfParts'] ?? json['NumberOfParts'],
+        note: json['note'] ?? json['Note'],
       );
     } catch (e, stack) {
       print('Error in AdminComponent.fromJson: $e');

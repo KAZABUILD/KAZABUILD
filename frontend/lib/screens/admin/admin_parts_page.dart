@@ -764,16 +764,186 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   }
 
   void _showEditComponentDialog(BuildContext context, AdminComponent component, bool isDark) {
-    // For now, show a message that component editing is not yet implemented
-    // In the future, this could open a dialog to edit component properties
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Component editing is not yet available. Use the parts page to view component details.'),
-        backgroundColor: AppColorsDark.buttonBlue,
-        duration: const Duration(seconds: 3),
+    final _nameController = TextEditingController(text: component.name ?? '');
+    final _manufacturerController = TextEditingController(text: component.manufacturer ?? '');
+    final _noteController = TextEditingController(text: component.note ?? '');
+    bool _isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            'Edit Component',
+            style: TextStyle(
+              color: isDark
+                  ? AppColorsDark.textWhite
+                  : AppColorsLight.textBlack,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Component ID: ${component.id.substring(0, 8)}...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Type: ${component.componentType}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColorsDark.backgroundTertiary
+                        : AppColorsLight.backgroundSecondary,
+                  ),
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _manufacturerController,
+                  decoration: InputDecoration(
+                    labelText: 'Manufacturer',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColorsDark.backgroundTertiary
+                        : AppColorsLight.backgroundSecondary,
+                  ),
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _noteController,
+                  decoration: InputDecoration(
+                    labelText: 'Note (Optional)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColorsDark.backgroundTertiary
+                        : AppColorsLight.backgroundSecondary,
+                  ),
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: isDark
+              ? AppColorsDark.backgroundSecondary
+              : AppColorsLight.backgroundTertiary,
+          actions: [
+            TextButton(
+              onPressed: _isSaving ? null : () {
+                _nameController.dispose();
+                _manufacturerController.dispose();
+                _noteController.dispose();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: _isSaving ? null : () async {
+                setDialogState(() => _isSaving = true);
+                try {
+                  final updateData = <String, dynamic>{};
+                  if (_nameController.text.trim().isNotEmpty) {
+                    updateData['Name'] = _nameController.text.trim();
+                  }
+                  if (_manufacturerController.text.trim().isNotEmpty) {
+                    updateData['Manufacturer'] = _manufacturerController.text.trim();
+                  }
+                  if (_noteController.text.trim().isNotEmpty) {
+                    updateData['Note'] = _noteController.text.trim();
+                  } else {
+                    updateData['Note'] = null;
+                  }
+
+                  final adminService = ref.read(adminServiceProvider);
+                  await adminService.updateComponent(
+                    component.id, 
+                    updateData,
+                    componentType: component.componentType,
+                  );
+                  
+                  if (mounted) {
+                    // Invalidate the components provider to refresh the list
+                    ref.invalidate(adminComponentsProvider(_cachedQueryParams ?? {}));
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Component updated successfully'),
+                        backgroundColor: AppColorsDark.buttonGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  setDialogState(() => _isSaving = false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(getUserFriendlyError(e)),
+                        backgroundColor: AppColorsDark.error,
+                      ),
+                    );
+                  }
+                } finally {
+                  _nameController.dispose();
+                  _manufacturerController.dispose();
+                  _noteController.dispose();
+                }
+              },
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
+
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';

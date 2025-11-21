@@ -612,8 +612,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () {
-                    // Navigate to settings page for editing user
-                    context.go('/settings');
+                    // Navigate to user's profile page for editing
+                    context.go('/profile/${user.id}');
                   },
                   tooltip: 'Edit',
                 ),

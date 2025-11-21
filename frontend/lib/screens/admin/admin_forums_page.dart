@@ -588,8 +588,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // Navigate to forum post detail page where editing may be available
-                      context.go('/forums/${post.id}');
+                      // Navigate to forum post edit page
+                      context.go('/forums/${post.id}/edit');
                     },
                     tooltip: 'Edit',
                   ),

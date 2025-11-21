@@ -10,14 +10,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/admin_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/widgets/theme_provider.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/screens/profile/profile_page.dart' show userProfileProvider;
 
 /// A page where the authenticated user can manage their account settings.
+/// If userId is provided and current user is admin, allows editing that user's profile.
 class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({super.key});
+  /// Optional userId to edit (admin only)
+  final String? userId;
+  
+  const SettingsPage({super.key, this.userId});
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
@@ -26,7 +32,19 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _updateProfile(Map<String, dynamic> data) async {
     try {
-      await ref.read(authProvider.notifier).updateUserProfile(data);
+      final currentUser = ref.read(authProvider).valueOrNull;
+      final isAdmin = currentUser?.userRole.isAdministrator ?? false;
+      final targetUserId = widget.userId;
+      
+      // If userId is provided and user is admin, use admin service
+      if (targetUserId != null && isAdmin && targetUserId != currentUser?.uid) {
+        final adminService = ref.read(adminServiceProvider);
+        await adminService.updateUser(targetUserId, data);
+      } else {
+        // Otherwise, update own profile
+        await ref.read(authProvider.notifier).updateUserProfile(data);
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -49,18 +67,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('${AppLocalizations.of(context)!.updateFailed}: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            content: Text(getUserFriendlyError(e)),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -70,10 +78,52 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
     final scaffoldKey = GlobalKey<ScaffoldState>();
     final isDark = theme.brightness == Brightness.dark;
-
+    
+    // If userId is provided, load that user's data, otherwise use current user
+    final targetUserId = widget.userId;
+    
+    if (targetUserId != null) {
+      // Load the target user's data
+      final targetUserAsync = ref.watch(userProfileProvider(targetUserId));
+      final currentUserAsync = ref.watch(authProvider);
+      
+      return Scaffold(
+        key: scaffoldKey,
+        backgroundColor: theme.colorScheme.surface,
+        body: targetUserAsync.when(
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (err, stack) => Scaffold(body: Center(child: Text('Error loading user: $err'))),
+          data: (targetUser) {
+            if (targetUser == null) {
+              return Scaffold(
+                body: Center(child: Text('User not found')),
+              );
+            }
+            
+            // Check if current user is admin
+            return currentUserAsync.when(
+              loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+              error: (_, __) => Scaffold(body: Center(child: Text('Error loading current user'))),
+              data: (currentUser) {
+                if (currentUser == null || !currentUser.userRole.isAdministrator) {
+                  return Scaffold(
+                    body: Center(child: Text('You do not have permission to edit this user')),
+                  );
+                }
+                
+                // Use targetUser for editing
+                return _buildSettingsContent(context, theme, isDark, scaffoldKey, targetUser, currentUser);
+              },
+            );
+          },
+        ),
+      );
+    }
+    
+    // No userId provided, use current user
+    final authState = ref.watch(authProvider);
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: theme.colorScheme.surface,
@@ -82,315 +132,327 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
         data: (user) {
           if (user == null) {
-            return const Scaffold(
-              body: Center(child: Text("User not logged in or data not available.")),
+            return Scaffold(
+              body: Center(child: Text('Please log in to access settings')),
             );
           }
-          return Column(
-            children: [
-              CustomNavigationBar(scaffoldKey: scaffoldKey),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.background,
-                    gradient: isDark
-                        ? LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              theme.colorScheme.surface.withValues(alpha: 0.5),
-                              theme.colorScheme.background,
-                            ],
-                          )
-                        : null,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: Container(
-                        width: double.infinity,
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        padding: const EdgeInsets.all(32.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+          
+          return _buildSettingsContent(context, theme, isDark, scaffoldKey, user, user);
+        },
+      ),
+    );
+  }
+  
+  Widget _buildSettingsContent(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+    GlobalKey<ScaffoldState> scaffoldKey,
+    AppUser user,
+    AppUser currentUser,
+  ) {
+    return Scaffold(
+      key: scaffoldKey,
+      backgroundColor: theme.colorScheme.surface,
+      body: Column(
+        children: [
+          CustomNavigationBar(scaffoldKey: scaffoldKey),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.background,
+                gradient: isDark
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          theme.colorScheme.surface.withValues(alpha: 0.5),
+                          theme.colorScheme.background,
+                        ],
+                      )
+                    : null,
+              ),
+              child: SingleChildScrollView(
+                child: Center(
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Page Header
+                        Row(
                           children: [
-                            // Page Header
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.settings_rounded,
+                                color: theme.colorScheme.onPrimaryContainer,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.userId != null && currentUser.userRole.isAdministrator
+                                        ? 'Edit User Profile'
+                                        : 'Account Settings',
+                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
                                   ),
-                                  child: Icon(
-                                    Icons.settings_rounded,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                    size: 28,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        AppLocalizations.of(context)!.settings,
-                                        style: theme.textTheme.headlineMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
+                                  if (widget.userId != null && currentUser.userRole.isAdministrator) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Editing: ${user.displayName} (@${user.username})',
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        AppLocalizations.of(context)!.manageAccountSettings,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 32),
-
-                            // Profile Picture Section
-                            _SettingsSection(
-                              theme: theme,
-                              title: AppLocalizations.of(context)!.profilePicture,
-                              icon: Icons.image_rounded,
-                              children: [
-                                _ProfilePictureItem(
-                                  theme: theme,
-                                  user: user,
-                                  onImageSelected: (imagePath) async {
-                                    try {
-                                      // Upload profile picture - this will update the user state automatically
-                                      await ref.read(authProvider.notifier).uploadProfilePicture(user.uid, imagePath);
-                                      
-                                      // Wait a bit for state to update
-                                      await Future.delayed(const Duration(milliseconds: 300));
-                                      
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: [
-                                                const Icon(Icons.check_circle, color: Colors.white),
-                                                const SizedBox(width: 8),
-                                                Expanded(child: Text(AppLocalizations.of(context)!.profilePictureUpdated)),
-                                              ],
-                                            ),
-                                            backgroundColor: Colors.green,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            duration: const Duration(seconds: 3),
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: [
-                                                const Icon(Icons.error_outline, color: Colors.white),
-                                                const SizedBox(width: 8),
-                                                Expanded(child: Text('${AppLocalizations.of(context)!.failedToUpload}: ${e.toString()}')),
-                                              ],
-                                            ),
-                                            backgroundColor: Theme.of(context).colorScheme.error,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            duration: const Duration(seconds: 4),
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Profile Information Section
-                            _SettingsSection(
-                              theme: theme,
-                              title: AppLocalizations.of(context)!.profileInformation,
-                              icon: Icons.person_rounded,
-                              children: [
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.email,
-                                  value: user.email,
-                                  icon: Icons.email_rounded,
-                                  isEditable: false,
-                                ),
-                                const Divider(height: 32),
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.displayName,
-                                  value: user.displayName,
-                                  icon: Icons.badge_rounded,
-                                  onEdit: () => _showEditDialog(
-                                    context,
-                                    theme,
-                                    AppLocalizations.of(context)!.displayName,
-                                    user.displayName,
-                                    (value) => _updateProfile({'DisplayName': value}),
-                                    isMultiLine: false,
-                                  ),
-                                ),
-                                const Divider(height: 32),
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.username,
-                                  value: user.username,
-                                  icon: Icons.alternate_email_rounded,
-                                  isEditable: false,
-                                  subtitle: AppLocalizations.of(context)!.usernameCannotBeChanged,
-                                ),
-                                const Divider(height: 32),
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.bio,
-                                  value: user.bio ?? AppLocalizations.of(context)!.notSet,
-                                  icon: Icons.description_rounded,
-                                  isMultiLine: true,
-                                  onEdit: () => _showEditDialog(
-                                    context,
-                                    theme,
-                                    AppLocalizations.of(context)!.bio,
-                                    user.bio ?? '',
-                                    (value) => _updateProfile({'Description': value.isEmpty ? null : value}),
-                                    isMultiLine: true,
-                                  ),
-                                ),
-                                const Divider(height: 32),
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.phoneNumber,
-                                  value: user.phoneNumber ?? AppLocalizations.of(context)!.notSet,
-                                  icon: Icons.phone_rounded,
-                                  onEdit: () => _showEditDialog(
-                                    context,
-                                    theme,
-                                    AppLocalizations.of(context)!.phoneNumber,
-                                    user.phoneNumber ?? '',
-                                    (value) => _updateProfile({'PhoneNumber': value.isEmpty ? null : value}),
-                                    isMultiLine: false,
-                                    keyboardType: TextInputType.phone,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Address Section
-                            _SettingsSection(
-                              theme: theme,
-                              title: AppLocalizations.of(context)!.address,
-                              icon: Icons.location_on_rounded,
-                              children: [
-                                _AddressItem(
-                                  theme: theme,
-                                  address: user.address,
-                                  onEdit: () => _showAddressDialog(context, theme, user.address),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Privacy & Security Section
-                            _SettingsSection(
-                              theme: theme,
-                              title: AppLocalizations.of(context)!.privacySecurity,
-                              icon: Icons.lock_rounded,
-                              children: [
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.profilePrivacy,
-                                  value: user.profileAccessibility == ProfileAccessibility.private
-                                      ? AppLocalizations.of(context)!.private
-                                      : AppLocalizations.of(context)!.public,
-                                  icon: Icons.visibility_rounded,
-                                  trailing: Switch(
-                                    value: user.profileAccessibility == ProfileAccessibility.private,
-                                    onChanged: (value) {
-                                      _updateProfile({
-                                        'ProfileAccessibility': value ? 'PRIVATE' : 'PUBLIC',
-                                      });
-                                    },
-                                  ),
-                                ),
-                                const Divider(height: 32),
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.changePassword,
-                                  value: AppLocalizations.of(context)!.updateAccountPassword,
-                                  icon: Icons.lock_outline_rounded,
-                                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                                  onTap: () => context.push('/change-password'),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Preferences Section
-                            _SettingsSection(
-                              theme: theme,
-                              title: AppLocalizations.of(context)!.preferences,
-                              icon: Icons.tune_rounded,
-                              children: [
-                                _SettingsItem(
-                                  theme: theme,
-                                  label: AppLocalizations.of(context)!.theme,
-                                  value: _getThemeDisplayName(context, ref.watch(themeProvider)),
-                                  icon: Icons.palette_rounded,
-                                  trailing: SegmentedButton<ThemeMode>(
-                                    segments: [
-                                      ButtonSegment(
-                                        value: ThemeMode.light,
-                                        label: Text(AppLocalizations.of(context)!.light),
-                                        icon: const Icon(Icons.light_mode, size: 18),
-                                      ),
-                                      ButtonSegment(
-                                        value: ThemeMode.dark,
-                                        label: Text(AppLocalizations.of(context)!.dark),
-                                        icon: const Icon(Icons.dark_mode, size: 18),
-                                      ),
-                                      ButtonSegment(
-                                        value: ThemeMode.system,
-                                        label: Text(AppLocalizations.of(context)!.system),
-                                        icon: const Icon(Icons.brightness_auto, size: 18),
-                                      ),
-                                    ],
-                                    selected: {ref.watch(themeProvider)},
-                                    onSelectionChanged: (newSelection) {
-                                      final newTheme = newSelection.first;
-                                      ref.read(themeProvider.notifier).setTheme(newTheme);
-                                      _updateProfile({'Theme': newTheme.name.toUpperCase()});
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 40),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 32),
+                        // Profile Picture Section
+                        _buildProfilePictureSection(context, theme, isDark, user, currentUser),
+                        const SizedBox(height: 32),
+                        // Profile Information Section
+                        _buildProfileInformationSection(context, theme, isDark, user),
+                        const SizedBox(height: 32),
+                        // Privacy & Security Section (only for own profile)
+                        if (widget.userId == null || user.uid == currentUser.uid)
+                          _buildPrivacySecuritySection(context, theme, isDark),
+                      ],
                     ),
                   ),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildProfilePictureSection(BuildContext context, ThemeData theme, bool isDark, AppUser user, AppUser currentUser) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.account_circle_rounded,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                AppLocalizations.of(context)!.profilePicture,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: theme.colorScheme.surfaceVariant,
+                  backgroundImage: UserImageUtils.getUserImageUrl(user.photoURL) != null
+                      ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
+                      : null,
+                  child: UserImageUtils.getUserImageUrl(user.photoURL) == null
+                      ? Icon(
+                          Icons.person,
+                          size: 60,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )
+                      : null,
+                ),
+                if (widget.userId == null || user.uid == currentUser.uid)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.colorScheme.surface,
+                          width: 3,
+                        ),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt, size: 20),
+                        color: theme.colorScheme.onPrimary,
+                        onPressed: () {
+                          // TODO: Implement image upload
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildProfileInformationSection(BuildContext context, ThemeData theme, bool isDark, AppUser user) {
+    return _SettingsSection(
+      theme: theme,
+      title: AppLocalizations.of(context)!.profileInformation,
+      icon: Icons.person_rounded,
+      children: [
+        _SettingsItem(
+          theme: theme,
+          label: AppLocalizations.of(context)!.email,
+          value: user.email,
+          icon: Icons.email_rounded,
+          isEditable: false,
+        ),
+        const Divider(height: 32),
+        _SettingsItem(
+          theme: theme,
+          label: AppLocalizations.of(context)!.displayName,
+          value: user.displayName,
+          icon: Icons.badge_rounded,
+          onEdit: () => _showEditDialog(
+            context,
+            theme,
+            AppLocalizations.of(context)!.displayName,
+            user.displayName,
+            (value) => _updateProfile({'DisplayName': value}),
+            isMultiLine: false,
+          ),
+        ),
+        const Divider(height: 32),
+        _SettingsItem(
+          theme: theme,
+          label: AppLocalizations.of(context)!.username,
+          value: user.username,
+          icon: Icons.alternate_email_rounded,
+          isEditable: false,
+          subtitle: AppLocalizations.of(context)!.usernameCannotBeChanged,
+        ),
+        const Divider(height: 32),
+        _SettingsItem(
+          theme: theme,
+          label: AppLocalizations.of(context)!.bio,
+          value: user.bio ?? AppLocalizations.of(context)!.notSet,
+          icon: Icons.description_rounded,
+          isMultiLine: true,
+          onEdit: () => _showEditDialog(
+            context,
+            theme,
+            AppLocalizations.of(context)!.bio,
+            user.bio ?? '',
+            (value) => _updateProfile({'Description': value.isEmpty ? null : value}),
+            isMultiLine: true,
+          ),
+        ),
+        const Divider(height: 32),
+        _SettingsItem(
+          theme: theme,
+          label: AppLocalizations.of(context)!.phoneNumber,
+          value: user.phoneNumber ?? AppLocalizations.of(context)!.notSet,
+          icon: Icons.phone_rounded,
+          onEdit: () => _showEditDialog(
+            context,
+            theme,
+            AppLocalizations.of(context)!.phoneNumber,
+            user.phoneNumber ?? '',
+            (value) => _updateProfile({'PhoneNumber': value.isEmpty ? null : value}),
+            isMultiLine: false,
+            keyboardType: TextInputType.phone,
+          ),
+        ),
+        const Divider(height: 32),
+        _AddressItem(
+          theme: theme,
+          address: user.address,
+          onEdit: () => _showAddressDialog(context, theme, user.address),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildPrivacySecuritySection(BuildContext context, ThemeData theme, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lock_rounded,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                AppLocalizations.of(context)!.privacySecurity,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Change Password Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                context.push('/change-password');
+              },
+              icon: const Icon(Icons.lock_reset_rounded),
+              label: Text(AppLocalizations.of(context)!.changePassword),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
