@@ -618,6 +618,32 @@ class AdminService {
     return _dio.delete('$apiBaseUrl/ForumPosts/$postId'); // Then delete the forum post
   }
 
+  /// Updates a component
+  /// Requires componentType to add the correct type discriminator ($type) for polymorphic deserialization
+  Future<Response> updateComponent(String componentId, Map<String, dynamic> data, {required String componentType}) async {
+    // Map component type to discriminator value (same as in getComponents)
+    final type = componentType.toUpperCase();
+    final typeMap = {
+      'CPU': 'CPU',
+      'GPU': 'GPU',
+      'MEMORY': 'Memory',
+      'MOTHERBOARD': 'Motherboard',
+      'STORAGE': 'Storage',
+      'POWER_SUPPLY': 'PowerSupply',
+      'CASE': 'Case',
+      'COOLER': 'Cooler',
+      'CASE_FAN': 'CaseFan',
+      'MONITOR': 'Monitor',
+    };
+    final typeDiscriminator = typeMap[type] ?? 'Case';
+    
+    // Add type discriminator for polymorphic deserialization
+    final updateData = Map<String, dynamic>.from(data);
+    updateData[r'$type'] = typeDiscriminator;
+    
+    return _dio.put('$apiBaseUrl/Components/$componentId', data: updateData);
+  }
+
   /// Deletes a component
   Future<Response> deleteComponent(String componentId) async {
     await deleteComponentComments(componentId); // First, delete all comments and their images

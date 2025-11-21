@@ -20,12 +20,15 @@ import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'dart:html' as html;
 
-/// A page for creating a new forum post.
+/// A page for creating a new forum post or editing an existing one.
 class NewPostPage extends ConsumerStatefulWidget {
   /// An optional ID of a PC build to associate with this post.
   final String? buildId;
+  
+  /// An optional ID of a forum post to edit.
+  final String? postId;
 
-  const NewPostPage({super.key, this.buildId});
+  const NewPostPage({super.key, this.buildId, this.postId});
 
   @override
   ConsumerState<NewPostPage> createState() => _NewPostPageState();
@@ -51,8 +54,33 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.buildId != null) {
+    if (widget.postId != null) {
+      _loadPostForEdit();
+    } else if (widget.buildId != null) {
       _prefillFromBuild();
+    }
+  }
+
+  /// Loads post data for editing
+  Future<void> _loadPostForEdit() async {
+    try {
+      final forumService = ref.read(forumServiceProvider);
+      final post = await forumService.getPostById(widget.postId!);
+      
+      setState(() {
+        _titleController.text = post.title;
+        _contentController.text = post.content;
+        _selectedTopic = post.topic;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading post: ${getUserFriendlyError(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -175,9 +203,71 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
         'buildId': widget.buildId,
       };
 
+      String? postId;
+      
+      // If editing, update the post
+      if (widget.postId != null) {
+        final updateData = {
+          'title': _titleController.text,
+          'content': _contentController.text,
+          'topic': _selectedTopic,
+        };
+        
+        await ref.read(forumProvider.notifier).updateForumPost(widget.postId!, updateData);
+        postId = widget.postId;
+        
+        // STOP LOADING FIRST
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        
+        // SHOW SUCCESS DIALOG
+        if (!mounted) return;
+        
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+            title: const Text(
+              'Success!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+            content: const Text(
+              'Your post has been updated successfully!',
+              style: TextStyle(fontSize: 16),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('OK', style: TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+        );
+        
+        // Navigate to the post detail page
+        if (mounted) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (!mounted) return;
+          context.go('/forums/$postId');
+        }
+        return;
+      }
+      
       // Create the post
       final response = await ref.read(forumProvider.notifier).createForumPost(postData);
-      final postId = response['id']?.toString();
+      postId = response['id']?.toString();
       
       // STOP LOADING FIRST
       if (mounted) {
@@ -328,7 +418,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Create New Post',
+                                      widget.postId != null ? 'Edit Post' : 'Create New Post',
                                       style: theme.textTheme.headlineLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: -0.5,
@@ -336,7 +426,9 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Share your thoughts with the community',
+                                      widget.postId != null 
+                                          ? 'Update your post content'
+                                          : 'Share your thoughts with the community',
                                       style: theme.textTheme.bodyLarge?.copyWith(
                                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                       ),
@@ -634,12 +726,12 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                         ),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.send, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('Submit Post'),
+                                          Icon(widget.postId != null ? Icons.save : Icons.send, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(widget.postId != null ? 'Update Post' : 'Submit Post'),
                                         ],
                                       ),
                                 ),

@@ -403,11 +403,25 @@ class ProfilePage extends ConsumerWidget {
                   ],
                 ),
               ] else if (currentUser != null) ...[
-                // Other user's profile: Show Follow/Unfollow button
-                _FollowButton(
-                  followedUserId: user.uid,
-                  currentUserId: currentUser.uid,
-                  theme: theme,
+                // Other user's profile: Show Follow/Unfollow button and Edit button if admin
+                Column(
+                  children: [
+                    _FollowButton(
+                      followedUserId: user.uid,
+                      currentUserId: currentUser.uid,
+                      theme: theme,
+                    ),
+                    if (currentUser.userRole.isAdministrator) ...[
+                      const SizedBox(height: 12),
+                      _ActionButton(
+                        icon: Icons.edit_rounded,
+                        label: 'Edit User',
+                        onPressed: () => context.push('/settings?userId=${user.uid}'),
+                        isPrimary: false,
+                        theme: theme,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ],
@@ -471,7 +485,9 @@ class ProfilePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.myBuilds,
+                          isOwnProfile 
+                              ? AppLocalizations.of(context)!.myBuilds
+                              : AppLocalizations.of(context)!.builds,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,

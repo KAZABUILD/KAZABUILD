@@ -53,7 +53,6 @@ import 'package:frontend/screens/admin/admin_builds_page.dart';
 import 'package:frontend/screens/admin/admin_forums_page.dart';
 import 'package:frontend/screens/admin/admin_parts_page.dart';
 import 'package:frontend/screens/admin/admin_guides_page.dart';
-import 'package:frontend/screens/admin/admin_analytics_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
 import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
@@ -239,6 +238,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/forums/:id/edit',
+        name: 'edit-forum-post',
+        builder: (_, state) {
+          final id = state.pathParameters['id']!;
+          return NewPostPage(postId: id);
+        },
+      ),
+      GoRoute(
         path: '/messages',
         name: 'messages',
         builder: (_, __) => const MessagesPage(),
@@ -272,7 +279,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         name: 'settings',
-        builder: (_, __) => const SettingsPage(),
+        builder: (_, state) {
+          final userId = state.uri.queryParameters['userId'];
+          return SettingsPage(userId: userId);
+        },
       ),
       GoRoute(
         path: '/build-now',
@@ -431,15 +441,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           currentRoute: '/admin/guides',
           pageTitle: 'Guides Management',
           child: const AdminGuidesPage(),
-        ),
-      ),
-      GoRoute(
-        path: '/admin/analytics',
-        name: 'admin-analytics',
-        builder: (_, __) => AdminBaseLayout(
-          currentRoute: '/admin/analytics',
-          pageTitle: 'Analytics Dashboard',
-          child: const AdminAnalyticsPage(),
         ),
       ),
       GoRoute(
