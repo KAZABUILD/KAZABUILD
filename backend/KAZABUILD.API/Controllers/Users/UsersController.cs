@@ -931,6 +931,7 @@ namespace KAZABUILD.API.Controllers.Users
                     .ThenInclude(m => m.ChildMessages)
                 .Include(u => u.SentMessages)
                     .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.Builds)
                 .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
@@ -1029,6 +1030,12 @@ namespace KAZABUILD.API.Controllers.Users
                         _db.Messages.Remove(message);
                     }
                 }
+            }
+
+            //Remove all builds created by the user
+            if (user.Builds.Count != 0)
+            {
+                _db.Builds.RemoveRange(user.Builds);
             }
 
             //Delete the user
