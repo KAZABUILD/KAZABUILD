@@ -81,24 +81,40 @@ String? _handleEmailLinkRedirect() {
 
   try {
     final href = html.window.location.href;
-    if (!href.contains('#/auth/confirm')) return null;
+    
+    // Check both main URL and hash for confirm paths
+    final mainPart = href.split('#').first;
+    final hashPart = href.contains('#') ? href.split('#').last : '';
+    
+    final mainUri = Uri.parse(mainPart);
+    final isMainConfirm = mainUri.path.contains('/auth/confirm-register') || 
+                          mainUri.path.contains('/auth/confirm-reset-password');
+    
+    final isHashConfirm = hashPart.contains('/auth/confirm-register') || 
+                          hashPart.contains('/auth/confirm-reset-password');
+    
+    if (!isMainConfirm && !isHashConfirm) return null;
 
-    final hashPart = href.split('#').last;
-    final uri = Uri.parse('https://example.com$hashPart');
-
-    final path = uri.path;
-    if (!path.startsWith('/auth/confirm-register') &&
-        !path.startsWith('/auth/confirm-reset-password')) {
-      return null;
+    // Extract path and query params
+    String cleanPath;
+    String query = '';
+    
+    if (isMainConfirm) {
+      // Token is in main URL
+      cleanPath = mainUri.path;
+      query = mainUri.query;
+    } else {
+      // Token might be in hash
+      final hashUri = Uri.parse('https://example.com$hashPart');
+      cleanPath = hashUri.path;
+      query = hashUri.query;
     }
 
     // Build clean URL without hash
-    final cleanPath = uri.path;
-    final query = uri.queryParameters.isNotEmpty ? '?${uri.query}' : '';
-    final cleanUrl = '${html.window.location.origin}$cleanPath$query';
-
+    final cleanUrl = '${html.window.location.origin}$cleanPath${query.isNotEmpty ? '?$query' : ''}';
     html.window.history.replaceState(null, '', cleanUrl);
-    return '$cleanPath$query';
+    
+    return '$cleanPath${query.isNotEmpty ? '?$query' : ''}';
   } catch (_) {
     return null;
   }

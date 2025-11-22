@@ -54,37 +54,104 @@ class _ConfirmResetPasswordPageState
       try {
         // Get token from current URL (before cleaning)
         final currentHref = html.window.location.href;
-        debugPrint('🔑 Current URL: $currentHref');
         
-        // Check main URL first
-        final mainUri = Uri.parse(currentHref.split('#').first);
-        _savedToken = mainUri.queryParameters['token'];
-        _savedUserId = mainUri.queryParameters['userId'];
-        debugPrint('🔑 Token from main URL: $_savedToken');
-        debugPrint('🔑 UserId from main URL: $_savedUserId');
+        // Check main URL first (before hash)
+        final mainPart = currentHref.split('#').first;
+        
+        // Use Uri.parse but get raw query string to preserve token encoding
+        try {
+          final uri = Uri.parse(mainPart);
+          // Get token from query parameters (Uri automatically decodes, but we need raw)
+          _savedToken = uri.queryParameters['token'];
+          _savedUserId = uri.queryParameters['userId'];
+          
+          // If token has spaces, it means + was decoded to space - restore it
+          if (_savedToken != null && _savedToken!.contains(' ')) {
+            _savedToken = _savedToken!.replaceAll(' ', '+');
+          }
+        } catch (e) {
+          // Fallback to manual parsing
+          if (mainPart.contains('token=')) {
+            final tokenStart = mainPart.indexOf('token=') + 6;
+            var tokenEnd = mainPart.indexOf('&', tokenStart);
+            if (tokenEnd == -1) tokenEnd = mainPart.length;
+            _savedToken = mainPart.substring(tokenStart, tokenEnd);
+          }
+          
+          if (mainPart.contains('userId=')) {
+            final userIdStart = mainPart.indexOf('userId=') + 7;
+            var userIdEnd = mainPart.indexOf('&', userIdStart);
+            if (userIdEnd == -1) userIdEnd = mainPart.length;
+            _savedUserId = mainPart.substring(userIdStart, userIdEnd);
+          }
+        }
         
         // If not found in main URL, check hash fragment
         if ((_savedToken == null || _savedToken!.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;
-          debugPrint('🔑 Hash part: $hashPart');
-          if (hashPart.contains('?')) {
-            final hashUri = Uri.parse('?${hashPart.split('?').last}');
+          
+          try {
+            final hashUri = Uri.parse('https://example.com?$hashPart');
             _savedToken = hashUri.queryParameters['token'];
             _savedUserId = hashUri.queryParameters['userId'];
-            debugPrint('🔑 Token from hash: $_savedToken');
-            debugPrint('🔑 UserId from hash: $_savedUserId');
+            
+            if (_savedToken != null && _savedToken!.contains(' ')) {
+              _savedToken = _savedToken!.replaceAll(' ', '+');
+            }
+          } catch (e) {
+            // Fallback to manual parsing
+            if (hashPart.contains('token=')) {
+              final tokenStart = hashPart.indexOf('token=') + 6;
+              var tokenEnd = hashPart.indexOf('&', tokenStart);
+              if (tokenEnd == -1) tokenEnd = hashPart.length;
+              _savedToken = hashPart.substring(tokenStart, tokenEnd);
+            }
+            
+            if (hashPart.contains('userId=')) {
+              final userIdStart = hashPart.indexOf('userId=') + 7;
+              var userIdEnd = hashPart.indexOf('&', userIdStart);
+              if (userIdEnd == -1) userIdEnd = hashPart.length;
+              _savedUserId = hashPart.substring(userIdStart, userIdEnd);
+            }
           }
         }
       } catch (e) {
-        debugPrint('❌ Error getting token from URL: $e');
+        // Fallback to Uri.parse if manual parsing fails
+        try {
+          final currentHref = html.window.location.href;
+          final mainPart = currentHref.split('#').first;
+          final mainUri = Uri.parse(mainPart);
+          _savedToken = mainUri.queryParameters['token'];
+          _savedUserId = mainUri.queryParameters['userId'];
+        } catch (e2) {
+          // Ignore
+        }
       }
     }
+    
+    // ----------------------------------------------------------------------
+    // CRITICAL FIX: Restore encoded '+' characters in token
+    // URL decoding turns '+' into space ' '. We must revert this for the backend.
+    // ----------------------------------------------------------------------
+    if (_savedToken != null && _savedToken!.isNotEmpty) {
+      // Replace spaces with + (URL decoding issue)
+      if (_savedToken!.contains(' ')) {
+        _savedToken = _savedToken!.replaceAll(' ', '+');
+      }
+    }
+    // ----------------------------------------------------------------------
     
     debugPrint('🔑 Final saved token: $_savedToken');
     debugPrint('🔑 Final saved userId: $_savedUserId');
     
-    // IMMEDIATELY clean URL hash - don't wait
-    _cleanAndRebuildUrlImmediately();
+    // Wait a bit before cleaning URL to ensure token is saved
+    Future.microtask(() async {
+      // Small delay to let router settle
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Clean URL hash
+      _cleanAndRebuildUrlImmediately();
+    });
     
     // Small delay to ensure router has finished redirecting
     Future.microtask(() {
@@ -310,40 +377,134 @@ class _ConfirmResetPasswordPageState
       return;
     }
 
-    // Check if we have a valid token
-    if (_savedToken == null || _savedToken!.isEmpty) {
+    // Check if we have a valid token - try to get it from current URL as fallback
+    String? token = _savedToken;
+    
+    if (token == null || token.isEmpty) {
+      // Try to get from widget
+      token = widget.token;
+    }
+    
+    if (token == null || token.isEmpty) {
+      // Final fallback: try to get from current URL
+      try {
+        final currentHref = html.window.location.href;
+        debugPrint('🔑 Trying to get token from current URL: $currentHref');
+        
+        // Try main URL first
+        final mainPart = currentHref.split('#').first;
+        final mainUri = Uri.parse(mainPart);
+        token = mainUri.queryParameters['token'];
+        debugPrint('🔑 Token from current main URL: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
+        
+        // If still not found, try hash fragment
+        if ((token == null || token.isEmpty) && currentHref.contains('#')) {
+          final hashPart = currentHref.split('#').last;
+          if (hashPart.contains('?')) {
+            final hashUri = Uri.parse('?${hashPart.split('?').last}');
+            token = hashUri.queryParameters['token'];
+            debugPrint('🔑 Token from current hash: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Error getting token from URL: $e');
+      }
+    }
+
+    // If still no token, show error and redirect
+    if (token == null || token.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Invalid or missing reset token. Please request a new password reset link.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
-        // Redirect to forgot password page
-        if (context.mounted) GoRouter.of(context).go('/forgot-password');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Invalid or missing reset token. The reset link may have expired or is invalid. Please request a new password reset link.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        // Redirect to forgot password page after a delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (context.mounted) {
+            GoRouter.of(context).go('/forgot-password');
+          }
+        });
       }
       return;
     }
 
+    // ----------------------------------------------------------------------
+    // CRITICAL FIX: Restore encoded '+' characters
+    // URL decoding turns '+' into space ' '. We must revert this for the backend.
+    // ----------------------------------------------------------------------
+    if (token.contains(' ')) {
+      token = token.replaceAll(' ', '+');
+    }
+    // ----------------------------------------------------------------------
+
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('✅ Sending token to backend for password reset...');
       final successMessage = await ref
           .read(authProvider.notifier)
-          .confirmPasswordReset(_savedToken!, _passwordController.text);
+          .confirmPasswordReset(token, _passwordController.text);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(successMessage),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(successMessage)),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
         // Navigate to login page and clear the navigation stack.
-        if (context.mounted) GoRouter.of(context).go('/login');
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (context.mounted) {
+          GoRouter.of(context).go('/login');
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(getUserFriendlyError(e)),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(getUserFriendlyError(e))),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } finally {
       if (mounted) {

@@ -1,9 +1,3 @@
-/// This file defines the UI for the "Confirm Register" screen.
-///
-/// This page is accessed via a link sent to the user's email after registration.
-/// It automatically confirms the registration when the page loads.
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,8 +48,9 @@ class _ConfirmRegisterPageState
         final currentHref = html.window.location.href;
         debugPrint('🔑 Current URL: $currentHref');
         
-        // Check main URL first
-        final mainUri = Uri.parse(currentHref.split('#').first);
+        // Check main URL first (before hash)
+        final mainPart = currentHref.split('#').first;
+        final mainUri = Uri.parse(mainPart);
         _savedToken = mainUri.queryParameters['token'];
         debugPrint('🔑 Token from main URL: $_savedToken');
         
@@ -63,10 +58,23 @@ class _ConfirmRegisterPageState
         if ((_savedToken == null || _savedToken!.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;
           debugPrint('🔑 Hash part: $hashPart');
+          
+          // Check if hash contains query params like #/auth/confirm-register?token=xxx
           if (hashPart.contains('?')) {
             final hashUri = Uri.parse('?${hashPart.split('?').last}');
             _savedToken = hashUri.queryParameters['token'];
-            debugPrint('🔑 Token from hash: $_savedToken');
+            debugPrint('🔑 Token from hash query: $_savedToken');
+          }
+          
+          // Also try parsing the full hash as a path
+          if ((_savedToken == null || _savedToken!.isEmpty)) {
+            try {
+              final hashUri = Uri.parse('https://example.com$hashPart');
+              _savedToken = hashUri.queryParameters['token'];
+              debugPrint('🔑 Token from hash URI: $_savedToken');
+            } catch (e) {
+              debugPrint('❌ Error parsing hash URI: $e');
+            }
           }
         }
       } catch (e) {
@@ -76,15 +84,21 @@ class _ConfirmRegisterPageState
     
     debugPrint('🔑 Final saved token: $_savedToken');
     
-    // IMMEDIATELY clean URL hash - don't wait
-    _cleanAndRebuildUrlImmediately();
-    
-    // Small delay to ensure router has finished redirecting
-    Future.microtask(() {
-      // Clean again after router finishes
+    // Wait a bit before cleaning URL to ensure token is saved
+    Future.microtask(() async {
+      // Small delay to let router settle
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Clean URL hash
       _cleanAndRebuildUrlImmediately();
+      
+      // Wait a bit more, then confirm
+      await Future.delayed(const Duration(milliseconds: 200));
+      
       // Automatically confirm registration when page loads
-      _confirmRegistration();
+      if (mounted) {
+        _confirmRegistration();
+      }
     });
     
     // Also clean after first frame
@@ -134,10 +148,10 @@ class _ConfirmRegisterPageState
       // CRITICAL: Check if hash exists and remove it
       if (currentHref.contains('#')) {
         // Remove hash fragment completely from URL
-        currentHref = currentHref.split('#').first;
+        final mainPart = currentHref.split('#').first;
         
         // Parse URL to get userId and token (from cleaned URL without hash)
-        final uri = Uri.parse(currentHref);
+        final uri = Uri.parse(mainPart);
         final userId = uri.queryParameters['userId'];
         final token = uri.queryParameters['token'];
         
@@ -145,16 +159,16 @@ class _ConfirmRegisterPageState
         String newUrl;
         if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
           // Keep both token and userId
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?token=$token&userId=$userId';
+          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?token=$token&userId=$userId';
         } else if (userId != null && userId.isNotEmpty) {
           // Only userId available
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?userId=$userId';
+          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?userId=$userId';
         } else if (token != null && token.isNotEmpty) {
           // Only token available
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?token=$token';
+          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?token=$token';
         } else {
           // Just remove hash, keep existing query params
-          newUrl = currentHref;
+          newUrl = mainPart;
         }
         
         // Force update browser URL (this removes hash)
@@ -191,9 +205,23 @@ class _ConfirmRegisterPageState
     if (token == null || token.isEmpty) {
       try {
         final currentHref = html.window.location.href;
-        final mainUri = Uri.parse(currentHref.split('#').first);
+        debugPrint('🔑 Trying to get token from current URL: $currentHref');
+        
+        // Try main URL first
+        final mainPart = currentHref.split('#').first;
+        final mainUri = Uri.parse(mainPart);
         token = mainUri.queryParameters['token'];
-        debugPrint('🔑 Token from current URL: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
+        debugPrint('🔑 Token from current main URL: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
+        
+        // If still not found, try hash fragment
+        if ((token == null || token.isEmpty) && currentHref.contains('#')) {
+          final hashPart = currentHref.split('#').last;
+          if (hashPart.contains('?')) {
+            final hashUri = Uri.parse('?${hashPart.split('?').last}');
+            token = hashUri.queryParameters['token'];
+            debugPrint('🔑 Token from current hash: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
+          }
+        }
       } catch (e) {
         debugPrint('❌ Error getting token from URL: $e');
       }
@@ -209,12 +237,23 @@ class _ConfirmRegisterPageState
       return;
     }
 
+    // ----------------------------------------------------------------------
+    // CRITICAL FIX: Restore encoded '+' characters
+    // URL decoding turns '+' into space ' '. We must revert this for the backend.
+    // ----------------------------------------------------------------------
+    if (token.contains(' ')) {
+      debugPrint('⚠️ Token contains spaces, replacing with +');
+      token = token.replaceAll(' ', '+');
+    }
+    debugPrint('🔑 FIXED Token for Backend: $token');
+    // ----------------------------------------------------------------------
+
     try {
       debugPrint('✅ Sending token to backend...');
       // Send token to backend (backend expects token field with hash)
       final result = await ref
           .read(authProvider.notifier)
-          .confirmRegister(token);
+          .confirmRegister(token); // Use the fixed token
       debugPrint('✅ Backend response: $result');
 
       if (mounted) {
@@ -229,26 +268,29 @@ class _ConfirmRegisterPageState
         
         if (mounted) {
           // Navigate to login page after successful confirmation
+          // Use GoRouter to avoid hash routing issues
           try {
-            final baseUrl = html.window.location.origin;
-            final targetPath = widget.userId != null && widget.userId!.isNotEmpty
-                ? '/login?userId=${widget.userId}'
-                : '/login';
-            final fullUrl = '$baseUrl#$targetPath';
-            
-            debugPrint('🔵 Auto-navigating to: $fullUrl');
-            html.window.location.href = fullUrl;
+            debugPrint('🔵 Navigating to login page...');
+            if (widget.userId != null && widget.userId!.isNotEmpty) {
+              context.go('/login?userId=${widget.userId}');
+            } else {
+              context.go('/login');
+            }
+            debugPrint('✅ Navigation successful');
           } catch (e) {
-            debugPrint('❌ Auto-navigation error: $e');
-            // Fallback: try GoRouter
+            debugPrint('❌ GoRouter navigation error: $e');
+            // Fallback: try window.location without hash
             try {
-              if (widget.userId != null) {
-                context.go('/login?userId=${widget.userId}');
-              } else {
-                context.go('/login');
-              }
+              final baseUrl = html.window.location.origin;
+              final targetPath = widget.userId != null && widget.userId!.isNotEmpty
+                  ? '/login?userId=${widget.userId}'
+                  : '/login';
+              final fullUrl = '$baseUrl$targetPath';
+              
+              debugPrint('🔵 Fallback: Navigating to: $fullUrl');
+              html.window.location.href = fullUrl;
             } catch (e2) {
-              debugPrint('❌ GoRouter auto-navigation also failed: $e2');
+              debugPrint('❌ Window location navigation also failed: $e2');
             }
           }
         }
@@ -363,4 +405,3 @@ class _ConfirmRegisterPageState
     );
   }
 }
-
