@@ -633,7 +633,31 @@ namespace KAZABUILD.API.Controllers.Builds
             //Remove all related comments
             if (build.Comments.Count != 0)
             {
-                _db.UserComments.RemoveRange(build.Comments);
+                foreach (var comment in build.Comments)
+                {
+                    //Remove all related images
+                    if (comment.Images.Count != 0)
+                    {
+                        foreach (var image in comment.Images)
+                        {
+                            //Remove the file from the file system
+                            if (System.IO.File.Exists(image.Location))
+                                System.IO.File.Delete(image.Location);
+                        }
+
+                        //Delete all related images
+                        _db.Images.RemoveRange(comment.Images);
+                    }
+
+                    //Set the ParentCommentId field to null for all children
+                    foreach (var child in comment.ChildComments)
+                    {
+                        child.ParentCommentId = null;
+                    }
+
+                    //Delete the userComment
+                    _db.UserComments.Remove(comment);
+                }
             }
 
             //Handle deleting build tags to avoid conflicts with cascade deletes
