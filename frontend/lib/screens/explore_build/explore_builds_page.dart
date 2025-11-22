@@ -9,7 +9,6 @@
 /// - Each build is presented as an interactive card that navigates to the `BuildDetailPage`.
 library;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +19,7 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/utils/error_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/screens/forum/post_detail_page.dart' show userProvider;
 
@@ -285,7 +285,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  err.toString(),
+                  getUserFriendlyError(err),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
@@ -844,10 +844,6 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
               buildData: widget.builds[index],
               imageMap: imageMap,
               imagesLoaded: imagesLoaded,
-              onRatingChanged: () {
-                // Don't refresh builds list to prevent re-sorting
-                // Optimistic update in the card is sufficient
-              },
             );
           },
         ),
@@ -994,13 +990,11 @@ class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
   final Map<String, String?> imageMap;
   final bool imagesLoaded;
-  final VoidCallback? onRatingChanged; // Callback to notify parent of rating changes
 
   const _BuildCard({
     required this.buildData,
     required this.imageMap,
     required this.imagesLoaded,
-    this.onRatingChanged,
   });
 
   @override
@@ -1008,140 +1002,6 @@ class _BuildCard extends ConsumerStatefulWidget {
 }
 
 class _BuildCardState extends ConsumerState<_BuildCard> {
-  late double _averageRating;
-  late int _ratingsCount;
-  double? _userRating;
-  bool _submitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _averageRating = widget.buildData.averageRating;
-    _ratingsCount = widget.buildData.ratingsCount;
-    _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
-        ? widget.buildData.userRating 
-        : null;
-  }
-
-  @override
-  void didUpdateWidget(_BuildCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.buildData.averageRating != widget.buildData.averageRating ||
-        oldWidget.buildData.ratingsCount != widget.buildData.ratingsCount ||
-        oldWidget.buildData.userRating != widget.buildData.userRating) {
-      setState(() {
-        _averageRating = widget.buildData.averageRating;
-        _ratingsCount = widget.buildData.ratingsCount;
-        _userRating = (widget.buildData.userRating != null && widget.buildData.userRating! > 0) 
-            ? widget.buildData.userRating 
-            : null;
-      });
-    }
-  }
-
-  /// Submits a rating for this build
-  /// If user clicks the same rating again, it removes the rating (undo)
-  Future<void> _submitRating(double rating) async {
-    final currentUser = ref.read(authProvider).valueOrNull;
-    if (currentUser == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to rate this build.')),
-        );
-      }
-      return;
-    }
-
-    if (_submitting) return;
-
-    // Check if user is clicking the same rating (undo)
-    final isUndo = _userRating != null && _userRating == rating;
-    final ratingToSubmit = isUndo ? 0.0 : rating;
-
-    // Store previous values for rollback on error
-    final previousAverage = _averageRating;
-    final previousCount = _ratingsCount;
-    final previousUserRating = _userRating;
-
-    setState(() {
-      _submitting = true;
-      // Optimistic update
-      if (isUndo) {
-        // Remove rating: subtract user's rating from average
-        if (_ratingsCount > 1) {
-          final total = (_averageRating * _ratingsCount) - _userRating!;
-          _averageRating = total / (_ratingsCount - 1);
-          _ratingsCount = _ratingsCount - 1;
-        } else {
-          // Last rating removed
-          _averageRating = 0.0;
-          _ratingsCount = 0;
-        }
-        _userRating = null;
-      } else {
-        final hadPrevious = _userRating != null;
-        if (!hadPrevious) {
-          // New rating
-          _averageRating = _ratingsCount == 0 
-              ? rating 
-              : ((_averageRating * _ratingsCount) + rating) / (_ratingsCount + 1);
-          _ratingsCount = _ratingsCount + 1;
-        } else {
-          // Update existing rating
-          final total = (_averageRating * _ratingsCount) - _userRating! + rating;
-          _averageRating = _ratingsCount == 0 ? rating : (total / _ratingsCount);
-        }
-        _userRating = rating;
-      }
-    });
-
-    try {
-      final service = ref.read(buildServiceProvider);
-      final result = await service.rateBuild(widget.buildData.id, ratingToSubmit, currentUser.uid);
-      
-      // Check if backend returned rating statistics
-      final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
-      final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
-      
-      if (mounted) {
-        // Update local state with backend response if available
-        if (newAvg != null && newCount != null) {
-          setState(() {
-            // Backend returns 0-100; normalize to 0-5
-            final avgDouble = (newAvg as num).toDouble();
-            _averageRating = avgDouble > 5.0 ? (avgDouble / 20.0) : avgDouble;
-            _ratingsCount = (newCount as num).toInt();
-          });
-        }
-        
-        // Refresh build detail page
-        ref.invalidate(buildDetailProvider(widget.buildData.id));
-        
-        // Invalidate explore builds provider to refresh rating data
-        // This ensures the build cards show the correct rating information
-        // We invalidate all explore builds providers to ensure consistency
-        ref.invalidate(exploreBuildsProvider);
-        
-        widget.onRatingChanged?.call();
-      }
-    } catch (e) {
-      // Rollback on error
-      if (mounted) {
-        setState(() {
-          _averageRating = previousAverage;
-          _ratingsCount = previousCount;
-          _userRating = previousUserRating;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to ${isUndo ? 'remove' : 'submit'} rating: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
-    }
-  }
 
   /// Builds the image widget - shows image if available, otherwise placeholder
   Widget _buildImage(BuildContext context, ThemeData theme) {
@@ -1252,7 +1112,6 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
     
     if (kDebugMode) {
       print('_BuildCard: Build ID: ${widget.buildData.id}, Name: ${widget.buildData.name}');
-      print('_BuildCard: Average Rating: $_averageRating, Count: $_ratingsCount, User Rating: $_userRating');
       print('_BuildCard: Tags: ${widget.buildData.tags} (${widget.buildData.tags.length} tags)');
       if (widget.buildData.tags.isEmpty) {
         print('  ⚠️ WARNING: Build "${widget.buildData.name}" has NO TAGS!');
@@ -1469,72 +1328,6 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                           ),
                         ),
                   const SizedBox(height: 12),
-                  // Rating section with interactive stars and display
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Interactive star rating - wrapped to prevent card navigation
-                      GestureDetector(
-                        onTap: () {
-                          // Consume tap to prevent card navigation
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(5, (index) {
-                            final starIndex = index + 1;
-                            final hasUserRating = _userRating != null && _userRating! > 0;
-                            final isFilled = hasUserRating && _userRating! >= starIndex - 0.5;
-                            return InkWell(
-                              onTap: _submitting ? null : () {
-                                _submitRating(starIndex.toDouble());
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Icon(
-                                  isFilled ? Icons.star : Icons.star_border,
-                                  size: 16,
-                                  color: Colors.amber,
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ),
-                      // Rating display - show as "X.X/5" format
-                      if (_averageRating > 0 || _ratingsCount > 0)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.star,
-                              size: 14,
-                              color: Colors.amber,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${_averageRating.toStringAsFixed(1)}/5',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            if (_ratingsCount > 0) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '($_ratingsCount)',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 10,
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                              ),
-                            ],
-                          ],
-                        )
-                      else
-                        const SizedBox.shrink(),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
                   // Publish date and status
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

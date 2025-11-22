@@ -57,6 +57,7 @@ import 'package:frontend/screens/admin/admin_base_layout.dart';
 import 'package:frontend/screens/admin/admin_tags_page.dart';
 import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
+import 'package:frontend/screens/admin/admin_notifications_page.dart';
 
 // ──────────────────────── Auth State Listener ─────────────────────────────
 class AuthStateListener extends ChangeNotifier {
@@ -476,6 +477,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           currentRoute: '/admin/settings',
           pageTitle: 'Admin Settings',
           child: const AdminSettingsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/notifications',
+        name: 'admin-notifications',
+        builder: (_, __) => AdminBaseLayout(
+          currentRoute: '/admin/notifications',
+          pageTitle: 'Send Notifications',
+          child: const AdminNotificationsPage(),
         ),
       ),
     ],

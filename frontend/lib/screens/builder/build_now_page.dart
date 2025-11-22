@@ -23,6 +23,7 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
@@ -561,7 +562,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                           );
                         },
                         loading: () => const CircularProgressIndicator(),
-                        error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: $error'),
+                        error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}'),
                       );
                     },
                   ),

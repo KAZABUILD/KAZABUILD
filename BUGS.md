@@ -29,7 +29,7 @@
 
 [00004] Reloading the website taken a long time and takes the user to the main page.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00005] User cannot open any link in a new card in the browser.
@@ -201,7 +201,7 @@
 
 [00033] Explore builds and build pages takes around 10 seconds to load.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00005-A] User cannot open any link in a new card in the browser - the bug was not fixed.
@@ -252,7 +252,7 @@
 
 [00039] No paging in the admin panel.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00021-A] The admin page editing and viewing are broken - not fully fixed.
@@ -274,13 +274,13 @@
 
 [00042] Administrators receive an unauthorized access notice for editing.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Administrators should be able to edit anything, while moderators should be able to modify user related parts of the website (comments/user profiles/etc).
 
 [00043] The administrators and moderators should be able to assign user roles.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Assigning roles should function normally except for bans which should allow the staff to assigned the bannedUntil value.
 

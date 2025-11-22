@@ -208,7 +208,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       error: (error, stack) => Scaffold(
         key: _scaffoldKey,
         body: Center(
-          child: Text('Error: $error'),
+          child: Text(getUserFriendlyError(error)),
         ),
       ),
     );

@@ -495,7 +495,7 @@ class _ComponentsSection extends ConsumerWidget {
       case ComponentType.cooler:
         return Icons.ac_unit;
       case ComponentType.caseFan:
-        return Icons.toys;
+        return Icons.air;
       case ComponentType.pcCase:
         return Icons.computer;
       case ComponentType.monitor:
@@ -1407,7 +1407,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error picking images: $e'),
+          content: Text('Failed to pick images: ${getUserFriendlyError(e)}'),
           backgroundColor: Colors.red,
         ),
       );

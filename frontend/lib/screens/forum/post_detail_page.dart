@@ -1071,7 +1071,7 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error picking images: $e'),
+          content: Text('Failed to pick images: ${getUserFriendlyError(e)}'),
           backgroundColor: Colors.red,
         ),
       );

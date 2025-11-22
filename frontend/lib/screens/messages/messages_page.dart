@@ -415,7 +415,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                           margin: const EdgeInsets.only(bottom: 12),
                                           child: ListTile(
                                             leading: const Icon(Icons.error),
-                                            title: Text('Error: ${conversation.otherUserId}'),
+                                            title: Text(getUserFriendlyError(error)),
                                           ),
                                         ),
                                       );
@@ -477,7 +477,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          error.toString(),
+                          getUserFriendlyError(error),
                           style: TextStyle(
                             fontSize: 14,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -499,7 +499,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text('Error: $error'),
+                child: Text(getUserFriendlyError(error)),
               ),
             ),
           ),

@@ -510,7 +510,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                                         if (mounted) {
                                                           ScaffoldMessenger.of(context).showSnackBar(
                                                             SnackBar(
-                                                              content: Text('Error deleting message: $error'),
+                                                              content: Text('Failed to delete message: ${getUserFriendlyError(error)}'),
                                                               backgroundColor: Colors.red,
                                                             ),
                                                           );
@@ -563,7 +563,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        error.toString(),
+                                        getUserFriendlyError(error),
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -599,7 +599,7 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    error.toString(),
+                                    getUserFriendlyError(error),
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -680,13 +680,13 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(
-                    child: Text('Error loading user: $error'),
+                    child: Text(getUserFriendlyError(error)),
                   ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text('Error: $error'),
+                child: Text(getUserFriendlyError(error)),
               ),
             ),
           ),

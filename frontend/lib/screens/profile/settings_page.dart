@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/admin_provider.dart';
+import 'package:frontend/models/user_role.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/l10n/app_localization.dart';
@@ -35,10 +36,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       final currentUser = ref.read(authProvider).valueOrNull;
       final isAdmin = currentUser?.userRole.isAdministrator ?? false;
+      final isModerator = currentUser?.userRole.isModeratorOrHigher ?? false;
+      final isStaff = isAdmin || isModerator;
       final targetUserId = widget.userId;
       
-      // If userId is provided and user is admin, use admin service
-      if (targetUserId != null && isAdmin && targetUserId != currentUser?.uid) {
+      // If userId is provided and user is staff (admin or moderator), use admin service
+      if (targetUserId != null && isStaff && targetUserId != currentUser?.uid) {
         final adminService = ref.read(adminServiceProvider);
         await adminService.updateUser(targetUserId, data);
         
@@ -138,7 +141,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               return const Center(child: Text('Please log in first'));
             }
             
-            if (!currentUser.userRole.isAdministrator) {
+            // Allow administrators and moderators to edit user profiles
+            final isAdmin = currentUser.userRole.isAdministrator;
+            final isModerator = currentUser.userRole.isModeratorOrHigher;
+            if (!isAdmin && !isModerator) {
               return const Center(
                 child: Text('You do not have permission to edit this user'),
               );
@@ -272,7 +278,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.userId != null && currentUser.userRole.isAdministrator
+                                    widget.userId != null && (currentUser.userRole.isAdministrator || currentUser.userRole.isModeratorOrHigher)
                                         ? 'Edit User Profile'
                                         : 'Account Settings',
                                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -280,7 +286,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       color: theme.colorScheme.onSurface,
                                     ),
                                   ),
-                                  if (widget.userId != null && currentUser.userRole.isAdministrator) ...[
+                                  if (widget.userId != null && (currentUser.userRole.isAdministrator || currentUser.userRole.isModeratorOrHigher)) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       'Editing: ${user.displayName} (@${user.username})',
@@ -301,6 +307,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         // Profile Information Section
                         _buildProfileInformationSection(context, theme, isDark, user),
                         const SizedBox(height: 32),
+                        // Role Management Section (only for staff when editing other users)
+                        if (widget.userId != null && user.uid != currentUser.uid && (currentUser.userRole.isAdministrator || currentUser.userRole.isModeratorOrHigher))
+                          _buildRoleManagementSection(context, theme, isDark, user, currentUser),
+                        if (widget.userId != null && user.uid != currentUser.uid && (currentUser.userRole.isAdministrator || currentUser.userRole.isModeratorOrHigher))
+                          const SizedBox(height: 32),
                         // Privacy & Security Section (only for own profile)
                         if (widget.userId == null || user.uid == currentUser.uid)
                           _buildPrivacySecuritySection(context, theme, isDark),
@@ -469,6 +480,283 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           onEdit: () => _showAddressDialog(context, theme, user.address),
         ),
       ],
+    );
+  }
+
+  Widget _buildRoleManagementSection(BuildContext context, ThemeData theme, bool isDark, AppUser user, AppUser currentUser) {
+    return _SettingsSection(
+      theme: theme,
+      title: 'Role Management',
+      icon: Icons.admin_panel_settings_rounded,
+      children: [
+        _SettingsItem(
+          theme: theme,
+          label: 'User Role',
+          value: _getUserRoleDisplayName(user.userRole),
+          icon: Icons.person_outline_rounded,
+          onEdit: () => _showRoleAssignmentDialog(context, theme, user, currentUser),
+        ),
+      ],
+    );
+  }
+
+  String _getUserRoleDisplayName(UserRole role) {
+    switch (role) {
+      case UserRole.banned:
+        return 'Banned';
+      case UserRole.guest:
+        return 'Guest';
+      case UserRole.unverified:
+        return 'Unverified';
+      case UserRole.user:
+        return 'User';
+      case UserRole.vip:
+        return 'VIP';
+      case UserRole.moderator:
+        return 'Moderator';
+      case UserRole.administrator:
+        return 'Administrator';
+      case UserRole.owner:
+        return 'Owner';
+      case UserRole.system:
+        return 'System';
+    }
+  }
+
+  Future<void> _showRoleAssignmentDialog(BuildContext context, ThemeData theme, AppUser user, AppUser currentUser) async {
+    UserRole? selectedRole = user.userRole;
+    DateTime? selectedBannedUntil;
+    final formKey = GlobalKey<FormState>();
+
+    // Load existing bannedUntil if user is banned
+    if (user.userRole == UserRole.banned && user.address != null) {
+      // Note: bannedUntil is not in AppUser model, need to fetch it from backend
+      // For now, we'll let staff set it when assigning ban
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.admin_panel_settings_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              const Text('Assign User Role'),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Assigning role to: ${user.displayName} (@${user.username})',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    DropdownButtonFormField<UserRole>(
+                      value: selectedRole,
+                      decoration: InputDecoration(
+                        labelText: 'User Role',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                      ),
+                      items: UserRole.values.where((role) {
+                        // Filter out system role - only owner can assign that
+                        if (role == UserRole.system && !currentUser.userRole.isAdministrator) {
+                          return false;
+                        }
+                        // Filter out owner and administrator - only owner can assign those
+                        if ((role == UserRole.owner || role == UserRole.administrator) && 
+                            currentUser.userRole != UserRole.owner) {
+                          return false;
+                        }
+                        return true;
+                      }).map((role) {
+                        return DropdownMenuItem<UserRole>(
+                          value: role,
+                          child: Text(_getUserRoleDisplayName(role)),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedRole = value;
+                          // Reset bannedUntil when role changes from banned
+                          if (value != UserRole.banned) {
+                            selectedBannedUntil = null;
+                          }
+                        });
+                      },
+                    ),
+                    if (selectedRole == UserRole.banned) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Ban Expiration Date (Optional)',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Leave empty for permanent ban',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () async {
+                          final now = DateTime.now();
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedBannedUntil ?? now.add(const Duration(days: 7)),
+                            firstDate: now,
+                            lastDate: DateTime(now.year + 10),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: theme.colorScheme.primary,
+                                    onPrimary: theme.colorScheme.onPrimary,
+                                    onSurface: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            final time = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.now(),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: theme.colorScheme.primary,
+                                      onPrimary: theme.colorScheme.onPrimary,
+                                      onSurface: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (time != null) {
+                              setDialogState(() {
+                                selectedBannedUntil = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  time.hour,
+                                  time.minute,
+                                );
+                              });
+                            }
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                selectedBannedUntil == null
+                                    ? 'Select expiration date'
+                                    : '${selectedBannedUntil!.year}-${selectedBannedUntil!.month.toString().padLeft(2, '0')}-${selectedBannedUntil!.day.toString().padLeft(2, '0')} ${selectedBannedUntil!.hour.toString().padLeft(2, '0')}:${selectedBannedUntil!.minute.toString().padLeft(2, '0')}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: selectedBannedUntil == null
+                                      ? theme.colorScheme.onSurfaceVariant
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (selectedBannedUntil != null) ...[
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () {
+                            setDialogState(() {
+                              selectedBannedUntil = null;
+                            });
+                          },
+                          icon: const Icon(Icons.clear, size: 18),
+                          label: const Text('Clear expiration (permanent ban)'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop();
+                  
+                  // Prepare update data
+                  final updateData = <String, dynamic>{
+                    'UserRole': selectedRole!.value,
+                  };
+                  
+                  // Add bannedUntil if role is banned and date is selected
+                  if (selectedRole == UserRole.banned) {
+                    if (selectedBannedUntil != null) {
+                      updateData['BannedUntil'] = selectedBannedUntil!.toIso8601String();
+                    } else {
+                      // For permanent ban, set to a far future date or leave null
+                      // Backend may handle null as permanent, but let's set a far future date
+                      updateData['BannedUntil'] = DateTime(2099, 12, 31).toIso8601String();
+                    }
+                  } else {
+                    // Clear bannedUntil when role is not banned
+                    updateData['BannedUntil'] = null;
+                  }
+                  
+                  // Update user role
+                  _updateProfile(updateData);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
     );
   }
   

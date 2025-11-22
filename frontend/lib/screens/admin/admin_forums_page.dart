@@ -277,7 +277,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                             Icon(Icons.error_outline, size: 48, color: AppColorsDark.error),
                             const SizedBox(height: 16),
                             Text(
-                              'Error loading forum posts: ${error.toString()}',
+                              'Unable to load forum posts: ${getUserFriendlyError(error)}',
                               style: TextStyle(
                                 color: isDark
                                     ? AppColorsDark.textWhite
