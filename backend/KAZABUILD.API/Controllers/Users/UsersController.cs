@@ -1,3 +1,4 @@
+using KAZABUILD.API.Controllers.Builds;
 using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
@@ -932,6 +933,13 @@ namespace KAZABUILD.API.Controllers.Users
                 .Include(u => u.SentMessages)
                     .ThenInclude(m => m.ChildMessages)
                 .Include(u => u.Builds)
+                    .ThenInclude(b => b.Images)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Components)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Interactions)
                 .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
@@ -1035,7 +1043,50 @@ namespace KAZABUILD.API.Controllers.Users
             //Remove all builds created by the user
             if (user.Builds.Count != 0)
             {
-                _db.Builds.RemoveRange(user.Builds);
+                foreach(var build in user.Builds)
+                {
+                    //Remove all related images
+                    if (build.Images.Count != 0)
+                    {
+                        foreach (var image in build.Images)
+                        {
+                            //Remove the file from the file system
+                            if (System.IO.File.Exists(image.Location))
+                                System.IO.File.Delete(image.Location);
+                        }
+
+                        //Delete all related images
+                        _db.Images.RemoveRange(build.Images);
+                    }
+
+                    //Remove all related comments
+                    if (build.Comments.Count != 0)
+                    {
+                        _db.UserComments.RemoveRange(build.Comments);
+                    }
+
+                    //Handle deleting build tags to avoid conflicts with cascade deletes
+                    //Get all tags
+                    var tags = await _db.BuildTags.Where(f => f.BuildId == build.Id).ToListAsync();
+
+                    //Remove all related tags
+                    if (tags.Count != 0)
+                    {
+                        _db.BuildTags.RemoveRange(tags);
+                    }
+
+                    //Set all related interactions foreign key field to null
+                    if (build.Interactions.Count != 0)
+                    {
+                        foreach (var interaction in build.Interactions)
+                        {
+                            interaction.BuildId = null;
+                        }
+                    }
+
+                    //Delete the build
+                    _db.Builds.Remove(build);
+                }
             }
 
             //Delete the user
