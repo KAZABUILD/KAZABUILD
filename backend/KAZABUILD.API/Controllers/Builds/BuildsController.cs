@@ -574,6 +574,9 @@ namespace KAZABUILD.API.Controllers.Builds
             var build = await _db.Builds
                 .Include(b => b.Images)
                 .Include(b => b.Comments)
+                    .ThenInclude(c => c.ChildComments)
+                .Include(b => b.Comments)
+                    .ThenInclude(c => c.Images)
                 .Include(b => b.Components)
                 .Include(b => b.Interactions)
                 .FirstOrDefaultAsync(b => b.Id == id);
@@ -677,6 +680,12 @@ namespace KAZABUILD.API.Controllers.Builds
                 {
                     interaction.BuildId = null;
                 }
+            }
+
+            //Remove all components from build
+            if (build.Components.Count != 0)
+            {
+                _db.BuildComponents.RemoveRange(build.Components);
             }
 
             //Delete the build

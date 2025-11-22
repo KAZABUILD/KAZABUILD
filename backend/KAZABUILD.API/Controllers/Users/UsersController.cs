@@ -936,6 +936,10 @@ namespace KAZABUILD.API.Controllers.Users
                     .ThenInclude(b => b.Images)
                 .Include(u => u.Builds)
                     .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.ChildComments)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.Images)
                 .Include(u => u.Builds)
                     .ThenInclude(b => b.Components)
                 .Include(u => u.Builds)
@@ -1106,6 +1110,12 @@ namespace KAZABUILD.API.Controllers.Users
                         {
                             interaction.BuildId = null;
                         }
+                    }
+
+                    //Remove all components from build
+                    if (build.Components.Count != 0)
+                    {
+                        _db.BuildComponents.RemoveRange(build.Components);
                     }
 
                     //Delete the build
