@@ -55,6 +55,7 @@ import 'package:frontend/screens/admin/admin_parts_page.dart';
 import 'package:frontend/screens/admin/admin_guides_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
 import 'package:frontend/screens/admin/admin_tags_page.dart';
+import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
 
 // ──────────────────────── Auth State Listener ─────────────────────────────
@@ -280,7 +281,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         name: 'settings',
         builder: (_, state) {
+          // Get userId from query parameters (works with hash-based routing)
           final userId = state.uri.queryParameters['userId'];
+          if (kDebugMode) {
+            print('Settings route - userId from query: $userId');
+            print('Settings route - full URI: ${state.uri}');
+            print('Settings route - query parameters: ${state.uri.queryParameters}');
+          }
           return SettingsPage(userId: userId);
         },
       ),
@@ -312,7 +319,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
           final initialPage =
               int.tryParse(state.uri.queryParameters['page'] ?? '1') ?? 1;
-          return PartPickerPage(componentType: type, initialPage: initialPage);
+          final componentId = state.uri.queryParameters['componentId'];
+          return PartPickerPage(
+            componentType: type,
+            initialPage: initialPage,
+            componentId: componentId,
+          );
         },
       ),
       GoRoute(
@@ -457,7 +469,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'admin-component-compatibility-test',
         builder: (_, __) => const AdminComponentCompatibilityTestPage(),
       ),
-      GoRoute(path: '/admin/settings', redirect: (_, __) => '/settings'),
+      GoRoute(
+        path: '/admin/settings',
+        name: 'admin-settings',
+        builder: (_, __) => AdminBaseLayout(
+          currentRoute: '/admin/settings',
+          pageTitle: 'Admin Settings',
+          child: const AdminSettingsPage(),
+        ),
+      ),
     ],
   );
 });

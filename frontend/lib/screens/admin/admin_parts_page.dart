@@ -605,9 +605,9 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                   IconButton(
                     icon: const Icon(Icons.visibility, size: 18),
                     onPressed: () {
-                      // Navigate to parts page for the component type to view details
+                      // Navigate to parts page for the component type with component ID to view details
                       final componentType = component.componentType.toLowerCase();
-                      context.go('/parts/$componentType');
+                      context.go('/parts/$componentType?componentId=${component.id}');
                     },
                     tooltip: 'View',
                   ),

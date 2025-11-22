@@ -44,6 +44,11 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
     ),
     NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
     NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
+    NavigationItem(
+      icon: Icons.settings,
+      label: 'Settings',
+      route: '/admin/settings',
+    ),
   ];
 
   @override

@@ -107,6 +107,78 @@ class ComponentService {
     return allComponents;
   }
 
+  /// Fetches a single component by its ID.
+  Future<BaseComponent> getComponentById(String componentId) async {
+    final url = '$apiBaseUrl/Components/$componentId';
+
+    if (kDebugMode) {
+      print('Fetching component by ID: $componentId');
+    }
+
+    try {
+      final response = await _dio.get(url);
+
+      if (response.statusCode == 200 && response.data != null) {
+        final json = response.data;
+        
+        if (kDebugMode) {
+          print('Received component data for ID: $componentId');
+        }
+
+        // Parse component based on type
+        final typeString = (json['type'] ?? json['Type'])
+            ?.toString()
+            .toUpperCase();
+        
+        switch (typeString) {
+          case 'CPU':
+            return CPUComponent.fromJson(json);
+          case 'GPU':
+            return GPUComponent.fromJson(json);
+          case 'MOTHERBOARD':
+            return MotherboardComponent.fromJson(json);
+          case 'MEMORY':
+          case 'RAM':
+            return MemoryComponent.fromJson(json);
+          case 'STORAGE':
+            return StorageComponent.fromJson(json);
+          case 'POWERSUPPLY':
+          case 'POWER_SUPPLY':
+            return PowerSupplyComponent.fromJson(json);
+          case 'COOLER':
+            return CoolerComponent.fromJson(json);
+          case 'CASE':
+            return CaseComponent.fromJson(json);
+          case 'CASEFAN':
+          case 'CASE_FAN':
+            return CaseFanComponent.fromJson(json);
+          case 'MONITOR':
+            return MonitorComponent.fromJson(json);
+          default:
+            throw Exception('Unknown component type: $typeString');
+        }
+      } else {
+        throw Exception(
+          'Failed to load component: Status code ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException when fetching component: ${e.message}');
+        if (e.response != null) {
+          print('Response status: ${e.response?.statusCode}');
+          print('Response data: ${e.response?.data}');
+        }
+      }
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching component: $e');
+      }
+      rethrow;
+    }
+  }
+
   /// Fetches a single page of components for the provided [componentType].
   Future<ComponentPageResult> getComponentsPage(
     ComponentType componentType, {

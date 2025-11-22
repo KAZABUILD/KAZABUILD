@@ -1,6 +1,7 @@
 /// Service for admin-related API calls
 library;
 
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:frontend/models/api_constants.dart';
 
@@ -637,11 +638,26 @@ class AdminService {
     };
     final typeDiscriminator = typeMap[type] ?? 'Case';
     
-    // Add type discriminator for polymorphic deserialization
-    final updateData = Map<String, dynamic>.from(data);
-    updateData[r'$type'] = typeDiscriminator;
+    // Create a new map with $type as the first property (order matters for some JSON parsers)
+    // .NET uses "$type" as the default discriminator property name for polymorphic deserialization
+    final updateData = <String, dynamic>{
+      '\$type': typeDiscriminator, // Use escape sequence, not raw string
+    };
     
-    return _dio.put('$apiBaseUrl/Components/$componentId', data: updateData);
+    // Add all other data fields
+    updateData.addAll(data);
+    
+    // Convert to JSON string manually to ensure $type is properly escaped
+    final jsonString = jsonEncode(updateData);
+    
+    return _dio.put(
+      '$apiBaseUrl/Components/$componentId',
+      data: jsonString,
+      options: Options(
+        headers: {'Content-Type': 'application/json'},
+        contentType: 'application/json',
+      ),
+    );
   }
 
   /// Deletes a component
