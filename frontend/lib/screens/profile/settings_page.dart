@@ -5,6 +5,7 @@
 /// change app-wide preferences such as the theme.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,9 +41,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (targetUserId != null && isAdmin && targetUserId != currentUser?.uid) {
         final adminService = ref.read(adminServiceProvider);
         await adminService.updateUser(targetUserId, data);
+        
+        // Invalidate the target user's profile provider to refresh the UI immediately
+        ref.invalidate(userProfileProvider(targetUserId));
       } else {
         // Otherwise, update own profile
         await ref.read(authProvider.notifier).updateUserProfile(data);
+        
+        // Invalidate own profile provider if viewing own profile by userId
+        if (targetUserId != null && targetUserId == currentUser?.uid) {
+          ref.invalidate(userProfileProvider(targetUserId));
+        }
       }
       
       if (mounted) {
@@ -84,33 +93,97 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     // If userId is provided, load that user's data, otherwise use current user
     final targetUserId = widget.userId;
     
-    if (targetUserId != null) {
-      // Load the target user's data
-      final targetUserAsync = ref.watch(userProfileProvider(targetUserId));
+    if (kDebugMode) {
+      debugPrint('SettingsPage build - userId: $targetUserId');
+      debugPrint('SettingsPage build - widget.userId: ${widget.userId}');
+    }
+    
+    if (targetUserId != null && targetUserId.isNotEmpty) {
+      // Load both providers in parallel
       final currentUserAsync = ref.watch(authProvider);
+      final targetUserAsync = ref.watch(userProfileProvider(targetUserId));
       
+      // Wait for current user first (needed for admin check)
       return Scaffold(
         key: scaffoldKey,
         backgroundColor: theme.colorScheme.surface,
-        body: targetUserAsync.when(
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (err, stack) => Scaffold(body: Center(child: Text('Error loading user: $err'))),
-          data: (targetUser) {
-            if (targetUser == null) {
-              return Scaffold(
-                body: Center(child: Text('User not found')),
+        body: currentUserAsync.when(
+          loading: () {
+            if (kDebugMode) debugPrint('SettingsPage: Loading current user...');
+            return const Center(child: CircularProgressIndicator());
+          },
+          error: (err, stack) {
+            if (kDebugMode) {
+              debugPrint('SettingsPage: Error loading current user: $err');
+              debugPrint('SettingsPage: Stack: $stack');
+            }
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error loading current user: $err'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.invalidate(authProvider),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          },
+          data: (currentUser) {
+            if (currentUser == null) {
+              return const Center(child: Text('Please log in first'));
+            }
+            
+            if (!currentUser.userRole.isAdministrator) {
+              return const Center(
+                child: Text('You do not have permission to edit this user'),
               );
             }
             
-            // Check if current user is admin
-            return currentUserAsync.when(
-              loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-              error: (_, __) => Scaffold(body: Center(child: Text('Error loading current user'))),
-              data: (currentUser) {
-                if (currentUser == null || !currentUser.userRole.isAdministrator) {
-                  return Scaffold(
-                    body: Center(child: Text('You do not have permission to edit this user')),
-                  );
+            // Now load target user data
+            return targetUserAsync.when(
+              loading: () {
+                if (kDebugMode) debugPrint('SettingsPage: Loading target user $targetUserId...');
+                return const Center(child: CircularProgressIndicator());
+              },
+              error: (err, stack) {
+                if (kDebugMode) {
+                  debugPrint('SettingsPage: Error loading target user: $err');
+                  debugPrint('SettingsPage: Stack: $stack');
+                }
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text('Error loading user: $err', 
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          ref.invalidate(userProfileProvider(targetUserId));
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              data: (targetUser) {
+                if (targetUser == null) {
+                  if (kDebugMode) debugPrint('SettingsPage: Target user is null');
+                  return const Center(child: Text('User not found'));
+                }
+                
+                if (kDebugMode) {
+                  debugPrint('SettingsPage: Successfully loaded target user: ${targetUser.username}');
                 }
                 
                 // Use targetUser for editing
@@ -128,13 +201,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       key: scaffoldKey,
       backgroundColor: theme.colorScheme.surface,
       body: authState.when(
-        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
         data: (user) {
           if (user == null) {
-            return Scaffold(
-              body: Center(child: Text('Please log in to access settings')),
-            );
+            return const Center(child: Text('Please log in to access settings'));
           }
           
           return _buildSettingsContent(context, theme, isDark, scaffoldKey, user, user);
@@ -151,35 +222,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppUser user,
     AppUser currentUser,
   ) {
-    return Scaffold(
-      key: scaffoldKey,
-      backgroundColor: theme.colorScheme.surface,
-      body: Column(
-        children: [
-          CustomNavigationBar(scaffoldKey: scaffoldKey),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.background,
-                gradient: isDark
-                    ? LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          theme.colorScheme.surface.withValues(alpha: 0.5),
-                          theme.colorScheme.background,
-                        ],
-                      )
-                    : null,
-              ),
-              child: SingleChildScrollView(
-                child: Center(
-                  child: Container(
-                    width: double.infinity,
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
+    // Return only the body content, not a Scaffold (Scaffold is already in parent)
+    return Column(
+      children: [
+        CustomNavigationBar(scaffoldKey: scaffoldKey),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.background,
+              gradient: isDark
+                  ? LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.colorScheme.surface.withValues(alpha: 0.5),
+                        theme.colorScheme.background,
+                      ],
+                    )
+                  : null,
+            ),
+            child: SingleChildScrollView(
+              child: Center(
+                child: Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Page Header
@@ -242,8 +311,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
   

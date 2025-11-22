@@ -43,6 +43,10 @@ class PartPickerPage extends ConsumerStatefulWidget {
   /// If provided, component will be returned via callback instead of adding to buildProvider.
   final Function(BaseComponent)? onComponentSelected;
   final int initialPage;
+  
+  /// Optional component ID to show details for when page loads.
+  /// If provided, the component details dialog will be shown automatically.
+  final String? componentId;
 
   const PartPickerPage({
     super.key,
@@ -50,6 +54,7 @@ class PartPickerPage extends ConsumerStatefulWidget {
     this.currentBuild,
     this.onComponentSelected,
     this.initialPage = 1,
+    this.componentId,
   });
 
   @override
@@ -126,13 +131,18 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
 
   // Compatibility filter
   bool _enableCompatibilityFilter = false;
+  
+  // Track if we've shown the component details dialog for the current componentId
+  String? _shownComponentId;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _currentPage = _sanitizePage(widget.initialPage);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCurrentPage());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCurrentPage();
+    });
   }
 
   @override
@@ -150,6 +160,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       final nextPage = _sanitizePage(widget.initialPage);
       _currentPage = nextPage;
       _loadCurrentPage(force: true, targetPage: nextPage);
+    }
+    // If componentId changed, reset shown flag so new component details can be shown
+    if (widget.componentId != oldWidget.componentId) {
+      _shownComponentId = null;
     }
   }
 
@@ -190,6 +204,14 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     final typeName = widget.componentType.name;
     final location = '/parts/$typeName?page=$page';
     GoRouter.of(context).go(location);
+  }
+
+  /// Shows a dialog with all specifications for the component
+  void _showSpecsDialog(BuildContext context, BaseComponent component) {
+    showDialog(
+      context: context,
+      builder: (context) => _ComponentSpecsDialog(component: component),
+    );
   }
 
   /// Fetches compatible component IDs for given component IDs
@@ -520,6 +542,105 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                         if (pagingState.errorMessage != null &&
                             products.isEmpty) {
                           return const SizedBox.shrink();
+                        }
+
+                        // Show component details dialog if componentId is provided and not shown yet
+                        if (widget.componentId != null &&
+                            widget.componentId != _shownComponentId &&
+                            !pagingState.isInitialLoading &&
+                            !pagingState.isLoading) {
+                          // Mark as shown to prevent multiple dialogs BEFORE async operation
+                          final componentIdToShow = widget.componentId!;
+                          _shownComponentId = componentIdToShow;
+                          
+                          if (kDebugMode) {
+                            debugPrint(
+                              'PartPickerPage: Preparing to show component details for ID: $componentIdToShow',
+                            );
+                            debugPrint(
+                              'PartPickerPage: Products count: ${products.length}',
+                            );
+                          }
+                          
+                          WidgetsBinding.instance.addPostFrameCallback((_) async {
+                            if (!mounted || componentIdToShow != widget.componentId) {
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'PartPickerPage: Dialog cancelled - widget not mounted or componentId changed',
+                                );
+                              }
+                              return;
+                            }
+                            
+                            // Try to find component in current products first
+                            BaseComponent? componentToShow;
+                            try {
+                              componentToShow = products.firstWhere(
+                                (p) => p.id == componentIdToShow,
+                              );
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'PartPickerPage: Component found in current page: ${componentToShow.name}',
+                                );
+                              }
+                            } catch (e) {
+                              // Component not found in current page, fetch it from API
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'PartPickerPage: Component not found in current page (${products.length} products), fetching from API: $componentIdToShow',
+                                );
+                              }
+                              try {
+                                final componentService =
+                                    ref.read(componentServiceProvider);
+                                componentToShow =
+                                    await componentService.getComponentById(
+                                  componentIdToShow,
+                                );
+                                if (kDebugMode) {
+                                  debugPrint(
+                                    'PartPickerPage: Component fetched from API: ${componentToShow.name}',
+                                  );
+                                }
+                              } catch (fetchError) {
+                                if (kDebugMode) {
+                                  debugPrint(
+                                    'PartPickerPage: Error fetching component $componentIdToShow: $fetchError',
+                                  );
+                                }
+                                // Show error snackbar
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Component not found',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                                // Reset _shownComponentId on error so user can try again
+                                _shownComponentId = null;
+                                return;
+                              }
+                            }
+                            
+                            // Show dialog with component details
+                            if (mounted) {
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'PartPickerPage: Showing component details dialog for: ${componentToShow.name}',
+                                );
+                              }
+                              _showSpecsDialog(context, componentToShow);
+                            } else {
+                              if (kDebugMode) {
+                                debugPrint(
+                                  'PartPickerPage: Widget not mounted, cannot show dialog',
+                                );
+                              }
+                            }
+                          });
                         }
 
                         // Initialize price range if not set

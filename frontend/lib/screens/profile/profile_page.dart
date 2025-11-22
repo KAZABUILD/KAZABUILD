@@ -29,13 +29,15 @@ final userProfileProvider = FutureProvider.family<AppUser?, String>((ref, userId
         return user;
       } catch (parseError) {
         debugPrint('Error parsing user $userId: $parseError');
-        return null;
+        debugPrint('Response data: ${userResponse.data}');
+        throw Exception('Failed to parse user data: $parseError');
       }
+    } else {
+      throw Exception('Failed to fetch user: Status ${userResponse.statusCode}');
     }
-    return null;
   } catch (e) {
     debugPrint('Error fetching user $userId: $e');
-    return null;
+    rethrow; // Re-throw to trigger error state
   }
 });
 
@@ -416,7 +418,12 @@ class ProfilePage extends ConsumerWidget {
                       _ActionButton(
                         icon: Icons.edit_rounded,
                         label: 'Edit User',
-                        onPressed: () => context.push('/settings?userId=${user.uid}'),
+                        onPressed: () {
+                          // Navigate to settings page with userId query parameter
+                          final settingsUrl = '/settings?userId=${user.uid}';
+                          debugPrint('Navigating to settings: $settingsUrl');
+                          context.go(settingsUrl);
+                        },
                         isPrimary: false,
                         theme: theme,
                       ),
