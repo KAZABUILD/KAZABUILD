@@ -15,15 +15,15 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// Id of the sender.
+        /// It is set to null only if the sender is deleted.
         /// </summary>
-        [Required]
-        public Guid SenderId { get; set; } = default!;
+        public Guid? SenderId { get; set; }
 
         /// <summary>
         /// Id of the person receiving the message.
+        /// It is set to null only if the receiver is deleted.
         /// </summary>
-        [Required]
-        public Guid ReceiverId { get; set; } = default!;
+        public Guid? ReceiverId { get; set; }
 
         /// <summary>
         /// Encrypted content of the message.

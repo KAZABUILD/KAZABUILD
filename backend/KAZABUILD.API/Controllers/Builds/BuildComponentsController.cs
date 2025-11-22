@@ -470,7 +470,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.ComponentId != null)
             {
-                query = query.Where(c => dto.ComponentId.Contains(c.ComponentId));
+                query = query.Where(c => c.ComponentId != null && dto.ComponentId.Contains((Guid)c.ComponentId));
             }
             if (dto.QuantityStart != null)
             {

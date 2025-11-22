@@ -284,7 +284,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(m => m.ParentMessage)
                 .WithMany(pm => pm.ChildMessages)
                 .HasForeignKey(m => m.ParentMessageId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== NOTFICATION ======================================//
 

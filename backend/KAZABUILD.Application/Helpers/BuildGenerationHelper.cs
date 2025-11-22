@@ -1,18 +1,39 @@
 using KAZABUILD.Domain.Entities.Components.Components;
 using KAZABUILD.Domain.Enums;
+using System.Linq.Expressions;
 
 namespace KAZABUILD.Application.Helpers
 {
+    /// <summary>
+    /// Helper that contains functions used to simplify build generation.
+    /// </summary>
     public static class BuildGenerationHelper
     {
-        public static (float Min, float Max) AllocateBudget(float score, float totalScore, float minBudget, float maxBudget)
+        /// <summary>
+        /// Calculates minimum and maximum allocated budget to a component.
+        /// </summary>
+        /// <param name="ratio"></param>
+        /// <param name="totalRatio"></param>
+        /// <param name="minBudget"></param>
+        /// <param name="maxBudget"></param>
+        /// <returns></returns>
+        public static (float Min, float Max) AllocateBudget(float ratio, float totalRatio, float minBudget, float maxBudget)
         {
-            float baseAmount = score / totalScore;
+            float baseAmount = ratio / totalRatio;
             float min = baseAmount * minBudget * 0.98f;
             float max = baseAmount * maxBudget * 1.02f;
             return (min, max);
         }
 
+        /// <summary>
+        /// Dictionaries containing score adjustments for components.
+        /// Follows this metric:
+        /// 5 - extremely necessary
+        /// 4 - really necessary
+        /// 3 - necessary
+        /// 2 - can be just alright
+        /// 1 - anything will suffice
+        /// </summary>
         public static Dictionary<string, ComponentAdjustment> HobbyAdjustments = new()
         {
             ["Gaming"] = new(gpu: 5, cpu: 4, memory: 4, storage: 3, monitor: 3, cooler:  3),
@@ -79,13 +100,22 @@ namespace KAZABUILD.Application.Helpers
         };
         public static Dictionary<string, ComponentAdjustment> PriorityAdjustments = new()
         {
-            ["Reliability"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0),
-            ["Quiet Operation"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0),
-            ["Strong Graphics"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0),
-            ["Fast Multitasking"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0),
-            ["Looks"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0)
+            ["Reliability"] = new(gpu: 0, cpu: 0, memory: 5, storage: 5, monitor: 0, cooler: 0),
+            ["Quiet Operation"] = new(gpu: 5, cpu: 1, memory: 5, storage: 5, monitor: 5, cooler: 1),
+            ["Strong Graphics"] = new(gpu: 1, cpu: 5, memory: 0, storage: 0, monitor: 4, cooler: 4),
+            ["Fast Multitasking"] = new(gpu: 3, cpu: 0, memory: 0, storage: 0, monitor: 0, cooler: 0),
+            ["Looks"] = new(gpu: 0, cpu: 0, memory: 0, storage: 0, monitor: 3, cooler: 0)
         };
 
+        /// <summary>
+        /// Additional model for assigning the adjustments.
+        /// </summary>
+        /// <param name="gpu"></param>
+        /// <param name="cpu"></param>
+        /// <param name="memory"></param>
+        /// <param name="storage"></param>
+        /// <param name="monitor"></param>
+        /// <param name="cooler"></param>
         public class ComponentAdjustment(int gpu, int cpu, int memory, int storage, int monitor, int cooler)
         {
             public readonly int gpu = gpu;
@@ -94,6 +124,62 @@ namespace KAZABUILD.Application.Helpers
             public readonly int storage = storage;
             public readonly int monitor = monitor;
             public readonly int cooler = cooler;
+        }
+
+        /// <summary>
+        /// Additional entity framework query extension method for sorting based on a conditional.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="source"></param>
+        /// <param name="condition"></param>
+        /// <param name="keySelector"></param>
+        /// <returns></returns>
+        public static IOrderedQueryable<T> OrderByIf<T, TKey>(this IQueryable<T> source, bool condition, Expression<Func<T, TKey>> keySelector)
+        {
+            return condition ? source.OrderBy(keySelector) : (IOrderedQueryable<T>)source;
+        }
+
+        /// <summary>
+        /// Additional entity framework query extension method for sorting in descending order based on a conditional.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="source"></param>
+        /// <param name="condition"></param>
+        /// <param name="keySelector"></param>
+        /// <returns></returns>
+        public static IOrderedQueryable<T> OrderByDescendingIf<T, TKey>(this IQueryable<T> source, bool condition, Expression<Func<T, TKey>> keySelector)
+        {
+            return condition ? source.OrderByDescending(keySelector) : (IOrderedQueryable<T>)source;
+        }
+
+        /// <summary>
+        /// Additional entity framework query extension method for applying secondary sorting based on a conditional.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="source"></param>
+        /// <param name="condition"></param>
+        /// <param name="keySelector"></param>
+        /// <returns></returns>
+        public static IOrderedQueryable<T> ThenByIf<T, TKey>(this IOrderedQueryable<T> source, bool condition, Expression<Func<T, TKey>> keySelector)
+        {
+            return condition ? source.ThenBy(keySelector) : source;
+        }
+
+        /// <summary>
+        /// Additional entity framework query extension method for applying secondary sorting in descending order based on a conditional.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="source"></param>
+        /// <param name="condition"></param>
+        /// <param name="keySelector"></param>
+        /// <returns></returns>
+        public static IOrderedQueryable<T> ThenByDescendingIf<T, TKey>(this IOrderedQueryable<T> source, bool condition, Expression<Func<T, TKey>> keySelector)
+        {
+            return condition ? source.ThenByDescending(keySelector) : source;
         }
     }
 }

@@ -119,7 +119,7 @@ namespace KAZABUILD.Infrastructure.Services
 
                 var userIds = ids1 ?? [Guid.Empty];
 
-                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains(m.SenderId)).Select(m => m.Id).ToListAsync();
+                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains((Guid)m.SenderId!)).Select(m => m.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetMessageFaker(userIds, messageIds);
             }

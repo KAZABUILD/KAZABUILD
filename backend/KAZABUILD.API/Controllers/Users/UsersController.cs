@@ -2,6 +2,7 @@ using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
@@ -924,7 +925,13 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users
+                .Include(u => u.Images)
+                .Include(u => u.ReceivedMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.SentMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -982,6 +989,46 @@ namespace KAZABUILD.API.Controllers.Users
             if (follows.Count != 0)
             {
                 _db.UserFollows.RemoveRange(follows);
+            }
+
+            //Set all sent messages' foreign key field to null or delete them if receiver also null
+            if (user.SentMessages.Count != 0)
+            {
+                foreach (var message in user.SentMessages)
+                {
+                    if(message.ReceiverId != null)
+                        message.SenderId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
+            }
+
+            //Set all received messages' foreign key field to null or delete them if sender also null
+            if (user.ReceivedMessages.Count != 0)
+            {
+                foreach (var message in user.ReceivedMessages)
+                {
+                    if (message.SenderId != null)
+                        message.ReceiverId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
             }
 
             //Delete the user

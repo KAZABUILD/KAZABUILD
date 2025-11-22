@@ -311,16 +311,19 @@
 - Source: backend
 
 [00048] SQL Foreign Key Conflict (FK_UserComments_UserComments_ParentCommentId) prevents deletion of Builds/ForumPosts
-Type: incorrect implementation
-Status: FIXED
-Source: backend / database
-Details: The Error: When attempting to delete a Build or Forum Post via the Admin Panel, the operation fails with the following SQL exception: The DELETE statement conflicted with the SAME TABLE REFERENCE constraint "FK_UserComments_UserComments_ParentCommentId". The conflict occurred in database "KAZABUILD_DB", table "dbo.UserComments", column 'ParentCommentId'.
-
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend / database
+- Details: The Error: When attempting to delete a Build or Forum Post via the Admin Panel, the operation fails with the following SQL exception: The DELETE statement conflicted with the SAME TABLE REFERENCE constraint "FK_UserComments_UserComments_ParentCommentId". The conflict occurred in database "KAZABUILD_DB", table "dbo.UserComments", column 'ParentCommentId'.
 
 [00049] User Deletion Fails due to Linked Forum Posts & Comments.
-Type: incorrect implementation
-Status: FIXED
-Source: backend / database
-Details: The Error: When attempting to delete a User, the operation fails with: The DELETE statement conflicted with the REFERENCE constraint "FK_UserComments_ForumPosts_ForumPostId".
-Root Cause: When a User is deleted, the system attempts to cascade delete the Forum Posts created by that user. However, the database blocks the deletion of the Forum Post because there are UserComments attached to that post.
-The deletion chain breaks at: User -> ForumPost -> [BLOCKED] -> UserComments.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend / database
+- Details: The Error: When attempting to delete a User, the operation fails with: The DELETE statement conflicted with the REFERENCE constraint "FK_UserComments_ForumPosts_ForumPostId". Root Cause: When a User is deleted, the system attempts to cascade delete the Forum Posts created by that user. However, the database blocks the deletion of the Forum Post because there are UserComments attached to that post. The deletion chain breaks at: User -> ForumPost -> [BLOCKED] -> UserComments.
+
+[00050] Introduce an additional column in every model that has a nullable foreign key to store the key in case of deletion.
+- Type: incorrect implementation
+- Status: pending
+- Source: backend
+- Details: This will enable preservation of deleted users for message chats and similar situations.
