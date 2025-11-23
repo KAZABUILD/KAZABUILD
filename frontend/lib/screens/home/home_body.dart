@@ -48,21 +48,8 @@ class _HomeBodyState extends State<HomeBody> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment(0.0, 1.0),
-          colors: [
-            Color(0xFF2D1B4E),
-            Color(0xFF1F0E3B),
-            Color(0xFF0F0519),
-            Color(0xFF090616),
-          ],
-          stops: [0.0, 0.4, 0.7, 1.0],
-        ),
-      ),
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),

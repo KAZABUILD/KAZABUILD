@@ -45,6 +45,11 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
     NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
     NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
     NavigationItem(
+      icon: Icons.quiz,
+      label: 'Quiz',
+      route: '/admin/quiz',
+    ),
+    NavigationItem(
       icon: Icons.notifications,
       label: 'Notifications',
       route: '/admin/notifications',

@@ -665,5 +665,103 @@ class AdminService {
     await deleteComponentComments(componentId); // First, delete all comments and their images
     return _dio.delete('$apiBaseUrl/Components/$componentId'); // Then delete the component
   }
+
+  /// ─────────────── Quiz management (User Preferences + Answers) ───────────────
+  Future<Response> getQuizQuestions({List<String>? parentAnswerIds}) async {
+    final data = <String, dynamic>{
+      'Paging': false,
+      'Query': '',
+      'SortDirection': 'asc',
+      'OrderBy': 'DatabaseEntryAt',
+    };
+    if (parentAnswerIds != null && parentAnswerIds.isNotEmpty) {
+      data['UserPreferenceAnswerId'] = parentAnswerIds;
+    }
+    try {
+      return await _dio.post('$apiBaseUrl/UserPreferences/get', data: data);
+    } catch (e) {
+      print('Error in getQuizQuestions: $e');
+      rethrow;
+    }
+  }
+
+  Future<Response> createQuizQuestion({
+    required String question,
+    String? parentAnswerId,
+  }) async {
+    final data = <String, dynamic>{
+      'Question': question,
+    };
+    if (parentAnswerId != null && parentAnswerId.isNotEmpty) {
+      data['UserPreferenceAnswerId'] = parentAnswerId;
+    }
+    return _dio.post('$apiBaseUrl/UserPreferences/add', data: data);
+  }
+
+  Future<Response> updateQuizQuestion(
+    String questionId, {
+    String? question,
+    String? parentAnswerId,
+  }) async {
+    final data = <String, dynamic>{};
+    if (question != null) {
+      data['Question'] = question;
+    }
+    if (parentAnswerId != null && parentAnswerId.isNotEmpty) {
+      data['UserPreferenceAnswerId'] = parentAnswerId;
+    }
+    return _dio.put('$apiBaseUrl/UserPreferences/$questionId', data: data);
+  }
+
+  Future<Response> deleteQuizQuestion(String questionId) async {
+    return _dio.delete('$apiBaseUrl/UserPreferences/$questionId');
+  }
+
+  Future<Response> getQuizAnswers({List<String>? questionIds}) async {
+    final data = <String, dynamic>{
+      'Paging': false,
+      'Query': '',
+      'SortDirection': 'asc',
+    };
+    if (questionIds != null && questionIds.isNotEmpty) {
+      data['UserPreferenceId'] = questionIds;
+    }
+    try {
+      return await _dio.post('$apiBaseUrl/UserPreferenceAnswers/get', data: data);
+    } catch (e) {
+      print('Error in getQuizAnswers: $e');
+      rethrow;
+    }
+  }
+
+  Future<Response> createQuizAnswer({
+    required String questionId,
+    required String answer,
+  }) async {
+    final data = {
+      'UserPreferenceId': questionId,
+      'Answer': answer,
+    };
+    return _dio.post('$apiBaseUrl/UserPreferenceAnswers/add', data: data);
+  }
+
+  Future<Response> updateQuizAnswer(
+    String answerId, {
+    String? questionId,
+    String? answer,
+  }) async {
+    final data = <String, dynamic>{};
+    if (questionId != null && questionId.isNotEmpty) {
+      data['UserPreferenceId'] = questionId;
+    }
+    if (answer != null) {
+      data['Answer'] = answer;
+    }
+    return _dio.put('$apiBaseUrl/UserPreferenceAnswers/$answerId', data: data);
+  }
+
+  Future<Response> deleteQuizAnswer(String answerId) async {
+    return _dio.delete('$apiBaseUrl/UserPreferenceAnswers/$answerId');
+  }
 }
 
