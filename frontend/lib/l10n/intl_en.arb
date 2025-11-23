@@ -63,6 +63,8 @@
   "pcBuildingPlatform": "PC Building Platform",
   "@buildNow": {},
   "buildNow": "Build Now",
+  "@openInBuilder": {},
+  "openInBuilder": "Open in Builder",
   "@guides": {},
   "guides": "Guides",
   "@forums": {},

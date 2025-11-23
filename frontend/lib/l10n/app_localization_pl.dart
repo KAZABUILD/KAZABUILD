@@ -111,6 +111,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get buildNow => 'Utwórz Build';
 
   @override
+  String get openInBuilder => 'Otwórz w Kreatorze';
+
+  @override
   String get guides => 'Przewodniki';
 
   @override

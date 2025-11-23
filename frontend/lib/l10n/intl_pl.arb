@@ -63,6 +63,8 @@
   "pcBuildingPlatform": "Platforma Budowania PC",
   "@buildNow": {},
   "buildNow": "Utwórz Build",
+  "@openInBuilder": {},
+  "openInBuilder": "Otwórz w Kreatorze",
   "@guides": {},
   "guides": "Przewodniki",
   "@forums": {},

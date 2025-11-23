@@ -36,6 +36,11 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
       label: 'Builds',
       route: '/admin/builds',
     ),
+    NavigationItem(
+      icon: Icons.star,
+      label: 'Featured Builds',
+      route: '/admin/featured-builds',
+    ),
     NavigationItem(icon: Icons.forum, label: 'Forums', route: '/admin/forums'),
     NavigationItem(
       icon: Icons.shopping_cart,

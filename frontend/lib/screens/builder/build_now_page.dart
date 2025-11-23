@@ -18,12 +18,12 @@ import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/currency_provider.dart';
 import 'package:frontend/models/api_constants.dart';
-import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:go_router/go_router.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
@@ -78,6 +78,65 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   /// Resets the build to its initial empty state.
   void clearBuild() {
     state = _initialState.map((c) => PcComponent(name: c.name, type: c.type)).toList();
+  }
+
+  /// Prefills the builder with the provided [components], typically sourced from
+  /// an existing community build.
+  void loadComponentsFromBuild(List<BaseComponent> components) {
+    final updatedState = _initialState
+        .map((c) => PcComponent(name: c.name, type: c.type))
+        .toList();
+
+    for (final component in components) {
+      final availableSlotIndex = updatedState.indexWhere(
+        (slot) => slot.type == component.type && slot.selectedProduct == null,
+      );
+
+      if (availableSlotIndex != -1) {
+        updatedState[availableSlotIndex].selectedProduct = component;
+        continue;
+      }
+
+      final duplicates = updatedState.where((slot) => slot.type == component.type).length;
+      final displayName = duplicates == 0
+          ? _componentDisplayName(component.type)
+          : '${_componentDisplayName(component.type)} #${duplicates + 1}';
+
+      updatedState.add(
+        PcComponent(
+          name: displayName,
+          type: component.type,
+          selectedProduct: component,
+        ),
+      );
+    }
+
+    state = updatedState;
+  }
+
+  static String _componentDisplayName(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return 'CPU';
+      case ComponentType.gpu:
+        return 'GPU';
+      case ComponentType.motherboard:
+        return 'Motherboard';
+      case ComponentType.ram:
+        return 'Memory (RAM)';
+      case ComponentType.storage:
+        return 'Storage';
+      case ComponentType.psu:
+        return 'Power Supply';
+      case ComponentType.cooler:
+        return 'CPU Cooler';
+      case ComponentType.caseFan:
+        return 'Case Fan';
+      case ComponentType.pcCase:
+        return 'Case';
+      case ComponentType.monitor:
+        return 'Monitor';
+    }
   }
 
   /// Saves the current build to the backend.
@@ -407,14 +466,10 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       components: components,
                       onRemove: (i) => ref.read(buildProvider.notifier).removeComponent(components[i].type),
                       onAdd: (i) async {
-                        final selected = await Navigator.push<BaseComponent>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => PartPickerPage(
-                              componentType: components[i].type,
-                              currentBuild: components,
-                            ),
-                          ),
+                        final targetType = components[i].type.name;
+                        final selected = await context.push<BaseComponent?>(
+                          '/parts/$targetType',
+                          extra: components,
                         );
                         if (selected != null && mounted) {
                           if (selected.id.isEmpty) {
@@ -428,6 +483,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                         }
                       },
                       isMobile: isMobile,
+                      onClearAll: _startNewBuild,
+                      hasSelectedComponents: components.any((component) => component.selectedProduct != null),
                     ),
                   ],
                 ),
@@ -459,8 +516,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(AppLocalizations.of(context)!.clearBuild),
             style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: Text(AppLocalizations.of(context)!.clearBuild),
           ),
         ],
       ),
@@ -1255,6 +1312,8 @@ class _ComponentTable extends StatelessWidget {
   final Function(int) onRemove;
   final Function(int) onAdd;
   final bool isMobile; // Added isMobile
+  final VoidCallback onClearAll;
+  final bool hasSelectedComponents;
 
   const _ComponentTable({
     required this.theme,
@@ -1262,10 +1321,13 @@ class _ComponentTable extends StatelessWidget {
     required this.onRemove,
     required this.onAdd,
     required this.isMobile, // Added isMobile
+    required this.onClearAll,
+    required this.hasSelectedComponents,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
       color: Colors.grey,
@@ -1281,7 +1343,18 @@ class _ComponentTable extends StatelessWidget {
       child: isMobile
           /// Mobile layout: A vertical list of cards for each component.
           ? Column(
-              children: List.generate(components.length, (index) {
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasSelectedComponents)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: onClearAll,
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      label: Text(l10n.clearBuild),
+                    ),
+                  ),
+                ...List.generate(components.length, (index) {
                 final component = components[index];
                 final product = component.selectedProduct;
                 return Card(
@@ -1368,6 +1441,7 @@ class _ComponentTable extends StatelessWidget {
                   ),
                 );
               }),
+            ],
             )
           /// Desktop layout: A structured table with headers.
           : Column(
@@ -1389,7 +1463,7 @@ class _ComponentTable extends StatelessWidget {
                       const Expanded(
                         flex: 2,
                         child: Padding(
-                          padding: const EdgeInsets.only(right: 12.0),
+                          padding: EdgeInsets.only(right: 12.0),
                           child: Text(
                             'Price',
                             style: headerStyle,
@@ -1405,6 +1479,12 @@ class _ComponentTable extends StatelessWidget {
                           textAlign: TextAlign.center,
                         ),
                       ),
+                      if (hasSelectedComponents)
+                        TextButton.icon(
+                          onPressed: onClearAll,
+                          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                          label: Text(l10n.clearBuild),
+                        ),
                     ],
                   ),
                 ),

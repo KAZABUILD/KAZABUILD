@@ -23,6 +23,7 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/screens/builder/build_now_page.dart' show buildProvider;
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/image_provider.dart';
 import 'package:frontend/widgets/linkable_text.dart';
@@ -1034,6 +1035,7 @@ class _ComponentsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1047,12 +1049,26 @@ class _ComponentsSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: components.isEmpty
+                  ? null
+                  : () {
+                      ref.read(buildProvider.notifier).loadComponentsFromBuild(components);
+                      context.go('/build-now');
+                    },
+              icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+              label: Text(l10n.openInBuilder),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (components.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  AppLocalizations.of(context)!.noComponentsListed,
+                  l10n.noComponentsListed,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),

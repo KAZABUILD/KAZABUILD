@@ -50,6 +50,7 @@ import 'package:frontend/screens/admin/admin_dashboard.dart';
 import 'package:frontend/screens/admin/admin_users_page.dart';
 import 'package:frontend/screens/admin/admin_access_debug_page.dart';
 import 'package:frontend/screens/admin/admin_builds_page.dart';
+import 'package:frontend/screens/admin/admin_featured_builds_page.dart';
 import 'package:frontend/screens/admin/admin_forums_page.dart';
 import 'package:frontend/screens/admin/admin_parts_page.dart';
 import 'package:frontend/screens/admin/admin_guides_page.dart';
@@ -338,10 +339,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final initialPage =
               int.tryParse(state.uri.queryParameters['page'] ?? '1') ?? 1;
           final componentId = state.uri.queryParameters['componentId'];
+          final currentBuild = state.extra is List<PcComponent>
+              ? state.extra as List<PcComponent>
+              : null;
           return PartPickerPage(
             componentType: type,
             initialPage: initialPage,
             componentId: componentId,
+            currentBuild: currentBuild,
           );
         },
       ),
@@ -445,6 +450,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           pageTitle: 'Build Management',
           child: const AdminBuildsPage(),
         ),
+      ),
+      GoRoute(
+        path: '/admin/featured-builds',
+        name: 'admin-featured-builds',
+        builder: (_, __) => const AdminFeaturedBuildsPage(),
       ),
       GoRoute(
         path: '/admin/forums',

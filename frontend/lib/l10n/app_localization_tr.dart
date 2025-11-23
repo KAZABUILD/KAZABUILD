@@ -111,6 +111,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get buildNow => 'Build Oluştur';
 
   @override
+  String get openInBuilder => 'Oluşturucuda Aç';
+
+  @override
   String get guides => 'Kılavuzlar';
 
   @override

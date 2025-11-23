@@ -63,6 +63,8 @@
   "pcBuildingPlatform": "PC Build Platformu",
   "@buildNow": {},
   "buildNow": "Build Oluştur",
+  "@openInBuilder": {},
+  "openInBuilder": "Oluşturucuda Aç",
   "@guides": {},
   "guides": "Kılavuzlar",
   "@forums": {},
