@@ -7,6 +7,7 @@ using KAZABUILD.Domain.Entities.Components.SubComponents;
 using KAZABUILD.Domain.Entities.Users;
 
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace KAZABUILD.Infrastructure.Data
 {

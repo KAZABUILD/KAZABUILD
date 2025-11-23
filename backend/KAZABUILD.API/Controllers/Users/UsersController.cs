@@ -927,6 +927,7 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Get the user to delete
             var user = await _db.Users
+                .AsSplitQuery()
                 .Include(u => u.Images)
                 .Include(u => u.ReceivedMessages)
                     .ThenInclude(m => m.ChildMessages)

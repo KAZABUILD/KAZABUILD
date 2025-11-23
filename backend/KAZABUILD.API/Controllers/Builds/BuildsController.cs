@@ -572,6 +572,7 @@ namespace KAZABUILD.API.Controllers.Builds
 
             //Get the build to delete
             var build = await _db.Builds
+                .AsSplitQuery()
                 .Include(b => b.Images)
                 .Include(b => b.Comments)
                     .ThenInclude(c => c.ChildComments)
