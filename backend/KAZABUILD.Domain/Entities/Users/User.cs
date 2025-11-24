@@ -86,7 +86,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public DateTime? Birth { get; set; }
 
         /// <summary>
-        /// Data of registration.
+        /// Date of registration.
         /// </summary>
         [Required]
         [DataType(DataType.DateTime)]

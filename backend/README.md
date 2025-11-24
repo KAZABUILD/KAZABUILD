@@ -331,6 +331,17 @@ All models have protections against adding invalid values but any call made shou
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database
    - `LastEditedAt` -> date object storing when the entry was last edited
    - `Note` -> nullable string storing any staff-only information
+ 
+ - UserGuide (User Guides available for the user to learn pc building from)
+   - `Id` -> automatically assigned GUID
+   - `Title` -> string storing the title of the guide
+   - `Text` -> string storing the text body of the guide
+   - `Author` -> string storing the name of the author of the guide
+   - `TimeToRead` -> decimal storing the estimated time to read through the whole guide
+   - `PostedAt` -> date object storing when the guide was posted
+   - `DatabaseEntryAt` -> date object storing when the entry was created in the database
+   - `LastEditedAt` -> date object storing when the entry was last edited
+   - `Note` -> nullable string storing any staff-only information
 
 ### Component Domain
 

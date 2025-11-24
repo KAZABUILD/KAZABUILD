@@ -38,6 +38,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<UserFeedback> UserFeedback { get; set; } = default!;
         public DbSet<UserReport> UserReports { get; set; } = default!;
         public DbSet<UserBlock> UserBlocks { get; set; } = default!;
+        public DbSet<UserGuide> UserGuides { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;

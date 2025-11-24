@@ -248,7 +248,7 @@
 - Type: incorrect implementation/error/missing feature
 - Status: pending
 - Source: backend/frontend
-- Details: The backend should only return notification based on whether the data passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
+- Details: The backend should only return notification based on whether the date passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
 
 [00039] No paging in the admin panel.
 - Type: incorrect implementation
@@ -351,3 +351,9 @@
 - Status: pending
 - Source: Frontend
 - Details: The website should inform the user that the internal servers are failing and that the user needs to try to reconnect later.
+
+[00055] The guides are stored in the website, when they should be stored in the server.
+- Type: missing implementation
+- Status: pending
+- Source: Frontend
+- Details: The newly added UserGuideController should be used.

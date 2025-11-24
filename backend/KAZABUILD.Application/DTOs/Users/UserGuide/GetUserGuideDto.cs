@@ -1,19 +1,27 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Users.UserActivity
+namespace KAZABUILD.Application.DTOs.Users.UserGuide
 {
-    public class GetUserActivityDto
+    public class GetUserGuideDto
     {
         //Filter By fields
-        public List<Guid>? UserId { get; set; }
+        public List<string>? Title { get; set; }
 
-        public List<string>? ActivityType { get; set; }
+        public List<string>? Author { get; set; }
 
-        public List<Guid>? TargetId { get; set; }
+        public List<string>? Category { get; set; }
 
-        public DateTime? TimestampStart { get; set; }
+        [Range(0, 1000, ErrorMessage = "Time To Read must be between 0 and 1000 min")]
+        public decimal? TimeToReadStart { get; set; }
 
-        public DateTime? TimestampEnd { get; set; }
+        [Range(0, 1000, ErrorMessage = "Time To Read must be between 0 and 1000 min")]
+        public decimal? TimeToReadEnd { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? PostedAtStart { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? PostedAtEnd { get; set; }
 
         //Paging related fields
         /// <summary>
