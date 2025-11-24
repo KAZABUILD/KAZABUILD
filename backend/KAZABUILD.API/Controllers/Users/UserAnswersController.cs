@@ -70,7 +70,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if the userPreferenceAnswer exists
-            var answer = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId);
+            var answer = await _db.UserPreferenceAnswers.FirstOrDefaultAsync(u => u.Id == dto.UserPreferenceAnswerId);
             if (answer == null)
             {
                 //Log failure

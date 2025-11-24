@@ -443,7 +443,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.SentAtStart != null)
             {
-                query = query.Where(n => n.SentAt >= dto.SentAtEnd);
+                query = query.Where(n => n.SentAt >= dto.SentAtStart);
             }
             if (dto.SentAtEnd != null)
             {

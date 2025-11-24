@@ -469,7 +469,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.SentAtStart != null)
             {
-                query = query.Where(m => m.SentAt >= dto.SentAtEnd);
+                query = query.Where(m => m.SentAt >= dto.SentAtStart);
             }
             if (dto.SentAtEnd != null)
             {

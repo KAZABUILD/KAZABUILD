@@ -110,6 +110,9 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
+            //Variable for storing the amount of images already existing for the requested target
+            int existingImagesAmount;
+
             //Create an image to add
             Image image = new()
             {
@@ -160,6 +163,25 @@ namespace KAZABUILD.API.Controllers
                         //Return proper unauthorized response
                         return Forbid();
                     }
+
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.BUILD && i.BuildId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
                     break;
                 case ImageLocationType.COMPONENT:
                     //Set the target as component
@@ -280,6 +302,24 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.COMMENT && i.UserCommentId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
                     break;
                 case ImageLocationType.FORUM:
                     //Set the target as post
@@ -320,6 +360,24 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.FORUM && i.ForumPostId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
                     break;
                 case ImageLocationType.USER:
                     //Set the target as post
@@ -358,6 +416,24 @@ namespace KAZABUILD.API.Controllers
 
                         //Return proper unauthorized response
                         return Forbid();
+                    }
+
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.USER && i.UserId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
                     }
 
                     break;
@@ -671,7 +747,7 @@ namespace KAZABUILD.API.Controllers
                     response.TargetId = image.SubComponentId;
                     break;
                 case ImageLocationType.USER:
-                    response.TargetId = image.ComponentId;
+                    response.TargetId = image.UserId;
                     break;
                 case ImageLocationType.COMMENT:
                     response.TargetId = image.UserCommentId;
@@ -840,7 +916,7 @@ namespace KAZABUILD.API.Controllers
                             response.TargetId = image.SubComponentId;
                             break;
                         case ImageLocationType.USER:
-                            response.TargetId = image.ComponentId;
+                            response.TargetId = image.UserId;
                             break;
                         case ImageLocationType.COMMENT:
                             response.TargetId = image.UserCommentId;
@@ -889,7 +965,7 @@ namespace KAZABUILD.API.Controllers
                             response.TargetId = image.SubComponentId;
                             break;
                         case ImageLocationType.USER:
-                            response.TargetId = image.ComponentId;
+                            response.TargetId = image.UserId;
                             break;
                         case ImageLocationType.COMMENT:
                             response.TargetId = image.UserCommentId;

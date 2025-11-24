@@ -458,7 +458,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.Tag != null)
             {
-                query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
+                query = query.Include(b => b.BuildTags).ThenInclude(t => t.Tag).Where(b => b.BuildTags.Any(t => dto.Tag.Contains(t.Tag!.Name)));
             }
 
             //Apply search based on provided query string
