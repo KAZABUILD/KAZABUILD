@@ -23,6 +23,12 @@ namespace KAZABUILD.Domain.Entities.Users
         public Guid? UserId { get; set; }
 
         /// <summary>
+        /// Id of the User that posted the Comment stored here in case the User gets deleted from the database.
+        /// Can be used to correctly match Comments with deleted Users.
+        /// </summary>
+        public Guid? DeletedUserId { get; set; }
+
+        /// <summary>
         /// The Contents of the Comment.
         /// </summary>
         [Required]

@@ -630,6 +630,18 @@ namespace KAZABUILD.Infrastructure.Data
                 .WithMany(pc => pc.Images)
                 .HasForeignKey(i => i.UserCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.UserGuide)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.UserGuideId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.Message)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.MessageId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

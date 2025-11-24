@@ -140,6 +140,8 @@ All models have protections against adding invalid values but any call made shou
    - `ComponentId` -> nullable GUID storing which component the image is displayed at
    - `SubComponentId` -> nullable GUID storing which sub-component the image is displayed at
    - `UserCommentId` -> nullable GUID storing which comment the image is displayed at
+   - `MessageId` -> nullable GUID storing which message the image is displayed at
+   - `UserGuideId` -> nullable GUID storing which guide the image is displayed at
    - `Name` -> string storing the name assigned to the file
    - `Location` -> nullable GUID assigned by the backend, which stores the location of the file in the backend
    - `DatabaseEntryAt` -> date object storing when the entry was created in the database

@@ -93,6 +93,7 @@ namespace KAZABUILD.API.Controllers.Users
             UserComment userComment = new()
             {
                 UserId = dto.UserId,
+                DeletedUserId = dto.UserId,
                 Content = dto.Content,
                 PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
                 ParentCommentId = dto.ParentCommentId,
@@ -495,6 +496,10 @@ namespace KAZABUILD.API.Controllers.Users
                     return BadRequest(new { message = "Invalid Target Type!" });
             }
 
+            //If the id is null a deleted id field in the response
+            if (response.UserId == null)
+                response.DeletedUserId = userComment.DeletedUserId;
+
             //Log success
             await _logger.LogAsync(
                 currentUserId,
@@ -652,6 +657,10 @@ namespace KAZABUILD.API.Controllers.Users
                             
                     }
 
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
+
                     return response;
                 })];
 
@@ -697,6 +706,10 @@ namespace KAZABUILD.API.Controllers.Users
                             break;
 
                     }
+
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
 
                     return response;
                 })];

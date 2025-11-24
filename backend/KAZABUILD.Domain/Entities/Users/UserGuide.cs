@@ -66,5 +66,8 @@ namespace KAZABUILD.Domain.Entities.Users
 
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }
+
+        //Database relationships
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

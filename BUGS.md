@@ -286,7 +286,7 @@
 
 [00044] The UserGuide model is missing.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
 
 [00045] There are no filters in the explore builds page.
@@ -324,16 +324,15 @@
 
 [00050] Introduce an additional column in every model that has a nullable foreign key to store the key in case of deletion.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: backend
 - Details: This will enable preservation of deleted users for message chats and similar situations.
 
-[00051] Token Lookup query failing when
+[00051] Incorrect labeling in the imagesController.
 - Type: missing implementation
 - status: INCORRECT
 - Source: backend
-- Details: Token verification now fetches all unused tokens of the given type from the database into memory, then verifies client-supplied tokens against them, instead of filtering by `UserId` first. This allows an attacker to use any valid token hash from any user by providing it as a token. The original query filtered by both `UserId` and token hash server-side. This must check `t.UserId` against the DTO's user ID before verification.
-
+- 
 [00052] SentAtStart filter failing in both MessagesController and NotifcationsController.
 - Type: incorrect implementation
 - Status: FIXED

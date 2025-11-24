@@ -334,37 +334,37 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.Title != null)
             {
-                query = query.Where(f => dto.Title.Contains(f.Title));
+                query = query.Where(g => dto.Title.Contains(g.Title));
             }
             if (dto.Author != null)
             {
-                query = query.Where(f => dto.Author.Contains(f.Author));
+                query = query.Where(g => dto.Author.Contains(g.Author));
             }
             if (dto.Category != null)
             {
-                query = query.Where(f => dto.Category.Contains(f.Category));
+                query = query.Where(g => dto.Category.Contains(g.Category));
             }
             if (dto.TimeToReadStart != null)
             {
-                query = query.Where(f => f.TimeToRead >= dto.TimeToReadStart);
+                query = query.Where(g => g.TimeToRead >= dto.TimeToReadStart);
             }
             if (dto.TimeToReadEnd != null)
             {
-                query = query.Where(f => f.TimeToRead <= dto.TimeToReadEnd);
+                query = query.Where(g => g.TimeToRead <= dto.TimeToReadEnd);
             }
             if (dto.PostedAtStart != null)
             {
-                query = query.Where(f => f.PostedAt >= dto.PostedAtStart);
+                query = query.Where(g => g.PostedAt >= dto.PostedAtStart);
             }
             if (dto.PostedAtEnd != null)
             {
-                query = query.Where(f => f.PostedAt <= dto.PostedAtEnd);
+                query = query.Where(g => g.PostedAt <= dto.PostedAtEnd);
             }
 
             //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
-                query = query.Search(dto.Query, f => f.Title, f => f.Author, f => f.Category, f => f.PostedAt);
+                query = query.Search(dto.Query, g => g.Title, g => g.Author, g => g.Category, g => g.PostedAt);
             }
 
             //Order by specified field if provided
@@ -445,7 +445,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Publish RabbitMQ event
             await _publisher.PublishAsync("userGuide.gotUserGuide", new
             {
-                userGuideIds = userGuide.Select(f => f.Id),
+                userGuideIds = userGuide.Select(g => g.Id),
                 gotBy = currentUserId
             });
 
@@ -471,7 +471,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userGuide to delete
-            var userGuide = await _db.UserGuides.FirstOrDefaultAsync(f => f.Id == id);
+            var userGuide = await _db.UserGuides.Include(g => g.Images).FirstOrDefaultAsync(g => g.Id == id);
             if (userGuide == null)
             {
                 //Log failure
@@ -487,6 +487,20 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { message = "UserGuide not found!" });
+            }
+
+            //Remove all related images
+            if (userGuide.Images.Count != 0)
+            {
+                foreach (var image in userGuide.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(userGuide.Images);
             }
 
             //Delete the userGuide

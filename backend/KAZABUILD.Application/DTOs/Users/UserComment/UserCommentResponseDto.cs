@@ -8,6 +8,8 @@ namespace KAZABUILD.Application.DTOs.Users.UserComment
 
         public Guid? UserId { get; set; }
 
+        public Guid? DeletedUserId { get; set; }
+
         public string? Content { get; set; }
 
         public DateTime? PostedAt { get; set; }
