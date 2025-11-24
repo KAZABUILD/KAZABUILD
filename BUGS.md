@@ -345,3 +345,9 @@
 - Status: FIXED
 - Source: backend
 - Details: When validating that a `UserPreferenceAnswer` exists, the code queries `_db.Users` instead of the correct table (`_db.UserPreferenceAnswers`). This will always fail to find the preference answer, causing all user answer creation attempts to fail with "Answer not found!" error.
+
+[00054] Backend connection fail error in the frontend is worded incorrectly.
+- Type: incorrect implementation
+- Status: pending
+- Source: Frontend
+- Details: The website should inform the user that the internal servers are failing and that the user needs to try to reconnect later.

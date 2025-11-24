@@ -19,7 +19,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get discoverAmazingBuilds =>
-      'Odkrywaj niesamowite buildy PC ze społeczności';
+      'Odkrywaj niesamowite buildy PC od społeczności';
 
   @override
   String get searchBuilds => 'Szukaj buildów...';
@@ -28,16 +28,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get myBuilds => 'Moje Buildy';
 
   @override
-  String get takeQuiz => 'Rozpocznij Quiz';
+  String get takeQuiz => 'Podejmij Quiz';
 
   @override
-  String get startBuild => 'Rozpocznij Build';
+  String get startBuild => 'Skompunuj Build';
 
   @override
   String get close => 'Zamknij';
 
   @override
-  String get addToBuild => 'Dodaj do Builda';
+  String get addToBuild => 'Dodaj do Buildu';
 
   @override
   String get save => 'Zapisz';
@@ -93,22 +93,22 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings => 'Ustawienia';
 
   @override
-  String get logout => 'Wyloguj';
+  String get logout => 'Wyloguj Się';
 
   @override
-  String get login => 'Zaloguj';
+  String get login => 'Zaloguj Się';
 
   @override
-  String get signUp => 'Zarejestruj się';
+  String get signUp => 'Zarejestruj Się';
 
   @override
   String get welcomeBack => 'Witaj Ponownie!';
 
   @override
-  String get pcBuildingPlatform => 'Platforma Budowania PC';
+  String get pcBuildingPlatform => 'Platforma Do Budowania PC';
 
   @override
-  String get buildNow => 'Utwórz Build';
+  String get buildNow => 'Utwórz Konfigurację';
 
   @override
   String get openInBuilder => 'Otwórz w Kreatorze';
@@ -117,13 +117,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get guides => 'Przewodniki';
 
   @override
-  String get forums => 'Fora';
+  String get forums => 'Forum';
 
   @override
   String get adminPanel => 'Panel Administratora';
 
   @override
-  String get signIn => 'Zaloguj';
+  String get signIn => 'Zaloguj Się';
 
   @override
   String get welcome => 'Witaj';
@@ -162,10 +162,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get monitor => 'Monitor';
 
   @override
-  String get saveBuild => 'Zapisz Build';
+  String get saveBuild => 'Zapisz Konfigurację';
 
   @override
-  String get buildName => 'Nazwa Builda';
+  String get buildName => 'Nazwa Konfiguracji';
 
   @override
   String get description => 'Opis (Opcjonalnie)';
@@ -183,26 +183,26 @@ class AppLocalizationsPl extends AppLocalizations {
   String get buildSavedSuccessfully => 'Build zapisany pomyślnie!';
 
   @override
-  String get failedToSaveBuild => 'Nie udało się zapisać builda';
+  String get failedToSaveBuild => 'Nie udało się zapisać konfiguracji';
 
   @override
-  String get startNewBuild => 'Rozpocząć Nowy Build?';
+  String get startNewBuild => 'Stworzyć Nowy Konfigurację?';
 
   @override
   String get unsavedChanges =>
-      'Masz niezapisane zmiany. Czy na pewno chcesz wyczyścić obecny build?';
+      'Masz niezapisane zmiany. Czy na pewno chcesz wyczyścić obecną konfiguracją?';
 
   @override
-  String get clearBuild => 'Wyczyść Build';
+  String get clearBuild => 'Wyczyść Konfigurację';
 
   @override
-  String get postBuild => 'Opublikuj Build';
+  String get postBuild => 'Opublikuj Konfigurację';
 
   @override
-  String get enterBuildName => 'Wprowadź nazwę dla swojego builda';
+  String get enterBuildName => 'Wprowadź nazwę dla swojej konfiguracji';
 
   @override
-  String get describeBuild => 'Opisz swój build...';
+  String get describeBuild => 'Opisz swoją konfigurację...';
 
   @override
   String get pleaseEnterName => 'Proszę wprowadzić nazwę';
@@ -230,10 +230,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get troubleshooting => 'Rozwiązywanie Problemów';
 
   @override
-  String get buildAdvice => 'Porady Budowania';
+  String get buildAdvice => 'Porady Do Budowania';
 
   @override
-  String get showOffBuild => 'Pochwal Się Buildem';
+  String get showOffBuild => 'Pochwal Się Konfiguracją';
 
   @override
   String get startDiscussion => 'Rozpocznij Dyskusję';
@@ -252,35 +252,36 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get findAnswersToCommonQuestions =>
-      'Znajdź odpowiedzi na najczęstsze pytania dotyczące KAZABUILD';
+      'Znajdź odpowiedzi na częste pytania dotyczące KAZABUILD';
 
   @override
   String get whatIsKazabuild => 'Czym jest KAZABUILD?';
 
   @override
   String get whatIsKazabuildAnswer =>
-      'KAZABUILD to kompleksowa platforma do budowania PC, gdzie entuzjaści mogą tworzyć, udostępniać i odkrywać niestandardowe buildy PC. Niezależnie od tego, czy jesteś początkujący, czy ekspert, KAZABUILD pomaga zaprojektować idealną konfigurację PC, uzyskać fachowe porady i połączyć się ze społecznością budowania PC.';
+      'KAZABUILD to kompleksowa platforma do budowania PC, gdzie entuzjaści mogą tworzyć, udostępniać i odkrywać niestandardowe buildy PC. Niezależnie od tego, czy dopiero zaczynasz, czy jesteś ekspertem, KAZABUILD pomoże Ci zaprojektować idealną konfigurację PC, uzyskać fachowe porady i połączyć się ze społecznością budowania PC.';
 
   @override
   String get howDoICreateABuild => 'Jak utworzyć build PC?';
 
   @override
   String get howDoICreateABuildAnswer =>
-      'Tworzenie builda PC jest łatwe! Kliknij \"Utwórz Build\" w menu nawigacyjnym, a zostaniesz poprowadzony przez naszego interaktywnego kreatora buildów. Możesz wybierać komponenty z różnych kategorii, takich jak CPU, GPU, RAM, pamięć i nie tylko. Nasz system pomoże sprawdzić kompatybilność i zasugeruje optymalne konfiguracje na podstawie Twoich potrzeb i budżetu.';
+      'Tworzenie konfiguracji PC jest łatwe! Kliknij \"Utwórz Build\" w menu nawigacyjnym, żeby zostać poprowadzonym przez naszego interaktywnego kreatora konfiguracji. Możesz wybierać komponenty z różnych kategorii, takich jak CPU, GPU, RAM, pamięć i nie tylko. Nasz system pomoże Ci sprawdzić kompatybilność i zasugeruje optymalne konfiguracje na podstawie Twoich potrzeb i budżetu.';
 
   @override
   String get arePricesUpToDate => 'Czy ceny komponentów są aktualne?';
 
   @override
   String get arePricesUpToDateAnswer =>
-      'Dążymy do tego, aby nasza baza danych komponentów i ceny były jak najbardziej aktualne. Jednak ceny mogą często się zmieniać na rynku. Zalecamy sprawdzenie najnowszych cen u oficjalnych sprzedawców przed zakupem. Nasza platforma zapewnia dobre oszacowanie, aby pomóc w planowaniu budżetu.';
+      'Dążymy do tego, aby nasza baza komponentów i cen była jak najbardziej aktualna. Mimo to, ceny na rynku często ulegają zmianą. Zalecamy sprawdzenie najnowszych cen u oficjalnych sprzedawców przed zakupem. Nasza platforma daja pomocne oszacowanie, aby pomóc w planowaniu budżetu.';
 
   @override
-  String get canIShareMyBuilds => 'Czy mogę udostępniać swoje buildy innym?';
+  String get canIShareMyBuilds =>
+      'Czy mogę udostępniać swoje konfiguracje innym?';
 
   @override
   String get canIShareMyBuildsAnswer =>
-      'Absolutnie! KAZABUILD został zaprojektowany jako platforma społecznościowa. Możesz udostępniać swoje buildy społeczności, otrzymywać feedback i inspirować innych. Możesz również przeglądać buildy utworzone przez innych użytkowników, zapisywać ulubione i uczyć się z różnych konfiguracji.';
+      'Oczywiście! KAZABUILD został zaprojektowany z myślą o społeczności. Możliwe jest udostępnianie swoich konfiguracji społeczności, otrzymywanie kompozycji i inspirowanie innych. Możesz również przeglądać buildy utworzone przez innych użytkowników, zapisywać ulubione i uczyć się z różnych konfiguracji.';
 
   @override
   String get howDoICheckCompatibility =>
@@ -295,17 +296,17 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get isKazabuildFreeAnswer =>
-      'Tak! KAZABUILD jest całkowicie darmowy. Możesz tworzyć nieograniczoną liczbę buildów, przeglądać społeczność, uczestniczyć w forach i uzyskać dostęp do wszystkich naszych przewodników i zasobów bez żadnych kosztów. Po prostu utwórz konto, aby rozpocząć i odblokować dodatkowe funkcje, takie jak zapisywanie buildów i udział w dyskusjach.';
+      'Tak! KAZABUILD jest całkowicie darmowy. Możesz tworzyć nieograniczoną liczbę konfiguracji, przeglądać społeczność, uczestniczyć w forach i uzyskać dostęp do wszystkich naszych przewodników i zasobów bez żadnych kosztów. Po prostu utwórz konto, aby rozpocząć i odblokować dodatkowe funkcje, takie jak zapisywanie buildów i udział w dyskusjach.';
 
   @override
-  String get howCanIGetHelp => 'Jak mogę uzyskać pomoc z moim buildem?';
+  String get howCanIGetHelp => 'Jak mogę uzyskać pomoc z moją konfiguracją?';
 
   @override
   String get howCanIGetHelpAnswer =>
-      'Istnieje kilka sposobów na uzyskanie pomocy w KAZABUILD. Możesz publikować pytania na naszych forach, gdzie doświadczeni budowniczowie i entuzjaści chętnie pomogą. Możesz również przeglądać naszą kompleksową sekcję przewodników, aby znaleźć samouczki i porady. Dodatkowo możesz komentować podobne buildy w społeczności, aby uzyskać konkretne porady.';
+      'Istnieje kilka sposobów na uzyskanie pomocy w KAZABUILD. Możesz publikować pytania na naszych forach, gdzie doświadczeni budowniczowie i entuzjaści z chęcią pomogą. Możesz również przeglądać naszą szczegółową sekcję przewodników, aby znaleźć samouczki i porady. Dodatkowo możesz zostawiać komentarze pod podobnymi bkonfiguracjami w społeczności, aby uzyskać konkretne porady.';
 
   @override
-  String get canISaveMultipleBuilds => 'Czy mogę zapisywać wiele buildów?';
+  String get canISaveMultipleBuilds => 'Czy mogę zapisywać wiele konfiguracji?';
 
   @override
   String get canISaveMultipleBuildsAnswer =>
@@ -324,10 +325,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get contactFeedback => 'Kontakt & Opinie';
 
   @override
-  String get copyright => '© KAZA BUILD';
+  String get copyright => '© KAZABUILD';
 
   @override
-  String get builds => 'Buildy';
+  String get builds => 'Konfiguracje';
 
   @override
   String get pcPartsCategories => 'Kategorie Części PC';
@@ -344,8 +345,9 @@ class AppLocalizationsPl extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'przedmiotów',
       one: 'przedmiot',
+      few: 'przedmioty',
+      other: 'przedmiotów',
     );
     return '$count $_temp0';
   }
@@ -355,16 +357,16 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get manageAccountSettings =>
-      'Zarządzaj ustawieniami konta i preferencjami';
+      'Zarządzaj swoimi ustawieniami konta i preferencjami';
 
   @override
   String get profilePicture => 'Zdjęcie Profilowe';
 
   @override
-  String get profileInformation => 'Informacje Profilowe';
+  String get profileInformation => 'Informacje O Profilu';
 
   @override
-  String get displayName => 'Nazwa Wyświetlana';
+  String get displayName => 'Wyświetlana Nazwa';
 
   @override
   String get username => 'Nazwa Użytkownika';
@@ -470,7 +472,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nazwa wyświetlana musi mieć co najmniej 4 znaki';
 
   @override
-  String get enterDisplayName => 'Wprowadź Nazwę Wyświetlaną';
+  String get enterDisplayName => 'Wprowadź Wyświetlaną Nazwę';
 
   @override
   String get enterBio => 'Wprowadź Biografię';
@@ -482,7 +484,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get manufacturer => 'Producent';
 
   @override
-  String get type => 'Typ';
+  String get type => 'Rodxaj';
 
   @override
   String get releaseDate => 'Data Wydania';
@@ -491,7 +493,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get email => 'Email';
 
   @override
-  String get noBuildsFound => 'Nie znaleziono buildów';
+  String get noBuildsFound => 'Nie znaleziono żadnych konfiguracji';
 
   @override
   String get tryAdjustingFilters =>
@@ -525,10 +527,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get postedOn => 'Opublikowano';
 
   @override
-  String get wishlistBuild => 'Dodaj do Listy Życzeń';
+  String get wishlistBuild => 'Dodaj konfigurację do Listy Życzeń';
 
   @override
-  String get noComponentsListed => 'Brak wymienionych komponentów';
+  String get noComponentsListed => 'Brak komponentów';
 
   @override
   String fromVendors(num count) {
@@ -542,11 +544,12 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get signInToComment => 'Zaloguj się, aby skomentować ten build';
+  String get signInToComment =>
+      'Zaloguj się, aby zostawić komentarz pod tą konfiguracją';
 
   @override
   String get pleaseSignInToComment =>
-      'Proszę zalogować się, aby komentować. Użyj nawigacji, aby przejść do logowania.';
+      'Zaloguj się, aby komentować. Użyj nawigacji, aby przejść do logowania.';
 
   @override
   String get writeComment => 'Napisz komentarz...';
@@ -555,23 +558,20 @@ class AppLocalizationsPl extends AppLocalizations {
   String get post => 'Opublikuj';
 
   @override
-  String get pleaseSignInToCommentShort =>
-      'Proszę zalogować się, aby komentować';
+  String get pleaseSignInToCommentShort => 'Zaloguj się, aby komentować';
 
   @override
   String get failedToLoadComments => 'Nie udało się załadować komentarzy';
 
   @override
-  String get noCommentsYet =>
-      'Brak komentarzy. Bądź pierwszy, który skomentuje!';
+  String get noCommentsYet => 'Brak komentarzy. Zostań pierwszym!';
 
   @override
-  String get pleaseSignInToRate =>
-      'Proszę zalogować się, aby ocenić ten build.';
+  String get pleaseSignInToRate => 'Zaloguj się, aby ocenić tą konfigurację.';
 
   @override
   String get pleaseSignInToRateBuilds =>
-      'Proszę zalogować się, aby oceniać buildy';
+      'Zaloguj się, aby oceniać konfiguracje';
 
   @override
   String get failedToSubmitRating => 'Nie udało się przesłać oceny';
@@ -592,7 +592,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get vendors => 'Sprzedawcy';
 
   @override
-  String get similarBuilds => 'Podobne Buildy';
+  String get similarBuilds => 'Podobne Konfiguracje';
 
   @override
   String get series => 'Seria';
@@ -607,10 +607,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get formFactor => 'Format';
 
   @override
-  String get memoryType => 'Typ Pamięci';
+  String get memoryType => 'Rodzaj Pamięci';
 
   @override
-  String get ramType => 'Typ RAM';
+  String get ramType => 'Rodzaj RAM';
 
   @override
   String get capacity => 'Pojemność';
@@ -631,7 +631,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get baseClock => 'Podstawowa Częstotliwość';
 
   @override
-  String get boostClock => 'Boost Częstotliwość';
+  String get boostClock => 'Podkręcona Częstotliwość';
 
   @override
   String get coreCount => 'Liczba Rdzeni';
@@ -796,10 +796,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get maxFanSpeed => 'Maksymalna Prędkość Wentylatora';
 
   @override
-  String get minNoise => 'Minimalny Hałas';
+  String get minNoise => 'Minimalna Głośność';
 
   @override
-  String get maxNoise => 'Maksymalny Hałas';
+  String get maxNoise => 'Maksymalna Głośność';
 
   @override
   String get fanlessOperation => 'Praca Bezwentylatorowa';
@@ -841,10 +841,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get includedPsu => 'Zasilacz Wbudowany';
 
   @override
-  String get transparentSidePanel => 'Przezroczysta Boczna Płyta';
+  String get transparentSidePanel => 'Przezroczysta Płyta Boczna';
 
   @override
-  String get sidePanelType => 'Typ Bocznej Płyty';
+  String get sidePanelType => 'Typ Płyty Bocznej';
 
   @override
   String get maxGpuLength => 'Maksymalna Długość GPU';
@@ -862,10 +862,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get refreshRate => 'Częstotliwość Odświeżania';
 
   @override
-  String get panelType => 'Typ Panelu';
+  String get panelType => 'Rodzaj Panelu';
 
   @override
-  String get responseTime => 'Czas Reakcji';
+  String get responseTime => 'Czas Odpowiedzi';
 
   @override
   String get viewingAngle => 'Kąt Widzenia';
@@ -920,14 +920,14 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get heroTitle =>
-      'Nie wiesz od czego zacząć?\npo prostu rozwiąż ten krótki quiz, aby rozpocząć';
+      'Nie wiesz od czego zacząć?\nPo prostu rozwiąż ten krótki quiz, aby rozpocząć';
 
   @override
   String get heroDescription =>
-      'Oferujemy generacje buildów, kompatybilność, konwersję cen, buildy społeczności i dyskusje na forum';
+      'Oferujemy generacje konfiguracji, kompatybilność, konwersję cen, konfiguracje społeczności i dyskusje na forum';
 
   @override
-  String get buildGenerations => 'generacje buildów';
+  String get buildGenerations => 'generacje konfiguracji';
 
   @override
   String get compatibility => 'kompatybilność';
@@ -936,7 +936,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get priceConversion => 'konwersję cen';
 
   @override
-  String get communityBuilds => 'buildy społeczności';
+  String get communityBuilds => 'konfiguracje społeczności';
 
   @override
   String get forumDiscussions => 'dyskusje na forum';

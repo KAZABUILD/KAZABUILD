@@ -1160,7 +1160,7 @@ namespace KAZABUILD.API.Controllers.Builds
                         c.Prices.Min(p => p.Price) < (decimal)caseMaxPrice &&
                         c.Prices.Min(p => p.Price) > (decimal)caseMinPrice
                     )
-                    .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent })
+                    .Where(c => (new[] { (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent })
                                     .All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
                     .FirstOrDefaultAsync();

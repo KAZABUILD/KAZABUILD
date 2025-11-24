@@ -12,7 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language => 'English';
 
   @override
-  String get appTitle => 'Kaza Build';
+  String get appTitle => 'KazaBuild';
 
   @override
   String get exploreBuilds => 'Explore Builds';
@@ -323,7 +323,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contactFeedback => 'Contact & Feedback';
 
   @override
-  String get copyright => '© KAZA BUILD';
+  String get copyright => '© KAZABUILD';
 
   @override
   String get builds => 'Builds';
@@ -350,7 +350,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get priceNotAvailable => 'Price N/A';
+  String get priceNotAvailable => 'Price Not Accessible';
 
   @override
   String get manageAccountSettings =>
@@ -420,7 +420,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseFromGallery => 'Choose from Gallery';
 
   @override
-  String get takePhoto => 'Take Photo';
+  String get takePhoto => 'Take a Photo';
 
   @override
   String get supportedFormats =>
@@ -913,7 +913,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get heroTitle =>
-      'Not sure where to start?\njust take this short quiz to get started';
+      'Not sure where to start?\nJust take this short quiz to get started';
 
   @override
   String get heroDescription =>
