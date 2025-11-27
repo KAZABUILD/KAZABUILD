@@ -327,6 +327,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
   
   Widget _buildProfilePictureSection(BuildContext context, ThemeData theme, bool isDark, AppUser user, AppUser currentUser) {
+    // Only allow editing own profile picture (not when admin edits other users)
+    final canEditPicture = widget.userId == null || user.uid == currentUser.uid;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -357,48 +360,82 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: 20),
-          Center(
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: theme.colorScheme.surfaceVariant,
-                  backgroundImage: UserImageUtils.getUserImageUrl(user.photoURL) != null
-                      ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
-                      : null,
-                  child: UserImageUtils.getUserImageUrl(user.photoURL) == null
-                      ? Icon(
-                          Icons.person,
-                          size: 60,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        )
-                      : null,
-                ),
-                if (widget.userId == null || user.uid == currentUser.uid)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: theme.colorScheme.surface,
-                          width: 3,
+          if (canEditPicture)
+            _ProfilePictureItem(
+              theme: theme,
+              user: user,
+              onImageSelected: (imagePath) async {
+                try {
+                  // Upload profile picture using auth provider
+                  // This already updates the auth state internally via updateUserProfile
+                  await ref.read(authProvider.notifier).uploadProfilePicture(user.uid, imagePath);
+                  
+                  // Refresh the user profile provider to show the new image
+                  // Note: We don't invalidate authProvider here because uploadProfilePicture
+                  // already updates the state via updateUserProfile, and invalidating would
+                  // cause the user to be logged out
+                  if (widget.userId != null && widget.userId == currentUser.uid) {
+                    ref.invalidate(userProfileProvider(widget.userId!));
+                  }
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(AppLocalizations.of(context)!.profileUpdated),
+                          ],
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, size: 20),
-                        color: theme.colorScheme.onPrimary,
-                        onPressed: () {
-                          // TODO: Implement image upload
-                        },
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(getUserFriendlyError(e))),
+                          ],
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                  ),
-              ],
+                    );
+                  }
+                }
+              },
+            )
+          else
+            // Display only (for admin viewing other users)
+            Center(
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: theme.colorScheme.surfaceVariant,
+                backgroundImage: UserImageUtils.getUserImageUrl(user.photoURL) != null
+                    ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
+                    : null,
+                child: UserImageUtils.getUserImageUrl(user.photoURL) == null
+                    ? Icon(
+                        Icons.person,
+                        size: 60,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )
+                    : null,
+              ),
             ),
-          ),
         ],
       ),
     );

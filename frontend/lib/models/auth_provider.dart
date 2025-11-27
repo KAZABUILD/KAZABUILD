@@ -288,6 +288,11 @@ class AuthService {
     // Makes a POST request to the /Images/add endpoint.
     return _dio.post('/Images/add', data: formData);
   }
+
+  /// Deletes an image by its ID.
+  Future<Response> deleteImage(String imageId) async {
+    return _dio.delete('/Images/$imageId');
+  }
 }
 
 /// A service for securely storing and retrieving the authentication token.
@@ -1060,6 +1065,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   }
 
   /// Uploads a new profile picture for the user.
+  /// Deletes the old profile picture BEFORE uploading the new one to prevent exceeding image limits.
   Future<void> uploadProfilePicture(String userId, String imagePath) async {
     final currentUserId = state.valueOrNull?.uid;
     if (currentUserId == null || currentUserId != userId) {
@@ -1067,7 +1073,35 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     }
 
     try {
-      // Upload the image to the backend
+      // Get the current user's existing image ID (if any)
+      final currentUser = state.valueOrNull;
+      String? oldImageId;
+      
+      if (currentUser?.photoURL != null && currentUser!.photoURL!.isNotEmpty) {
+        // Check if photoURL is a GUID (ImageId) or a URL
+        final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+        if (guidPattern.hasMatch(currentUser.photoURL!)) {
+          oldImageId = currentUser.photoURL;
+          log('Found existing profile image ID: $oldImageId');
+        }
+      }
+
+      // IMPORTANT: Delete the old image BEFORE uploading the new one
+      // This is necessary because the backend checks the image limit BEFORE accepting the new image
+      // The backend counts images in the Images table, so deleting the old image will free up space
+      if (oldImageId != null) {
+        try {
+          log('Deleting old profile image before uploading new one: $oldImageId');
+          await _authService.deleteImage(oldImageId);
+          log('Old profile image deleted successfully');
+        } catch (e) {
+          // Log but continue - the old image might not exist or deletion might fail
+          // We'll still try to upload the new image
+          log('Warning: Failed to delete old profile image: $e');
+        }
+      }
+
+      // Upload the new image to the backend
       final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
       
       // Try to get ImageId from various possible fields
