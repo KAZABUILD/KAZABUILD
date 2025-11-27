@@ -362,3 +362,9 @@
 - Status: pending
 - Source: Frontend
 - Details: Moderation should have access to editing options for things in the user and build domains (builds, guides, user profiles, etc.).
+
+[00057] User's profile image doesn't update correctly.
+- Type: error
+- Status: pending
+- Source: Frontend
+- Details: If the user already has an image, changing it to a different one causes the website to display the default one instead. The image is correctly stored in the backend.
