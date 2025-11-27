@@ -127,7 +127,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(f => f.Image)
                 .WithMany(u => u.Users)
                 .HasForeignKey(f => f.ImageId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== USER FOLLOW ======================================//
 

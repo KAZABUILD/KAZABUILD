@@ -1182,6 +1182,7 @@ namespace KAZABUILD.API.Controllers
                 .Include(i => i.UserComment)
                 .Include(i => i.ForumPost)
                 .Include(i => i.Message)
+                .Include(i => i.User)
                 .FirstOrDefaultAsync(c => c.Id == id);
             if (image == null)
             {

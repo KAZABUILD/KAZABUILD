@@ -356,3 +356,9 @@
 - Status: pending
 - Source: Frontend
 - Details: The newly added UserGuideController should be used.
+
+[00056] Distinction between moderation and administration missing from the website.
+- Type: incorrect implementation
+- Status: pending
+- Source: Frontend
+- Details: Moderation should have access to editing options for things in the user and build domains (builds, guides, user profiles, etc.).
