@@ -15,6 +15,7 @@ import 'package:frontend/models/comments_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -253,6 +254,8 @@ class BuildDetailPage extends ConsumerWidget {
         : ref.watch(buildUserProvider(build.userId));
     final currentUser = ref.watch(authProvider).valueOrNull;
     final isOwner = currentUser != null && currentUser.uid == build.userId;
+    final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+    final canEdit = isOwner || isStaff;
 
     return authorAsync.when(
       data: (author) {
@@ -269,11 +272,12 @@ class BuildDetailPage extends ConsumerWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      UserImageUtils.buildUserAvatar(
+                      AuthenticatedImage(
                         imageUrl: author.photoURL,
+                        isCircle: true,
+                        radius: 12,
                         username: author.username,
                         userId: author.uid,
-                        radius: 12,
                       ),
                       const SizedBox(width: 8),
                       Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
@@ -291,8 +295,8 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            // Show Edit button if user is the owner
-            if (isOwner) ...[
+            // Show Edit button if user is the owner or staff (moderator/admin)
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -310,6 +314,8 @@ class BuildDetailPage extends ConsumerWidget {
       loading: () {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
+        final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+        final canEdit = isOwner || isStaff;
         return Row(
           children: <Widget>[
             const SizedBox(
@@ -323,7 +329,7 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            if (isOwner) ...[
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -340,6 +346,8 @@ class BuildDetailPage extends ConsumerWidget {
       error: (error, stack) {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
+        final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+        final canEdit = isOwner || isStaff;
         return Row(
           children: <Widget>[
             Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
@@ -353,7 +361,7 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            if (isOwner) ...[
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -1518,10 +1526,24 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    UserImageUtils.buildUserAvatar(
-                      username: userAsync.valueOrNull?.username,
-                      userId: userAsync.valueOrNull?.uid,
-                      radius: 16,
+                    userAsync.when(
+                      data: (user) => AuthenticatedImage(
+                        imageUrl: user?.photoURL,
+                        isCircle: true,
+                        radius: 16,
+                        username: user?.username,
+                        userId: user?.uid,
+                      ),
+                      loading: () => UserImageUtils.buildUserAvatar(
+                        username: userAsync.valueOrNull?.username,
+                        userId: userAsync.valueOrNull?.uid,
+                        radius: 16,
+                      ),
+                      error: (_, __) => UserImageUtils.buildUserAvatar(
+                        username: userAsync.valueOrNull?.username,
+                        userId: userAsync.valueOrNull?.uid,
+                        radius: 16,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1743,18 +1765,32 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                       if (c.userId != null)
-                        InkWell(
-                          onTap: () {
-                            context.go('/profile/${c.userId}');
-                          },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: UserImageUtils.buildUserAvatar(
-                              username: c.authorName,
-                              userId: c.userId,
-                              radius: 16,
+                        ref.watch(buildUserProvider(c.userId!)).when(
+                          data: (user) => InkWell(
+                            onTap: () {
+                              context.go('/profile/${c.userId}');
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: AuthenticatedImage(
+                                imageUrl: user?.photoURL,
+                                isCircle: true,
+                                radius: 16,
+                                username: c.authorName,
+                                userId: c.userId,
+                              ),
                             ),
+                          ),
+                          loading: () => UserImageUtils.buildUserAvatar(
+                            username: c.authorName,
+                            userId: c.userId,
+                            radius: 16,
+                          ),
+                          error: (_, __) => UserImageUtils.buildUserAvatar(
+                            username: c.authorName,
+                            userId: c.userId,
+                            radius: 16,
                           ),
                         )
                       else

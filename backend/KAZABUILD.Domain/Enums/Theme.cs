@@ -6,6 +6,7 @@ namespace KAZABUILD.Domain.Enums
     public enum Theme
     {
         DARK,
-        LIGHT
+        LIGHT,
+        SYSTEM
     }
 }

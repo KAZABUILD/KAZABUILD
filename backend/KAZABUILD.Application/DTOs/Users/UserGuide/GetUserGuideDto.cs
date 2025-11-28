@@ -1,28 +1,27 @@
-using KAZABUILD.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace KAZABUILD.Application.DTOs.Image
+namespace KAZABUILD.Application.DTOs.Users.UserGuide
 {
-    public class GetImageDto
+    public class GetUserGuideDto
     {
         //Filter By fields
-        public List<ImageLocationType>? LocationType { get; set; }
+        public List<string>? Title { get; set; }
 
-        public List<Guid>? UserId { get; set; }
+        public List<string>? Author { get; set; }
 
-        public List<Guid>? BuildId { get; set; }
+        public List<string>? Category { get; set; }
 
-        public List<Guid>? ForumPostId { get; set; }
+        [Range(0, 1000, ErrorMessage = "Time To Read must be between 0 and 1000 min")]
+        public decimal? TimeToReadStart { get; set; }
 
-        public List<Guid>? ComponentId { get; set; }
+        [Range(0, 1000, ErrorMessage = "Time To Read must be between 0 and 1000 min")]
+        public decimal? TimeToReadEnd { get; set; }
 
-        public List<Guid>? SubComponentId { get; set; }
+        [DataType(DataType.DateTime)]
+        public DateTime? PostedAtStart { get; set; }
 
-        public List<Guid>? UserCommentId { get; set; }
-
-        public List<Guid>? MessageId { get; set; }
-
-        public List<Guid>? UserGuideId { get; set; }
+        [DataType(DataType.DateTime)]
+        public DateTime? PostedAtEnd { get; set; }
 
         //Paging related fields
         /// <summary>

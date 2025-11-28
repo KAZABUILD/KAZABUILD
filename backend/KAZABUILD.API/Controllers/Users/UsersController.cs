@@ -909,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
 
         /// <summary>
         /// API endpoint for deleting the selected user for staff.
-        /// Removes all related UserFollows as well.
+        /// Removes all related objects as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -1005,7 +1005,7 @@ namespace KAZABUILD.API.Controllers.Users
                 _db.UserFollows.RemoveRange(follows);
             }
 
-            //Set all sent messages' foreign key field to null or delete them if receiver also null
+            //Set all sent messages' foreign key field to null or delete it if receiver also null
             if (user.SentMessages.Count != 0)
             {
                 foreach (var message in user.SentMessages)
@@ -1020,12 +1020,26 @@ namespace KAZABUILD.API.Controllers.Users
                             child.ParentMessageId = null;
                         }
 
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
+                        }
+
                         _db.Messages.Remove(message);
                     }
                 }
             }
 
-            //Set all received messages' foreign key field to null or delete them if sender also null
+            //Set all received messages' foreign key field to null or delete it if sender also null
             if (user.ReceivedMessages.Count != 0)
             {
                 foreach (var message in user.ReceivedMessages)
@@ -1038,6 +1052,20 @@ namespace KAZABUILD.API.Controllers.Users
                         foreach (var child in message.ChildMessages)
                         {
                             child.ParentMessageId = null;
+                        }
+
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
                         }
 
                         _db.Messages.Remove(message);

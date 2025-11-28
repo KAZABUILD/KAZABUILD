@@ -11,22 +11,33 @@ import 'package:frontend/models/api_constants.dart';
 class UserImageUtils {
   /// Converts photoURL (which might be a GUID ImageId from backend) to a proper image URL.
   /// Backend returns ImageId as GUID, which needs to be converted to a download URL.
-  static String? getUserImageUrl(String? photoURL) {
+  /// [cacheBust] if true, adds a timestamp query parameter to force cache refresh.
+  static String? getUserImageUrl(String? photoURL, {bool cacheBust = false}) {
     if (photoURL == null || photoURL.isEmpty) {
       return null;
     }
     
+    String url;
+    
     // Check if it's an image ID (GUID format)
     final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
     if (guidPattern.hasMatch(photoURL)) {
-      return '$apiBaseUrl/Images/download/$photoURL';
+      url = '$apiBaseUrl/Images/download/$photoURL';
     } else if (!photoURL.startsWith('http://') && !photoURL.startsWith('https://')) {
       // Relative URL, prepend base URL
-      return '$apiBaseUrl$photoURL';
+      url = '$apiBaseUrl$photoURL';
+    } else {
+      // Already a full URL
+      url = photoURL;
     }
     
-    // Already a full URL
-    return photoURL;
+    // Add cache busting parameter if requested
+    if (cacheBust) {
+      final separator = url.contains('?') ? '&' : '?';
+      url = '$url${separator}_t=${DateTime.now().millisecondsSinceEpoch}';
+    }
+    
+    return url;
   }
   
   /// Default avatar colors for generating consistent avatars.
@@ -74,12 +85,15 @@ class UserImageUtils {
     final letter = getAvatarLetter(username);
     final textColorFinal = textColor ?? Colors.white;
 
-    final processedUrl = getUserImageUrl(imageUrl);
+    final processedUrl = getUserImageUrl(imageUrl, cacheBust: true);
     if (processedUrl != null && processedUrl.isNotEmpty) {
       return CircleAvatar(
         radius: radius,
         backgroundColor: color,
-        backgroundImage: NetworkImage(processedUrl),
+        backgroundImage: NetworkImage(
+          processedUrl,
+          // Add headers to prevent caching issues
+        ),
         onBackgroundImageError: (exception, stackTrace) {
           // If network image fails, it will fall back to the background color
           // and we can show the letter instead
@@ -115,7 +129,7 @@ class UserImageUtils {
     final color = getAvatarColor(userId, username);
     final letter = getAvatarLetter(username);
 
-    final processedUrl = getUserImageUrl(imageUrl);
+    final processedUrl = getUserImageUrl(imageUrl, cacheBust: true);
     if (processedUrl != null && processedUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: borderRadius ?? BorderRadius.circular(8),
@@ -124,6 +138,7 @@ class UserImageUtils {
           width: width,
           height: height,
           fit: fit,
+          key: ValueKey(processedUrl), // Force rebuild when URL changes
           errorBuilder: (context, error, stackTrace) {
             // Fallback to generated avatar when network image fails
             return Container(

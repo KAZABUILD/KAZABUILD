@@ -38,6 +38,7 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<UserFeedback> UserFeedback { get; set; } = default!;
         public DbSet<UserReport> UserReports { get; set; } = default!;
         public DbSet<UserBlock> UserBlocks { get; set; } = default!;
+        public DbSet<UserGuide> UserGuides { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
@@ -126,7 +127,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(f => f.Image)
                 .WithMany(u => u.Users)
                 .HasForeignKey(f => f.ImageId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== USER FOLLOW ======================================//
 
@@ -628,6 +629,18 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(i => i.UserComment)
                 .WithMany(pc => pc.Images)
                 .HasForeignKey(i => i.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.UserGuide)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.UserGuideId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.Message)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.MessageId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

@@ -26,6 +26,18 @@ namespace KAZABUILD.Domain.Entities.Users
         public Guid? ReceiverId { get; set; }
 
         /// <summary>
+        /// Id of the User that posted the Comment stored here in case the User gets deleted from the database.
+        /// Can be used to correctly match Comments with deleted Users.
+        /// </summary>
+        public Guid? DeletedSenderId { get; set; }
+
+        /// <summary>
+        /// Id of the User that posted the Comment stored here in case the User gets deleted from the database.
+        /// Can be used to correctly match Comments with deleted Users.
+        /// </summary>
+        public Guid? DeletedReceiverId { get; set; }
+
+        /// <summary>
         /// Encrypted content of the message.
         /// </summary>
         [Required]
@@ -86,5 +98,6 @@ namespace KAZABUILD.Domain.Entities.Users
         public Message? ParentMessage { get; set; } = default!;
         public ICollection<Message> ChildMessages { get; set; } = [];
         public ICollection<UserReport> UserReports { get; set; } = [];
+        public ICollection<Image> Images { get; set; } = [];
     }
 }

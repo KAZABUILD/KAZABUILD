@@ -4,6 +4,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KAZABUILD.Infrastructure.Migrations
 {
     [DbContext(typeof(KAZABUILDDBContext))]
-    partial class KAZABUILDDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251124214657_ImagesExpansion")]
+    partial class ImagesExpansion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2480,7 +2483,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Image", "Image")
                         .WithMany("Users")
                         .HasForeignKey("ImageId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.OwnsOne("KAZABUILD.Domain.ValueObjects.Address", "Address", b1 =>
                         {

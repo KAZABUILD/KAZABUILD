@@ -15,16 +15,6 @@ namespace KAZABUILD.Application.DTOs.Users.UserActivity
 
         public DateTime? TimestampEnd { get; set; }
 
-        //Additional database information
-        [DataType(DataType.DateTime)]
-        public DateTime DatabaseEntryAt { get; set; } = DateTime.UtcNow;
-
-        [DataType(DataType.DateTime)]
-        public DateTime LastEditedAt { get; set; } = DateTime.UtcNow;
-
-        [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
-        public string? Note { get; set; }
-
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.

@@ -315,7 +315,7 @@ namespace KAZABUILD.API.Controllers.Users
                 userCommentInteraction.IsLiked = (bool)dto.IsLiked;
 
                 //Set the IsDisliked field to false if IsLiked set to true
-                if(dto.IsLiked == true)
+                if (dto.IsLiked == true)
                 {
                     userCommentInteraction.IsDisliked = false;
                 }
@@ -544,9 +544,13 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserCommentInteractions.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && isPrivileged)
             {
                 query = query.Where(i => dto.UserId.Contains(i.UserId));
+            }
+            else if(dto.UserId != null && dto.UserId.Contains(currentUserId))
+            {
+                query = query.Where(i => i.UserId == currentUserId);
             }
             if (dto.UserCommentId != null)
             {
@@ -690,9 +694,13 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserCommentInteractions.Include(i => i.UserComment).AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && isPrivileged)
             {
                 query = query.Where(i => dto.UserId.Contains(i.UserId));
+            }
+            else if (dto.UserId != null && dto.UserId.Contains(currentUserId))
+            {
+                query = query.Where(i => i.UserId == currentUserId);
             }
             if (dto.UserCommentId != null)
             {

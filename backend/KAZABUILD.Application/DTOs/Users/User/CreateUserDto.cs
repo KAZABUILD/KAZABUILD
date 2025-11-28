@@ -33,7 +33,7 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
-        [MinLength(8, ErrorMessage = "Display Name must be at least 8 characters long!")]
+        [MinLength(4, ErrorMessage = "Display Name must be at least 4 characters long!")]
         public string DisplayName { get; set; } = default!;
 
         /// <summary>

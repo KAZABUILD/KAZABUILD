@@ -18,6 +18,7 @@ import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/widgets/linkable_text.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/image_provider.dart';
+import 'package:frontend/widgets/authenticated_image.dart';
 
 import 'package:intl/intl.dart';
 import 'package:frontend/utils/error_utils.dart';
@@ -551,9 +552,6 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
                       final displayName = author.displayName.isNotEmpty 
                           ? author.displayName 
                           : author.username;
-                      final initial = displayName.isNotEmpty 
-                          ? displayName[0].toUpperCase() 
-                          : 'U';
                       return [
                         InkWell(
                           onTap: () {
@@ -565,13 +563,13 @@ class _PostHeader extends ConsumerWidget { // Changed to ConsumerWidget
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                CircleAvatar(
+                                AuthenticatedImage(
+                                  imageUrl: author.photoURL,
+                                  isCircle: true,
                                   radius: 16,
                                   backgroundColor: theme.colorScheme.primary,
-                                  child: Text(
-                                    initial,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
+                                  username: author.username,
+                                  userId: author.uid,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
@@ -772,12 +770,6 @@ class _ReplyCard extends ConsumerWidget {
                   ),
                 );
               }
-              final displayName = author.displayName.isNotEmpty 
-                  ? author.displayName 
-                  : author.username;
-              final initial = displayName.isNotEmpty 
-                  ? displayName[0].toUpperCase() 
-                  : 'U';
               return InkWell(
                 onTap: () {
                   context.go('/profile/${author.uid}');
@@ -785,12 +777,13 @@ class _ReplyCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
                   padding: const EdgeInsets.all(4),
-                  child: CircleAvatar(
+                  child: AuthenticatedImage(
+                    imageUrl: author.photoURL,
+                    isCircle: true,
+                    radius: 20,
                     backgroundColor: theme.colorScheme.secondaryContainer,
-                    child: Text(
-                      initial,
-                      style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
-                    ),
+                    username: author.username,
+                    userId: author.uid,
                   ),
                 ),
               );
@@ -1359,25 +1352,22 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   /// The avatar of the user who is replying.
-                  CircleAvatar(
-                    backgroundColor: currentUser.value != null 
-                        ? theme.colorScheme.primary 
-                        : theme.colorScheme.surfaceVariant,
-                    child: currentUser.value != null
-                        ? Text(
-                            () {
-                              final name = currentUser.value!.displayName.isNotEmpty 
-                                  ? currentUser.value!.displayName 
-                                  : currentUser.value!.username;
-                              return name.isNotEmpty ? name[0].toUpperCase() : '?';
-                            }(),
-                            style: const TextStyle(color: Colors.white),
-                          )
-                        : Icon(
+                  currentUser.value != null
+                      ? AuthenticatedImage(
+                          imageUrl: currentUser.value!.photoURL,
+                          isCircle: true,
+                          radius: 20,
+                          backgroundColor: theme.colorScheme.primary,
+                          username: currentUser.value!.username,
+                          userId: currentUser.value!.uid,
+                        )
+                      : CircleAvatar(
+                          backgroundColor: theme.colorScheme.surfaceVariant,
+                          child: Icon(
                             Icons.person,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
-                  ),
+                        ),
                   const SizedBox(width: 12),
                   Expanded(
                     /// The main text field for the reply content.

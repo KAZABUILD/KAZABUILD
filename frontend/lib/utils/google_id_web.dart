@@ -171,15 +171,15 @@ Future<String?> getGoogleIdToken(String clientId) async {
           if (token != null && token.isNotEmpty) {
             completer.complete(token);
           } else {
-            completer.completeError('Google girişi iptal edildi veya başarısız oldu');
+            completer.completeError('');
           }
         } catch (e) {
-          completer.completeError('Google girişi başarısız: $e');
+          completer.completeError(': $e');
         }
       }),
       'cancel_callback': allowInterop((dynamic response) {
         if (!completer.isCompleted && !responseReceived) {
-          completer.completeError('Google girişi kullanıcı tarafından iptal edildi');
+          completer.completeError('');
         }
       }),
       'auto_select': false,

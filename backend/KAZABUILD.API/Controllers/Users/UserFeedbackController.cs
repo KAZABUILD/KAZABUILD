@@ -189,12 +189,6 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (dto.UserId != null)
-            {
-                changedFields.Add("UserId: " + userFeedback.UserId);
-
-                userFeedback.UserId = (Guid)dto.UserId;
-            }
             if (!string.IsNullOrWhiteSpace(dto.Feedback))
             {
                 changedFields.Add("Feedback: " + userFeedback.Feedback);

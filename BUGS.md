@@ -248,7 +248,7 @@
 - Type: incorrect implementation/error/missing feature
 - Status: pending
 - Source: backend/frontend
-- Details: The backend should only return notification based on whether the data passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
+- Details: The backend should only return notification based on whether the date passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
 
 [00039] No paging in the admin panel.
 - Type: incorrect implementation
@@ -286,7 +286,7 @@
 
 [00044] The UserGuide model is missing.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
 
 [00045] There are no filters in the explore builds page.
@@ -307,7 +307,7 @@
 
 [00047] Add limit for the images and gifs per components.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
 
 [00048] SQL Foreign Key Conflict (FK_UserComments_UserComments_ParentCommentId) prevents deletion of Builds/ForumPosts
@@ -324,36 +324,47 @@
 
 [00050] Introduce an additional column in every model that has a nullable foreign key to store the key in case of deletion.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: backend
 - Details: This will enable preservation of deleted users for message chats and similar situations.
 
-[00051] Token Lookup query
-- Type: missing implmentation
-- status: pending
+[00051] Incorrect labeling in the imagesController.
+- Type: missing implementation
+- status: INCORRECT
 - Source: backend
-- Details: Token verification now fetches all unused tokens of the given type from the database into memory, then verifies client-supplied tokens against them, instead of filtering by `UserId` first. This allows an attacker to use any valid token hash from any user by providing it as a token. The original query filtered by both `UserId` and token hash server-side. This must check `t.UserId` against the DTO's user ID before verification. 
+- 
+[00052] SentAtStart filter failing in both MessagesController and NotifcationsController.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend
+- Details: When filtering by `SentAtStart`, the query uses `dto.SentAtEnd` instead of `dto.SentAtStart`, causing date range filters to malfunction. Users filtering by start date will get incorrect results. This should compare against `dto.SentAtStart`.
 
-[00052] SentStart filter
+[00053] UserAnswerController checks wrong table for preference answer.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend
+- Details: When validating that a `UserPreferenceAnswer` exists, the code queries `_db.Users` instead of the correct table (`_db.UserPreferenceAnswers`). This will always fail to find the preference answer, causing all user answer creation attempts to fail with "Answer not found!" error.
+
+[00054] Backend connection fail error in the frontend is worded incorrectly.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: Frontend
+- Details: The website should inform the user that the internal servers are failing and that the user needs to try to reconnect later.
+
+[00055] The guides are stored in the website, when they should be stored in the server.
+- Type: missing implementation
+- Status: FIXED
+- Source: Frontend
+- Details: The newly added UserGuideController should be used.
+
+[00056] Distinction between moderation and administration missing from the website.
 - Type: incorrect implementation
 - Status: pending
-- Source: backend
-- Details:When filtering by `SentAtStart`, the query uses `dto.SentAtEnd` instead of `dto.SentAtStart`, causing date range filters to malfunction. Users filtering by start date will get incorrect results. This should compare against `dto.SentAtStart`.
+- Source: Frontend
+- Details: Moderation should have access to editing options for things in the user and build domains (builds, guides, user profiles, etc.).
 
-[00053] UserAnswerController Checks wrong table for prefrence answer
-- Type: incorrect implementation
-- Status: pending
-- Source: backend
-- Details: When validating that a `UserPreferenceAnswer` exists, the code queries `_db.Users` instead of the correct table (`_db.UserPreferenceAnswers`). This will always fail to find the preference answer, causing all user answer creation attempts to fail with "Answer not found!" error. 
-
-[00054] Incorrect database query for image validation.
-- Type: incorrect implementation
-- Status: pending
-- Source: backend
-- Details: In the `USER` image location type case, the code queries `_db.ForumPosts` (based on the original comment) but assigns to a variable named `user`. The corrected code queries `_db.Users`, but the comment still says "Check if the post exists" instead of "Check if the user exists". The query is now correct but the comment is misleading. 
-
-[00055] Incorrect initial bounds array initilization in GenerateBuilds
-- Type: incorrect implementation
-- Status: pending
-- Source: backend
-- Details: The bounds array is initialized with values in the wrong order. Index 0 is set to 2000 (max) and index 3 is set to 200 (min), but the code later uses `bounds[i]` and `bounds[i+1]` assuming they represent min and max pairs. This results in passing incorrect price ranges to the component selection logic, causing the build generation to select components outside intended budget ranges or fail entirely. 
+[00057] User's profile image doesn't update correctly.
+- Type: error
+- Status: FIXED
+- Source: Frontend
+- Details: If the user already has an image, changing it to a different one causes the website to display the default one instead. The image is correctly stored in the backend.

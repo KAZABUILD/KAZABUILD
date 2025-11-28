@@ -458,7 +458,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.Tag != null)
             {
-                query = query.Include(b => b.Tags).Where(b => b.Tags.Any(t => dto.Tag.Contains(t.Name)));
+                query = query.Include(b => b.BuildTags).ThenInclude(t => t.Tag).Where(b => b.BuildTags.Any(t => dto.Tag.Contains(t.Tag!.Name)));
             }
 
             //Apply search based on provided query string
@@ -1160,7 +1160,7 @@ namespace KAZABUILD.API.Controllers.Builds
                         c.Prices.Min(p => p.Price) < (decimal)caseMaxPrice &&
                         c.Prices.Min(p => p.Price) > (decimal)caseMinPrice
                     )
-                    .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent })
+                    .Where(c => (new[] { (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent })
                                     .All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
                     .FirstOrDefaultAsync();

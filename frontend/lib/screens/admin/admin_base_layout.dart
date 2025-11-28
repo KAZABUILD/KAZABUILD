@@ -1,13 +1,16 @@
 /// Base Admin Layout
-/// 
+///
 /// Provides a shared layout with sidebar for all admin pages.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
+import '../../models/auth_provider.dart';
+import '../../utils/user_image_utils.dart';
 
-class AdminBaseLayout extends StatefulWidget {
+class AdminBaseLayout extends ConsumerStatefulWidget {
   final Widget child;
   final String currentRoute;
   final String pageTitle;
@@ -20,10 +23,10 @@ class AdminBaseLayout extends StatefulWidget {
   });
 
   @override
-  State<AdminBaseLayout> createState() => _AdminBaseLayoutState();
+  ConsumerState<AdminBaseLayout> createState() => _AdminBaseLayoutState();
 }
 
-class _AdminBaseLayoutState extends State<AdminBaseLayout> {
+class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
   int _selectedIndex = 0;
   bool _isSidebarCollapsed = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -49,11 +52,7 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
     ),
     NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
     NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
-    NavigationItem(
-      icon: Icons.quiz,
-      label: 'Quiz',
-      route: '/admin/quiz',
-    ),
+    NavigationItem(icon: Icons.quiz, label: 'Quiz', route: '/admin/quiz'),
     NavigationItem(
       icon: Icons.notifications,
       label: 'Notifications',
@@ -113,9 +112,7 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
             },
           ),
         ),
-        drawer: Drawer(
-          child: _buildMobileSidebar(isDark, colors),
-        ),
+        drawer: Drawer(child: _buildMobileSidebar(isDark, colors)),
         body: widget.child,
       );
     }
@@ -127,9 +124,7 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
       body: Row(
         children: [
           _buildSidebar(isDark, colors),
-          Expanded(
-            child: widget.child,
-          ),
+          Expanded(child: widget.child),
         ],
       ),
     );
@@ -142,32 +137,9 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
           padding: const EdgeInsets.all(24),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColorsDark.buttonBlue,
-                      AppColorsDark.buttonPurple,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.admin_panel_settings,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
+              _buildUserAvatar(isDark, collapsed: false),
               const SizedBox(width: 12),
-              const Text(
-                'Admin',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              _buildUserName(isDark),
             ],
           ),
         ),
@@ -196,10 +168,7 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
                   ? AppColorsDark.buttonBlue
                   : AppColorsLight.buttonBlue,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -237,32 +206,12 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
                 ? Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColorsDark.buttonBlue,
-                              AppColorsDark.buttonPurple,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.admin_panel_settings,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
+                      _buildUserAvatar(isDark, collapsed: true),
                       const SizedBox(height: 8),
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.chevron_right,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.chevron_right, size: 20),
                         onPressed: () {
                           setState(() {
                             _isSidebarCollapsed = !_isSidebarCollapsed;
@@ -277,45 +226,16 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
                       Expanded(
                         child: Row(
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColorsDark.buttonBlue,
-                                    AppColorsDark.buttonPurple,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.admin_panel_settings,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
+                            _buildUserAvatar(isDark, collapsed: false),
                             const SizedBox(width: 12),
-                            const Flexible(
-                              child: Text(
-                                'Admin',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                            Flexible(child: _buildUserName(isDark)),
                           ],
                         ),
                       ),
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(
-                          Icons.chevron_left,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.chevron_left, size: 20),
                         onPressed: () {
                           setState(() {
                             _isSidebarCollapsed = !_isSidebarCollapsed;
@@ -377,7 +297,11 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
   }
 
   Widget _buildNavItem(
-      NavigationItem item, bool isSelected, bool isDark, dynamic colors) {
+    NavigationItem item,
+    bool isSelected,
+    bool isDark,
+    dynamic colors,
+  ) {
     if (_isSidebarCollapsed) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -405,8 +329,8 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
                 color: isSelected
                     ? Colors.white
                     : (isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack),
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack),
               ),
             ),
           ),
@@ -436,9 +360,7 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
           style: TextStyle(
             color: isSelected
                 ? Colors.white
-                : (isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack),
+                : (isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 14,
           ),
@@ -454,6 +376,58 @@ class _AdminBaseLayoutState extends State<AdminBaseLayout> {
       ),
     );
   }
+
+  Widget _buildUserAvatar(bool isDark, {required bool collapsed}) {
+    final authState = ref.watch(authProvider);
+    final user = authState.valueOrNull;
+
+    if (user == null) {
+      return Container(
+        width: collapsed ? 40 : 40,
+        height: collapsed ? 40 : 40,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColorsDark.buttonBlue, AppColorsDark.buttonPurple],
+          ),
+          borderRadius: BorderRadius.circular(collapsed ? 20 : 10),
+        ),
+        child: const Icon(
+          Icons.admin_panel_settings,
+          color: Colors.white,
+          size: 24,
+        ),
+      );
+    }
+
+    return UserImageUtils.buildUserAvatar(
+      imageUrl: user.photoURL,
+      username: user.displayName.isNotEmpty ? user.displayName : user.username,
+      userId: user.uid,
+      radius: collapsed ? 20 : 20,
+    );
+  }
+
+  Widget _buildUserName(bool isDark) {
+    final authState = ref.watch(authProvider);
+    final user = authState.valueOrNull;
+
+    if (user == null) {
+      return const Text(
+        'Admin',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      );
+    }
+
+    return Text(
+      user.displayName.isNotEmpty ? user.displayName : user.username,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack,
+      ),
+      overflow: TextOverflow.ellipsis,
+    );
+  }
 }
 
 class NavigationItem {
@@ -467,4 +441,3 @@ class NavigationItem {
     required this.route,
   });
 }
-
