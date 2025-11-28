@@ -909,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
 
         /// <summary>
         /// API endpoint for deleting the selected user for staff.
-        /// Removes all related UserFollows as well.
+        /// Removes all related objects as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>

@@ -664,10 +664,11 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Check if current user has admin permissions or if they are modifying a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return unauthorized access exception if the user does not have the correct permissions
-            if (!isPrivileged)
+            if (!(isPrivileged && image.LocationType != ImageLocationType.COMPONENT && image.LocationType != ImageLocationType.SUBCOMPONENT) && !isAdmin)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -933,7 +934,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if current user has admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
             var query = _db.Images.AsNoTracking();
@@ -966,6 +967,14 @@ namespace KAZABUILD.API.Controllers
             if (dto.UserId != null)
             {
                 query = query.Where(i => i.UserId != null && dto.UserId.Contains((Guid)i.UserId));
+            }
+            if (dto.MessageId != null)
+            {
+                query = query.Where(i => i.MessageId != null && dto.MessageId.Contains((Guid)i.MessageId));
+            }
+            if (dto.UserGuideId != null)
+            {
+                query = query.Where(i => i.UserGuideId != null && dto.UserGuideId.Contains((Guid)i.UserGuideId));
             }
 
             //Apply search based on provided query string
