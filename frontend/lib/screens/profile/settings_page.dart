@@ -5,11 +5,13 @@
 /// change app-wide preferences such as the theme.
 library;
 
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/admin_provider.dart';
 import 'package:frontend/models/user_role.dart';
@@ -368,15 +370,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 try {
                   // Upload profile picture using auth provider
                   // This already updates the auth state internally via updateUserProfile
+                  // No need to invalidate authProvider as it will cause logout
                   await ref.read(authProvider.notifier).uploadProfilePicture(user.uid, imagePath);
                   
-                  // Refresh the user profile provider to show the new image
-                  // Note: We don't invalidate authProvider here because uploadProfilePicture
-                  // already updates the state via updateUserProfile, and invalidating would
-                  // cause the user to be logged out
+                  // Invalidate user profile provider to refresh the UI with new image
+                  // This is safe and won't cause logout
                   if (widget.userId != null && widget.userId == currentUser.uid) {
                     ref.invalidate(userProfileProvider(widget.userId!));
                   }
+                  
+                  // Also invalidate for current user's profile if viewing own profile
+                  ref.invalidate(userProfileProvider(user.uid));
                   
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -385,7 +389,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           children: [
                             const Icon(Icons.check_circle, color: Colors.white),
                             const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.profileUpdated),
+                            Text(AppLocalizations.of(context)!.profilePictureUpdated),
                           ],
                         ),
                         backgroundColor: Colors.green,
@@ -1261,7 +1265,7 @@ class _SettingsItem extends StatelessWidget {
 }
 
 /// Profile picture item widget with upload functionality
-class _ProfilePictureItem extends StatefulWidget {
+class _ProfilePictureItem extends ConsumerStatefulWidget {
   final ThemeData theme;
   final AppUser user;
   final Function(String) onImageSelected;
@@ -1273,12 +1277,14 @@ class _ProfilePictureItem extends StatefulWidget {
   });
 
   @override
-  State<_ProfilePictureItem> createState() => _ProfilePictureItemState();
+  ConsumerState<_ProfilePictureItem> createState() => _ProfilePictureItemState();
 }
 
-class _ProfilePictureItemState extends State<_ProfilePictureItem> {
+class _ProfilePictureItemState extends ConsumerState<_ProfilePictureItem> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUploading = false;
+  Uint8List? _cachedImageBytes;
+  String? _cachedImageUrl;
 
   Future<void> _pickImage() async {
     try {
@@ -1365,13 +1371,83 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
     }
   }
 
+  Future<void> _loadImageWithAuth(String? imageUrl) async {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      setState(() {
+        _cachedImageBytes = null;
+        _cachedImageUrl = null;
+      });
+      return;
+    }
+
+    // If we already have this image cached, don't reload
+    if (_cachedImageUrl == imageUrl && _cachedImageBytes != null) {
+      return;
+    }
+
+    try {
+      // Get authenticated Dio instance
+      final dio = ref.read(authProvider.notifier).getDioInstance();
+      
+      // Download image with authentication
+      final response = await dio.get(
+        imageUrl,
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        setState(() {
+          _cachedImageBytes = Uint8List.fromList(response.data);
+          _cachedImageUrl = imageUrl;
+        });
+      }
+    } catch (e) {
+      // If loading fails, clear cache
+      if (mounted) {
+        setState(() {
+          _cachedImageBytes = null;
+          _cachedImageUrl = null;
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ProfilePictureItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload image if photoURL changed
+    if (oldWidget.user.photoURL != widget.user.photoURL) {
+      final imageUrl = UserImageUtils.getUserImageUrl(widget.user.photoURL, cacheBust: false);
+      _loadImageWithAuth(imageUrl);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Load image when widget is first created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final imageUrl = UserImageUtils.getUserImageUrl(widget.user.photoURL, cacheBust: false);
+      _loadImageWithAuth(imageUrl);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final user = widget.user;
     
     // Get image URL if available - use utility function to handle GUID conversion
-    final imageUrl = UserImageUtils.getUserImageUrl(user.photoURL);
+    // Don't use cacheBust here since we're using authenticated Dio request
+    final imageUrl = UserImageUtils.getUserImageUrl(user.photoURL, cacheBust: false);
+    
+    // Load image if URL changed
+    if (imageUrl != _cachedImageUrl && imageUrl != null) {
+      _loadImageWithAuth(imageUrl);
+    }
 
     return Column(
       children: [
@@ -1396,10 +1472,12 @@ class _ProfilePictureItemState extends State<_ProfilePictureItem> {
                 child: CircleAvatar(
                   radius: 70,
                   backgroundColor: theme.colorScheme.surfaceVariant,
-                  backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                      ? NetworkImage(imageUrl)
+                  backgroundImage: _cachedImageBytes != null
+                      ? MemoryImage(_cachedImageBytes!)
                       : null,
-                  child: imageUrl == null || imageUrl.isEmpty
+                  // Use key based on photoURL to force rebuild when it changes
+                  key: ValueKey(user.photoURL ?? 'no-image'),
+                  child: _cachedImageBytes == null
                       ? UserImageUtils.buildUserAvatar(
                           imageUrl: null,
                           username: user.username,

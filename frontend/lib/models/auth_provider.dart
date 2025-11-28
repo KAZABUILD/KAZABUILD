@@ -1101,7 +1101,9 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
         }
       }
 
-      // Upload the new image to the backend
+      // Now upload the new image to the backend
+      // Since we deleted the old one, there should be space for the new image
+      log('Uploading new profile image...');
       final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
       
       // Try to get ImageId from various possible fields

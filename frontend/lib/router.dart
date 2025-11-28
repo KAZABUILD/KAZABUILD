@@ -194,8 +194,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // 4. Protected pages – require login
-      if (!loggedIn && ['/profile', '/settings'].contains(path)) {
-        return '/login';
+      // Wait for auth to finish loading before redirecting
+      if (path.startsWith('/profile') || path == '/settings') {
+        if (loading) return null; // Wait for auth to load
+        if (!loggedIn) return '/login';
+        return null;
+      }
+
+      // 5. Forum post detail - allow access but wait for auth to load
+      if (path.startsWith('/forums/') && path.split('/').length > 2) {
+        // This is a forum post detail page (e.g., /forums/123)
+        // Allow access but wait for auth to load
+        if (loading) return null;
+        return null;
       }
 
       // 5. Logged-in users can't access auth pages

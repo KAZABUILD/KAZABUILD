@@ -20,6 +20,7 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/screens/forum/post_detail_page.dart' show userProvider;
 
@@ -681,10 +682,10 @@ class _FilterPanel extends ConsumerWidget {
                     return FilterChip(
                       avatar: CircleAvatar(
                         radius: 12,
-                        backgroundImage: author.photoURL != null
-                            ? NetworkImage(author.photoURL!)
+                        backgroundImage: UserImageUtils.getUserImageUrl(author.photoURL) != null
+                            ? NetworkImage(UserImageUtils.getUserImageUrl(author.photoURL)!)
                             : null,
-                        child: author.photoURL == null
+                        child: UserImageUtils.getUserImageUrl(author.photoURL) == null
                             ? Text(
                                 authorName.isNotEmpty
                                     ? authorName.substring(0, 1).toUpperCase()
@@ -1172,10 +1173,10 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                               children: [
                                 CircleAvatar(
                                   radius: 12,
-                                  backgroundImage: widget.buildData.author!.photoURL != null
-                                      ? NetworkImage(widget.buildData.author!.photoURL!)
+                                  backgroundImage: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) != null
+                                      ? NetworkImage(UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL)!)
                                       : null,
-                                  child: widget.buildData.author!.photoURL == null
+                                  child: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) == null
                                       ? Text(
                                           widget.buildData.author!.username.isNotEmpty
                                               ? widget.buildData.author!.username.substring(0, 1).toUpperCase()
@@ -1244,10 +1245,10 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
                                   children: [
                                     CircleAvatar(
                                       radius: 12,
-                                      backgroundImage: author.photoURL != null
-                                          ? NetworkImage(author.photoURL!)
+                                      backgroundImage: UserImageUtils.getUserImageUrl(author.photoURL) != null
+                                          ? NetworkImage(UserImageUtils.getUserImageUrl(author.photoURL)!)
                                           : null,
-                                      child: author.photoURL == null
+                                      child: UserImageUtils.getUserImageUrl(author.photoURL) == null
                                           ? Text(
                                               author.username.isNotEmpty
                                                   ? author.username.substring(0, 1).toUpperCase()

@@ -33,7 +33,8 @@ class ImageService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> images = response.data;
         if (images.isNotEmpty) {
-          final imageId = images[0]['id']?.toString() ?? images[0]['Id']?.toString();
+          final imageId =
+              images[0]['id']?.toString() ?? images[0]['Id']?.toString();
           if (kDebugMode) {
             print('Found image for component $componentId: $imageId');
           }
@@ -55,12 +56,14 @@ class ImageService {
 
   /// Fetches images for multiple components with batching and retry logic.
   /// Returns a map of componentId -> imageId.
-  Future<Map<String, String?>> getComponentImageIds(List<String> componentIds) async {
+  Future<Map<String, String?>> getComponentImageIds(
+    List<String> componentIds,
+  ) async {
     // Filter out empty, null, or whitespace-only IDs
     final validComponentIds = componentIds
         .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
         .toList();
-    
+
     if (validComponentIds.isEmpty) {
       if (kDebugMode) {
         print('⚠️ No valid component IDs provided (all were empty/null)');
@@ -69,7 +72,9 @@ class ImageService {
     }
 
     if (kDebugMode && validComponentIds.length != componentIds.length) {
-      print('⚠️ Filtered out ${componentIds.length - validComponentIds.length} empty component IDs');
+      print(
+        '⚠️ Filtered out ${componentIds.length - validComponentIds.length} empty component IDs',
+      );
       print('   Valid IDs: ${validComponentIds.length}');
     }
 
@@ -81,11 +86,11 @@ class ImageService {
     // Process in batches for better performance
     for (int i = 0; i < validComponentIds.length; i += batchSize) {
       final batch = validComponentIds.skip(i).take(batchSize).toList();
-      
+
       try {
         final batchResult = await _fetchComponentImagesBatch(batch);
         result.addAll(batchResult);
-        
+
         // Small delay between batches to be nice to the server
         if (i + batchSize < componentIds.length) {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -110,7 +115,9 @@ class ImageService {
     int maxRetries = 3,
   }) async {
     // Filter out empty IDs (should already be filtered, but double-check)
-    final validIds = componentIds.where((id) => id.isNotEmpty && id.trim().isNotEmpty).toList();
+    final validIds = componentIds
+        .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
+        .toList();
     if (validIds.isEmpty) {
       if (kDebugMode) {
         print('⚠️ _fetchComponentImagesBatch: No valid component IDs in batch');
@@ -121,26 +128,31 @@ class ImageService {
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
         final url = '$apiBaseUrl/Images/get';
-        
+
         // Backend expects camelCase property names (per Swagger docs)
         // Enum values are strings: COMPONENT, BUILD, etc.
         final body = {
           'locationType': ['COMPONENT'], // camelCase property name
-          'componentId': validIds, // camelCase property name, Array of Guid strings
+          'componentId':
+              validIds, // camelCase property name, Array of Guid strings
           'paging': false, // camelCase property name
         };
 
         if (kDebugMode && attempt == 0) {
-          print('Fetching images for ${validIds.length} components (attempt ${attempt + 1})');
+          print(
+            'Fetching images for ${validIds.length} components (attempt ${attempt + 1})',
+          );
           print('Request body: $body');
           print('Component IDs: $validIds');
           if (validIds.length != componentIds.length) {
-            print('⚠️ Filtered out ${componentIds.length - validIds.length} empty IDs from batch');
+            print(
+              '⚠️ Filtered out ${componentIds.length - validIds.length} empty IDs from batch',
+            );
           }
         }
 
         final response = await _dio.post(url, data: body);
-        
+
         if (kDebugMode && response.statusCode != 200) {
           print('Non-200 response: ${response.statusCode}');
           print('Response data: ${response.data}');
@@ -155,7 +167,9 @@ class ImageService {
             if (images.isEmpty) {
               print('⚠️ No images found in response');
             } else {
-              print('Sample image record keys: ${images.first?.keys?.toList() ?? 'null'}');
+              print(
+                'Sample image record keys: ${images.first?.keys?.toList() ?? 'null'}',
+              );
               print('Sample image record: ${images.first}');
             }
           }
@@ -163,11 +177,10 @@ class ImageService {
           // Group images by component ID
           for (final image in images) {
             // Backend returns TargetId - check both camelCase and PascalCase
-            final targetId = image['targetId']?.toString() ?? 
-                            image['TargetId']?.toString();
+            final targetId =
+                image['targetId']?.toString() ?? image['TargetId']?.toString();
             // Backend returns Id - check both camelCase and PascalCase
-            final imageId = image['id']?.toString() ?? 
-                           image['Id']?.toString();
+            final imageId = image['id']?.toString() ?? image['Id']?.toString();
 
             if (kDebugMode && attempt == 0) {
               print('  📷 Image record: targetId=$targetId, imageId=$imageId');
@@ -192,7 +205,9 @@ class ImageService {
                 if (!imageMap.containsKey(matchedComponentId)) {
                   imageMap[matchedComponentId] = imageId;
                   if (kDebugMode && attempt == 0) {
-                    print('  ✅ Mapped: componentId=$matchedComponentId -> imageId=$imageId');
+                    print(
+                      '  ✅ Mapped: componentId=$matchedComponentId -> imageId=$imageId',
+                    );
                   }
                 }
               } else if (kDebugMode && attempt == 0) {
@@ -205,14 +220,20 @@ class ImageService {
           }
 
           if (kDebugMode && attempt == 0) {
-            print('📊 Final mapping: Found ${imageMap.length} out of ${componentIds.length} component images');
+            print(
+              '📊 Final mapping: Found ${imageMap.length} out of ${componentIds.length} component images',
+            );
             imageMap.forEach((componentId, imageId) {
               print('  $componentId -> $imageId');
             });
             if (imageMap.isEmpty && images.isNotEmpty) {
-              print('⚠️ WARNING: Images returned but no matching targetIds found');
+              print(
+                '⚠️ WARNING: Images returned but no matching targetIds found',
+              );
               print('   Expected component IDs: $validIds');
-              print('   Received targetIds from API: ${images.map((img) => img['targetId'] ?? img['TargetId']).whereType<String>().toList()}');
+              print(
+                '   Received targetIds from API: ${images.map((img) => img['targetId'] ?? img['TargetId']).whereType<String>().toList()}',
+              );
             }
           }
 
@@ -221,7 +242,7 @@ class ImageService {
           for (final componentId in validIds) {
             result[componentId] = imageMap[componentId];
           }
-          
+
           return result;
         }
 
@@ -229,33 +250,39 @@ class ImageService {
         return {for (var id in validIds) id: null};
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
-        
+
         // Handle rate limiting (429)
         if (statusCode == 429) {
           final retryAfter = _getRetryAfterDelay(e.response?.headers, attempt);
-          
+
           if (kDebugMode) {
-            print('Rate limited (429). Waiting ${retryAfter.inSeconds}s before retry ${attempt + 1}/$maxRetries');
+            print(
+              'Rate limited (429). Waiting ${retryAfter.inSeconds}s before retry ${attempt + 1}/$maxRetries',
+            );
           }
-          
+
           // Wait before retrying
           await Future.delayed(retryAfter);
           continue; // Retry
         }
-        
+
         // For other errors, wait a bit and retry
         if (attempt < maxRetries - 1) {
           final delay = Duration(milliseconds: 500 * (attempt + 1));
           if (kDebugMode) {
-            print('Error ${statusCode ?? 'unknown'}. Retrying in ${delay.inMilliseconds}ms');
+            print(
+              'Error ${statusCode ?? 'unknown'}. Retrying in ${delay.inMilliseconds}ms',
+            );
           }
           await Future.delayed(delay);
           continue;
         }
-        
+
         // Last attempt failed
         if (kDebugMode) {
-          print('Failed to fetch component images after $maxRetries attempts: ${e.message}');
+          print(
+            'Failed to fetch component images after $maxRetries attempts: ${e.message}',
+          );
         }
         return {for (var id in validIds) id: null};
       } catch (e) {
@@ -264,7 +291,7 @@ class ImageService {
           await Future.delayed(delay);
           continue;
         }
-        
+
         if (kDebugMode) {
           print('Error fetching component images: $e');
         }
@@ -279,7 +306,8 @@ class ImageService {
   Duration _getRetryAfterDelay(Headers? headers, int attempt) {
     // Try to get Retry-After header
     if (headers != null) {
-      final retryAfter = headers.value('retry-after') ?? headers.value('Retry-After');
+      final retryAfter =
+          headers.value('retry-after') ?? headers.value('Retry-After');
       if (retryAfter != null) {
         final seconds = int.tryParse(retryAfter);
         if (seconds != null && seconds > 0) {
@@ -287,7 +315,7 @@ class ImageService {
         }
       }
     }
-    
+
     // Exponential backoff: 2^attempt seconds, max 30 seconds
     final delaySeconds = (1 << attempt).clamp(1, 30);
     return Duration(seconds: delaySeconds);
@@ -313,7 +341,8 @@ class ImageService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> images = response.data;
         if (images.isNotEmpty) {
-          final imageId = images[0]['id']?.toString() ?? images[0]['Id']?.toString();
+          final imageId =
+              images[0]['id']?.toString() ?? images[0]['Id']?.toString();
           if (kDebugMode) {
             print('Found image for build $buildId: $imageId');
           }
@@ -340,7 +369,7 @@ class ImageService {
     final validBuildIds = buildIds
         .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
         .toList();
-    
+
     if (validBuildIds.isEmpty) {
       if (kDebugMode) {
         print('⚠️ No valid build IDs provided (all were empty/null)');
@@ -349,7 +378,9 @@ class ImageService {
     }
 
     if (kDebugMode && validBuildIds.length != buildIds.length) {
-      print('⚠️ Filtered out ${buildIds.length - validBuildIds.length} empty build IDs');
+      print(
+        '⚠️ Filtered out ${buildIds.length - validBuildIds.length} empty build IDs',
+      );
       print('   Valid IDs: ${validBuildIds.length}');
     }
 
@@ -361,11 +392,11 @@ class ImageService {
     // Process in batches for better performance
     for (int i = 0; i < validBuildIds.length; i += batchSize) {
       final batch = validBuildIds.skip(i).take(batchSize).toList();
-      
+
       try {
         final batchResult = await _fetchBuildImagesBatch(batch);
         result.addAll(batchResult);
-        
+
         // Small delay between batches to be nice to the server
         if (i + batchSize < buildIds.length) {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -390,7 +421,9 @@ class ImageService {
     int maxRetries = 3,
   }) async {
     // Filter out empty IDs (should already be filtered, but double-check)
-    final validIds = buildIds.where((id) => id.isNotEmpty && id.trim().isNotEmpty).toList();
+    final validIds = buildIds
+        .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
+        .toList();
     if (validIds.isEmpty) {
       if (kDebugMode) {
         print('⚠️ _fetchBuildImagesBatch: No valid build IDs in batch');
@@ -401,7 +434,7 @@ class ImageService {
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
         final url = '$apiBaseUrl/Images/get';
-        
+
         // Backend expects camelCase property names (per Swagger docs)
         // Enum values are strings: COMPONENT, BUILD, etc.
         final body = {
@@ -411,22 +444,26 @@ class ImageService {
         };
 
         if (kDebugMode && attempt == 0) {
-          print('Fetching images for ${validIds.length} builds (attempt ${attempt + 1})');
+          print(
+            'Fetching images for ${validIds.length} builds (attempt ${attempt + 1})',
+          );
           print('Request body: $body');
           print('Build IDs: $validIds');
           if (validIds.length != buildIds.length) {
-            print('⚠️ Filtered out ${buildIds.length - validIds.length} empty IDs from batch');
+            print(
+              '⚠️ Filtered out ${buildIds.length - validIds.length} empty IDs from batch',
+            );
           }
         }
 
         final response = await _dio.post(url, data: body);
-        
+
         if (kDebugMode) {
           print('API Response Status: ${response.statusCode}');
           print('API Response Type: ${response.data.runtimeType}');
           print('API Response Data: ${response.data}');
         }
-        
+
         if (kDebugMode && response.statusCode != 200) {
           print('Non-200 response: ${response.statusCode}');
           print('Response data: ${response.data}');
@@ -439,21 +476,27 @@ class ImageService {
             images = response.data as List<dynamic>;
           } else {
             if (kDebugMode && attempt == 0) {
-              print('⚠️ Unexpected response type: ${response.data.runtimeType}');
+              print(
+                '⚠️ Unexpected response type: ${response.data.runtimeType}',
+              );
               print('Response data: ${response.data}');
             }
             images = [];
           }
-          
+
           final Map<String, String?> imageMap = {};
 
           if (kDebugMode && attempt == 0) {
-            print('✅ Received ${images.length} image records from API for builds');
+            print(
+              '✅ Received ${images.length} image records from API for builds',
+            );
             if (images.isEmpty) {
               print('⚠️ No build images found in response');
               print('Request was: locationType=BUILD, buildId=$validIds');
             } else {
-              print('Sample image record keys: ${images.first?.keys?.toList() ?? 'null'}');
+              print(
+                'Sample image record keys: ${images.first?.keys?.toList() ?? 'null'}',
+              );
               print('Sample image record: ${images.first}');
             }
           }
@@ -462,16 +505,18 @@ class ImageService {
           for (final image in images) {
             // Backend returns the build ID in either 'targetId' or 'buildId'.
             // Check for both camelCase and PascalCase versions of these keys.
-            final targetId = image['targetId']?.toString() ?? 
-                            image['TargetId']?.toString() ??
-                            image['buildId']?.toString() ??
-                            image['BuildId']?.toString();
+            final targetId =
+                image['targetId']?.toString() ??
+                image['TargetId']?.toString() ??
+                image['buildId']?.toString() ??
+                image['BuildId']?.toString();
             // Backend returns Id - check both camelCase and PascalCase
-            final imageId = image['id']?.toString() ?? 
-                           image['Id']?.toString();
+            final imageId = image['id']?.toString() ?? image['Id']?.toString();
 
             if (kDebugMode && attempt == 0) {
-              print('  📷 Build image record: targetId=$targetId, imageId=$imageId');
+              print(
+                '  📷 Build image record: targetId=$targetId, imageId=$imageId',
+              );
               print('     All keys: ${image.keys.toList()}');
             }
 
@@ -493,7 +538,9 @@ class ImageService {
                 if (!imageMap.containsKey(matchedBuildId)) {
                   imageMap[matchedBuildId] = imageId;
                   if (kDebugMode && attempt == 0) {
-                    print('  ✅ Mapped: buildId=$matchedBuildId -> imageId=$imageId');
+                    print(
+                      '  ✅ Mapped: buildId=$matchedBuildId -> imageId=$imageId',
+                    );
                   }
                 }
               } else if (kDebugMode && attempt == 0) {
@@ -506,14 +553,20 @@ class ImageService {
           }
 
           if (kDebugMode && attempt == 0) {
-            print('📊 Final mapping: Found ${imageMap.length} out of ${buildIds.length} build images');
+            print(
+              '📊 Final mapping: Found ${imageMap.length} out of ${buildIds.length} build images',
+            );
             imageMap.forEach((buildId, imageId) {
               print('  $buildId -> $imageId');
             });
             if (imageMap.isEmpty && images.isNotEmpty) {
-              print('⚠️ WARNING: Images returned but no matching targetIds found');
+              print(
+                '⚠️ WARNING: Images returned but no matching targetIds found',
+              );
               print('   Expected build IDs: $validIds');
-              print('   Received targetIds from API: ${images.map((img) => img['targetId'] ?? img['TargetId']).whereType<String>().toList()}');
+              print(
+                '   Received targetIds from API: ${images.map((img) => img['targetId'] ?? img['TargetId']).whereType<String>().toList()}',
+              );
             }
           }
 
@@ -522,7 +575,7 @@ class ImageService {
           for (final buildId in validIds) {
             result[buildId] = imageMap[buildId];
           }
-          
+
           return result;
         }
 
@@ -530,33 +583,39 @@ class ImageService {
         return {for (var id in validIds) id: null};
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
-        
+
         // Handle rate limiting (429)
         if (statusCode == 429) {
           final retryAfter = _getRetryAfterDelay(e.response?.headers, attempt);
-          
+
           if (kDebugMode) {
-            print('Rate limited (429). Waiting ${retryAfter.inSeconds}s before retry ${attempt + 1}/$maxRetries');
+            print(
+              'Rate limited (429). Waiting ${retryAfter.inSeconds}s before retry ${attempt + 1}/$maxRetries',
+            );
           }
-          
+
           // Wait before retrying
           await Future.delayed(retryAfter);
           continue; // Retry
         }
-        
+
         // For other errors, wait a bit and retry
         if (attempt < maxRetries - 1) {
           final delay = Duration(milliseconds: 500 * (attempt + 1));
           if (kDebugMode) {
-            print('Error ${statusCode ?? 'unknown'}. Retrying in ${delay.inMilliseconds}ms');
+            print(
+              'Error ${statusCode ?? 'unknown'}. Retrying in ${delay.inMilliseconds}ms',
+            );
           }
           await Future.delayed(delay);
           continue;
         }
-        
+
         // Last attempt failed
         if (kDebugMode) {
-          print('Failed to fetch build images after $maxRetries attempts: ${e.message}');
+          print(
+            'Failed to fetch build images after $maxRetries attempts: ${e.message}',
+          );
         }
         return {for (var id in validIds) id: null};
       } catch (e) {
@@ -565,9 +624,210 @@ class ImageService {
           await Future.delayed(delay);
           continue;
         }
-        
+
         if (kDebugMode) {
           print('Error fetching build images: $e');
+        }
+        return {for (var id in validIds) id: null};
+      }
+    }
+
+    return {for (var id in validIds) id: null};
+  }
+
+  /// Fetches the primary image ID for a user guide.
+  Future<String?> getGuideImageId(String guideId) async {
+    if (guideId.isEmpty) return null;
+
+    try {
+      final url = '$apiBaseUrl/Images/get';
+      final body = {
+        'locationType': ['GUIDE'],
+        'userGuideId': [guideId],
+        'paging': false,
+      };
+
+      if (kDebugMode) {
+        print('Fetching images for guide: $guideId');
+      }
+
+      final response = await _dio.post(url, data: body);
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> images = response.data;
+        if (images.isNotEmpty) {
+          final imageId =
+              images[0]['id']?.toString() ?? images[0]['Id']?.toString();
+          if (kDebugMode) {
+            print('Found image for guide $guideId: $imageId');
+          }
+          return imageId;
+        }
+      }
+
+      if (kDebugMode) {
+        print('No images found for guide: $guideId');
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching guide image: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Fetches images for multiple guides with batching and retry logic.
+  Future<Map<String, String?>> getGuideImageIds(List<String> guideIds) async {
+    final validGuideIds = guideIds
+        .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
+        .toList();
+
+    if (validGuideIds.isEmpty) {
+      if (kDebugMode) {
+        print('⚠️ No valid guide IDs provided (all were empty/null)');
+      }
+      return {};
+    }
+
+    if (kDebugMode && validGuideIds.length != guideIds.length) {
+      print(
+        '⚠️ Filtered out ${guideIds.length - validGuideIds.length} empty guide IDs',
+      );
+    }
+
+    const batchSize = 50;
+    final result = <String, String?>{};
+
+    for (int i = 0; i < validGuideIds.length; i += batchSize) {
+      final batch = validGuideIds.skip(i).take(batchSize).toList();
+
+      try {
+        final batchResult = await _fetchGuideImagesBatch(batch);
+        result.addAll(batchResult);
+
+        if (i + batchSize < guideIds.length) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error fetching batch of guide images: $e');
+        }
+        for (final id in batch) {
+          result[id] = null;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  Future<Map<String, String?>> _fetchGuideImagesBatch(
+    List<String> guideIds, {
+    int maxRetries = 3,
+  }) async {
+    final validIds = guideIds
+        .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
+        .toList();
+    if (validIds.isEmpty) {
+      if (kDebugMode) {
+        print('⚠️ _fetchGuideImagesBatch: No valid guide IDs in batch');
+      }
+      return {};
+    }
+
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final url = '$apiBaseUrl/Images/get';
+        final body = {
+          'locationType': ['GUIDE'],
+          'userGuideId': validIds,
+          'paging': false,
+        };
+
+        if (kDebugMode && attempt == 0) {
+          print(
+            'Fetching images for ${validIds.length} guides (attempt ${attempt + 1})',
+          );
+          print('Request body: $body');
+        }
+
+        final response = await _dio.post(url, data: body);
+
+        if (response.statusCode == 200) {
+          final List<dynamic> images = response.data is List
+              ? response.data as List<dynamic>
+              : [];
+          final Map<String, String?> imageMap = {};
+
+          for (final image in images) {
+            final targetId =
+                image['targetId']?.toString() ??
+                image['TargetId']?.toString() ??
+                image['userGuideId']?.toString() ??
+                image['UserGuideId']?.toString();
+            final imageId = image['id']?.toString() ?? image['Id']?.toString();
+
+            if (targetId != null && imageId != null) {
+              String? matchedGuideId;
+              try {
+                matchedGuideId = guideIds.firstWhere(
+                  (id) => id.toLowerCase() == targetId.toLowerCase(),
+                  orElse: () => '',
+                );
+              } catch (_) {
+                matchedGuideId = null;
+              }
+
+              if (matchedGuideId != null && matchedGuideId.isNotEmpty) {
+                imageMap.putIfAbsent(matchedGuideId, () => imageId);
+              }
+            }
+          }
+
+          final result = <String, String?>{};
+          for (final guideId in validIds) {
+            result[guideId] = imageMap[guideId];
+          }
+
+          return result;
+        }
+
+        return {for (var id in validIds) id: null};
+      } on DioException catch (e) {
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 429) {
+          final retryAfter = _getRetryAfterDelay(e.response?.headers, attempt);
+          if (kDebugMode) {
+            print(
+              'Guide images rate limited. Waiting ${retryAfter.inSeconds}s',
+            );
+          }
+          await Future.delayed(retryAfter);
+          continue;
+        }
+
+        if (attempt < maxRetries - 1) {
+          final delay = Duration(milliseconds: 500 * (attempt + 1));
+          await Future.delayed(delay);
+          continue;
+        }
+
+        if (kDebugMode) {
+          print(
+            'Failed to fetch guide images after $maxRetries attempts: ${e.message}',
+          );
+        }
+        return {for (var id in validIds) id: null};
+      } catch (e) {
+        if (attempt < maxRetries - 1) {
+          final delay = Duration(milliseconds: 500 * (attempt + 1));
+          await Future.delayed(delay);
+          continue;
+        }
+
+        if (kDebugMode) {
+          print('Error fetching guide images: $e');
         }
         return {for (var id in validIds) id: null};
       }
@@ -597,7 +857,7 @@ class ImageService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> images = response.data;
         final List<String> imageUrls = [];
-        
+
         for (var imgJson in images) {
           if (imgJson is Map<String, dynamic>) {
             final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
@@ -606,7 +866,7 @@ class ImageService {
             }
           }
         }
-        
+
         if (kDebugMode) {
           print('Found ${imageUrls.length} images for forum post $postId');
         }
@@ -642,7 +902,7 @@ class ImageService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> images = response.data;
         final List<String> imageUrls = [];
-        
+
         for (var imgJson in images) {
           if (imgJson is Map<String, dynamic>) {
             final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
@@ -651,7 +911,7 @@ class ImageService {
             }
           }
         }
-        
+
         if (kDebugMode) {
           print('Found ${imageUrls.length} images for comment $commentId');
         }
@@ -680,28 +940,38 @@ final imageServiceProvider = Provider<ImageService>((ref) {
 });
 
 /// Provider that maps component IDs to image IDs.
-final componentImageMapProvider = FutureProvider.family<Map<String, String?>, List<String>>((ref, componentIds) async {
-  final imageService = ref.watch(imageServiceProvider);
-  return await imageService.getComponentImageIds(componentIds);
-});
+final componentImageMapProvider =
+    FutureProvider.family<Map<String, String?>, List<String>>((
+      ref,
+      componentIds,
+    ) async {
+      final imageService = ref.watch(imageServiceProvider);
+      return await imageService.getComponentImageIds(componentIds);
+    });
 
 /// Provider that maps build IDs to image IDs.
 /// Using autoDispose to ensure it refetches when not listened to anymore.
 /// The family parameter is a record containing the build IDs and a key to force re-fetch.
-final buildImageMapProvider = FutureProvider.autoDispose.family<Map<String, String?>, ({List<String> buildIds, int key})>((ref, params) async {
-  final imageService = ref.watch(imageServiceProvider);
-  // We only need the buildIds for the service call. The key is for forcing re-evaluation.
-  return await imageService.getBuildImageIds(params.buildIds);
-});
+final buildImageMapProvider = FutureProvider.autoDispose
+    .family<Map<String, String?>, ({List<String> buildIds, int key})>((
+      ref,
+      params,
+    ) async {
+      final imageService = ref.watch(imageServiceProvider);
+      // We only need the buildIds for the service call. The key is for forcing re-evaluation.
+      return await imageService.getBuildImageIds(params.buildIds);
+    });
 
 /// Provider for fetching forum post images
-final forumPostImagesProvider = FutureProvider.autoDispose.family<List<String>, String>((ref, postId) async {
-  final imageService = ref.watch(imageServiceProvider);
-  return await imageService.getForumPostImages(postId);
-});
+final forumPostImagesProvider = FutureProvider.autoDispose
+    .family<List<String>, String>((ref, postId) async {
+      final imageService = ref.watch(imageServiceProvider);
+      return await imageService.getForumPostImages(postId);
+    });
 
 /// Provider for fetching comment images
-final commentImagesProvider = FutureProvider.autoDispose.family<List<String>, String>((ref, commentId) async {
-  final imageService = ref.watch(imageServiceProvider);
-  return await imageService.getCommentImages(commentId);
-});
+final commentImagesProvider = FutureProvider.autoDispose
+    .family<List<String>, String>((ref, commentId) async {
+      final imageService = ref.watch(imageServiceProvider);
+      return await imageService.getCommentImages(commentId);
+    });

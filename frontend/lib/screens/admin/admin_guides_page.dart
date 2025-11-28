@@ -1,23 +1,31 @@
 /// Admin Guides Management Page
-/// 
+///
 /// Provides guide content management interface.
 /// Uses frontend guide data since backend doesn't have Guides entity yet.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import '../../core/constants/app_color.dart';
-import '../../models/guide_model.dart';
+import 'package:frontend/models/guide_model.dart';
+import 'package:frontend/models/guide_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/api_constants.dart';
 
-class AdminGuidesPage extends StatefulWidget {
+class AdminGuidesPage extends ConsumerStatefulWidget {
   const AdminGuidesPage({super.key});
 
   @override
-  State<AdminGuidesPage> createState() => _AdminGuidesPageState();
+  ConsumerState<AdminGuidesPage> createState() => _AdminGuidesPageState();
 }
 
-class _AdminGuidesPageState extends State<AdminGuidesPage> {
+class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
+  bool _isLoading = true;
+  String? _errorMessage;
 
   // Get all guides from frontend
   List<Guide> _allGuides = [];
@@ -30,14 +38,34 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
     _loadGuides();
   }
 
-  void _loadGuides() {
-    _allGuides = _getGuides();
-    _updateCategories();
-    _applyFilters();
+  Future<void> _loadGuides() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final guideService = ref.read(guideServiceProvider);
+      final guides = await guideService.fetchGuides(sortDirection: 'desc');
+      if (!mounted) return;
+      _allGuides = guides;
+      _updateCategories();
+      _applyFilters();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _updateCategories() {
-    final categoriesSet = _allGuides.map((g) => g.category).toSet().toList()..sort();
+    final categoriesSet = _allGuides.map((g) => g.category).toSet().toList()
+      ..sort();
     setState(() {
       _categories = ['All', ...categoriesSet];
     });
@@ -48,7 +76,9 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
 
     // Apply category filter
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((g) => g.category == _selectedCategory).toList();
+      filtered = filtered
+          .where((g) => g.category == _selectedCategory)
+          .toList();
     }
 
     // Apply search filter
@@ -83,9 +113,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
       body: Column(
         children: [
           _buildHeader(isDark),
-          Expanded(
-            child: _buildContent(isDark),
-          ),
+          Expanded(child: _buildContent(isDark)),
         ],
       ),
     );
@@ -123,12 +151,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Implement guide creation
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Guide creation not yet implemented')),
-                  );
-                },
+                onPressed: _isLoading ? null : () => _showGuideFormDialog(),
                 icon: const Icon(Icons.add),
                 label: const Text('Create Guide'),
                 style: ElevatedButton.styleFrom(
@@ -186,13 +209,22 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   });
                   _applyFilters();
                 },
-                selectedColor: (isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue)
-                    .withValues(alpha: 0.3),
-                checkmarkColor: isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue,
+                selectedColor:
+                    (isDark
+                            ? AppColorsDark.buttonBlue
+                            : AppColorsLight.buttonBlue)
+                        .withValues(alpha: 0.3),
+                checkmarkColor: isDark
+                    ? AppColorsDark.buttonBlue
+                    : AppColorsLight.buttonBlue,
                 labelStyle: TextStyle(
                   color: isSelected
-                      ? (isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue)
-                      : (isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack),
+                      ? (isDark
+                            ? AppColorsDark.buttonBlue
+                            : AppColorsLight.buttonBlue)
+                      : (isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
               );
@@ -211,42 +243,27 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
           _buildStatsRow(isDark),
           const SizedBox(height: 24),
           Expanded(
-            child: _filteredGuides.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.article_outlined,
-                          size: 64,
-                          color: isDark
-                              ? AppColorsDark.textWhite.withValues(alpha: 0.3)
-                              : AppColorsLight.textBlack.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No guides found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: isDark
-                                ? AppColorsDark.textWhite.withValues(alpha: 0.7)
-                                : AppColorsLight.textBlack.withValues(alpha: 0.7),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? _buildErrorPlaceholder(isDark)
+                : _filteredGuides.isEmpty
+                ? _buildEmptyState(isDark)
+                : RefreshIndicator(
+                    onRefresh: _loadGuides,
+                    child: GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 20,
+                            mainAxisSpacing: 20,
+                            childAspectRatio: 0.7,
                           ),
-                        ),
-                      ],
+                      itemCount: _filteredGuides.length,
+                      itemBuilder: (context, index) {
+                        return _buildGuideCard(_filteredGuides[index], isDark);
+                      },
                     ),
-                  )
-                : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3, 
-                      crossAxisSpacing: 20,
-                      mainAxisSpacing: 20,
-                      childAspectRatio: 0.7, 
-                    ),
-                    itemCount: _filteredGuides.length,
-                    itemBuilder: (context, index) {
-                      return _buildGuideCard(_filteredGuides[index], isDark);
-                    },
                   ),
           ),
         ],
@@ -254,9 +271,76 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
     );
   }
 
+  Widget _buildEmptyState(bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.article_outlined,
+            size: 64,
+            color: isDark
+                ? AppColorsDark.textWhite.withValues(alpha: 0.3)
+                : AppColorsLight.textBlack.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No guides found',
+            style: TextStyle(
+              fontSize: 18,
+              color: isDark
+                  ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                  : AppColorsLight.textBlack.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorPlaceholder(bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 64,
+            color: AppColorsDark.warning,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Failed to load guides',
+            style: TextStyle(
+              fontSize: 18,
+              color: isDark
+                  ? AppColorsDark.textWhite
+                  : AppColorsLight.textBlack,
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _loadGuides, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsRow(bool isDark) {
     final totalGuides = _allGuides.length;
-    final publishedGuides = _allGuides.length; // All guides are considered published in frontend
+    final publishedGuides =
+        _allGuides.length; // All guides are considered published in frontend
     final categories = _allGuides.map((g) => g.category).toSet().length;
 
     final stats = [
@@ -264,25 +348,25 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
         'label': 'Total Guides',
         'value': totalGuides.toString(),
         'icon': Icons.book,
-        'color': AppColorsDark.buttonPurple
+        'color': AppColorsDark.buttonPurple,
       },
       {
         'label': 'Categories',
         'value': categories.toString(),
         'icon': Icons.category,
-        'color': AppColorsDark.buttonBlue
+        'color': AppColorsDark.buttonBlue,
       },
       {
         'label': 'Published',
         'value': publishedGuides.toString(),
         'icon': Icons.publish,
-        'color': AppColorsDark.buttonGreen
+        'color': AppColorsDark.buttonGreen,
       },
       {
         'label': 'Showing',
         'value': '${_filteredGuides.length} guides',
         'icon': Icons.visibility,
-        'color': AppColorsDark.warning
+        'color': AppColorsDark.warning,
       },
     ];
 
@@ -370,7 +454,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
         children: [
           // Guide image
           Container(
-            height: 180, 
+            height: 180,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
@@ -391,27 +475,46 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
-              child: Image.network(
-                guide.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
-                    child: const Center(
-                      child: Icon(Icons.book, size: 48, color: AppColorsDark.buttonPurple),
+              child: guide.imageUrl == null || guide.imageUrl!.isEmpty
+                  ? Container(
+                      color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
+                      child: const Center(
+                        child: Icon(
+                          Icons.book,
+                          size: 48,
+                          color: AppColorsDark.buttonPurple,
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      guide.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppColorsDark.buttonPurple.withValues(
+                            alpha: 0.2,
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.book,
+                              size: 48,
+                              color: AppColorsDark.buttonPurple,
+                            ),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: AppColorsDark.buttonPurple.withValues(
+                            alpha: 0.2,
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                },
-              ),
             ),
           ),
           Padding(
@@ -424,7 +527,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   guide.title,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16, 
+                    fontSize: 16,
                     color: isDark
                         ? AppColorsDark.textWhite
                         : AppColorsLight.textBlack,
@@ -432,11 +535,14 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 10), 
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), 
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
@@ -444,7 +550,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                       child: Text(
                         guide.category,
                         style: const TextStyle(
-                          fontSize: 12, 
+                          fontSize: 12,
                           color: AppColorsDark.buttonBlue,
                           fontWeight: FontWeight.w600,
                         ),
@@ -454,7 +560,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                     Text(
                       guide.readTime,
                       style: TextStyle(
-                        fontSize: 12, 
+                        fontSize: 12,
                         color: isDark
                             ? AppColorsDark.textWhite.withValues(alpha: 0.5)
                             : AppColorsLight.textBlack.withValues(alpha: 0.5),
@@ -462,11 +568,11 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10), 
+                const SizedBox(height: 10),
                 Text(
                   'By ${guide.author}',
                   style: TextStyle(
-                    fontSize: 13, 
+                    fontSize: 13,
                     color: isDark
                         ? AppColorsDark.textWhite.withValues(alpha: 0.7)
                         : AppColorsLight.textBlack.withValues(alpha: 0.7),
@@ -474,7 +580,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 10), 
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -494,7 +600,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit, size: 20), 
+                          icon: const Icon(Icons.edit, size: 20),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {
@@ -503,7 +609,7 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
                           tooltip: 'Edit',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, size: 20), 
+                          icon: const Icon(Icons.delete, size: 20),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {
@@ -524,310 +630,588 @@ class _AdminGuidesPageState extends State<AdminGuidesPage> {
     );
   }
 
-
   void _showEditGuideDialog(BuildContext context, Guide guide) {
-    // Guides are stored in frontend, so editing would require modifying the source code
-    // For now, show a message that guide editing requires code changes
+    _showGuideFormDialog(guide: guide);
+  }
+
+  void _showGuideFormDialog({Guide? guide}) {
+    final isEditing = guide != null;
+    final titleController = TextEditingController(text: guide?.title ?? '');
+    final authorController = TextEditingController(text: guide?.author ?? '');
+    final categoryController = TextEditingController(
+      text: guide?.category ?? '',
+    );
+    final timeController = TextEditingController(
+      text: guide != null ? guide.timeToReadMinutes.toString() : '',
+    );
+    final textController = TextEditingController(text: guide?.text ?? '');
+    final noteController = TextEditingController(text: guide?.note ?? '');
+    DateTime selectedDate = guide?.publishedDate ?? DateTime.now();
+    final formKey = GlobalKey<FormState>();
+    String? currentGuideId = guide?.id;
+    String? currentImageUrl = guide?.imageUrl;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Guide'),
-        content: const Text(
-          'Guides are currently stored in the frontend code. To edit a guide, please modify the guide data in the source code.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isSubmitting = false;
+        String? dialogError;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            bool isUploadingImage = false;
+            bool imageUploaded = false;
+
+            Future<void> uploadGuideImage(String guideId) async {
+              final ImagePicker picker = ImagePicker();
+
+              try {
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 1920,
+                  maxHeight: 1080,
+                  imageQuality: 85,
+                );
+
+                if (image == null) return;
+
+                setStateDialog(() {
+                  isUploadingImage = true;
+                });
+
+                try {
+                  final fileBytes = await image.readAsBytes();
+                  var fileName = image.name;
+                  if (fileName.isEmpty || !fileName.contains('.')) {
+                    fileName =
+                        'guide_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                  }
+
+                  final formData = FormData.fromMap({
+                    'File': MultipartFile.fromBytes(
+                      fileBytes,
+                      filename: fileName,
+                    ),
+                    'TargetId': guideId,
+                    'LocationType': 'GUIDE',
+                    'Name':
+                        'guide_image_${DateTime.now().millisecondsSinceEpoch}',
+                  });
+
+                  final dio = ref.read(authProvider.notifier).getDioInstance();
+                  final imageResponse = await dio.post(
+                    '$apiBaseUrl/Images/add',
+                    data: formData,
+                  );
+
+                  final imageId =
+                      imageResponse.data['id'] ?? imageResponse.data['Id'];
+                  if (imageId != null) {
+                    final imageUrl = '$apiBaseUrl/Images/download/$imageId';
+                    setStateDialog(() {
+                      currentImageUrl = imageUrl;
+                      isUploadingImage = false;
+                      imageUploaded = true;
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Image uploaded successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  setStateDialog(() {
+                    isUploadingImage = false;
+                  });
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Failed to upload image: ${e.toString()}',
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                setStateDialog(() {
+                  isUploadingImage = false;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to pick image: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: Text(isEditing ? 'Edit Guide' : 'Create Guide'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(labelText: 'Title'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Title is required';
+                          }
+                          if (value.trim().length < 5) {
+                            return 'Title must be at least 5 characters';
+                          }
+                          if (value.trim().length > 100) {
+                            return 'Title cannot be longer than 100 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: authorController,
+                        decoration: const InputDecoration(labelText: 'Author'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Author is required';
+                          }
+                          if (value.trim().length < 5) {
+                            return 'Author must be at least 5 characters';
+                          }
+                          if (value.trim().length > 50) {
+                            return 'Author cannot be longer than 50 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: categoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Category is required';
+                          }
+                          if (value.trim().length < 5) {
+                            return 'Category must be at least 5 characters';
+                          }
+                          if (value.trim().length > 50) {
+                            return 'Category cannot be longer than 50 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: timeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Time to read (minutes)',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Time to read is required';
+                          }
+                          final parsed = double.tryParse(value.trim());
+                          if (parsed == null) {
+                            return 'Enter a valid number';
+                          }
+                          if (parsed < 0 || parsed > 1000) {
+                            return 'Time to read must be between 0 and 1000 minutes';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Published date: ${selectedDate.toLocal().toString().split(' ').first}',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setStateDialog(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                        child: const Text('Change date'),
+                      ),
+                      TextFormField(
+                        controller: textController,
+                        decoration: const InputDecoration(
+                          labelText: 'Guide content',
+                          alignLabelWithHint: true,
+                        ),
+                        maxLines: 6,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Content is required';
+                          }
+                          if (value.trim().length < 50) {
+                            return 'Content must be at least 50 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: noteController,
+                        decoration: const InputDecoration(
+                          labelText: 'Note (optional)',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Image upload section
+                      if (currentGuideId != null) ...[
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Guide Image',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (currentImageUrl != null &&
+                                currentImageUrl!.isNotEmpty)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    currentImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.surfaceVariant,
+                                        child: const Icon(Icons.broken_image),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            if (currentImageUrl == null ||
+                                currentImageUrl!.isEmpty)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.image_outlined,
+                                  size: 32,
+                                ),
+                              ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: isUploadingImage
+                                    ? null
+                                    : () => uploadGuideImage(currentGuideId!),
+                                icon: isUploadingImage
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.upload),
+                                label: Text(
+                                  isUploadingImage
+                                      ? 'Uploading...'
+                                      : currentImageUrl != null &&
+                                            currentImageUrl!.isNotEmpty
+                                      ? 'Change Image'
+                                      : 'Upload Image',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ] else if (isEditing) ...[
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Save the guide first to upload an image',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                        ),
+                      ],
+                      if (dialogError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          dialogError ?? '',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                if (currentGuideId != null && !isEditing)
+                  TextButton(
+                    onPressed: isSubmitting
+                        ? null
+                        : () {
+                            Navigator.of(dialogContext).pop();
+                            _loadGuides();
+                          },
+                    child: const Text('Skip'),
+                  ),
+                FilledButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          // If guide is already created and user clicks Done, close dialog
+                          if (currentGuideId != null && !isEditing) {
+                            Navigator.of(dialogContext).pop();
+                            await _loadGuides();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  imageUploaded
+                                      ? 'Guide created and image uploaded successfully!'
+                                      : 'Guide created successfully!',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (!formKey.currentState!.validate()) return;
+                          final parsedTime = double.tryParse(
+                            timeController.text.trim(),
+                          );
+                          if (parsedTime == null) {
+                            setStateDialog(() {
+                              dialogError = 'Time to read must be a number';
+                            });
+                            return;
+                          }
+                          setStateDialog(() {
+                            isSubmitting = true;
+                            dialogError = null;
+                          });
+                          try {
+                            final service = ref.read(guideServiceProvider);
+                            String? createdGuideId;
+                            if (isEditing) {
+                              await service.updateGuide(
+                                guide.id,
+                                title: titleController.text.trim(),
+                                author: authorController.text.trim(),
+                                category: categoryController.text.trim(),
+                                timeToReadMinutes: parsedTime,
+                                postedAt: selectedDate,
+                                text: textController.text.trim(),
+                                note: noteController.text,
+                              );
+                              createdGuideId = guide.id;
+                            } else {
+                              final createdGuide = await service.createGuide(
+                                title: titleController.text.trim(),
+                                author: authorController.text.trim(),
+                                category: categoryController.text.trim(),
+                                timeToReadMinutes: parsedTime,
+                                postedAt: selectedDate,
+                                text: textController.text.trim(),
+                              );
+                              createdGuideId = createdGuide.id;
+                              setStateDialog(() {
+                                currentGuideId = createdGuideId;
+                              });
+                            }
+                            if (!mounted) return;
+
+                            // If this was a new guide, keep dialog open for image upload
+                            if (!isEditing) {
+                              setStateDialog(() {
+                                isSubmitting = false;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Guide created! You can now upload an image.',
+                                  ),
+                                ),
+                              );
+                            } else {
+                              Navigator.of(dialogContext).pop();
+                              await _loadGuides();
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isEditing
+                                        ? 'Guide updated successfully'
+                                        : 'Guide created successfully',
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setStateDialog(() {
+                              dialogError = e.toString();
+                            });
+                          } finally {
+                            setStateDialog(() {
+                              isSubmitting = false;
+                            });
+                          }
+                        },
+                  child: Text(
+                    isEditing
+                        ? 'Save'
+                        : currentGuideId != null
+                        ? 'Done'
+                        : 'Create',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   void _showDeleteGuideConfirmation(BuildContext context, Guide guide) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Guide'),
-        content: Text('Are you sure you want to delete "${guide.title}"? This will only remove it from the current session. Guides are stored in the frontend code, so this change will not persist after page refresh.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _allGuides.remove(guide);
-                _applyFilters();
-              });
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Guide "${guide.title}" removed from current session'),
-                  backgroundColor: AppColorsDark.buttonGreen,
-                ),
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColorsDark.error,
+      builder: (dialogContext) {
+        bool isDeleting = false;
+        String? error;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) => AlertDialog(
+            title: const Text('Delete Guide'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Are you sure you want to delete "${guide.title}"?'),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
             ),
-            child: const Text('Delete'),
+            actions: [
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        setStateDialog(() {
+                          isDeleting = true;
+                          error = null;
+                        });
+                        try {
+                          final service = ref.read(guideServiceProvider);
+                          await service.deleteGuide(guide.id);
+                          if (!mounted) return;
+                          Navigator.of(dialogContext).pop();
+                          await _loadGuides();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Guide "${guide.title}" deleted'),
+                            ),
+                          );
+                        } catch (e) {
+                          setStateDialog(() {
+                            error = e.toString();
+                          });
+                        } finally {
+                          setStateDialog(() {
+                            isDeleting = false;
+                          });
+                        }
+                      },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColorsDark.error,
+                ),
+                child: isDeleting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Delete'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  /// Returns a list of professional PC building guides.
-  /// This is the same method from guides_page.dart
-  List<Guide> _getGuides() {
-    return [
-      Guide(
-        id: '1',
-        title: 'Complete Beginner\'s Guide to Building Your First PC',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800',
-        category: 'Beginner',
-        readTime: '15 min read',
-        publishedDate: DateTime(2024, 1, 15),
-        content: [
-          {'type': 'h2', 'text': 'Introduction'},
-          {'type': 'p', 'text': 'Building your first PC can seem intimidating, but with the right guidance, it\'s an incredibly rewarding experience. This comprehensive guide will walk you through every step of assembling your first custom computer, from selecting components to booting up your new system.'},
-          {'type': 'h2', 'text': 'Why Build Your Own PC?'},
-          {'type': 'p', 'text': 'Building your own PC offers several advantages over buying a pre-built system. You have complete control over component selection, ensuring you get exactly what you need for your budget and use case. You\'ll also save money, learn valuable skills, and have the satisfaction of creating something with your own hands.'},
-          {'type': 'h2', 'text': 'Essential Components'},
-          {'type': 'p', 'text': 'Before you start, familiarize yourself with the core components you\'ll need: CPU (Central Processing Unit), Motherboard, RAM (Random Access Memory), Storage (SSD or HDD), GPU (Graphics Processing Unit), PSU (Power Supply Unit), PC Case, and Cooling solutions.'},
-          {'type': 'h2', 'text': 'Step-by-Step Assembly'},
-          {'type': 'p', 'text': '1. Prepare your workspace with good lighting and an anti-static mat. 2. Install the CPU and cooler onto the motherboard. 3. Install RAM modules. 4. Mount the motherboard in the case. 5. Install storage drives. 6. Install the graphics card. 7. Connect all power cables. 8. Cable management. 9. Connect peripherals and boot up!'},
-        ],
-      ),
-      Guide(
-        id: '2',
-        title: 'Choosing the Right CPU: Intel vs AMD Guide 2024',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800',
-        category: 'Components',
-        readTime: '12 min read',
-        publishedDate: DateTime(2024, 2, 10),
-        content: [
-          {'type': 'h2', 'text': 'CPU Selection Overview'},
-          {'type': 'p', 'text': 'The CPU is the brain of your computer, and choosing the right one is crucial for your build\'s performance. This guide will help you navigate the Intel vs AMD landscape and find the perfect processor for your needs.'},
-          {'type': 'h2', 'text': 'Intel Processors'},
-          {'type': 'p', 'text': 'Intel\'s current lineup includes the Core i3, i5, i7, and i9 series, with the latest generation offering excellent single-core performance, strong gaming capabilities, and integrated graphics options. Intel processors typically excel in gaming scenarios and offer great overclocking potential.'},
-          {'type': 'h2', 'text': 'AMD Processors'},
-          {'type': 'p', 'text': 'AMD\'s Ryzen series has revolutionized the CPU market with exceptional multi-core performance and competitive pricing. Ryzen processors are excellent for content creation, multitasking, and productivity workloads, often offering better value per dollar.'},
-          {'type': 'h2', 'text': 'Making Your Choice'},
-          {'type': 'p', 'text': 'Consider your primary use case: Gaming-focused builds often benefit from Intel\'s high clock speeds, while content creators and multitaskers may prefer AMD\'s additional cores. Budget is also a key factor - AMD typically offers better value, while Intel commands a premium for top-tier gaming performance.'},
-        ],
-      ),
-      Guide(
-        id: '3',
-        title: 'GPU Selection: Finding the Perfect Graphics Card',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800',
-        category: 'Components',
-        readTime: '10 min read',
-        publishedDate: DateTime(2024, 2, 25),
-        content: [
-          {'type': 'h2', 'text': 'Understanding GPU Specifications'},
-          {'type': 'p', 'text': 'Graphics cards are one of the most important components for gaming and creative work. Understanding VRAM, CUDA cores, clock speeds, and power consumption will help you make an informed decision.'},
-          {'type': 'h2', 'text': 'NVIDIA vs AMD'},
-          {'type': 'p', 'text': 'NVIDIA typically leads in ray tracing and AI features, while AMD offers competitive performance at lower price points. Both manufacturers produce excellent GPUs, so your choice often comes down to specific features, pricing, and availability.'},
-          {'type': 'h2', 'text': 'VRAM Considerations'},
-          {'type': 'p', 'text': 'VRAM (Video Random Access Memory) is crucial for high-resolution gaming and content creation. For 1080p gaming, 6-8GB is sufficient. For 1440p, aim for 8-12GB. 4K gaming and professional work may require 16GB or more.'},
-          {'type': 'h2', 'text': 'Power Requirements'},
-          {'type': 'p', 'text': 'Modern GPUs can be power-hungry. Always check the recommended PSU wattage for your chosen GPU and ensure your power supply can handle the load, with some headroom for future upgrades.'},
-        ],
-      ),
-      Guide(
-        id: '4',
-        title: 'Mastering PC Cable Management: A Clean Build Guide',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-        category: 'Building',
-        readTime: '8 min read',
-        publishedDate: DateTime(2024, 3, 5),
-        content: [
-          {'type': 'h2', 'text': 'Why Cable Management Matters'},
-          {'type': 'p', 'text': 'Proper cable management isn\'t just about aesthetics - it improves airflow, makes maintenance easier, and extends the life of your components by preventing overheating and cable damage.'},
-          {'type': 'h2', 'text': 'Planning Your Routes'},
-          {'type': 'p', 'text': 'Before connecting everything, plan your cable routes. Most modern cases have routing channels behind the motherboard tray. Route cables through these channels and use cable ties to secure them in place.'},
-          {'type': 'h2', 'text': 'Essential Tools'},
-          {'type': 'p', 'text': 'Invest in quality cable ties (both reusable and zip ties), velcro straps, and cable combs for organizing GPU power cables. A magnetic screwdriver and patience are also essential tools for clean cable management.'},
-          {'type': 'h2', 'text': 'Best Practices'},
-          {'type': 'p', 'text': 'Keep cables away from fans, use the shortest possible routes, bundle similar cables together, and leave some slack for maintenance. Always test your build before finalizing cable management to avoid having to redo everything.'},
-        ],
-      ),
-      Guide(
-        id: '5',
-        title: 'RAM Selection: Understanding Speed, Capacity, and Timings',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=800',
-        category: 'Components',
-        readTime: '9 min read',
-        publishedDate: DateTime(2024, 3, 15),
-        content: [
-          {'type': 'h2', 'text': 'RAM Fundamentals'},
-          {'type': 'p', 'text': 'RAM (Random Access Memory) is your system\'s short-term memory, storing data that your CPU needs quick access to. Understanding capacity, speed, and timings is key to optimal performance.'},
-          {'type': 'h2', 'text': 'Capacity: How Much Do You Need?'},
-          {'type': 'p', 'text': 'For modern systems, 16GB is the sweet spot for most users. 8GB works for basic tasks, but can be limiting. 32GB is ideal for content creators, heavy multitaskers, and future-proofing. 64GB+ is reserved for professional workstations.'},
-          {'type': 'h2', 'text': 'Speed and Timings'},
-          {'type': 'p', 'text': 'DDR4 speeds range from 2133MHz to 4800MHz+, while DDR5 starts at 4800MHz and goes much higher. Timings (CL latency) matter too - lower is better. Balance speed, timings, and price for your specific use case.'},
-          {'type': 'h2', 'text': 'Dual Channel and XMP'},
-          {'type': 'p', 'text': 'Always install RAM in pairs for dual-channel performance. Enable XMP (Extreme Memory Profile) in your BIOS to run RAM at advertised speeds - most motherboards default to slower JEDEC speeds without XMP enabled.'},
-        ],
-      ),
-      Guide(
-        id: '6',
-        title: 'Storage Solutions: SSD vs HDD and NVMe Explained',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800',
-        category: 'Components',
-        readTime: '11 min read',
-        publishedDate: DateTime(2024, 3, 20),
-        content: [
-          {'type': 'h2', 'text': 'Storage Types Overview'},
-          {'type': 'p', 'text': 'Modern PCs use various storage technologies. Understanding the differences between SATA SSDs, NVMe SSDs, and HDDs will help you build a storage solution that balances speed, capacity, and cost.'},
-          {'type': 'h2', 'text': 'NVMe SSDs: The Speed Champions'},
-          {'type': 'p', 'text': 'NVMe (Non-Volatile Memory Express) SSDs connect directly to PCIe lanes, offering speeds up to 7000MB/s. They\'re ideal for your operating system, applications, and frequently accessed files. The performance difference is dramatic compared to traditional drives.'},
-          {'type': 'h2', 'text': 'SATA SSDs: The Balanced Choice'},
-          {'type': 'p', 'text': 'SATA SSDs offer excellent performance at a lower cost than NVMe drives. With speeds around 500-550MB/s, they\'re perfect for secondary storage, game libraries, and budget builds where NVMe might be overkill.'},
-          {'type': 'h2', 'text': 'HDDs: Cost-Effective Bulk Storage'},
-          {'type': 'p', 'text': 'Traditional hard drives offer massive storage capacity at low cost, perfect for media libraries, backups, and archives. While slow compared to SSDs, they remain valuable for bulk storage needs where speed isn\'t critical.'},
-          {'type': 'h2', 'text': 'Recommended Setup'},
-          {'type': 'p', 'text': 'A modern PC should have at least one NVMe SSD for the OS and key applications, with additional SATA SSDs for games and HDDs for bulk storage. This hybrid approach maximizes performance while keeping costs reasonable.'},
-        ],
-      ),
-      Guide(
-        id: '7',
-        title: 'Power Supply Units: Wattage, Efficiency, and Reliability',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        category: 'Components',
-        readTime: '10 min read',
-        publishedDate: DateTime(2024, 4, 1),
-        content: [
-          {'type': 'h2', 'text': 'PSU: The Unsung Hero'},
-          {'type': 'p', 'text': 'Your power supply unit is one of the most important components, yet often overlooked. A quality PSU protects your entire system and ensures stable operation, while a poor one can damage components and cause instability.'},
-          {'type': 'h2', 'text': 'Calculating Wattage'},
-          {'type': 'p', 'text': 'Use online PSU calculators to estimate your system\'s power needs. As a general rule: budget builds need 450-550W, mid-range systems need 650-750W, high-end gaming PCs need 750-850W, and enthusiast builds may need 1000W+. Always add 20% headroom for efficiency and future upgrades.'},
-          {'type': 'h2', 'text': '80 Plus Efficiency Ratings'},
-          {'type': 'p', 'text': '80 Plus ratings (Bronze, Silver, Gold, Platinum, Titanium) indicate efficiency at different load levels. Gold is the sweet spot for most builds, offering excellent efficiency without premium pricing. Higher ratings reduce power consumption and heat output.'},
-          {'type': 'h2', 'text': 'Modular vs Non-Modular'},
-          {'type': 'p', 'text': 'Modular PSUs allow you to connect only the cables you need, improving airflow and cable management. Semi-modular units have essential cables fixed (like 24-pin ATX) but allow customization of others. Non-modular PSUs are cheaper but create cable clutter.'},
-          {'type': 'h2', 'text': 'Brand and Quality Matters'},
-          {'type': 'p', 'text': 'Don\'t skimp on your PSU. Stick to reputable brands known for quality and reliability. A quality PSU can last through multiple builds and protect your investment in expensive components.'},
-        ],
-      ),
-      Guide(
-        id: '8',
-        title: 'Cooling Solutions: Air vs Liquid Cooling Guide',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800',
-        category: 'Cooling',
-        readTime: '13 min read',
-        publishedDate: DateTime(2024, 4, 10),
-        content: [
-          {'type': 'h2', 'text': 'Cooling Basics'},
-          {'type': 'p', 'text': 'Proper cooling is essential for performance and longevity. Excess heat causes throttling, reduces component lifespan, and can lead to system instability. Understanding cooling options helps you make the right choice for your build.'},
-          {'type': 'h2', 'text': 'Air Cooling'},
-          {'type': 'p', 'text': 'Air coolers use heat pipes and fins to dissipate heat. They\'re reliable, maintenance-free, and cost-effective. High-end air coolers can match or even exceed AIO liquid coolers in performance. They\'re also quieter and have no risk of leaks.'},
-          {'type': 'h2', 'text': 'AIO Liquid Cooling'},
-          {'type': 'p', 'text': 'All-In-One liquid coolers offer excellent cooling performance and aesthetic appeal. They\'re easier to install than custom loops and take up less space around the CPU socket. However, they\'re more expensive, have moving parts that can fail, and may produce pump noise.'},
-          {'type': 'h2', 'text': 'Case Airflow'},
-          {'type': 'p', 'text': 'Regardless of CPU cooling, case airflow is crucial. Use positive pressure (more intake than exhaust) to reduce dust. Position intake fans at the front/bottom and exhaust fans at the top/rear. Mesh-front cases provide the best airflow.'},
-          {'type': 'h2', 'text': 'Thermal Paste Application'},
-          {'type': 'p', 'text': 'Proper thermal paste application improves heat transfer. A pea-sized dot in the center works for most CPUs. Avoid spreading it manually - the cooler\'s pressure will distribute it evenly when installed correctly.'},
-        ],
-      ),
-      Guide(
-        id: '9',
-        title: 'PC Case Selection: Form Factor and Airflow Guide',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800',
-        category: 'Components',
-        readTime: '9 min read',
-        publishedDate: DateTime(2024, 4, 15),
-        content: [
-          {'type': 'h2', 'text': 'Case Form Factors'},
-          {'type': 'p', 'text': 'PC cases come in various sizes: Full Tower (largest), Mid Tower (most popular), Mini Tower, and Small Form Factor (SFF). Your motherboard form factor (ATX, mATX, ITX) determines which cases are compatible.'},
-          {'type': 'h2', 'text': 'Airflow Considerations'},
-          {'type': 'p', 'text': 'Mesh-front cases provide the best airflow, while solid-front panels with side vents offer a compromise between aesthetics and cooling. Glass panels are beautiful but can restrict airflow if not designed with ventilation in mind.'},
-          {'type': 'h2', 'text': 'Cable Management Features'},
-          {'type': 'p', 'text': 'Look for cases with routing channels, tie-down points, and adequate space behind the motherboard tray. PSU shrouds hide cables and improve aesthetics. Removable drive cages provide flexibility for larger GPUs and better airflow.'},
-          {'type': 'h2', 'text': 'Build Quality and Features'},
-          {'type': 'p', 'text': 'Check for tool-less drive installation, dust filters on intakes, adequate fan mounting points, and good build materials. Tempered glass panels are safer than acrylic and resist scratching better. USB-C front panel connectors are becoming essential.'},
-        ],
-      ),
-      Guide(
-        id: '10',
-        title: 'BIOS Setup and Optimization for New Builds',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-        category: 'Optimization',
-        readTime: '14 min read',
-        publishedDate: DateTime(2024, 4, 25),
-        content: [
-          {'type': 'h2', 'text': 'Entering BIOS'},
-          {'type': 'p', 'text': 'When you first boot your new PC, press Delete, F2, or F12 (varies by manufacturer) to enter BIOS. The key is usually displayed during boot. Modern UEFI BIOS interfaces are much more user-friendly than legacy BIOS.'},
-          {'type': 'h2', 'text': 'Essential BIOS Settings'},
-          {'type': 'p', 'text': 'Enable XMP/DOCP for RAM to run at advertised speeds. Set boot priority to your OS drive. Enable Secure Boot for security. Disable unnecessary features like unused SATA ports or onboard audio if using a sound card.'},
-          {'type': 'h2', 'text': 'Fan Curves and Cooling'},
-          {'type': 'p', 'text': 'Configure fan curves to balance noise and cooling. Most motherboards offer preset curves (Silent, Standard, Performance) or custom curve creation. Adjust based on your cooling setup and noise tolerance.'},
-          {'type': 'h2', 'text': 'Overclocking Basics'},
-          {'type': 'p', 'text': 'For beginners, enable auto-overclocking features if available. Manual overclocking requires understanding voltages, multipliers, and stability testing. Start conservative and test thoroughly with tools like Prime95 and AIDA64.'},
-          {'type': 'h2', 'text': 'Security Settings'},
-          {'type': 'p', 'text': 'Set a BIOS password to prevent unauthorized changes. Enable TPM (Trusted Platform Module) if you plan to use Windows 11. Keep your BIOS updated for security patches and compatibility improvements.'},
-        ],
-      ),
-      Guide(
-        id: '11',
-        title: 'Budget Gaming PC Build Guide: Best Value for Money',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800',
-        category: 'Builds',
-        readTime: '16 min read',
-        publishedDate: DateTime(2024, 5, 5),
-        content: [
-          {'type': 'h2', 'text': 'Budget Building Philosophy'},
-          {'type': 'p', 'text': 'Building a budget gaming PC doesn\'t mean compromising on quality. Smart component selection and knowing where to allocate your budget can deliver excellent gaming performance without breaking the bank.'},
-          {'type': 'h2', 'text': 'Component Prioritization'},
-          {'type': 'p', 'text': 'For gaming, allocate your budget: GPU (40-50%), CPU (20-25%), Motherboard (10-15%), RAM (8-10%), Storage (8-10%), PSU (8-10%), Case (5-8%). Don\'t skimp on the PSU - a quality unit protects your entire investment.'},
-          {'type': 'h2', 'text': 'Recommended Budget Build'},
-          {'type': 'p', 'text': 'A solid budget build (\$600-800) might include: Ryzen 5 5600 or Intel i3-12100F CPU, B550 or B660 motherboard, 16GB DDR4-3200 RAM, 500GB NVMe SSD, RTX 3060 or RX 6600 XT GPU, 650W 80+ Gold PSU, and a budget mid-tower case.'},
-          {'type': 'h2', 'text': 'Cost-Saving Tips'},
-          {'type': 'p', 'text': 'Buy during sales, consider previous-generation components, use stock CPU coolers, skip RGB initially (add later), buy a case with included fans, and consider used GPUs from reputable sellers. Wait for bundle deals on CPU/motherboard combos.'},
-          {'type': 'h2', 'text': 'Future Upgrade Path'},
-          {'type': 'p', 'text': 'Choose a platform with upgrade potential. AM4/AM5 motherboards offer long upgrade paths. Invest in a quality PSU and case - these last through multiple builds. Buy RAM as a kit (not single sticks) for dual-channel performance.'},
-        ],
-      ),
-      Guide(
-        id: '12',
-        title: 'High-End Gaming PC: Building the Ultimate Rig',
-        author: 'KazaBuild Team',
-        imageUrl: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800',
-        category: 'Builds',
-        readTime: '18 min read',
-        publishedDate: DateTime(2024, 5, 15),
-        content: [
-          {'type': 'h2', 'text': 'Premium Build Overview'},
-          {'type': 'p', 'text': 'Building a high-end gaming PC means no compromises. Every component is selected for maximum performance, aesthetics, and future-proofing. This guide covers building a system that will handle any game at maximum settings.'},
-          {'type': 'h2', 'text': 'Top-Tier Components'},
-          {'type': 'p', 'text': 'For an ultimate build, consider: Intel i9-13900K or AMD Ryzen 9 7950X CPU, Z790 or X670E motherboard, 32GB DDR5-6000+ RAM, 2TB Gen4 NVMe SSD, RTX 4090 or RX 7900 XTX GPU, 1000W+ 80+ Platinum PSU, and premium case with excellent airflow.'},
-          {'type': 'h2', 'text': 'Cooling Considerations'},
-          {'type': 'p', 'text': 'High-end builds generate significant heat. Consider 360mm AIO or custom liquid cooling for the CPU. Ensure excellent case airflow with multiple high-quality fans. GPU liquid cooling or aftermarket air coolers may be necessary for maximum overclocking.'},
-          {'type': 'h2', 'text': 'Aesthetics and RGB'},
-          {'type': 'p', 'text': 'Premium builds often feature extensive RGB lighting, custom cables, and themed aesthetics. Software like iCUE, Aura Sync, or Razer Synapse can sync lighting across components. Plan your color scheme and component selection for cohesive theming.'},
-          {'type': 'h2', 'text': 'Performance Optimization'},
-          {'type': 'p', 'text': 'Enable XMP/DOCP, overclock CPU and GPU, optimize Windows settings, install latest drivers, and use monitoring software. High-end components benefit from fine-tuning - spend time optimizing for maximum performance.'},
-        ],
-      ),
-    ];
   }
 }

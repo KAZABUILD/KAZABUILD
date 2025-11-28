@@ -347,13 +347,13 @@
 
 [00054] Backend connection fail error in the frontend is worded incorrectly.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: Frontend
 - Details: The website should inform the user that the internal servers are failing and that the user needs to try to reconnect later.
 
 [00055] The guides are stored in the website, when they should be stored in the server.
 - Type: missing implementation
-- Status: pending
+- Status: FIXED
 - Source: Frontend
 - Details: The newly added UserGuideController should be used.
 
@@ -365,6 +365,6 @@
 
 [00057] User's profile image doesn't update correctly.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: Frontend
 - Details: If the user already has an image, changing it to a different one causes the website to display the default one instead. The image is correctly stored in the backend.
