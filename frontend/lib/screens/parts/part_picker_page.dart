@@ -72,6 +72,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   /// Controller for the text-based search input.
   final _searchController = TextEditingController();
   late int _currentPage;
+  static const int _maxComparisonItems = 4;
+  final Map<String, BaseComponent> _comparisonComponents = {};
 
   // Filter state
   final Set<String> _selectedManufacturers = {};
@@ -197,6 +199,251 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     });
     _loadCurrentPage(force: true, targetPage: sanitized);
     _updateUrl(sanitized);
+  }
+
+  void _toggleComparisonSelection(BaseComponent component, bool shouldSelect) {
+    if (!mounted) return;
+    setState(() {
+      if (shouldSelect) {
+        if (_comparisonComponents.length >= _maxComparisonItems &&
+            !_comparisonComponents.containsKey(component.id)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'You can compare up to $_maxComparisonItems components at once.',
+              ),
+            ),
+          );
+          return;
+        }
+        _comparisonComponents[component.id] = component;
+      } else {
+        _comparisonComponents.remove(component.id);
+      }
+    });
+  }
+
+  void _clearComparisonSelection() {
+    if (!mounted) return;
+    setState(() {
+      _comparisonComponents.clear();
+    });
+  }
+
+  void _showComparisonDialog() {
+    if (_comparisonComponents.length < 2 || !mounted) return;
+    final components = _comparisonComponents.values.toList();
+    final specsList =
+        components.map(_buildComparisonMetrics).toList(growable: false);
+    final Set<String> allKeys = {
+      'Name',
+      'Manufacturer',
+      'Price',
+      'Type',
+      ...specsList.expand((specs) => specs.keys)
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 600),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Component Comparison',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 0),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.all(16),
+                      child: DataTable(
+                        headingRowColor: MaterialStateProperty.resolveWith(
+                          (states) => Theme.of(context)
+                              .colorScheme
+                              .surfaceVariant
+                              .withOpacity(0.3),
+                        ),
+                        columns: [
+                          const DataColumn(label: Text('Spec')),
+                          ...components.map(
+                            (component) => DataColumn(
+                              label: SizedBox(
+                                width: 180,
+                                child: Text(
+                                  component.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        rows: allKeys.map((key) {
+                          return DataRow(
+                            cells: [
+                              DataCell(Text(key)),
+                              ...List.generate(components.length, (index) {
+                                String value;
+                                switch (key) {
+                                  case 'Name':
+                                    value = components[index].name;
+                                    break;
+                                  case 'Manufacturer':
+                                    value = components[index].manufacturer;
+                                    break;
+                                  case 'Price':
+                                    final price = components[index].lowestPrice;
+                                    value = price != null
+                                        ? '\$${price.toStringAsFixed(2)}'
+                                        : 'N/A';
+                                    break;
+                                  case 'Type':
+                                    value = components[index]
+                                        .type
+                                        .name
+                                        .toUpperCase();
+                                    break;
+                                  default:
+                                    value = specsList[index][key] ?? '-';
+                                }
+                                return DataCell(
+                                  SizedBox(
+                                    width: 180,
+                                    child: Text(
+                                      value,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _clearComparisonSelection,
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        label: const Text('Clear Selection'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Map<String, String> _buildComparisonMetrics(BaseComponent component) {
+    final specs = <String, String>{};
+    switch (component.type) {
+      case ComponentType.cpu:
+        final cpu = component as CPUComponent;
+        specs['Cores/Threads'] = '${cpu.coreTotal} / ${cpu.threadsAmount}';
+        specs['Base/Boost'] =
+            '${cpu.basePerformanceSpeed ?? '-'} / ${cpu.boostPerformanceSpeed ?? '-'} GHz';
+        specs['Socket'] = cpu.socketType;
+        specs['TDP'] = '${cpu.thermalDesignPower.toStringAsFixed(0)}W';
+        break;
+      case ComponentType.gpu:
+        final gpu = component as GPUComponent;
+        specs['Chipset'] = gpu.chipset;
+        specs['VRAM'] = '${gpu.videoMemoryAmount.toStringAsFixed(0)} GB';
+        specs['Base/Boost'] =
+            '${gpu.coreBaseClockSpeed.toStringAsFixed(0)}/${gpu.coreBoostClockSpeed.toStringAsFixed(0)} MHz';
+        specs['Length'] = '${gpu.length.toStringAsFixed(0)} mm';
+        break;
+      case ComponentType.motherboard:
+        final mb = component as MotherboardComponent;
+        specs['Socket'] = mb.socketType;
+        specs['Form Factor'] = mb.formFactor;
+        specs['RAM Slots'] = mb.ramSlotsAmount.toString();
+        specs['Chipset'] = mb.chipsetType;
+        break;
+      case ComponentType.ram:
+        final ram = component as MemoryComponent;
+        specs['Speed'] = '${ram.speed.toStringAsFixed(0)} MHz';
+        specs['Type'] = ram.ramType;
+        specs['Modules'] =
+            '${ram.moduleQuantity}x${ram.moduleCapacity.toStringAsFixed(0)}GB';
+        break;
+      case ComponentType.storage:
+        final storage = component as StorageComponent;
+        specs['Capacity'] = '${storage.capacity.toStringAsFixed(0)} GB';
+        specs['Type'] = storage.driveType;
+        specs['Interface'] = storage.interface;
+        break;
+      case ComponentType.psu:
+        final psu = component as PowerSupplyComponent;
+        specs['Wattage'] = '${psu.powerOutput.toStringAsFixed(0)}W';
+        specs['Efficiency'] = psu.efficiencyRating ?? 'N/A';
+        specs['Modularity'] = psu.modularityType;
+        break;
+      case ComponentType.pcCase:
+        final pcCase = component as CaseComponent;
+        specs['Form Factor'] = pcCase.formFactor;
+        specs['Max GPU'] = '${pcCase.maxVideoCardLength.toStringAsFixed(0)} mm';
+        specs['Max Cooler'] = '${pcCase.maxCPUCoolerHeight} mm';
+        break;
+      case ComponentType.cooler:
+        final cooler = component as CoolerComponent;
+        specs['Type'] = cooler.isWaterCooled ? 'Water' : 'Air';
+        specs['Height'] = '${cooler.height.toStringAsFixed(0)} mm';
+        specs['Fan Qty'] = cooler.fanQuantity.toString();
+        break;
+      case ComponentType.caseFan:
+        final fan = component as CaseFanComponent;
+        specs['Size'] = '${fan.size.toStringAsFixed(0)} mm';
+        specs['Airflow'] = fan.maxAirflow != null
+            ? '${fan.minAirflow.toStringAsFixed(0)}-${fan.maxAirflow!.toStringAsFixed(0)} CFM'
+            : '${fan.minAirflow.toStringAsFixed(0)} CFM';
+        specs['Noise'] = fan.maxNoiseLevel != null
+            ? '${fan.minNoiseLevel.toStringAsFixed(1)}-${fan.maxNoiseLevel!.toStringAsFixed(1)} dBA'
+            : '${fan.minNoiseLevel.toStringAsFixed(1)} dBA';
+        break;
+      case ComponentType.monitor:
+        final monitor = component as MonitorComponent;
+        specs['Size'] = '${monitor.screenSize.toStringAsFixed(1)}"';
+        specs['Resolution'] =
+            '${monitor.horizontalResolution}x${monitor.verticalResolution}';
+        specs['Refresh Rate'] =
+            '${monitor.maxRefreshRate.toStringAsFixed(0)} Hz';
+        break;
+    }
+    return specs;
   }
 
   void _updateUrl(int page) {
@@ -1280,6 +1527,11 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             isRefreshing: pagingState.isRefreshing,
                             onRefresh: pagingNotifier.refresh,
                             onPageChanged: _navigateToPage,
+                            comparisonSelection: _comparisonComponents,
+                            maxComparisonItems: _maxComparisonItems,
+                            onCompareToggle: _toggleComparisonSelection,
+                            onCompare: _showComparisonDialog,
+                            onClearComparison: _clearComparisonSelection,
                           );
                         }
 
@@ -2699,6 +2951,12 @@ class _ProductList extends ConsumerWidget {
   final bool isRefreshing;
   final Future<void> Function() onRefresh;
   final void Function(int page) onPageChanged;
+  final Map<String, BaseComponent> comparisonSelection;
+  final int maxComparisonItems;
+  final void Function(BaseComponent component, bool shouldSelect)
+      onCompareToggle;
+  final VoidCallback onCompare;
+  final VoidCallback onClearComparison;
 
   const _ProductList({
     required this.componentType,
@@ -2710,6 +2968,11 @@ class _ProductList extends ConsumerWidget {
     required this.isRefreshing,
     required this.onRefresh,
     required this.onPageChanged,
+    required this.comparisonSelection,
+    required this.maxComparisonItems,
+    required this.onCompareToggle,
+    required this.onCompare,
+    required this.onClearComparison,
     this.onComponentSelected,
   });
 
@@ -2722,6 +2985,10 @@ class _ProductList extends ConsumerWidget {
           searchController: searchController,
           count: products.length,
           currentPage: currentPage,
+          selectedComparisonCount: comparisonSelection.length,
+          maxComparisonItems: maxComparisonItems,
+          onCompare: onCompare,
+          onClearComparison: onClearComparison,
         ),
         const SizedBox(height: 24),
         if (isRefreshing || isLoading)
@@ -2751,6 +3018,9 @@ class _ProductList extends ConsumerWidget {
                     products: products,
                     componentType: componentType,
                     onComponentSelected: onComponentSelected,
+                    comparisonSelection: comparisonSelection,
+                    maxComparisonItems: maxComparisonItems,
+                    onCompareToggle: onCompareToggle,
                   ),
                 ),
         ),
@@ -2769,10 +3039,17 @@ class _ProductListWithCompatibility extends ConsumerWidget {
   final List<BaseComponent> products;
   final ComponentType componentType;
   final Function(BaseComponent)? onComponentSelected;
+  final Map<String, BaseComponent> comparisonSelection;
+  final int maxComparisonItems;
+  final void Function(BaseComponent component, bool shouldSelect)
+      onCompareToggle;
 
   const _ProductListWithCompatibility({
     required this.products,
     required this.componentType,
+    required this.comparisonSelection,
+    required this.maxComparisonItems,
+    required this.onCompareToggle,
     this.onComponentSelected,
   });
 
@@ -2788,66 +3065,98 @@ class _ProductListWithCompatibility extends ConsumerWidget {
         Widget row = _GenericProductRow(
           product: product,
           onComponentSelected: onComponentSelected,
+          isSelectedForCompare: comparisonSelection.containsKey(product.id),
+          onCompareToggle: (selected) => onCompareToggle(product, selected),
         );
         switch (product.type) {
           case ComponentType.cpu:
             row = _CpuProductRow(
               product: product as CPUComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.motherboard:
             row = _MotherboardProductRow(
               product: product as MotherboardComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.ram:
             row = _RamProductRow(
               product: product as MemoryComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.storage:
             row = _StorageProductRow(
               product: product as StorageComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.psu:
             row = _PsuProductRow(
               product: product as PowerSupplyComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.pcCase:
             row = _CaseProductRow(
               product: product as CaseComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.gpu:
             row = _GpuProductRow(
               product: product as GPUComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.cooler:
             row = _CoolerProductRow(
               product: product as CoolerComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.caseFan:
             row = _CaseFanProductRow(
               product: product as CaseFanComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
           case ComponentType.monitor:
             row = _MonitorProductRow(
               product: product as MonitorComponent,
               onComponentSelected: onComponentSelected,
+              isSelectedForCompare: comparisonSelection.containsKey(product.id),
+              onCompareToggle: (selected) =>
+                  onCompareToggle(product, selected),
             );
             break;
         }
@@ -2904,10 +3213,18 @@ class _TopBar extends StatelessWidget {
   final TextEditingController searchController;
   final int count;
   final int currentPage;
+  final int selectedComparisonCount;
+  final int maxComparisonItems;
+  final VoidCallback onCompare;
+  final VoidCallback onClearComparison;
   const _TopBar({
     required this.searchController,
     required this.count,
     required this.currentPage,
+    required this.selectedComparisonCount,
+    required this.maxComparisonItems,
+    required this.onCompare,
+    required this.onClearComparison,
   });
 
   @override
@@ -2940,11 +3257,13 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        // A button to navigate to a comparison page (not yet implemented).
         OutlinedButton.icon(
-          onPressed: () {},
+          onPressed:
+              selectedComparisonCount >= 2 ? onCompare : null,
           icon: const Icon(Icons.compare_arrows),
-          label: const Text('Compare'),
+          label: Text(
+            'Compare ($selectedComparisonCount/$maxComparisonItems)',
+          ),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
             side: BorderSide(color: Colors.grey.shade700),
@@ -2954,6 +3273,13 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
+        if (selectedComparisonCount > 0) ...[
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: onClearComparison,
+            child: const Text('Clear'),
+          ),
+        ],
         const SizedBox(width: 16),
         // A button to add all filtered items to the build (not yet implemented).
         ElevatedButton.icon(
@@ -3092,7 +3418,14 @@ class _ProductListHeader extends StatelessWidget {
 abstract class _ProductRow extends ConsumerWidget {
   final BaseComponent product;
   final Function(BaseComponent)? onComponentSelected;
-  const _ProductRow({required this.product, this.onComponentSelected});
+  final bool isSelectedForCompare;
+  final void Function(bool)? onCompareToggle;
+  const _ProductRow({
+    required this.product,
+    this.onComponentSelected,
+    this.isSelectedForCompare = false,
+    this.onCompareToggle,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -3108,7 +3441,16 @@ abstract class _ProductRow extends ConsumerWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: buildRow(context, ref),
+            children: [
+              Checkbox(
+                value: isSelectedForCompare,
+                onChanged: onCompareToggle == null
+                    ? null
+                    : (value) => onCompareToggle!(value ?? false),
+              ),
+              const SizedBox(width: 8),
+              ...buildRow(context, ref),
+            ],
           ),
         ),
       ),
@@ -3299,7 +3641,14 @@ class _CpuProductRow extends _ProductRow {
   const _CpuProductRow({
     required CPUComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3326,7 +3675,14 @@ class _MotherboardProductRow extends _ProductRow {
   const _MotherboardProductRow({
     required MotherboardComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3347,7 +3703,14 @@ class _RamProductRow extends _ProductRow {
   const _RamProductRow({
     required MemoryComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3371,7 +3734,14 @@ class _StorageProductRow extends _ProductRow {
   const _StorageProductRow({
     required StorageComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3392,7 +3762,14 @@ class _PsuProductRow extends _ProductRow {
   const _PsuProductRow({
     required PowerSupplyComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3413,7 +3790,14 @@ class _CaseProductRow extends _ProductRow {
   const _CaseProductRow({
     required CaseComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3434,7 +3818,14 @@ class _GpuProductRow extends _ProductRow {
   const _GpuProductRow({
     required GPUComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3460,7 +3851,14 @@ class _CoolerProductRow extends _ProductRow {
   const _CoolerProductRow({
     required CoolerComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3490,7 +3888,14 @@ class _CaseFanProductRow extends _ProductRow {
   const _CaseFanProductRow({
     required CaseFanComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3522,7 +3927,14 @@ class _MonitorProductRow extends _ProductRow {
   const _MonitorProductRow({
     required MonitorComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
@@ -3547,7 +3959,14 @@ class _GenericProductRow extends _ProductRow {
   const _GenericProductRow({
     required BaseComponent product,
     Function(BaseComponent)? onComponentSelected,
-  }) : super(product: product, onComponentSelected: onComponentSelected);
+    bool isSelectedForCompare = false,
+    void Function(bool)? onCompareToggle,
+  }) : super(
+          product: product,
+          onComponentSelected: onComponentSelected,
+          isSelectedForCompare: isSelectedForCompare,
+          onCompareToggle: onCompareToggle,
+        );
 
   @override
   List<Widget> buildRow(BuildContext context, WidgetRef ref) {
