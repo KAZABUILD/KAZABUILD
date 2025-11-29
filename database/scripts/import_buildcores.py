@@ -24,7 +24,6 @@ import logging
 import os
 import pathlib
 import re
-import sys
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, getcontext
@@ -53,6 +52,11 @@ BASE_INSERT_SQL = (
     "INSERT INTO Components "
     "(Id, Name, Manufacturer, Release, Type, DatabaseEntryAt, LastEditedAt, Note) "
     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+)
+COMPONENT_PARTS_INSERT_SQL = (
+    "INSERT INTO ComponentParts "
+    "(Id, ComponentId, SubComponentId, Amount, DatabaseEntryAt, LastEditedAt, Note) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -233,6 +237,11 @@ class ComponentStats:
     skipped: int = 0
     duplicates: int = 0
     errors: List[str] = field(default_factory=list)
+    subcomponents_processed: int = 0
+    subcomponents_inserted: int = 0
+    subcomponents_found: int = 0
+    subcomponents_skipped: int = 0
+    component_parts_created: int = 0
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -244,6 +253,11 @@ class ComponentStats:
             "skipped": self.skipped,
             "duplicates": self.duplicates,
             "errors": self.errors,
+            "subcomponentsProcessed": self.subcomponents_processed,
+            "subcomponentsInserted": self.subcomponents_inserted,
+            "subcomponentsFound": self.subcomponents_found,
+            "subcomponentsSkipped": self.subcomponents_skipped,
+            "componentPartsCreated": self.component_parts_created,
         }
 
 
@@ -303,6 +317,272 @@ class ComponentAdapter:
 
     def build_specific(self, raw: Dict[str, Any], context: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError
+
+
+@dataclass
+class SubComponentRecord:
+    base: Dict[str, Any]
+    specific: Dict[str, Any]
+
+
+class SubComponentAdapter:
+    subcomponent_type: str = ""
+    base_table_name: str = "SubComponents"
+    table_name: str = ""
+    columns: Sequence[str] = ()
+    required_fields: Sequence[str] = ()
+
+    def __init__(self) -> None:
+        self.base_insert_sql = self._build_base_insert_sql()
+        self.insert_sql = self._build_insert_sql()
+
+    def _build_base_insert_sql(self) -> str:
+        return (
+            "INSERT INTO SubComponents "
+            "(Id, Name, Type, DatabaseEntryAt, LastEditedAt, Note) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        )
+
+    def _build_insert_sql(self) -> str:
+        placeholders = ", ".join(["?"] * len(self.columns))
+        column_list = ", ".join(self.columns)
+        return f"INSERT INTO {self.table_name} ({column_list}) VALUES ({placeholders})"
+
+    def transform(self, raw: Dict[str, Any], context: ImportContext) -> SubComponentRecord:
+        missing = [field for field in self.required_fields if get_nested(raw, field) in (None, "")]
+        if missing:
+            raise SkipRecord(f"Missing required fields: {', '.join(missing)}")
+        base = self.build_base(raw, context)
+        specific = self.build_specific(raw, context, base)
+        for column in self.columns:
+            if column not in specific:
+                raise SkipRecord(f"Adapter bug: column '{column}' missing from specific payload")
+        return SubComponentRecord(base=base, specific=specific)
+
+    def build_base(self, raw: Dict[str, Any], context: ImportContext) -> Dict[str, Any]:
+        base_id = uuid.uuid4()
+        name = self._extract_name(raw)
+        return {
+            "Id": base_id,
+            "Name": clean_text(name, 255, fallback="Unnamed SubComponent"),
+            "Type": self.subcomponent_type,
+            "DatabaseEntryAt": context.now,
+            "LastEditedAt": context.now,
+            "Note": None,
+        }
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        return raw.get("name") or raw.get("type") or ""
+
+    def build_specific(self, raw: Dict[str, Any], context: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        raise NotImplementedError
+
+
+class PortSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "PORT"
+    table_name = "PortSubComponents"
+    columns = ("Id", "PortType")
+    required_fields = ("type",)
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        port_type = raw.get("type") or raw.get("port_type") or ""
+        port_name = raw.get("name") or ""
+        if port_name:
+            return port_name
+        return clean_text(port_type, 255, fallback="Port")
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        port_type_raw = raw.get("type") or raw.get("port_type") or ""
+        port_type_str = clean_text(port_type_raw, 50).upper()
+        
+        port_type_mapping = {
+            "USB": "USB",
+            "HDMI": "VIDEO",
+            "DISPLAYPORT": "VIDEO",
+            "DP": "VIDEO",
+            "DVI": "VIDEO",
+            "VGA": "VIDEO",
+            "POWER": "POWER",
+            "PIN": "PIN",
+        }
+        
+        port_type = "OTHER"
+        for key, value in port_type_mapping.items():
+            if key in port_type_str:
+                port_type = value
+                break
+        
+        return {
+            "Id": str(base["Id"]),
+            "PortType": port_type,
+        }
+
+
+class PCIeSlotSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "PCIE_SLOT"
+    table_name = "PCIeSlotSubComponents"
+    columns = ("Id", "Gen", "Lanes")
+    required_fields = ("gen", "lanes")
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        gen = raw.get("gen") or ""
+        lanes = raw.get("lanes") or ""
+        if gen and lanes:
+            return f"PCIe {gen} {lanes}"
+        return "PCIe Slot"
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        gen = clean_text(raw.get("gen") or raw.get("version") or raw.get("generation"), 5, fallback="Unknown")
+        lanes = clean_text(raw.get("lanes") or raw.get("lane_count"), 5, fallback="x1")
+        
+        if lanes and not lanes.startswith("x"):
+            lanes = f"x{lanes}"
+        
+        return {
+            "Id": str(base["Id"]),
+            "Gen": gen,
+            "Lanes": lanes,
+        }
+
+
+class M2SlotSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "M2_SLOT"
+    table_name = "M2SlotSubcomponents"
+    columns = ("Id", "Size", "KeyType", "Interface")
+    required_fields = ("size", "key_type", "interface")
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        size = raw.get("size") or ""
+        key_type = raw.get("key_type") or ""
+        if size and key_type:
+            return f"M.2 {size} {key_type}"
+        return "M.2 Slot"
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        size = clean_text(raw.get("size") or raw.get("form_factor"), 100, fallback="Unknown")
+        key_type = clean_text(raw.get("key_type") or raw.get("key"), 50, fallback="Unknown")
+        interface = clean_text(raw.get("interface") or raw.get("specification"), 50, fallback="Unknown")
+        
+        if key_type and "key" not in key_type.lower():
+            key_type = f"{key_type} Key"
+        
+        return {
+            "Id": str(base["Id"]),
+            "Size": size,
+            "KeyType": key_type,
+            "Interface": interface,
+        }
+
+
+class OnboardEthernetSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "ONBOARD_ETHERNET"
+    table_name = "OnboardEthernetSubComponents"
+    columns = ("Id", "Speed", "Controller")
+    required_fields = ("speed", "controller")
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        speed = raw.get("speed") or ""
+        controller = raw.get("controller") or ""
+        if speed and controller:
+            return f"{controller} ({speed})"
+        elif speed:
+            return f"Ethernet {speed}"
+        elif controller:
+            return controller
+        return "Onboard Ethernet"
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        speed = clean_text(raw.get("speed") or raw.get("network_speed"), 50, fallback="Unknown")
+        controller = clean_text(raw.get("controller") or raw.get("network_controller"), 50, fallback="Unknown")
+        
+        return {
+            "Id": str(base["Id"]),
+            "Speed": speed,
+            "Controller": controller,
+        }
+
+
+class IntegratedGraphicsSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "INTEGRATED_GRAPHICS"
+    table_name = "IntegratedGraphicsSubComponents"
+    columns = ("Id", "Model", "BaseClockSpeed", "BoostClockSpeed", "CoreCount")
+    required_fields = ("base_clock", "boost_clock", "core_count")
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        """Extract integrated graphics name."""
+        model = raw.get("model") or raw.get("name")
+        if model:
+            return clean_text(model, 255)
+        # Generate name from specs
+        base_clock = raw.get("base_clock") or raw.get("base_clock_speed")
+        return f"Integrated Graphics ({base_clock} MHz)" if base_clock else "Integrated Graphics"
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        model = clean_text(raw.get("model") or raw.get("name"), 100)
+        base_clock = to_int(
+            raw.get("base_clock") or raw.get("base_clock_speed") or raw.get("baseClockSpeed"),
+            default=100,
+            min_value=100,
+            max_value=10000,
+        )
+        boost_clock = to_int(
+            raw.get("boost_clock") or raw.get("boost_clock_speed") or raw.get("boostClockSpeed"),
+            default=100,
+            min_value=100,
+            max_value=10000,
+        )
+        core_count = to_int(
+            raw.get("core_count") or raw.get("cores") or raw.get("coreCount"),
+            default=1,
+            min_value=1,
+            max_value=50000,
+        )
+        
+        return {
+            "Id": str(base["Id"]),
+            "Model": model,
+            "BaseClockSpeed": base_clock,
+            "BoostClockSpeed": boost_clock,
+            "CoreCount": core_count,
+        }
+
+
+class CoolerSocketSubComponentAdapter(SubComponentAdapter):
+    subcomponent_type = "COOLER_SOCKET"
+    table_name = "CoolerSocketSubComponents"
+    columns = ("Id", "SocketType")
+    required_fields = ("socket_type",)
+
+    def _extract_name(self, raw: Dict[str, Any]) -> str:
+        socket_type = raw.get("socket_type") or raw.get("socket") or ""
+        if socket_type:
+            return clean_text(socket_type, 255)
+        return "Unknown Socket"
+
+    def build_specific(self, raw: Dict[str, Any], _: ImportContext, base: Dict[str, Any]) -> Dict[str, Any]:
+        socket_type = clean_text(
+            raw.get("socket_type") or raw.get("socket") or raw.get("name"),
+            50,
+            fallback="Unknown"
+        )
+        
+        return {
+            "Id": str(base["Id"]),
+            "SocketType": socket_type,
+        }
+
+
+SUBCOMPONENT_ADAPTERS: Dict[str, SubComponentAdapter] = {
+    adapter.subcomponent_type: adapter
+    for adapter in [
+        PortSubComponentAdapter(),
+        PCIeSlotSubComponentAdapter(),
+        M2SlotSubComponentAdapter(),
+        OnboardEthernetSubComponentAdapter(),
+        IntegratedGraphicsSubComponentAdapter(),
+        CoolerSocketSubComponentAdapter(),
+    ]
+}
 
 
 class CPUAdapter(ComponentAdapter):
@@ -723,7 +1003,7 @@ class PowerSupplyAdapter(ComponentAdapter):
         return {
             "Id": str(base["Id"]),
             "PowerOutput": to_decimal(raw.get("wattage"), default=Decimal("0")),
-            "FormFactor": clean_text(raw.get("form_factor"), 50, fallback="ATX"),
+            "FormFactor": clean_text(raw.get("form_factor"), 50, fallback="Unknown"),
             "EfficiencyRating": clean_text(raw.get("efficiency_rating"), 50, fallback=""),
             "ModularityType": clean_text(raw.get("modular"), 50, fallback="Non-Modular"),
             "Length": to_decimal(raw.get("length")),
@@ -1052,6 +1332,14 @@ class BuildCoreImporter:
         cursor = conn.cursor()
         for adapter in adapters:
             logging.info("Truncating existing %s components", adapter.component_type)
+            cursor.execute(
+                """
+                DELETE cp FROM ComponentParts cp
+                INNER JOIN Components c ON cp.ComponentId = c.Id
+                WHERE c.Type = ?
+                """,
+                adapter.component_type
+            )
             cursor.execute("DELETE FROM Components WHERE Type = ?", adapter.component_type)
         conn.commit()
 
@@ -1094,12 +1382,38 @@ class BuildCoreImporter:
                     continue
                 seen_signatures.add(signature)
             batch.append(record)
+            if not self.dry_run and conn:
+                try:
+                    self._process_subcomponents(conn, record.base["Id"], raw, adapter.component_type, stats)
+                except Exception as exc:
+                    logging.warning(
+                        "Error processing subcomponents for component %s: %s",
+                        record.base["Id"],
+                        exc
+                    )
             if not self.dry_run and len(batch) >= self.batch_size:
-                inserted = self._flush_batch(conn, batch, adapter)
-                stats.inserted += inserted
-                batch.clear()
+                try:
+                    inserted = self._flush_batch(conn, batch, adapter)
+                    stats.inserted += inserted
+                    batch.clear()
+                except Exception as exc:
+                    logging.error(
+                        "Failed to flush batch for %s: %s. Skipping batch.",
+                        adapter.component_type,
+                        exc
+                    )
+                    stats.errors.append(f"Batch insert failed: {exc}")
+                    batch.clear() 
         if not self.dry_run and batch:
-            stats.inserted += self._flush_batch(conn, batch, adapter)
+            try:
+                stats.inserted += self._flush_batch(conn, batch, adapter)
+            except Exception as exc:
+                logging.error(
+                    "Failed to flush final batch for %s: %s",
+                    adapter.component_type,
+                    exc
+                )
+                stats.errors.append(f"Final batch insert failed: {exc}")    
         return stats
 
     def _load_records(self, file_path: pathlib.Path) -> Iterable[Dict[str, Any]]:
@@ -1167,30 +1481,310 @@ class BuildCoreImporter:
         }
         payload = {"base": base_payload, "specific": specific_payload, "type": adapter.component_type}
         return json.dumps(payload, sort_keys=True, default=str)
+    
+    def _build_subcomponent_signature(self, record: SubComponentRecord, adapter: SubComponentAdapter) -> str:
+        base_payload = {
+            key: value
+            for key, value in record.base.items()
+            if key not in {"Id", "DatabaseEntryAt", "LastEditedAt"}
+        }
+        specific_payload = {
+            key: value for key, value in record.specific.items() if key != "Id"
+        }
+        payload = {
+            "base": base_payload,
+            "specific": specific_payload,
+            "type": adapter.subcomponent_type
+        }
+        return json.dumps(payload, sort_keys=True, default=str)
 
-    def _flush_batch(self, conn, batch: Sequence[ComponentRecord], adapter: ComponentAdapter) -> int:
+    def _find_existing_subcomponent(self, conn, subcomponent_type: str, signature: str) -> Optional[uuid.UUID]:
+        """Check if a subcomponent with the given signature already exists."""
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT Id FROM SubComponents WHERE Type = ?",
+            subcomponent_type
+        )
+        rows = cursor.fetchall()
+        
+        for row in rows:
+            subcomp_id = row[0]
+            base_data = self._get_subcomponent_base(conn, subcomp_id)
+            specific_data = self._get_subcomponent_specific(conn, subcomponent_type, subcomp_id)
+            
+            if base_data and specific_data:
+                base_payload = {
+                    k: v for k, v in base_data.items()
+                    if k not in {"Id", "DatabaseEntryAt", "LastEditedAt"}
+                }
+                specific_payload = {k: v for k, v in specific_data.items() if k != "Id"}
+                existing_payload = {
+                    "base": base_payload,
+                    "specific": specific_payload,
+                    "type": subcomponent_type
+                }
+                existing_signature = json.dumps(existing_payload, sort_keys=True, default=str)
+                
+                if existing_signature == signature:
+                    return uuid.UUID(str(subcomp_id))
+        return None
+
+    def _get_subcomponent_base(self, conn, subcomp_id: uuid.UUID) -> Optional[Dict[str, Any]]:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT Id, Name, Type, DatabaseEntryAt, LastEditedAt, Note "
+            "FROM SubComponents WHERE Id = ?",
+            str(subcomp_id)
+        )
+        row = cursor.fetchone()
+        if row:
+            return {
+                "Id": row[0],
+                "Name": row[1],
+                "Type": row[2],
+                "DatabaseEntryAt": row[3],
+                "LastEditedAt": row[4],
+                "Note": row[5],
+            }
+        return None
+
+    def _get_subcomponent_specific(self, conn, subcomponent_type: str, subcomp_id: uuid.UUID) -> Optional[Dict[str, Any]]:
+        adapter = SUBCOMPONENT_ADAPTERS.get(subcomponent_type)
+        if not adapter:
+            return None
+        
+        cursor = conn.cursor()
+        
+        columns = ", ".join(adapter.columns)
+        cursor.execute(
+            f"SELECT {columns} FROM {adapter.table_name} WHERE Id = ?",
+            str(subcomp_id)
+        )
+        row = cursor.fetchone()
+        if row:
+            return dict(zip(adapter.columns, row))
+        return None
+
+    def _insert_subcomponent(self, conn, record: SubComponentRecord, adapter: SubComponentAdapter) -> uuid.UUID:
         cursor = conn.cursor()
         cursor.fast_executemany = True
-        base_rows = [
-            (
+        
+        try:
+            base_row = (
                 str(record.base["Id"]),
                 record.base["Name"],
-                record.base["Manufacturer"],
-                record.base["Release"],
                 record.base["Type"],
                 record.base["DatabaseEntryAt"],
                 record.base["LastEditedAt"],
                 record.base["Note"],
             )
-            for record in batch
-        ]
-        cursor.executemany(BASE_INSERT_SQL, base_rows)
-        specific_rows = [
-            tuple(record.specific[column] for column in adapter.columns) for record in batch
-        ]
-        cursor.executemany(adapter.insert_sql, specific_rows)
-        conn.commit()
-        return len(batch)
+            cursor.execute(adapter.base_insert_sql, base_row)
+            
+            specific_row = tuple(record.specific[column] for column in adapter.columns)
+            cursor.execute(adapter.insert_sql, specific_row)
+            
+            conn.commit()
+            return record.base["Id"]
+        except Exception as exc:
+            conn.rollback()
+            raise RuntimeError(f"Failed to insert subcomponent: {exc}") from exc
+
+    def _insert_component_parts(self, conn, component_id: uuid.UUID, parts: List[Tuple[uuid.UUID, int]]) -> None:
+        if not parts:
+            return
+        
+        cursor = conn.cursor()
+        cursor.fast_executemany = True
+        
+        try:
+            rows = []
+            for subcomp_id, amount in parts:
+                part_id = uuid.uuid4()
+                rows.append((
+                    str(part_id),
+                    str(component_id),
+                    str(subcomp_id),
+                    amount,
+                    self.context.now,
+                    self.context.now,
+                    None,  # Note
+                ))
+            
+            cursor.executemany(COMPONENT_PARTS_INSERT_SQL, rows)
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            logging.error(
+                "Failed to insert ComponentParts for component %s: %s",
+                component_id,
+                exc
+            )
+            raise RuntimeError(
+                f"Failed to create ComponentPart links: {exc}"
+            ) from exc
+
+    def _extract_subcomponents(self, raw: Dict[str, Any], component_type: str) -> List[Tuple[str, Dict[str, Any], int]]:
+        subcomponents = []
+        
+        if component_type == "CPU":
+            igpu = raw.get("integrated_graphics") or raw.get("igpu")
+            if igpu:
+                if isinstance(igpu, dict):
+                    subcomponents.append(("INTEGRATED_GRAPHICS", igpu, 1))
+                elif isinstance(igpu, list):
+                    for item in igpu:
+                        if isinstance(item, dict):
+                            subcomponents.append(("INTEGRATED_GRAPHICS", item, 1))
+        
+        elif component_type == "COOLER":
+            sockets = raw.get("sockets") or raw.get("socket_compatibility")
+            if sockets:
+                if isinstance(sockets, list):
+                    for socket_data in sockets:
+                        if isinstance(socket_data, dict):
+                            amount = to_int(socket_data.get("amount"), default=1, min_value=1, max_value=50)
+                            subcomponents.append(("COOLER_SOCKET", socket_data, amount))
+                        elif isinstance(socket_data, str):
+                            # If it's just a string, create a dict
+                            subcomponents.append(("COOLER_SOCKET", {"socket_type": socket_data}, 1))
+        
+        elif component_type == "MOTHERBOARD":
+            pcie_slots = raw.get("pcie_slots") or raw.get("pcie")
+            if pcie_slots:
+                if isinstance(pcie_slots, list):
+                    for slot_data in pcie_slots:
+                        if isinstance(slot_data, dict):
+                            amount = to_int(slot_data.get("amount"), default=1, min_value=1, max_value=50)
+                            subcomponents.append(("PCIE_SLOT", slot_data, amount))
+            
+            m2_slots = raw.get("m2_slots") or raw.get("m2")
+            if m2_slots:
+                if isinstance(m2_slots, list):
+                    for slot_data in m2_slots:
+                        if isinstance(slot_data, dict):
+                            amount = to_int(slot_data.get("amount"), default=1, min_value=1, max_value=50)
+                            subcomponents.append(("M2_SLOT", slot_data, amount))
+            
+            ethernet = raw.get("onboard_ethernet") or raw.get("ethernet")
+            if ethernet:
+                if isinstance(ethernet, dict):
+                    subcomponents.append(("ONBOARD_ETHERNET", ethernet, 1))
+                elif isinstance(ethernet, list):
+                    for item in ethernet:
+                        if isinstance(item, dict):
+                            subcomponents.append(("ONBOARD_ETHERNET", item, 1))
+            
+            ports = raw.get("ports") or raw.get("io_ports")
+            if ports:
+                if isinstance(ports, list):
+                    for port_data in ports:
+                        if isinstance(port_data, dict):
+                            amount = to_int(port_data.get("amount"), default=1, min_value=1, max_value=50)
+                            subcomponents.append(("PORT", port_data, amount))
+        
+        elif component_type in ("CASE", "MONITOR"):
+            ports = raw.get("ports") or raw.get("io_ports")
+            if ports:
+                if isinstance(ports, list):
+                    for port_data in ports:
+                        if isinstance(port_data, dict):
+                            amount = to_int(port_data.get("amount"), default=1, min_value=1, max_value=50)
+                            subcomponents.append(("PORT", port_data, amount))
+        
+        return subcomponents
+
+    def _process_subcomponents(self, conn, component_id: uuid.UUID, raw: Dict[str, Any], component_type: str, stats: ComponentStats) -> None:
+        if self.dry_run:
+            return
+        
+        subcomponent_data = self._extract_subcomponents(raw, component_type)
+        
+        if not subcomponent_data:
+            return
+        
+        component_parts = []
+        seen_subcomp_signatures: Dict[str, uuid.UUID] = {}
+        
+        for subcomp_type, subcomp_raw, amount in subcomponent_data:
+            stats.subcomponents_processed += 1
+            adapter = SUBCOMPONENT_ADAPTERS.get(subcomp_type)
+            if not adapter:
+                logging.debug("No adapter found for subcomponent type: %s", subcomp_type)
+                stats.subcomponents_skipped += 1
+                continue
+            
+            try:
+                subcomp_record = adapter.transform(subcomp_raw, self.context)
+                
+                signature = self._build_subcomponent_signature(subcomp_record, adapter)
+                
+                if signature in seen_subcomp_signatures:
+                    subcomp_id = seen_subcomp_signatures[signature]
+                else:
+                    subcomp_id = self._find_existing_subcomponent(conn, subcomp_type, signature)
+                    
+                    if not subcomp_id:
+                        subcomp_id = self._insert_subcomponent(conn, subcomp_record, adapter)
+                        stats.subcomponents_inserted += 1
+                        logging.debug("Inserted new subcomponent: %s (%s)", subcomp_type, subcomp_id)
+                    else:
+                        stats.subcomponents_found += 1
+                        logging.debug("Found existing subcomponent: %s (%s)", subcomp_type, subcomp_id)
+                    
+                    seen_subcomp_signatures[signature] = subcomp_id
+                
+                component_parts.append((subcomp_id, amount))
+                
+            except SkipRecord as exc:
+                stats.subcomponents_skipped += 1
+                logging.debug("Skipping subcomponent %s: %s", subcomp_type, exc)
+                continue
+            except Exception as exc:
+                stats.subcomponents_skipped += 1
+                logging.warning("Error processing subcomponent %s: %s", subcomp_type, exc)
+                continue
+        
+        if component_parts:
+            self._insert_component_parts(conn, component_id, component_parts)
+            stats.component_parts_created += len(component_parts)
+            logging.debug("Created %d ComponentPart links for component %s", len(component_parts), component_id)
+
+    def _flush_batch(self, conn, batch: Sequence[ComponentRecord], adapter: ComponentAdapter) -> int:
+        cursor = conn.cursor()
+        cursor.fast_executemany = True
+        
+        try:
+            base_rows = [
+                (
+                    str(record.base["Id"]),
+                    record.base["Name"],
+                    record.base["Manufacturer"],
+                    record.base["Release"],
+                    record.base["Type"],
+                    record.base["DatabaseEntryAt"],
+                    record.base["LastEditedAt"],
+                    record.base["Note"],
+                )
+                for record in batch
+            ]
+            cursor.executemany(BASE_INSERT_SQL, base_rows)
+            specific_rows = [
+                tuple(record.specific[column] for column in adapter.columns) for record in batch
+            ]
+            cursor.executemany(adapter.insert_sql, specific_rows)
+            conn.commit()
+            return len(batch)
+        except Exception as exc:
+            conn.rollback()
+            logging.error(
+                "Failed to insert batch of %d %s components: %s",
+                len(batch),
+                adapter.component_type,
+                exc
+            )
+            raise RuntimeError(
+                f"Batch insert failed for {adapter.component_type}: {exc}"
+            ) from exc
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
