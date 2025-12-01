@@ -1049,7 +1049,7 @@ namespace KAZABUILD.Infrastructure.Services
         private static readonly string[] socketTypes = ["AM4", "AM5", "LGA1200", "LGA1700", "TR4", "sTRX4", "SP5"];
         private Faker<CoolerSocketSubComponent> GetCoolerSocketSubComponentFaker() => new Faker<CoolerSocketSubComponent>("en")
             .RuleFor(s => s.Id, _ => Guid.NewGuid())
-            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SCOKET)
+            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SOCKET)
             .RuleFor(s => s.SocketType, f => f.PickRandom(socketTypes))
             .RuleFor(s => s.Name, (f, s) => $"Socket Compatibility: {s.SocketType}")
             .RuleFor(s => s.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
