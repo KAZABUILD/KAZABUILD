@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import logging
 import os
@@ -132,7 +133,64 @@ Parameters (in order):
     6. LastEditedAt (datetime) - Last modification timestamp
     7. Note (string or None) - Optional note
 """
+COLOR_INSERT_SQL = (
+    "INSERT INTO Colors "
+    "(ColorCode, ColorName, DatabaseEntryAt, LastEditedAt, Note) "
+    "VALUES (?, ?, ?, ?, ?)"
+)
+"""
+SQL statement for inserting rows into the Colors table.
 
+This parameterized query creates a color entry used by ComponentVariant/ColorVariant
+links.
+
+Type:
+    str
+
+Parameters (in order):
+    1. ColorCode (string) - Hex color code (e.g. '#FFFFFF')
+    2. ColorName (string) - Human readable name for the color
+    3. DatabaseEntryAt (datetime)
+    4. LastEditedAt (datetime)
+    5. Note (string or None)
+"""
+
+COMPONENT_VARIANT_INSERT_SQL = (
+    "INSERT INTO ComponentVariants "
+    "(Id, ComponentId, IsAvailable, AdditionalPrice, DatabaseEntryAt, LastEditedAt, Note) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?)"
+)
+"""
+SQL for inserting ComponentVariant rows.
+
+ComponentVariant represents a variant of color for a component.
+Parameters:
+    1. Id (GUID string)
+    2. ComponentId (GUID string) - referenced Components.Id
+    3. IsAvailable (bool)
+    4. AdditionalPrice (decimal or NULL)
+    5. DatabaseEntryAt (datetime)
+    6. LastEditedAt (datetime)
+    7. Note (string or NULL)
+"""
+
+COLOR_VARIANT_INSERT_SQL = (
+    "INSERT INTO ColorVariants "
+    "(Id, ColorCode, ComponentVariantId, DatabaseEntryAt, LastEditedAt, Note) "
+    "VALUES (?, ?, ?, ?, ?, ?)"
+)
+"""
+SQL for inserting ColorVariant links.
+
+ColorVariant links a Color (by ColorCode) with a ComponentVariant (by ComponentVariantId).
+Parameters:
+    1. Id (GUID string)
+    2. ColorCode (string) - references Colors.ColorCode
+    3. ComponentVariantId (GUID string) - references ComponentVariants.Id
+    4. DatabaseEntryAt (datetime)
+    5. LastEditedAt (datetime)
+    6. Note (string or NULL)
+"""
 
 # ========================================================================== #
 # EXCEPTIONS                                                                 #
@@ -643,6 +701,11 @@ class ComponentStats:
     subcomponents_found: int = 0
     subcomponents_skipped: int = 0
     component_parts_created: int = 0
+    colors_processed: int = 0
+    colors_inserted: int = 0
+    colors_found: int = 0
+    colors_skipped: int = 0
+    variants_created: int = 0
 
     def as_dict(self) -> Dict[str, Any]:
         """
@@ -665,6 +728,11 @@ class ComponentStats:
             "subcomponentsFound": self.subcomponents_found,
             "subcomponentsSkipped": self.subcomponents_skipped,
             "componentPartsCreated": self.component_parts_created,
+            "colorsProcessed": self.colors_processed,
+            "colorsInserted": self.colors_inserted,
+            "colorsFound": self.colors_found,
+            "colorsSkipped": self.colors_skipped,
+            "variantsCreated": self.variants_created,
         }
 
 
@@ -2386,7 +2454,7 @@ class BuildCoreImporter:
                 dir_path,
             )
             return stats
-        batch: List[ComponentRecord] = []
+        batch: List[Tuple[ComponentRecord, Dict[str, Any]]] = []
         seen_signatures: Optional[set[str]] = set() if self.dedupe else None
         for raw in records:
             stats.processed += 1
@@ -2406,20 +2474,29 @@ class BuildCoreImporter:
                     stats.duplicates += 1
                     continue
                 seen_signatures.add(signature)
-            batch.append(record)
-            if not self.dry_run and conn:
-                try:
-                    self._process_subcomponents(conn, record.base["Id"], raw, adapter.component_type, stats)
-                except Exception as exc:
-                    logging.warning(
-                        "Error processing subcomponents for component %s: %s",
-                        record.base["Id"],
-                        exc
-                    )
+            batch.append((record, raw))
             if not self.dry_run and len(batch) >= self.batch_size:
                 try:
-                    inserted = self._flush_batch(conn, batch, adapter)
+                    records_to_insert = [r for r, _ in batch]
+                    inserted = self._flush_batch(conn, records_to_insert, adapter)
                     stats.inserted += inserted
+                    for rec, rec_raw in batch:
+                        try:
+                            self._process_subcomponents(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
+                        except Exception as exc:
+                            logging.warning(
+                                "Error processing subcomponents for component %s: %s",
+                                rec.base["Id"],
+                                exc
+                            )
+                        try:
+                            self._process_colors(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
+                        except Exception as exc_col:
+                            logging.warning(
+                                "Error processing colors for component %s: %s",
+                                rec.base["Id"],
+                                exc_col
+                            )
                     batch.clear()
                 except Exception as exc:
                     logging.error(
@@ -2431,14 +2508,33 @@ class BuildCoreImporter:
                     batch.clear() 
         if not self.dry_run and batch:
             try:
-                stats.inserted += self._flush_batch(conn, batch, adapter)
+                records_to_insert = [r for r, _ in batch]
+                stats.inserted += self._flush_batch(conn, records_to_insert, adapter)
+                for rec, rec_raw in batch:
+                    try:
+                        self._process_subcomponents(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
+                    except Exception as exc:
+                        logging.warning(
+                            "Error processing subcomponents for component %s: %s",
+                            rec.base["Id"],
+                            exc
+                        )
+                    try:
+                        self._process_colors(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
+                    except Exception as exc:
+                        logging.warning(
+                            "Error processing colors for component %s: %s",
+                            rec.base["Id"],
+                            exc
+                        )
             except Exception as exc:
                 logging.error(
                     "Failed to flush final batch for %s: %s",
                     adapter.component_type,
                     exc
                 )
-                stats.errors.append(f"Final batch insert failed: {exc}")    
+                stats.errors.append(f"Final batch insert failed: {exc}")   
+                batch.clear()
         return stats
 
     def _load_records(self, file_path: pathlib.Path) -> Iterable[Dict[str, Any]]:
@@ -3175,6 +3271,365 @@ class BuildCoreImporter:
             self._insert_component_parts(conn, component_id, component_parts)
             stats.component_parts_created += len(component_parts)
             logging.debug("Created %d ComponentPart links for component %s", len(component_parts), component_id)
+
+    def _extract_colors(self, raw: Dict[str, Any]) -> List[str]:
+        """
+        Extract color values from a component record.
+
+        Supports multiple source shapes:
+        - "color": string or list (primary)
+        - "colors": list
+        - "color_variant": string or list
+
+        Normalization and splitting rules:
+        - If value is a string, splits on common delimiters (comma, semicolon, slash, pipe)
+          and on occurrences of multiple spaces.
+        - If value is a list, each non-empty element is returned as a stripped string.
+        - Returns an empty list if no color data found.
+
+        Args:
+            raw: Component JSON payload.
+
+        Returns:
+            List[str] - list of raw color tokens (trimmed).
+        """
+        colors = raw.get("color") or raw.get("colors") or raw.get("color_variant") or None
+        if colors is None:
+            return []
+        if isinstance(colors, str):
+            parts = re.split(r"[;,/|]\s*|\s{2,}", colors.strip())
+            return [p.strip() for p in parts if p.strip()]
+        if isinstance(colors, list):
+            return [str(c).strip() for c in colors if c]
+        return []
+
+    def _normalize_color(self, raw_color: str) -> Tuple[str, str]:
+        """
+        Normalize a raw color token into a canonical ColorCode and a display name.
+
+        Behavior:
+        - If the token is a 6-digit hex (with or without '#') returns '#RRGGBB' and preserves
+          the original token as the display name.
+        - Maps a small set of common color names (e.g., 'BLACK', 'WHITE', 'BROWN') to reasonable
+          hex codes.
+        - For unknown freeform names, returns a deterministic fallback hex generated from
+          the md5 of the input (first 6 hex digits) to ensure the Colors.ColorCode column
+          remains a valid hex-like identifier while being deterministic across runs.
+
+        Args:
+            raw_color: Raw color string extracted from JSON.
+
+        Returns:
+            Tuple[str, str] where:
+                - first element is ColorCode (normalized '#RRGGBB'),
+                - second element is the original/raw display name to store as ColorName.
+        """
+        s = raw_color.strip()
+        hex_match = re.match(r"^#?([0-9a-fA-F]{6})$", s)
+        if hex_match:
+            code = "#" + hex_match.group(1).upper()
+            name = s if s.startswith("#") else f"#{hex_match.group(1).upper()}"
+            return code, raw_color
+        mapping = {
+            "BLACK": "#000000",
+            "WHITE": "#FFFFFF",
+            "RED": "#FF0000",
+            "GREEN": "#008000",
+            "BLUE": "#0000FF",
+            "BROWN": "#8B4513",
+            "GRAY": "#808080",
+            "GREY": "#808080",
+            "SILVER": "#C0C0C0",
+            "GOLD": "#D4AF37",
+            "YELLOW": "#FFFF00",
+            "ORANGE": "#FFA500",
+            "PURPLE": "#800080",
+            "PINK": "#FFC0CB",
+        }
+        up = s.upper()
+        if up in mapping:
+            return mapping[up], raw_color
+        digest = hashlib.md5(s.encode("utf-8")).hexdigest()[:6].upper()
+        return f"#{digest}", raw_color
+
+    def _find_existing_color(self, conn, color_code: str) -> bool:
+        """
+        Check whether a color with the given ColorCode exists.
+
+        Performs a simple SELECT by ColorCode. Returns True if exists, False otherwise.
+
+        Args:
+            conn: Database connection object.
+            color_code: Normalized color code (e.g., '#AABBCC').
+
+        Returns:
+            bool - True if color present in Colors table.
+        """
+        cursor = conn.cursor()
+        cursor.execute("SELECT ColorCode FROM Colors WHERE ColorCode = ?", color_code)
+        return cursor.fetchone() is not None
+
+    def _insert_color(self, conn, color_code: str, color_name: Optional[str]) -> None:
+        """
+        Insert a new Colors row if it does not already exist.
+
+        This function uses a simple INSERT then commits. A race condition with concurrent
+        processes inserting the same color is handled by rolling back and checking existence
+        again; if the color now exists the error is suppressed.
+
+        Args:
+            conn: Database connection object.
+            color_code: Normalized ColorCode (e.g., '#RRGGBB').
+            color_name: Human readable name for the color.
+
+        Raises:
+            Exception when the insert fails for reasons other than a concurrent insert.
+        """
+        cursor = conn.cursor()
+        try:
+            cursor.execute(COLOR_INSERT_SQL, (color_code, color_name or color_code, self.context.now, self.context.now, None))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            if not self._find_existing_color(conn, color_code):
+                raise
+
+    def _get_component_variant_ids(self, conn, component_id: uuid.UUID) -> List[uuid.UUID]:
+        """
+        Retrieve all ComponentVariant IDs for a given component.
+
+        Args:
+            conn: Database connection object.
+            component_id: UUID of the parent component.
+
+        Returns:
+            List[uuid.UUID]: List of ComponentVariant IDs associated with the component.
+
+        Example:
+            >>> self._get_component_variant_ids(conn, some_component_id)
+            [UUID('...'), UUID('...')]
+        """
+        cursor = conn.cursor()
+        cursor.execute("SELECT Id FROM ComponentVariants WHERE ComponentId = ?", str(component_id))
+        return [uuid.UUID(str(r[0])) for r in cursor.fetchall()]
+
+    def _get_variant_color_codes(self, conn, variant_id: uuid.UUID) -> set:
+        """
+        Return the set of ColorCode strings associated with a ComponentVariant.
+
+        Args:
+            conn: Database connection object.
+            variant_id: UUID of the ComponentVariant.
+
+        Returns:
+            set: Set of ColorCode strings (e.g. {'#000000', '#FFFFFF'}).
+
+        Example:
+            >>> self._get_variant_color_codes(conn, variant_id)
+            {'#000000', '#FFFFFF'}
+        """
+        cursor = conn.cursor()
+        cursor.execute("SELECT ColorCode FROM ColorVariants WHERE ComponentVariantId = ?", str(variant_id))
+        return {row[0] for row in cursor.fetchall()}
+
+    def _find_variant_matching_color_set(self, conn, component_id: uuid.UUID, color_codes: set) -> Optional[uuid.UUID]:
+        """
+        Find a ComponentVariant for a component whose linked ColorCodes exactly match the provided set.
+
+        The function iterates the component's variants and returns the variant id where
+        the set of linked ColorCodes equals the provided color_codes set.
+
+        Args:
+            conn: Database connection object.
+            component_id: UUID of the component.
+            color_codes: Set of ColorCode strings to match.
+
+        Returns:
+            Optional[uuid.UUID]: Matching ComponentVariant id if found, otherwise None.
+
+        Example:
+            >>> self._find_variant_matching_color_set(conn, comp_id, {'#000000', '#FFFFFF'})
+            UUID('...')
+        """
+        for variant_id in self._get_component_variant_ids(conn, component_id):
+            existing = self._get_variant_color_codes(conn, variant_id)
+            if existing == color_codes:
+                return variant_id
+        return None
+
+    def _insert_component_variant_and_link(self, conn, component_id: uuid.UUID, color_codes: List[Tuple[str, str]]) -> uuid.UUID:
+        """
+        Insert a new ComponentVariant and link it to multiple Colors via ColorVariants.
+
+        Performs both the insert into ComponentVariants and the corresponding
+        ColorVariants inserts in a single transaction and commits.
+
+        Args:
+            conn: Database connection object.
+            component_id: UUID of the parent component.
+            color_codes: List of (ColorCode, ColorName) tuples to link to the new variant.
+
+        Returns:
+            uuid.UUID: The newly created ComponentVariant Id.
+
+        Raises:
+            RuntimeError: If the database operations fail (transaction rolled back).
+
+        Example:
+            >>> pairs = [('#000000', 'Black'), ('#8B4513', 'Brown')]
+            >>> self._insert_component_variant_and_link(conn, comp_id, pairs)
+            UUID('...')
+        """
+        cursor = conn.cursor()
+        try:
+            variant_id = uuid.uuid4()
+            variant_row = (
+                str(variant_id),
+                str(component_id),
+                True,
+                None,
+                self.context.now,
+                self.context.now,
+                None,
+            )
+            cursor.execute(COMPONENT_VARIANT_INSERT_SQL, variant_row)
+
+            rows = []
+            for code, _ in color_codes:
+                color_variant_id = uuid.uuid4()
+                rows.append((
+                    str(color_variant_id),
+                    code,
+                    str(variant_id),
+                    self.context.now,
+                    self.context.now,
+                    None,
+                ))
+            cursor.fast_executemany = True
+            cursor.executemany(COLOR_VARIANT_INSERT_SQL, rows)
+            conn.commit()
+            return variant_id
+        except Exception as exc:
+            conn.rollback()
+            raise RuntimeError(f"Failed to insert component variant/color links: {exc}") from exc
+
+    def _insert_component_variant_and_link(self, conn, component_id: uuid.UUID, color_code: str, color_name: Optional[str]) -> uuid.UUID:
+        """
+        Create a new ComponentVariant for the component and link it to the Color via ColorVariant.
+
+        Performs both inserts in a transaction and commits. Returns the created ComponentVariant Id.
+
+        Args:
+            conn: Database connection object.
+            component_id: UUID of the parent component.
+            color_code: ColorCode to link.
+            color_name: ColorName (unused for linking but available for logging/consistency).
+
+        Returns:
+            UUID of the newly created ComponentVariant.
+
+        Raises:
+            RuntimeError when database operations fail (transaction rolled back).
+        """
+        cursor = conn.cursor()
+        try:
+            variant_id = uuid.uuid4()
+            variant_row = (
+                str(variant_id),
+                str(component_id),
+                True,
+                None,
+                self.context.now,
+                self.context.now,
+                None,
+            )
+            cursor.execute(COMPONENT_VARIANT_INSERT_SQL, variant_row)
+            color_variant_id = uuid.uuid4()
+            color_variant_row = (
+                str(color_variant_id),
+                color_code,
+                str(variant_id),
+                self.context.now,
+                self.context.now,
+                None,
+            )
+            cursor.execute(COLOR_VARIANT_INSERT_SQL, color_variant_row)
+            conn.commit()
+            return variant_id
+        except Exception as exc:
+            conn.rollback()
+            raise RuntimeError(f"Failed to insert component variant/color link: {exc}") from exc
+
+    def _process_colors(self, conn, component_id: uuid.UUID, raw: Dict[str, Any], component_type: str, stats: ComponentStats) -> None:
+        """
+        Extract colors from the component JSON, ensure Colors exist, and create or reuse a ComponentVariant.
+
+        Workflow:
+            1. Extract and normalize color tokens from the raw component payload.
+            2. Ensure each Color exists in the Colors table (insert if missing).
+            3. If a ComponentVariant already exists with the exact set of ColorCodes, reuse it.
+            4. Otherwise create a new ComponentVariant and link all colors to it via ColorVariants.
+
+        Args:
+            conn: Database connection object.
+            component_id: UUID of the component to attach variant(s) to.
+            raw: Raw JSON dictionary for the component.
+            component_type: Component type string (provided for parity with subcomponent function).
+            stats: ComponentStats instance to update counters.
+
+        Returns:
+            None
+
+        Example:
+            >>> self._process_colors(conn, comp_id, raw_payload, 'CASE', stats)
+        """
+        if self.dry_run:
+            return
+        color_values = self._extract_colors(raw)
+        if not color_values:
+            return
+
+        normalized: List[Tuple[str, str]] = []
+        seen_codes: set = set()
+        for raw_color in color_values:
+            code, name = self._normalize_color(raw_color)
+            if code in seen_codes:
+                continue
+            normalized.append((code, name))
+            seen_codes.add(code)
+
+        if not normalized:
+            return
+
+        stats.colors_processed += len(normalized)
+
+        for code, name in normalized:
+            try:
+                if self._find_existing_color(conn, code):
+                    stats.colors_found += 1
+                else:
+                    self._insert_color(conn, code, name)
+                    stats.colors_inserted += 1
+            except Exception as exc:
+                stats.colors_skipped += 1
+                logging.warning("Failed to ensure Color %s: %s", code, exc)
+                seen_codes.discard(code)
+        final_codes = [c for c, _ in normalized if self._find_existing_color(conn, c)]
+        final_set = set(final_codes)
+        if not final_codes:
+            return
+
+        existing_variant = self._find_variant_matching_color_set(conn, component_id, final_set)
+        if existing_variant:
+            return
+
+        try:
+            pairs_to_link = [(c, next((n for (cc, n) in normalized if cc == c), c)) for c in final_codes]
+            self._insert_component_variant_and_link(conn, component_id, pairs_to_link)
+            stats.variants_created += 1
+        except Exception as exc:
+            stats.colors_skipped += 1
+            logging.warning("Failed to create ComponentVariant + ColorVariants for %s: %s", component_id, exc)
 
     def _flush_batch(self, conn, batch: Sequence[ComponentRecord], adapter: ComponentAdapter) -> int:
         """
