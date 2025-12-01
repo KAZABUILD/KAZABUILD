@@ -359,7 +359,7 @@
 
 [00056] Distinction between moderation and administration missing from the website.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: Frontend
 - Details: Moderation should have access to editing options for things in the user and build domains (builds, guides, user profiles, etc.).
 

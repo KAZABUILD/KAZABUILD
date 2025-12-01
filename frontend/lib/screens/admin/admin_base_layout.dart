@@ -31,39 +31,53 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
   bool _isSidebarCollapsed = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final List<NavigationItem> _navigationItems = [
-    NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/admin'),
-    NavigationItem(icon: Icons.people, label: 'Users', route: '/admin/users'),
-    NavigationItem(
-      icon: Icons.computer,
-      label: 'Builds',
-      route: '/admin/builds',
-    ),
-    NavigationItem(
-      icon: Icons.star,
-      label: 'Featured Builds',
-      route: '/admin/featured-builds',
-    ),
-    NavigationItem(icon: Icons.forum, label: 'Forums', route: '/admin/forums'),
-    NavigationItem(
-      icon: Icons.shopping_cart,
-      label: 'Parts',
-      route: '/admin/parts',
-    ),
-    NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
-    NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
-    NavigationItem(icon: Icons.quiz, label: 'Quiz', route: '/admin/quiz'),
-    NavigationItem(
-      icon: Icons.notifications,
-      label: 'Notifications',
-      route: '/admin/notifications',
-    ),
-    NavigationItem(
-      icon: Icons.settings,
-      label: 'Settings',
-      route: '/admin/settings',
-    ),
-  ];
+  List<NavigationItem> _getNavigationItems() {
+    final authState = ref.read(authProvider);
+    final user = authState.valueOrNull;
+    final isAdmin = user?.userRole.isAdministrator ?? false;
+
+    final items = [
+      NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/admin'),
+      NavigationItem(icon: Icons.people, label: 'Users', route: '/admin/users'),
+      NavigationItem(
+        icon: Icons.computer,
+        label: 'Builds',
+        route: '/admin/builds',
+      ),
+      NavigationItem(
+        icon: Icons.star,
+        label: 'Featured Builds',
+        route: '/admin/featured-builds',
+      ),
+      NavigationItem(icon: Icons.forum, label: 'Forums', route: '/admin/forums'),
+      NavigationItem(icon: Icons.book, label: 'Guides', route: '/admin/guides'),
+      NavigationItem(icon: Icons.quiz, label: 'Quiz', route: '/admin/quiz'),
+    ];
+
+    // Admin-only items
+    if (isAdmin) {
+      items.addAll([
+        NavigationItem(
+          icon: Icons.shopping_cart,
+          label: 'Parts',
+          route: '/admin/parts',
+        ),
+        NavigationItem(icon: Icons.label, label: 'Tags', route: '/admin/tags'),
+        NavigationItem(
+          icon: Icons.notifications,
+          label: 'Notifications',
+          route: '/admin/notifications',
+        ),
+        NavigationItem(
+          icon: Icons.settings,
+          label: 'Settings',
+          route: '/admin/settings',
+        ),
+      ]);
+    }
+
+    return items;
+  }
 
   @override
   void initState() {
@@ -80,7 +94,8 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
   }
 
   void _updateSelectedIndex() {
-    final index = _navigationItems.indexWhere(
+    final navigationItems = _getNavigationItems();
+    final index = navigationItems.indexWhere(
       (item) => item.route == widget.currentRoute,
     );
     if (index != -1) {
@@ -145,13 +160,18 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: _navigationItems.length,
-            itemBuilder: (context, index) {
-              final item = _navigationItems[index];
-              final isSelected = _selectedIndex == index;
-              return _buildNavItem(item, isSelected, isDark, colors);
+          child: Builder(
+            builder: (context) {
+              final navigationItems = _getNavigationItems();
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: navigationItems.length,
+                itemBuilder: (context, index) {
+                  final item = navigationItems[index];
+                  final isSelected = _selectedIndex == index;
+                  return _buildNavItem(item, isSelected, isDark, colors);
+                },
+              );
             },
           ),
         ),
@@ -247,13 +267,18 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _navigationItems.length,
-              itemBuilder: (context, index) {
-                final item = _navigationItems[index];
-                final isSelected = _selectedIndex == index;
-                return _buildNavItem(item, isSelected, isDark, colors);
+            child: Builder(
+              builder: (context) {
+                final navigationItems = _getNavigationItems();
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: navigationItems.length,
+                  itemBuilder: (context, index) {
+                    final item = navigationItems[index];
+                    final isSelected = _selectedIndex == index;
+                    return _buildNavItem(item, isSelected, isDark, colors);
+                  },
+                );
               },
             ),
           ),
@@ -315,8 +340,9 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
+              final navigationItems = _getNavigationItems();
               setState(() {
-                _selectedIndex = _navigationItems.indexOf(item);
+                _selectedIndex = navigationItems.indexOf(item);
               });
               context.go(item.route);
             },
@@ -367,8 +393,9 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
           overflow: TextOverflow.ellipsis,
         ),
         onTap: () {
+          final navigationItems = _getNavigationItems();
           setState(() {
-            _selectedIndex = _navigationItems.indexOf(item);
+            _selectedIndex = navigationItems.indexOf(item);
           });
           context.go(item.route);
         },

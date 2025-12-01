@@ -178,11 +178,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // 2. Admin routes – require admin role
+      // 2. Admin routes – require admin or moderator role, with specific routes admin-only
       if (path.startsWith('/admin') && path != '/admin/debug') {
         if (loading) return null;
         if (user == null) return '/login';
-        if (!user.userRole.isAdministrator) return '/home';
+        
+        // Check if user has staff privileges (moderator or higher)
+        if (!user.userRole.isModeratorOrHigher) return '/home';
+        
+        // Admin-only routes (component management) - require administrator role
+        final adminOnlyRoutes = [
+          '/admin/tags',
+          '/admin/parts',
+          '/admin/settings',
+          '/admin/notifications',
+        ];
+        
+        final isAdminOnlyRoute = adminOnlyRoutes.any(path.startsWith);
+        if (isAdminOnlyRoute && !user.userRole.isAdministrator) {
+          return '/home'; // Redirect moderators away from admin-only routes
+        }
+        
         return null;
       }
 
