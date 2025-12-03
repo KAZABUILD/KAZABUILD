@@ -316,7 +316,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           const SizedBox(height: 32),
                         // Privacy & Security Section (only for own profile)
                         if (widget.userId == null || user.uid == currentUser.uid)
-                          _buildPrivacySecuritySection(context, theme, isDark),
+                          _buildPrivacySecuritySection(context, theme, isDark, user, currentUser),
                       ],
                     ),
                   ),
@@ -801,7 +801,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
   
-  Widget _buildPrivacySecuritySection(BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildPrivacySecuritySection(BuildContext context, ThemeData theme, bool isDark, AppUser user, AppUser currentUser) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -832,6 +832,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: 24),
+          // Profile Privacy Setting
+          _SettingsItem(
+            theme: theme,
+            label: AppLocalizations.of(context)!.profilePrivacy,
+            value: _getProfileAccessibilityDisplayName(context, user.profileAccessibility),
+            icon: Icons.visibility_rounded,
+            onEdit: () => _showProfilePrivacyDialog(context, theme, user, currentUser),
+          ),
+          const Divider(height: 32),
           // Change Password Button
           SizedBox(
             width: double.infinity,
@@ -864,6 +873,123 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       case ThemeMode.system:
         return l10n.system;
     }
+  }
+
+  String _getProfileAccessibilityDisplayName(BuildContext context, ProfileAccessibility accessibility) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (accessibility) {
+      case ProfileAccessibility.public:
+        return l10n.public;
+      case ProfileAccessibility.private:
+        return l10n.private;
+      case ProfileAccessibility.follows:
+        return 'Followers Only'; // TODO: Add to localization
+    }
+  }
+
+  Future<void> _showProfilePrivacyDialog(BuildContext context, ThemeData theme, AppUser user, AppUser currentUser) async {
+    ProfileAccessibility? selectedAccessibility = user.profileAccessibility;
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.visibility_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Text(AppLocalizations.of(context)!.profilePrivacy),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Who can view your profile?',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  RadioListTile<ProfileAccessibility>(
+                    title: Text(AppLocalizations.of(context)!.public),
+                    subtitle: const Text('Everyone can view your profile'),
+                    value: ProfileAccessibility.public,
+                    groupValue: selectedAccessibility,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedAccessibility = value;
+                      });
+                    },
+                  ),
+                  RadioListTile<ProfileAccessibility>(
+                    title: Text(AppLocalizations.of(context)!.private),
+                    subtitle: const Text('Only staff can view your profile'),
+                    value: ProfileAccessibility.private,
+                    groupValue: selectedAccessibility,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedAccessibility = value;
+                      });
+                    },
+                  ),
+                  RadioListTile<ProfileAccessibility>(
+                    title: const Text('Followers Only'),
+                    subtitle: const Text('Only users you follow can view your profile'),
+                    value: ProfileAccessibility.follows,
+                    groupValue: selectedAccessibility,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedAccessibility = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate() && selectedAccessibility != null) {
+                  Navigator.of(context).pop();
+                  
+                  // Convert to backend format (PUBLIC, PRIVATE, FOLLOWS)
+                  String backendValue;
+                  switch (selectedAccessibility!) {
+                    case ProfileAccessibility.public:
+                      backendValue = 'PUBLIC';
+                      break;
+                    case ProfileAccessibility.private:
+                      backendValue = 'PRIVATE';
+                      break;
+                    case ProfileAccessibility.follows:
+                      backendValue = 'FOLLOWS';
+                      break;
+                  }
+                  
+                  _updateProfile({'ProfileAccessibility': backendValue});
+                }
+              },
+              child: Text(AppLocalizations.of(context)!.save),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showEditDialog(
@@ -1330,47 +1456,6 @@ class _ProfilePictureItemState extends ConsumerState<_ProfilePictureItem> {
     }
   }
 
-  Future<void> _takePhoto() async {
-    try {
-      // Take photo without format restrictions
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 90,
-      );
-
-      if (image != null) {
-        setState(() => _isUploading = true);
-        try {
-          await widget.onImageSelected(image.path);
-        } finally {
-          if (mounted) {
-            setState(() => _isUploading = false);
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isUploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Error taking photo: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: widget.theme.colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _loadImageWithAuth(String? imageUrl) async {
     if (imageUrl == null || imageUrl.isEmpty) {
       setState(() {
@@ -1513,18 +1598,6 @@ class _ProfilePictureItemState extends ConsumerState<_ProfilePictureItem> {
               icon: const Icon(Icons.photo_library_rounded, size: 20),
               label: Text(AppLocalizations.of(context)!.chooseFromGallery),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: _isUploading ? null : _takePhoto,
-              icon: const Icon(Icons.camera_alt_rounded, size: 20),
-              label: Text(AppLocalizations.of(context)!.takePhoto),
-              style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

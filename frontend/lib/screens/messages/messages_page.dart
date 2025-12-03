@@ -747,10 +747,25 @@ class _UserSelectionDialogState extends ConsumerState<_UserSelectionDialog> {
                   final usersList = response.data as List<dynamic>? ?? [];
                   
                   // Filter out current user and convert to AppUser
-                  final users = usersList
+                  final allUsers = usersList
                       .map((json) => AppUser.fromJson(json))
                       .where((user) => user.uid != widget.currentUserId)
                       .toList();
+                  
+                  // Filter out private profiles for non-admin users
+                  // Backend returns private profiles with limited info (only DisplayName, UserRole)
+                  // We can detect private profiles by checking if they have minimal information
+                  final users = allUsers.where((user) {
+                    // If ProfileAccessibility is explicitly set to private, filter it out
+                    if (user.profileAccessibility == ProfileAccessibility.private) {
+                      return false;
+                    }
+                    // If ProfileAccessibility is follows, we'd need to check follow status
+                    // For now, we'll show them (backend should handle this, but as fallback)
+                    // If user has very limited info (no bio, no photoURL, empty email), it might be private
+                    // But this is unreliable, so we rely on ProfileAccessibility field
+                    return true;
+                  }).toList();
                   
                   // Update total pages based on response
                   // If we got fewer users than page size, this is the last page
