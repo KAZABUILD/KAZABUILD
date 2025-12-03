@@ -332,7 +332,8 @@
 - Type: missing implementation
 - status: INCORRECT
 - Source: backend
-- 
+
+
 [00052] SentAtStart filter failing in both MessagesController and NotifcationsController.
 - Type: incorrect implementation
 - Status: FIXED

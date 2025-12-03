@@ -3513,53 +3513,6 @@ class BuildCoreImporter:
             conn.rollback()
             raise RuntimeError(f"Failed to insert component variant/color links: {exc}") from exc
 
-    def _insert_component_variant_and_link(self, conn, component_id: uuid.UUID, color_code: str, color_name: Optional[str]) -> uuid.UUID:
-        """
-        Create a new ComponentVariant for the component and link it to the Color via ColorVariant.
-
-        Performs both inserts in a transaction and commits. Returns the created ComponentVariant Id.
-
-        Args:
-            conn: Database connection object.
-            component_id: UUID of the parent component.
-            color_code: ColorCode to link.
-            color_name: ColorName (unused for linking but available for logging/consistency).
-
-        Returns:
-            UUID of the newly created ComponentVariant.
-
-        Raises:
-            RuntimeError when database operations fail (transaction rolled back).
-        """
-        cursor = conn.cursor()
-        try:
-            variant_id = uuid.uuid4()
-            variant_row = (
-                str(variant_id),
-                str(component_id),
-                True,
-                None,
-                self.context.now,
-                self.context.now,
-                None,
-            )
-            cursor.execute(COMPONENT_VARIANT_INSERT_SQL, variant_row)
-            color_variant_id = uuid.uuid4()
-            color_variant_row = (
-                str(color_variant_id),
-                color_code,
-                str(variant_id),
-                self.context.now,
-                self.context.now,
-                None,
-            )
-            cursor.execute(COLOR_VARIANT_INSERT_SQL, color_variant_row)
-            conn.commit()
-            return variant_id
-        except Exception as exc:
-            conn.rollback()
-            raise RuntimeError(f"Failed to insert component variant/color link: {exc}") from exc
-
     def _process_colors(self, conn, component_id: uuid.UUID, raw: Dict[str, Any], component_type: str, stats: ComponentStats) -> None:
         """
         Extract colors from the component JSON, ensure Colors exist, and create or reuse a ComponentVariant.
