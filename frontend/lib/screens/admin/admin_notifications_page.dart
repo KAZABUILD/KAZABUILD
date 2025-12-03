@@ -1,24 +1,26 @@
 /// Admin Notifications Page
 /// 
 /// Allows admins to send notifications to users with scheduling capabilities.
-/// This page is frontend-only for now - backend integration will be added later.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/user_role.dart';
 import '../../models/notification_model.dart';
+import '../../models/notification_provider.dart';
+import '../../models/admin_provider.dart';
 
-class AdminNotificationsPage extends StatefulWidget {
+class AdminNotificationsPage extends ConsumerStatefulWidget {
   const AdminNotificationsPage({super.key});
 
   @override
-  State<AdminNotificationsPage> createState() => _AdminNotificationsPageState();
+  ConsumerState<AdminNotificationsPage> createState() => _AdminNotificationsPageState();
 }
 
-class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
+class _AdminNotificationsPageState extends ConsumerState<AdminNotificationsPage> {
   final _formKey = GlobalKey<FormState>();
   
   // Form controllers
@@ -59,8 +61,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
             children: [
               _buildHeader(isDark),
               const SizedBox(height: 32),
-              _buildBackendNotice(isDark),
-              const SizedBox(height: 24),
               _buildNotificationForm(isDark),
               const SizedBox(height: 32),
               _buildActionButtons(isDark),
@@ -104,42 +104,9 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     );
   }
 
-  Widget _buildBackendNotice(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColorsDark.warning.withValues(alpha: 0.2)
-            : AppColorsLight.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark
-              ? AppColorsDark.warning.withValues(alpha: 0.5)
-              : AppColorsLight.warning,
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.info_outline,
-            color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'This feature is currently frontend-only. The backend integration will be implemented by the backend team later.',
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark
-                    ? AppColorsDark.textWhite
-                    : AppColorsLight.textBlack,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  /// Converts UserRole enum to backend API string format
+  String _userRoleToApiString(UserRole role) {
+    return role.name.toUpperCase();
   }
 
   Widget _buildNotificationForm(bool isDark) {
@@ -391,9 +358,9 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
   }
 
   Widget _buildUserRolesSelector(bool isDark) {
-    // Filter out system and banned roles as they shouldn't receive notifications
+    // Filter out only banned role - system role should be selectable for admin notifications
     final selectableRoles = UserRole.values.where((role) => 
-      role != UserRole.system && role != UserRole.banned
+      role != UserRole.banned
     ).toList();
 
     return Container(
@@ -591,11 +558,27 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           builder: (context, child) {
             return Theme(
               data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue,
-                  onPrimary: Colors.white,
-                  onSurface: isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack,
-                ),
+                colorScheme: isDark
+                    ? ColorScheme.dark(
+                        primary: AppColorsDark.buttonBlue,
+                        onPrimary: Colors.white,
+                        surface: AppColorsDark.backgroundSecondary,
+                        onSurface: AppColorsDark.textWhite,
+                        background: AppColorsDark.backgroundPrimary,
+                        onBackground: AppColorsDark.textWhite,
+                        secondary: AppColorsDark.buttonBlue,
+                        onSecondary: Colors.white,
+                      )
+                    : ColorScheme.light(
+                        primary: AppColorsLight.buttonBlue,
+                        onPrimary: Colors.white,
+                        surface: AppColorsLight.backgroundTertiary,
+                        onSurface: AppColorsLight.textBlack,
+                        background: AppColorsLight.backgroundPrimary,
+                        onBackground: AppColorsLight.textBlack,
+                        secondary: AppColorsLight.buttonBlue,
+                        onSecondary: Colors.white,
+                      ),
               ),
               child: child!,
             );
@@ -661,11 +644,27 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           builder: (context, child) {
             return Theme(
               data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: isDark ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue,
-                  onPrimary: Colors.white,
-                  onSurface: isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack,
-                ),
+                colorScheme: isDark
+                    ? ColorScheme.dark(
+                        primary: AppColorsDark.buttonBlue,
+                        onPrimary: Colors.white,
+                        surface: AppColorsDark.backgroundSecondary,
+                        onSurface: AppColorsDark.textWhite,
+                        background: AppColorsDark.backgroundPrimary,
+                        onBackground: AppColorsDark.textWhite,
+                        secondary: AppColorsDark.buttonBlue,
+                        onSecondary: Colors.white,
+                      )
+                    : ColorScheme.light(
+                        primary: AppColorsLight.buttonBlue,
+                        onPrimary: Colors.white,
+                        surface: AppColorsLight.backgroundTertiary,
+                        onSurface: AppColorsLight.textBlack,
+                        background: AppColorsLight.backgroundPrimary,
+                        onBackground: AppColorsLight.textBlack,
+                        secondary: AppColorsLight.buttonBlue,
+                        onSecondary: Colors.white,
+                      ),
               ),
               child: child!,
             );
@@ -794,7 +793,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     });
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -809,6 +808,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       return;
     }
 
+    DateTime sendDateTime;
     if (_isScheduled) {
       if (_selectedSendDate == null || _selectedSendTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -820,7 +820,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         return;
       }
 
-      final scheduledDateTime = DateTime(
+      sendDateTime = DateTime(
         _selectedSendDate!.year,
         _selectedSendDate!.month,
         _selectedSendDate!.day,
@@ -828,7 +828,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         _selectedSendTime!.minute,
       );
 
-      if (scheduledDateTime.isBefore(DateTime.now())) {
+      if (sendDateTime.isBefore(DateTime.now())) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Scheduled date and time must be in the future'),
@@ -837,18 +837,144 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         );
         return;
       }
+    } else {
+      sendDateTime = DateTime.now();
     }
 
     setState(() {
       _isSubmitting = true;
     });
 
-    // TODO: Backend integration will be implemented later
-    // For now, just show a success message with form data
-    _showPreviewDialog();
+    try {
+      // Get notification service and admin service
+      final notificationService = ref.read(notificationServiceProvider);
+      final adminService = ref.read(adminServiceProvider);
 
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 1), () {
+      // Get all users with selected roles
+      final roleStrings = _selectedUserRoles.map((role) => _userRoleToApiString(role)).toList();
+      
+      // Fetch users by roles (without pagination to get all users)
+      final usersResponse = await adminService.getUsers(
+        userRoles: roleStrings,
+        // Don't pass page/pageLength to disable pagination
+      );
+
+      if (usersResponse.statusCode != 200) {
+        throw Exception('Failed to fetch users: ${usersResponse.statusMessage}');
+      }
+
+      final List<dynamic> usersData = usersResponse.data is List
+          ? usersResponse.data as List<dynamic>
+          : [];
+
+      if (usersData.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No users found with the selected roles'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() {
+          _isSubmitting = false;
+        });
+        return;
+      }
+
+      // Send notifications to all users
+      // Note: Each user needs their own notification record for proper tracking
+      // This is normal behavior - one notification per user
+      int successCount = 0;
+      int failureCount = 0;
+      final List<String> errors = [];
+      
+      debugPrint('Sending notification to ${usersData.length} users...');
+
+      // Process notifications in parallel batches to improve performance
+      const batchSize = 10;
+      for (int i = 0; i < usersData.length; i += batchSize) {
+        final batch = usersData.skip(i).take(batchSize).toList();
+        
+        await Future.wait(
+          batch.map((userData) async {
+            try {
+              final userId = (userData['id'] ?? userData['Id'] ?? '').toString();
+              if (userId.isEmpty) {
+                failureCount++;
+                return;
+              }
+
+              await notificationService.createNotification(
+                userId: userId,
+                notificationType: _selectedNotificationType,
+                title: _titleController.text.trim(),
+                body: _bodyController.text.trim(),
+                linkUrl: _linkUrlController.text.trim().isEmpty 
+                    ? null 
+                    : _linkUrlController.text.trim(),
+                sentAt: sendDateTime.toUtc(),
+                isRead: false,
+              );
+              successCount++;
+            } catch (e) {
+              failureCount++;
+              errors.add('User ${userData['id']}: ${e.toString()}');
+            }
+          }),
+        );
+      }
+      
+      debugPrint('Notification sending completed: $successCount successful, $failureCount failed');
+
+      // Invalidate notification providers to immediately refresh notification center
+      if (successCount > 0) {
+        // Invalidate all notification providers to refresh notification center
+        ref.invalidate(notificationsProvider);
+        ref.invalidate(unreadNotificationsCountProvider);
+      }
+
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        if (failureCount == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isScheduled
+                    ? 'Notification scheduled successfully for $successCount user(s)!'
+                    : 'Notification sent successfully to $successCount user(s)!',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          _resetForm();
+        } else if (successCount > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Notification sent to $successCount user(s), but failed for $failureCount user(s)',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to send notifications. Errors: ${errors.take(3).join('; ')}',
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
@@ -856,120 +982,14 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _isScheduled
-                  ? 'Notification scheduled successfully! (Frontend only - backend not connected)'
-                  : 'Notification prepared! (Frontend only - backend not connected)',
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            content: Text('Error sending notifications: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
-
-        // Optionally reset form after successful submission
-        // _resetForm();
       }
-    });
+    }
   }
 
-  void _showPreviewDialog() {
-    final scheduledDateTime = _isScheduled && _selectedSendDate != null && _selectedSendTime != null
-        ? DateTime(
-            _selectedSendDate!.year,
-            _selectedSendDate!.month,
-            _selectedSendDate!.day,
-            _selectedSendTime!.hour,
-            _selectedSendTime!.minute,
-          )
-        : DateTime.now();
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark
-            ? AppColorsDark.backgroundSecondary
-            : AppColorsLight.backgroundTertiary,
-        title: Text(
-          'Notification Preview',
-          style: TextStyle(
-            color: isDark
-                ? AppColorsDark.textWhite
-                : AppColorsLight.textBlack,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildPreviewItem('Type', _getNotificationTypeLabel(_selectedNotificationType), isDark),
-              _buildPreviewItem('Title', _titleController.text, isDark),
-              _buildPreviewItem('Body', _bodyController.text, isDark),
-              if (_linkUrlController.text.isNotEmpty)
-                _buildPreviewItem('Link URL', _linkUrlController.text, isDark),
-              _buildPreviewItem(
-                'Target Roles',
-                _selectedUserRoles.map((r) => _getUserRoleLabel(r)).join(', '),
-                isDark,
-              ),
-              _buildPreviewItem(
-                'Send Time',
-                _isScheduled
-                    ? DateFormat('yyyy-MM-dd HH:mm').format(scheduledDateTime)
-                    : 'Immediately',
-                isDark,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Close',
-              style: TextStyle(
-                color: isDark
-                    ? AppColorsDark.buttonBlue
-                    : AppColorsLight.buttonBlue,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewItem(String label, String value, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColorsDark.textWhite.withValues(alpha: 0.7)
-                  : AppColorsLight.textBlack.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark
-                  ? AppColorsDark.textWhite
-                  : AppColorsLight.textBlack,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
