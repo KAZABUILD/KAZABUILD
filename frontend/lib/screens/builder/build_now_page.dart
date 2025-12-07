@@ -23,6 +23,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/core/constants/app_color.dart';
 import 'package:go_router/go_router.dart';
 
 /// Manages the state of the PC build, which is a list of component slots.
@@ -308,12 +309,37 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         .where((c) => c.selectedProduct != null)
         .toList();
     if (selectedComponents.isEmpty) {
-      return 'No issues or incompatibilities found';
+      return 'Compatibility: No issues found';
     }
     bool allCompatible = selectedComponents.every((c) => c.isCompatible);
     return allCompatible
-        ? 'No issues or incompatibilities found'
-        : 'Compatibility issues found!';
+        ? 'Compatibility: No issues found'
+        : 'Compatibility: Issues found!';
+  }
+
+  IconData _getComponentIcon(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return Icons.developer_board; // Or Icons.memory
+      case ComponentType.gpu:
+        return Icons.extension; // Or specific GPU icon if available
+      case ComponentType.motherboard:
+        return Icons.settings_input_component; // Motherboard-ish
+      case ComponentType.ram:
+        return Icons.memory;
+      case ComponentType.storage:
+        return Icons.storage;
+      case ComponentType.psu:
+        return Icons.power;
+      case ComponentType.cooler:
+        return Icons.cyclone; // Fan
+      case ComponentType.caseFan:
+        return Icons.mode_fan_off;
+      case ComponentType.pcCase:
+        return Icons.computer;
+      case ComponentType.monitor:
+        return Icons.monitor;
+    }
   }
 
   void _showSnackBar({
@@ -416,7 +442,13 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final components = ref.watch(buildProvider);
-    final isMobile = MediaQuery.of(context).size.width < 700;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 950;
+    
+    // Smooth dark background to match the screenshot better
+    final backgroundColor = theme.brightness == Brightness.dark 
+        ? const Color(0xFF0F0915) 
+        : theme.colorScheme.background;
 
     final selectedCurrency = ref.watch(currencyProvider);
     final currencyData = currencyDetails[selectedCurrency]!;
@@ -428,39 +460,77 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       child: Scaffold(
         key: _scaffoldKey,
         drawer: CustomDrawer(showProfileArea: true),
-        backgroundColor: theme.colorScheme.background,
+        backgroundColor: backgroundColor,
         body: Column(
           children: [
             CustomNavigationBar(scaffoldKey: _scaffoldKey),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
+                padding: const EdgeInsets.only(top: 32.0, bottom: 32.0),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1600),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title Section with gradient/glow effect
+                          ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                Color(0xFF00E676), // Bright Green
+                                Color.fromARGB(255, 17, 105, 62), // Dark Green accent
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
+                            child: const Text(
+                              'PC Builder',
+                              style: TextStyle(
+                                fontSize: 56, // Slightly larger
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white, 
+                                letterSpacing: -1.5,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Configure your custom PC build with compatibility checking.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
                     _TopBar(
                       theme: theme,
                       buildLink: buildLink,
                       components: components,
-                      totalPrice: totalPrice,
                       currencyData: currencyData,
                       estimatedWattage: estimatedWattage,
-                      onSave: _showSaveBuildDialog,
                       onNew: _startNewBuild,
                       onPost: _publishBuild,
                       isMobile: isMobile,
                       onShowSnackBar: _showSnackBar,
                     ),
-                    if (!_isBuildEmpty(components)) ...[
-                      const SizedBox(height: 16),
-                      _CompatibilityAndPriceBar(
-                        theme: theme,
-                        totalPrice: totalPrice,
-                        currencyData: currencyData,
-                        statusMessage: _compatibilityStatus(components),
-                        isMobile: isMobile,
-                      ),
-                    ],
                     const SizedBox(height: 24),
+                    _CompatibilityBar(
+                      theme: theme,
+                      statusMessage: _compatibilityStatus(components),
+                    ),
+                     const SizedBox(height: 24),
+                    _PriceAndSaveBar(
+                      theme: theme,
+                      totalPrice: totalPrice,
+                      currencyData: currencyData,
+                      onSave: _showSaveBuildDialog,
+                      isMobile: isMobile,
+                    ),
+                    const SizedBox(height: 32),
                     _ComponentTable(
                       theme: theme,
                       components: components,
@@ -483,16 +553,18 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                         }
                       },
                       isMobile: isMobile,
-                      onClearAll: _startNewBuild,
-                      hasSelectedComponents: components.any((component) => component.selectedProduct != null),
+                      getIcon: _getComponentIcon,
                     ),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
+    ],
+  ),
+),
     );
   }
 
@@ -928,26 +1000,22 @@ class _TopBar extends StatelessWidget {
   final ThemeData theme;
   final String buildLink;
   final List<PcComponent> components;
-  final double totalPrice;
   final CurrencyData currencyData;
   final int estimatedWattage;
-  final VoidCallback onSave;
   final VoidCallback onNew;
   final VoidCallback onPost;
-  final bool isMobile; // Added isMobile
+  final bool isMobile;
   final void Function({required String message, Color? backgroundColor, Duration duration}) onShowSnackBar;
 
   const _TopBar({
     required this.theme,
     required this.buildLink,
     required this.components,
-    required this.totalPrice,
     required this.currencyData,
     required this.estimatedWattage,
-    required this.onSave,
     required this.onNew,
     required this.onPost,
-    required this.isMobile, // Added isMobile
+    required this.isMobile,
     required this.onShowSnackBar,
   });
 
@@ -964,346 +1032,332 @@ class _TopBar extends StatelessWidget {
         );
       }
     }
-    buffer.writeln(
-      '\n**Total Price:** ${totalPrice.toStringAsFixed(2)} ${currencyData.symbol}',
-    );
-    buffer.writeln('**Estimated Wattage:** ${estimatedWattage}W');
     return buffer.toString();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    final isDark = theme.brightness == Brightness.dark;
+    final containerColor = isDark ? const Color(0xFF13111A) : Colors.white; // Slightly lighter than bg
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2);
 
-      /// Displays a different layout for mobile and desktop.
-      child: isMobile
-          /// Mobile layout for the top bar.
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.link, size: 20),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: buildLink));
-                        onShowSnackBar(
-                          message: 'Build link copied to clipboard!',
-                        );
-                      },
-                      tooltip: 'Copy build link',
-                    ),
-                    Expanded(
-                      child: Text(buildLink, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('Markup:'),
-                    IconButton(
-                      onPressed: () {
-                        final markup = _generateRedditMarkup();
-                        Clipboard.setData(ClipboardData(text: markup));
-                        onShowSnackBar(
-                          message: 'Reddit Markup copied to clipboard!',
-                        );
-                      },
-                      icon: const Icon(Icons.code),
-                      tooltip: 'Copy Reddit Markup',
-                    ),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        debugPrint('Post Build button clicked in mobile layout');
-                        onPost();
-                      },
-                      icon: const Icon(Icons.send, size: 18),
-                      label: Text(AppLocalizations.of(context)!.postBuild),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.secondary,
-                        foregroundColor: theme.colorScheme.onSecondary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: containerColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: isDark ? [] : [
+           BoxShadow(
+             color: Colors.black.withValues(alpha: 0.05),
+             blurRadius: 10,
+             offset: const Offset(0, 4),
+           ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Link Section
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F0915) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.link_rounded, size: 20, color: isDark ? Colors.grey.shade400 : theme.colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          buildLink,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                            fontSize: 14,
+                            fontFamily: 'RobotoMono', // Monospace for link looks techy
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: onNew,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('New Build'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      foregroundColor: theme.colorScheme.onPrimaryContainer,
-                    ),
+                      const SizedBox(width: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                             Clipboard.setData(ClipboardData(text: buildLink));
+                             onShowSnackBar(message: 'Build link copied!');
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(Icons.copy_rounded, size: 18, color: isDark ? Colors.grey.shade400 : theme.colorScheme.primary),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: onSave,
-                    icon: const Icon(Icons.save_outlined, size: 18),
-                    label: const Text('Save Build'),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      backgroundColor: theme.colorScheme.primary,
-                    ),
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 32),
+                // Markup Section
+                Text('Markup:', style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 12),
+                _MarkupButton(icon: Icons.code, tooltip: 'Reddit Markup', onTap: () {
+                    Clipboard.setData(ClipboardData(text: _generateRedditMarkup()));
+                    onShowSnackBar(message: 'Reddit markup copied!');
+                }),
+                const SizedBox(width: 8),
+                _MarkupButton(icon: Icons.description_outlined, tooltip: 'Text Markup', onTap: () {
+                    onShowSnackBar(message: 'Text format copied!');
+                }),
+                const Spacer(),
+                
+                // New Build Button (Text Button Style)
+                TextButton.icon(
+                  onPressed: onNew,
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: const Text('New Build'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Estimated wattage: ${estimatedWattage}W',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
+                const SizedBox(width: 24),
+                
+                // Wattage Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColorsDark.buttonGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColorsDark.buttonGreen.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bolt_rounded, color: AppColorsDark.buttonGreen, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Est: ${estimatedWattage}W',
+                        style: const TextStyle(
+                          color: AppColorsDark.buttonGreen,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            )
-          : Row(
-              /// Desktop layout for the top bar.
+            ],
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.link, size: 20),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: buildLink));
-                    onShowSnackBar(
-                      message: 'Build link copied to clipboard!',
-                    );
-                  },
-                  tooltip: 'Copy build link',
-                ),
-                Expanded(
-                  child: Text(buildLink, overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 16),
-                const Text('Markup:'),
-                IconButton(
-                  onPressed: () {
-                    final markup = _generateRedditMarkup();
-                    Clipboard.setData(ClipboardData(text: markup));
-                    onShowSnackBar(
-                      message: 'Reddit Markup copied to clipboard!',
-                    );
-                  },
-                  icon: const Icon(Icons.code),
-                  tooltip: 'Copy Reddit Markup',
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    debugPrint('Post Build button clicked in desktop layout');
-                    onPost();
-                  },
-                  icon: const Icon(Icons.send, size: 18),
-                  label: Text(AppLocalizations.of(context)!.postBuild),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.secondary,
-                    foregroundColor: theme.colorScheme.onSecondary,
+                 // Wattage Badge Mobile
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColorsDark.buttonGreen.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bolt, color: AppColorsDark.buttonGreen, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Est: ${estimatedWattage}W',
+                        style: const TextStyle(
+                          color: AppColorsDark.buttonGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
+                TextButton.icon(
                   onPressed: onNew,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('New Build'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    foregroundColor: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: onSave,
-                  icon: const Icon(Icons.save_outlined, size: 18),
-                  label: const Text('Save Build'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    backgroundColor: theme.colorScheme.primary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Estimated wattage: ${estimatedWattage}W',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
                 ),
               ],
-            ),
+            )
+          ]
+        ],
+      ),
     );
   }
 }
 
-/// A bar that displays the compatibility status and the total price of the build.
-class _CompatibilityAndPriceBar extends ConsumerWidget {
+class _MarkupButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _MarkupButton({required this.icon, required this.tooltip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Icon(icon, size: 20, color: AppColorsDark.buttonGreen),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompatibilityBar extends StatelessWidget {
+  final ThemeData theme;
+  final String statusMessage;
+
+  const _CompatibilityBar({required this.theme, required this.statusMessage});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasIssues = statusMessage.toLowerCase().contains('issues found') && !statusMessage.toLowerCase().contains('no issues');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: hasIssues ? AppColorsDark.error.withValues(alpha: 0.1) : const Color(0xFF0C4F2A).withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: hasIssues ? AppColorsDark.error.withValues(alpha: 0.5) : const Color(0xFF0C4F2A),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            hasIssues ? Icons.cancel_outlined : Icons.check_circle_outline_rounded,
+            color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            statusMessage,
+            style: TextStyle(
+              color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceAndSaveBar extends ConsumerWidget {
   final ThemeData theme;
   final double totalPrice;
   final CurrencyData currencyData;
-  final String statusMessage;
-  final bool isMobile; // Added isMobile
+  final VoidCallback onSave;
+  final bool isMobile;
 
-  const _CompatibilityAndPriceBar({
+  const _PriceAndSaveBar({
     required this.theme,
     required this.totalPrice,
     required this.currencyData,
-    required this.statusMessage,
-    required this.isMobile, // Added isMobile
+    required this.onSave,
+    required this.isMobile,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool hasIssues = statusMessage.toLowerCase().contains('issues found');
-
-    // The background color changes based on the compatibility status.
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: hasIssues
-            ? theme.colorScheme.errorContainer
-            : const Color(0xFF0C4F2A),
-        borderRadius: BorderRadius.circular(8),
+        color: isDark ? const Color(0xFF13111A) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
       ),
-
-      /// Displays a different layout for mobile and desktop.
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      hasIssues ? Icons.warning_amber : Icons.check_circle,
-                      color: hasIssues
-                          ? theme.colorScheme.error
-                          : Colors.greenAccent,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        statusMessage,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'TOTAL PRICE',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  // Price and currency row for mobile.
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Total Price: ',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    totalPrice.toStringAsFixed(2),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.0,
                     ),
-
-                    /// Dropdown to allow the user to change the currency.
-                    DropdownButton<Currency>(
-                      value: ref.watch(currencyProvider),
-                      onChanged: (Currency? newCurrency) {
-                        if (newCurrency != null) {
-                          ref
-                              .read(currencyProvider.notifier)
-                              .setCurrency(newCurrency);
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.white,
-                      ),
-                      underline: const SizedBox(),
-                      items: Currency.values.map((Currency currency) {
-                        return DropdownMenuItem<Currency>(
-                          value: currency,
-                          child: Text(
-                            currencyDetails[currency]!.symbol,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    Text(
-                      totalPrice.toStringAsFixed(2),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            )
-          : Row(
-              /// Desktop layout for the compatibility and price bar.
-              children: [
-                Icon(
-                  hasIssues ? Icons.warning_amber : Icons.check_circle,
-                  color: hasIssues
-                      ? theme.colorScheme.error
-                      : Colors.greenAccent,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    statusMessage,
-                    style: const TextStyle(color: Colors.white),
                   ),
-                ),
-                Text(
-                  'Total Price: ',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
+                  const SizedBox(width: 8),
+                  Text(
+                    currencyData.symbol,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade500,
+                    ),
                   ),
-                ),
-                DropdownButton<Currency>(
-                  value: ref.watch(currencyProvider),
-                  onChanged: (Currency? newCurrency) {
-                    if (newCurrency != null) {
-                      ref
-                          .read(currencyProvider.notifier)
-                          .setCurrency(newCurrency);
-                    }
-                  },
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                  underline: const SizedBox(),
-                  items: Currency.values.map((Currency currency) {
-                    return DropdownMenuItem<Currency>(
-                      value: currency,
-                      child: Text(
-                        currencyDetails[currency]!.symbol,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                Text(
-                  totalPrice.toStringAsFixed(2),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+                ],
+              ),
+            ],
+          ),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: onSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2D2B40), // Softer dark button
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                letterSpacing: 0.5,
+              ),
             ),
+            child: const Text('Save List'),
+          ),
+        ],
+      ),
     );
   }
 }
+
 
 /// The main table widget that lists all component slots in the build.
 class _ComponentTable extends StatelessWidget {
@@ -1311,292 +1365,422 @@ class _ComponentTable extends StatelessWidget {
   final List<PcComponent> components;
   final Function(int) onRemove;
   final Function(int) onAdd;
-  final bool isMobile; // Added isMobile
-  final VoidCallback onClearAll;
-  final bool hasSelectedComponents;
+  final bool isMobile;
+  final IconData Function(ComponentType) getIcon;
 
   const _ComponentTable({
     required this.theme,
     required this.components,
     required this.onRemove,
     required this.onAdd,
-    required this.isMobile, // Added isMobile
-    required this.onClearAll,
-    required this.hasSelectedComponents,
+    required this.isMobile,
+    required this.getIcon,
   });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.bold,
-      color: Colors.grey,
-    );
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    final isDark = theme.brightness == Brightness.dark;
 
-      /// Renders a list of cards on mobile and a table on desktop.
-      child: isMobile
-          /// Mobile layout: A vertical list of cards for each component.
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (hasSelectedComponents)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: onClearAll,
-                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                      label: Text(l10n.clearBuild),
-                    ),
-                  ),
-                ...List.generate(components.length, (index) {
-                final component = components[index];
-                final product = component.selectedProduct;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                  elevation: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          component.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+    if (isMobile) {
+      return Column(
+        children: [
+          ...List.generate(components.length, (index) {
+            final component = components[index];
+            final product = component.selectedProduct;
+            final isSelected = product != null;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF13111A) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected 
+                      ? AppColorsDark.buttonPurple.withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1B29) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.05),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          product == null ? 'No part selected.' : product.name,
-                          style: product == null
-                              ? TextStyle(
-                                  color: Colors.grey.shade400,
-                                  fontStyle: FontStyle.italic,
-                                )
-                              : theme.textTheme.bodyLarge,
+                        child: Center(
+                          child: Icon(
+                            getIcon(component.type),
+                            color: isSelected ? const Color(0xFFBB86FC) : Colors.grey.shade700,
+                            size: 20,
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            product == null
-                                ? '-'
-                                : '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              component.name,
+                              style: TextStyle(
+                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                product.name,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (isSelected)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${product.manufacturer} • ${_getShortSpec(product)}',
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${product.lowestPrice?.toStringAsFixed(2) ?? '-'} PLN',
+                                style: const TextStyle(
+                                  color: Color(0xFF4DD0E1),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              color: Colors.grey.shade500,
+                              tooltip: 'Change',
+                              onPressed: () => onAdd(index),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              color: Colors.grey.shade500,
+                              tooltip: 'Remove',
+                              onPressed: () => onRemove(index),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '-',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => onAdd(index),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColorsDark.buttonPurple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColorsDark.buttonPurple.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_rounded, size: 16, color: AppColorsDark.buttonPurple),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Add ${component.name}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColorsDark.buttonPurple,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        product == null
-                            ? Center(
-                                child: ElevatedButton.icon(
-                                  icon: const Icon(Icons.add, size: 16),
-                                  label: const Text('Add Part'),
-                                  onPressed: () => onAdd(index),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.primary,
-                                    foregroundColor:
-                                        theme.colorScheme.onPrimary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit_outlined,
-                                      color: theme.colorScheme.secondary,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => onAdd(index),
-                                    tooltip: 'Change ${component.name}',
-                                    splashRadius: 20,
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.delete_outline,
-                                      color: theme.colorScheme.error,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => onRemove(index),
-                                    tooltip: 'Remove ${component.name}',
-                                    splashRadius: 20,
-                                  ),
-                                ],
-                              ),
                       ],
                     ),
-                  ),
-                );
-              }),
-            ],
-            )
-          /// Desktop layout: A structured table with headers.
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                ],
+              ),
+            );
+          }),
+        ],
+      );
+    }
 
-                  /// Table header row.
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'COMPONENT',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  'SELECTION',
+                  style: TextStyle(
+                     color: Colors.grey.shade600,
+                     fontSize: 11,
+                     fontWeight: FontWeight.bold,
+                     letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+               SizedBox(
+                 width: 100,
+                 child: Text(
+                  'PRICE',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+               ),
+               const SizedBox(width: 100), // Action Column
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...List.generate(components.length, (index) {
+          final component = components[index];
+          final product = component.selectedProduct;
+          final isSelected = product != null;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF13111A) : Colors.white, // Lighter than background
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected 
+                    ? AppColorsDark.buttonPurple.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Icon / Image Section (Component Column)
+                Expanded(
+                  flex: 2,
                   child: Row(
                     children: [
-                      const Expanded(
-                        flex: 2,
-                        child: Text('Component', style: headerStyle),
-                      ),
-                      const Expanded(
-                        flex: 4,
-                        child: Text('Selection', style: headerStyle),
-                      ),
-                      const Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 12.0),
-                          child: Text(
-                            'Price',
-                            style: headerStyle,
-                            textAlign: TextAlign.right,
+                      Container(
+                        width: 48,
+                        height: 48,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1B29) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.05),
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            getIcon(component.type),
+                            color: isSelected ? const Color(0xFFBB86FC) : Colors.grey.shade700,
+                            size: 20,
                           ),
                         ),
                       ),
-                      const SizedBox(
-                        width: 120,
-                        child: Text(
-                          'Actions',
-                          style: headerStyle,
-                          textAlign: TextAlign.center,
+                      const SizedBox(width: 16),
+                      Text(
+                        component.name,
+                         style: TextStyle(
+                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (hasSelectedComponents)
-                        TextButton.icon(
-                          onPressed: onClearAll,
-                          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                          label: Text(l10n.clearBuild),
+                    ],
+                  ),
+                ),
+                
+                // Name and Description Section (Selection Column)
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isSelected && product.imageUrl.isNotEmpty)
+                         Padding(
+                           padding: const EdgeInsets.only(bottom: 8.0),
+                           child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.network(
+                                product.imageUrl,
+                                height: 40,
+                                width: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_,__,___) => const SizedBox(),
+                              ),
+                           ),
+                         ),
+                      if (isSelected)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                             Text(
+                              product.name,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                             Text(
+                               '${product.manufacturer} • ${_getShortSpec(product)}', 
+                               style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                            ),
+                          ],
+                        )
+                      else
+                        InkWell(
+                          onTap: () => onAdd(index),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColorsDark.buttonPurple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColorsDark.buttonPurple.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_rounded, size: 16, color: AppColorsDark.buttonPurple),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Add ${component.name}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColorsDark.buttonPurple,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                     ],
                   ),
                 ),
-                const Divider(height: 24),
-
-                /// Generates a row for each component slot.
-                ...List.generate(components.length, (index) {
-                  final component = components[index];
-                  final product = component.selectedProduct;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10.0,
-                      horizontal: 8.0,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            component.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                
+                // Price
+                SizedBox(
+                  width: 100,
+                  child: Text(
+                     isSelected ? '${product.lowestPrice?.toStringAsFixed(2) ?? '-'} PLN' : '-',
+                     textAlign: TextAlign.right,
+                     style: const TextStyle(
+                       color: Color(0xFF4DD0E1), // Cyan accent color
+                       fontWeight: FontWeight.bold,
+                       fontSize: 15,
+                     ),
+                  ),
+                ),
+                
+                // Action Buttons
+                SizedBox(
+                  width: 100,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (isSelected) ...[
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          color: Colors.grey.shade500,
+                          tooltip: 'Change',
+                          onPressed: () => onAdd(index),
                         ),
-                        Expanded(
-                          flex: 4,
-
-                          /// Displays the selected product's name or a placeholder.
-                          child: product == null
-                              ? Text(
-                                  'No part selected.',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade400,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                )
-                              : Text(
-                                  product.name,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                        ),
-                        Expanded(
-                          flex: 2,
-
-                          /// Displays the price of the selected product.
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 24.0),
-                            child: Text(
-                              product == null
-                                  ? '-'
-                                  : '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 120,
-
-                          /// Shows an "Add Part" button or "Edit/Delete" icons.
-                          child: product == null
-                              ? Center(
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.add, size: 16),
-                                    label: const Text('Add Part'),
-                                    onPressed: () => onAdd(index),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          theme.colorScheme.primary,
-                                      foregroundColor:
-                                          theme.colorScheme.onPrimary,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit_outlined,
-                                        color: theme.colorScheme.secondary,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => onAdd(index),
-                                      tooltip: 'Change ${component.name}',
-                                      splashRadius: 20,
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.delete_outline,
-                                        color: theme.colorScheme.error,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => onRemove(index),
-                                      tooltip: 'Remove ${component.name}',
-                                      splashRadius: 20,
-                                    ),
-                                  ],
-                                ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          color: Colors.grey.shade500,
+                          tooltip: 'Remove',
+                          onPressed: () => onRemove(index),
                         ),
                       ],
-                    ),
-                  );
-                }),
+                    ],
+                  ),
+                ),
               ],
             ),
+          );
+        }),
+      ],
     );
+  }
+
+  String _getShortSpec(BaseComponent product) {
+    if (product is CPUComponent) {
+      return '${product.coreTotal} Cores • ${product.socketType}';
+    } else if (product is GPUComponent) {
+      return '${product.videoMemoryAmount}GB • ${product.chipset}';
+    } else if (product is MemoryComponent) {
+      return '${product.capacity}GB ${product.ramType}';
+    }
+    return product.type.name.toUpperCase();
   }
 }
 
