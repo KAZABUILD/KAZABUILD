@@ -100,7 +100,17 @@ class _DynamicTextFilter extends StatelessWidget {
         TextField(
           decoration: InputDecoration(
             hintText: 'Enter ${filter.label}...',
-            border: const OutlineInputBorder(),
+            hintStyle: TextStyle(color: Colors.grey.shade600),
+            filled: true,
+            fillColor: const Color(0xFF13131F),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
@@ -112,7 +122,7 @@ class _DynamicTextFilter extends StatelessWidget {
   }
 }
 
-class _DynamicSelectFilter extends StatelessWidget {
+class _DynamicSelectFilter extends StatefulWidget {
   final FilterDefinition filter;
   final dynamic value;
   final ValueChanged<dynamic> onChanged;
@@ -124,16 +134,41 @@ class _DynamicSelectFilter extends StatelessWidget {
   });
 
   @override
+  State<_DynamicSelectFilter> createState() => _DynamicSelectFilterState();
+}
+
+class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
+  late TextEditingController _searchController;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Determine if we're in multi-select mode (value is List) or single-select
     final selectedValues =
-        value is List ? List<String>.from(value as List) : <String>[];
+        widget.value is List ? List<String>.from(widget.value as List) : <String>[];
 
     // If no options, show disabled text
-    if (filter.options == null || filter.options!.isEmpty) {
+    if (widget.filter.options == null || widget.filter.options!.isEmpty) {
       return ListTile(
         title: Text(
-          filter.label,
+          widget.filter.label,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: const Text(
@@ -145,9 +180,14 @@ class _DynamicSelectFilter extends StatelessWidget {
       );
     }
 
+    // Filter options based on search query
+    final filteredOptions = widget.filter.options!.where((option) {
+      return option.toString().toLowerCase().contains(_searchQuery);
+    }).toList();
+
     return ExpansionTile(
       title: Text(
-        filter.label,
+        widget.filter.label,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: selectedValues.isNotEmpty
@@ -162,33 +202,61 @@ class _DynamicSelectFilter extends StatelessWidget {
       tilePadding: EdgeInsets.zero,
       children: [
         Container(
-          constraints: const BoxConstraints(maxHeight: 200),
+          constraints: const BoxConstraints(maxHeight: 250),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            color: const Color(0xFF13131F),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: filter.options!.length,
-            itemBuilder: (context, index) {
-              final option = filter.options![index].toString();
-              final isSelected = selectedValues.contains(option);
-              return CheckboxListTile(
-                title: Text(option, style: const TextStyle(fontSize: 13)),
-                value: isSelected,
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                onChanged: (bool? selected) {
-                  final newValues = List<String>.from(selectedValues);
-                  if (selected == true) {
-                    newValues.add(option);
-                  } else {
-                    newValues.remove(option);
-                  }
-                  onChanged(newValues.isEmpty ? null : newValues);
-                },
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search ${widget.filter.label}...',
+                    hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey.shade600),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filteredOptions.length,
+                  itemBuilder: (context, index) {
+                    final option = filteredOptions[index].toString();
+                    final isSelected = selectedValues.contains(option);
+                    return CheckboxListTile(
+                      title: Text(option, style: const TextStyle(fontSize: 13)),
+                      value: isSelected,
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (bool? selected) {
+                        final newValues = List<String>.from(selectedValues);
+                        if (selected == true) {
+                          newValues.add(option);
+                        } else {
+                          newValues.remove(option);
+                        }
+                        widget.onChanged(newValues.isEmpty ? null : newValues);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],

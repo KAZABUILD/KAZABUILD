@@ -87,25 +87,65 @@ class ComponentService {
 
   ComponentService(this._dio);
 
-  /// Fetches all available components of a specific type by traversing each page.
+  /// Fetches all available components of a specific type.
+  /// Optimized to fetch pages in parallel to reduce loading time.
   Future<List<BaseComponent>> getComponents(ComponentType componentType) async {
-    final List<BaseComponent> allComponents = [];
-    var page = 1;
-    var hasMore = true;
+    try {
+      // 1. Get total count first to determine number of pages
+      final totalCount = await getComponentsCount(componentType);
+      
+      if (totalCount == 0) return [];
 
-    while (hasMore) {
-      final pageResult = await getComponentsPage(
-        componentType,
-        page: page,
-        pageLength: _bulkFetchPageLength,
-      );
+      // 2. Calculate total pages needed
+      final totalPages = (totalCount / _bulkFetchPageLength).ceil();
+      
+      // If items fit in one page, fetch directly (saves overhead)
+      if (totalPages == 1) {
+        final pageResult = await getComponentsPage(
+          componentType,
+          page: 1,
+          pageLength: _bulkFetchPageLength,
+        );
+        return pageResult.items;
+      }
 
-      allComponents.addAll(pageResult.items);
-      hasMore = pageResult.hasMore && pageResult.items.isNotEmpty;
-      page++;
+      // 3. Fetch all pages in parallel
+      final futures = List.generate(totalPages, (index) {
+        return getComponentsPage(
+          componentType,
+          page: index + 1,
+          pageLength: _bulkFetchPageLength,
+        );
+      });
+
+      final results = await Future.wait(futures);
+
+      // 4. Flatten results and return
+      return results.expand((pageResult) => pageResult.items).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in optimized getComponents: $e. Falling back to sequential.');
+      }
+      
+      // Fallback to sequential method if something goes wrong (e.g. count API fails)
+      final List<BaseComponent> allComponents = [];
+      var page = 1;
+      var hasMore = true;
+
+      while (hasMore) {
+        final pageResult = await getComponentsPage(
+          componentType,
+          page: page,
+          pageLength: _bulkFetchPageLength,
+        );
+
+        allComponents.addAll(pageResult.items);
+        hasMore = pageResult.hasMore && pageResult.items.isNotEmpty;
+        page++;
+      }
+
+      return allComponents;
     }
-
-    return allComponents;
   }
 
   /// Fetches the count of components matching the criteria.

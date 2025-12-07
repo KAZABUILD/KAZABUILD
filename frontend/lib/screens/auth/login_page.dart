@@ -553,15 +553,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             const SizedBox(height: 20),
 
             // Social login button - Only Google
-            SocialButton(
-              text: 'Continue with Google',
-              iconPath: 'google_icon.svg.webp',
-              onPressed: authState.isLoading
-                  ? null
-                  : () async {
-                      await ref.read(authProvider.notifier).signInWithGoogleWeb();
-                    },
-            ),
+            // SocialButton(
+            //   text: 'Continue with Google',
+            //   iconPath: 'google_icon.svg.webp',
+            //   onPressed: authState.isLoading
+            //       ? null
+            //       : () async {
+            //           await ref.read(authProvider.notifier).signInWithGoogleWeb();
+            //         },
+            // ),
             ],
           ),
         ),

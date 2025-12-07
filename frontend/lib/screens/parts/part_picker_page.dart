@@ -513,12 +513,38 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       componentPagingProvider(widget.componentType).notifier,
     );
 
+    final isLargeScreen = MediaQuery.of(context).size.width >= 1300;
+
     return Scaffold(
-      // TODO: Implement a responsive layout that switches to a single-column view on mobile.
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
+      endDrawer: !isLargeScreen
+          ? Drawer(
+              width: 300,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              child: SafeArea(
+                child: Builder(
+                  builder: (context) {
+                    final products = pagingState.items;
+                    final List<PcComponent> currentBuild =
+                        widget.currentBuild ?? ref.watch(buildProvider);
+                    return _LeftPanel(
+                      enableCompatibilityFilter: _enableCompatibilityFilter,
+                      onCompatibilityFilterChanged: (val) {
+                        setState(() {
+                          _enableCompatibilityFilter = val;
+                        });
+                      },
+                      currentBuild: currentBuild,
+                      allProducts: products,
+                      componentType: widget.componentType,
+                    );
+                  },
+                ),
+              ),
+            )
+          : null,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      // The main layout is a Column containing the navigation bar and the page body.
       body: Column(
         children: [
           CustomNavigationBar(scaffoldKey: _scaffoldKey),
@@ -531,137 +557,83 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// The left panel containing the build summary and all filter options.
-                  SizedBox(
-                    width: 280,
-                    child: Builder(
-                      builder: (context) {
-                        final products = pagingState.items;
-                        if (pagingState.errorMessage != null &&
-                            products.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        // Show component details dialog if componentId is provided and not shown yet
-                        if (widget.componentId != null &&
-                            widget.componentId != _shownComponentId &&
-                            !pagingState.isInitialLoading &&
-                            !pagingState.isLoading) {
-                          // Mark as shown to prevent multiple dialogs BEFORE async operation
-                          final componentIdToShow = widget.componentId!;
-                          _shownComponentId = componentIdToShow;
-                          
-                          if (kDebugMode) {
-                            debugPrint(
-                              'PartPickerPage: Preparing to show component details for ID: $componentIdToShow',
-                            );
-                            debugPrint(
-                              'PartPickerPage: Products count: ${products.length}',
-                            );
+                  if (isLargeScreen)
+                    SizedBox(
+                      width: 280,
+                      child: Builder(
+                        builder: (context) {
+                          final products = pagingState.items;
+                          if (pagingState.errorMessage != null &&
+                              products.isEmpty) {
+                            return const SizedBox.shrink();
                           }
-                          
-                          WidgetsBinding.instance.addPostFrameCallback((_) async {
-                            if (!mounted || componentIdToShow != widget.componentId) {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Dialog cancelled - widget not mounted or componentId changed',
-                                );
-                              }
-                              return;
-                            }
-                            
-                            // Try to find component in current products first
-                            BaseComponent? componentToShow;
-                            try {
-                              componentToShow = products.firstWhere(
-                                (p) => p.id == componentIdToShow,
-                              );
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Component found in current page: ${componentToShow.name}',
-                                );
-                              }
-                            } catch (e) {
-                              // Component not found in current page, fetch it from API
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Component not found in current page (${products.length} products), fetching from API: $componentIdToShow',
-                                );
-                              }
-                              try {
-                                final componentService =
-                                    ref.read(componentServiceProvider);
-                                componentToShow =
-                                    await componentService.getComponentById(
-                                  componentIdToShow,
-                                );
-                                if (kDebugMode) {
-                                  debugPrint(
-                                    'PartPickerPage: Component fetched from API: ${componentToShow.name}',
-                                  );
-                                }
-                              } catch (fetchError) {
-                                if (kDebugMode) {
-                                  debugPrint(
-                                    'PartPickerPage: Error fetching component $componentIdToShow: $fetchError',
-                                  );
-                                }
-                                // Show error snackbar
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Component not found',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                                // Reset _shownComponentId on error so user can try again
-                                _shownComponentId = null;
+
+                          if (widget.componentId != null &&
+                              widget.componentId != _shownComponentId &&
+                              !pagingState.isInitialLoading &&
+                              !pagingState.isLoading) {
+                            final componentIdToShow = widget.componentId!;
+                            _shownComponentId = componentIdToShow;
+
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) async {
+                              if (!mounted ||
+                                  componentIdToShow != widget.componentId) {
                                 return;
                               }
-                            }
-                            
-                            // Show dialog with component details
-                            if (mounted) {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Showing component details dialog for: ${componentToShow.name}',
-                                );
-                              }
-                              _showSpecsDialog(context, componentToShow);
-                            } else {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Widget not mounted, cannot show dialog',
-                                );
-                              }
-                            }
-                          });
-                        }
 
-                        // Get current build from provider if not provided
-                        final List<PcComponent> currentBuild =
-                            widget.currentBuild ?? ref.watch(buildProvider);
+                              BaseComponent? componentToShow;
+                              try {
+                                componentToShow = products.firstWhere(
+                                  (p) => p.id == componentIdToShow,
+                                );
+                              } catch (e) {
+                                try {
+                                  final componentService =
+                                      ref.read(componentServiceProvider);
+                                  componentToShow =
+                                      await componentService.getComponentById(
+                                    componentIdToShow,
+                                  );
+                                } catch (fetchError) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Component not found'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  _shownComponentId = null;
+                                  return;
+                                }
+                              }
 
-                        return _LeftPanel(
-                          enableCompatibilityFilter: _enableCompatibilityFilter,
-                          onCompatibilityFilterChanged: (val) {
-                            setState(() {
-                              _enableCompatibilityFilter = val;
+                              if (mounted) {
+                                _showSpecsDialog(context, componentToShow);
+                              }
                             });
-                          },
-                          currentBuild: currentBuild,
-                          allProducts: products,
-                          componentType: widget.componentType,
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 32),
+                          }
 
-                  /// The right panel displaying the list of filtered products.
+                          final List<PcComponent> currentBuild =
+                              widget.currentBuild ?? ref.watch(buildProvider);
+
+                          return _LeftPanel(
+                            enableCompatibilityFilter:
+                                _enableCompatibilityFilter,
+                            onCompatibilityFilterChanged: (val) {
+                              setState(() {
+                                _enableCompatibilityFilter = val;
+                              });
+                            },
+                            currentBuild: currentBuild,
+                            allProducts: products,
+                            componentType: widget.componentType,
+                          );
+                        },
+                      ),
+                    ),
+                  if (isLargeScreen) const SizedBox(width: 32),
                   Expanded(
                     child: Builder(
                       builder: (context) {
@@ -679,9 +651,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'Failed to load components',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -699,7 +670,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                           );
                         }
 
-                        // Get current build from provider if not provided
                         final List<PcComponent> currentBuild =
                             widget.currentBuild ?? ref.watch(buildProvider);
 
@@ -732,8 +702,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             currentPage: _currentPage,
                             count: pagingState.totalCount,
                             hasMore: pagingState.hasMore,
-                            isLoading:
-                                pagingState.isLoading ||
+                            isLoading: pagingState.isLoading ||
                                 pagingState.isInitialLoading,
                             isRefreshing: pagingState.isRefreshing,
                             onRefresh: pagingNotifier.refresh,
@@ -744,6 +713,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             onCompare: _showComparisonDialog,
                             onClearComparison: _clearComparisonSelection,
                             scrollController: _scrollController,
+                            showCompare: isLargeScreen,
+                            onOpenFilters: !isLargeScreen
+                                ? () {
+                                    _scaffoldKey.currentState?.openEndDrawer();
+                                  }
+                                : null,
                           );
                         }
 
@@ -850,8 +825,9 @@ class _LeftPanel extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: const Color(0xFF13131F),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
             child: DynamicFilterPanel(componentType: componentType),
           ),
@@ -879,8 +855,9 @@ class _BuildSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color(0xFF13131F),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         // Each piece of information is displayed in a `_SummaryRow`.
@@ -890,7 +867,7 @@ class _BuildSummary extends StatelessWidget {
           _SummaryRow(
             label: 'Total Price:',
             value: '\$${totalPrice.toStringAsFixed(2)}',
-            valueColor: AppColorsDark.textPurple,
+            valueColor: const Color(0xFF00E5FF),
           ),
           const SizedBox(height: 8),
           _SummaryRow(label: 'Est. Wattage:', value: '${estimatedWattage}W'),
@@ -949,6 +926,8 @@ class _ProductList extends ConsumerWidget {
   final VoidCallback onCompare;
   final VoidCallback onClearComparison;
   final ScrollController scrollController;
+  final bool showCompare;
+  final VoidCallback? onOpenFilters;
 
   const _ProductList({
     required this.componentType,
@@ -968,6 +947,8 @@ class _ProductList extends ConsumerWidget {
     required this.onClearComparison,
     required this.scrollController,
     this.onComponentSelected,
+    this.showCompare = true,
+    this.onOpenFilters,
   });
 
   @override
@@ -984,15 +965,17 @@ class _ProductList extends ConsumerWidget {
           onCompare: onCompare,
           onClearComparison: onClearComparison,
           onClearFilters: () {
-             ref.read(activeFiltersProvider(componentType).notifier).clearAll();
+            ref.read(activeFiltersProvider(componentType).notifier).clearAll();
           },
+          showCompare: showCompare,
+          onOpenFilters: onOpenFilters,
         ),
         const SizedBox(height: 24),
         if (isRefreshing || isLoading)
           const LinearProgressIndicator(minHeight: 2),
         if (isRefreshing || isLoading) const SizedBox(height: 12),
-        _ProductListHeader(componentType: componentType),
-        const SizedBox(height: 8),
+        if (showCompare) _ProductListHeader(componentType: componentType),
+        if (showCompare) const SizedBox(height: 8),
         Expanded(
           child: products.isEmpty
               ? RefreshIndicator.adaptive(
@@ -1024,6 +1007,7 @@ class _ProductList extends ConsumerWidget {
                     currentPage: currentPage,
                     hasMore: hasMore,
                     onPageChanged: onPageChanged,
+                    showCompare: showCompare,
                   ),
                 ),
         ),
@@ -1044,6 +1028,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
   final int currentPage;
   final bool hasMore;
   final void Function(int page) onPageChanged;
+  final bool showCompare;
 
   const _ProductListWithCompatibility({
     required this.products,
@@ -1056,6 +1041,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
     required this.hasMore,
     required this.onPageChanged,
     this.onComponentSelected,
+    this.showCompare = true,
   });
 
   @override
@@ -1077,8 +1063,15 @@ class _ProductListWithCompatibility extends ConsumerWidget {
         }
 
         final product = products[index];
-
         final onComponentSelected = this.onComponentSelected;
+
+        if (!showCompare) {
+          return _MobileProductCard(
+            product: product,
+            onComponentSelected: onComponentSelected,
+          );
+        }
+
         Widget row = _GenericProductRow(
           product: product,
           onComponentSelected: onComponentSelected,
@@ -1234,7 +1227,9 @@ class _TopBar extends StatelessWidget {
   final int maxComparisonItems;
   final VoidCallback onCompare;
   final VoidCallback onClearComparison;
-  final VoidCallback onClearFilters; // Add this callback
+  final VoidCallback onClearFilters;
+  final bool showCompare;
+  final VoidCallback? onOpenFilters;
 
   const _TopBar({
     required this.searchController,
@@ -1244,33 +1239,95 @@ class _TopBar extends StatelessWidget {
     required this.maxComparisonItems,
     required this.onCompare,
     required this.onClearComparison,
-    required this.onClearFilters, // Require it
+    required this.onClearFilters,
+    this.showCompare = true,
+    this.onOpenFilters,
   });
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Make this layout responsive for mobile.
+    if (!showCompare) {
+      // Mobile Layout
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Compatible Products ($count)',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              FilledButton.icon(
+                onPressed: onOpenFilters,
+                icon: const Icon(Icons.filter_list),
+                label: const Text('Filters'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2A2A35),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Search processors...',
+              hintStyle: TextStyle(color: Colors.grey.shade600),
+              prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+              filled: true,
+              fillColor: const Color(0xFF13131F),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      );
+    }
+
+    // Desktop Layout
     return Row(
       children: [
-        Text(
-          'Compatible Products ($count) • Page $currentPage',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Expanded(
+          flex: 2,
+          child: Text(
+            'Compatible Products ($count) • Page $currentPage',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const Spacer(),
         SizedBox(
           width: 250,
           child: TextField(
-            // The search input field.
             controller: searchController,
             decoration: InputDecoration(
               hintText: 'Search processors...',
               hintStyle: TextStyle(color: Colors.grey.shade500),
               prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
               filled: true,
-              fillColor: AppColorsDark.backgroundTertiary,
+              fillColor: const Color(0xFF13131F),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             ),
@@ -1278,8 +1335,7 @@ class _TopBar extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         OutlinedButton.icon(
-          onPressed:
-              selectedComparisonCount >= 2 ? onCompare : null,
+          onPressed: selectedComparisonCount >= 2 ? onCompare : null,
           icon: const Icon(Icons.compare_arrows),
           label: Text(
             'Compare ($selectedComparisonCount/$maxComparisonItems)',
@@ -1301,7 +1357,6 @@ class _TopBar extends StatelessWidget {
           ),
         ],
         const SizedBox(width: 16),
-        // A button to clear all filters.
         ElevatedButton.icon(
           onPressed: onClearFilters,
           icon: const Icon(Icons.filter_alt_off, size: 20),
@@ -1440,20 +1495,26 @@ abstract class _ProductRow extends ConsumerWidget {
   final Function(BaseComponent)? onComponentSelected;
   final bool isSelectedForCompare;
   final void Function(bool)? onCompareToggle;
+  final bool showCompare;
+
   const _ProductRow({
     required this.product,
     this.onComponentSelected,
     this.isSelectedForCompare = false,
     this.onCompareToggle,
+    this.showCompare = true,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The base structure for every product row is a Card with a Row inside.
     return Card(
-      color: Theme.of(context).colorScheme.surface,
+      color: const Color(0xFF13131F),
       margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      ),
       child: InkWell(
         onTap: () => _showSpecsDialog(context, product),
         borderRadius: BorderRadius.circular(8),
@@ -1462,13 +1523,15 @@ abstract class _ProductRow extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Checkbox(
-                value: isSelectedForCompare,
-                onChanged: onCompareToggle == null
-                    ? null
-                    : (value) => onCompareToggle!(value ?? false),
-              ),
-              const SizedBox(width: 8),
+              if (showCompare) ...[
+                Checkbox(
+                  value: isSelectedForCompare,
+                  onChanged: onCompareToggle == null
+                      ? null
+                      : (value) => onCompareToggle!(value ?? false),
+                ),
+                const SizedBox(width: 8),
+              ],
               ...buildRow(context, ref),
             ],
           ),
@@ -1616,7 +1679,7 @@ abstract class _ProductRow extends ConsumerWidget {
           Text(
             '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
             style: const TextStyle(
-              color: AppColorsDark.buttonGreen,
+              color: Color(0xFF00E5FF),
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -1640,7 +1703,7 @@ abstract class _ProductRow extends ConsumerWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColorsDark.buttonGreen,
+              backgroundColor: const Color(0xFF00E676),
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1648,7 +1711,7 @@ abstract class _ProductRow extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add'),
+            label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1663,11 +1726,13 @@ class _CpuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1697,11 +1762,13 @@ class _MotherboardProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1725,11 +1792,13 @@ class _RamProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1756,11 +1825,13 @@ class _StorageProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1784,11 +1855,13 @@ class _PsuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1812,11 +1885,13 @@ class _CaseProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1840,11 +1915,13 @@ class _GpuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1873,11 +1950,13 @@ class _CoolerProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1910,11 +1989,13 @@ class _CaseFanProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1949,11 +2030,13 @@ class _MonitorProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -1981,11 +2064,13 @@ class _GenericProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -2702,5 +2787,315 @@ class _ComponentSpecsDialog extends ConsumerWidget {
     ];
 
     return _buildSpecSection('General Information', specs, theme);
+  }
+}
+
+// Helper for display name
+String _getComponentTypeDisplay(ComponentType type) {
+  switch (type) {
+    case ComponentType.cpu: return 'Desktop Processor';
+    case ComponentType.gpu: return 'Graphics Card';
+    case ComponentType.motherboard: return 'Motherboard';
+    case ComponentType.ram: return 'Memory';
+    case ComponentType.storage: return 'Storage';
+    case ComponentType.psu: return 'Power Supply';
+    case ComponentType.pcCase: return 'Case';
+    case ComponentType.cooler: return 'CPU Cooler';
+    case ComponentType.caseFan: return 'Case Fan';
+    case ComponentType.monitor: return 'Monitor';
+  }
+}
+
+Map<String, String> buildComparisonMetrics(BaseComponent component) {
+  final specs = <String, String>{};
+  switch (component.type) {
+    case ComponentType.cpu:
+      final cpu = component as CPUComponent;
+      specs['Cores'] = '${cpu.coreTotal}';
+      specs['Base/Boost'] =
+          '${cpu.basePerformanceSpeed ?? '-'} / ${cpu.boostPerformanceSpeed ?? '-'} GHz';
+      specs['Arch'] = cpu.microarchitecture;
+      specs['TDP'] = '${cpu.thermalDesignPower.toStringAsFixed(0)}W';
+      specs['Graphics'] = cpu.graphics;
+      break;
+    case ComponentType.gpu:
+      final gpu = component as GPUComponent;
+      specs['Chipset'] = gpu.chipset;
+      specs['VRAM'] = '${gpu.videoMemoryAmount.toStringAsFixed(0)} GB';
+      specs['Base/Boost'] =
+          '${gpu.coreBaseClockSpeed.toStringAsFixed(0)}/${gpu.coreBoostClockSpeed.toStringAsFixed(0)} MHz';
+      specs['Length'] = '${gpu.length.toStringAsFixed(0)} mm';
+      break;
+    case ComponentType.motherboard:
+      final mb = component as MotherboardComponent;
+      specs['Socket'] = mb.socketType;
+      specs['Form Factor'] = mb.formFactor;
+      specs['RAM Slots'] = mb.ramSlotsAmount.toString();
+      specs['Chipset'] = mb.chipsetType;
+      break;
+    case ComponentType.ram:
+      final ram = component as MemoryComponent;
+      specs['Speed'] = '${ram.speed.toStringAsFixed(0)} MHz';
+      specs['Type'] = ram.ramType;
+      specs['Modules'] =
+          '${ram.moduleQuantity}x${ram.moduleCapacity.toStringAsFixed(0)}GB';
+      break;
+    case ComponentType.storage:
+      final storage = component as StorageComponent;
+      specs['Capacity'] = '${storage.capacity.toStringAsFixed(0)} GB';
+      specs['Type'] = storage.driveType;
+      specs['Interface'] = storage.interface;
+      break;
+    case ComponentType.psu:
+      final psu = component as PowerSupplyComponent;
+      specs['Wattage'] = '${psu.powerOutput.toStringAsFixed(0)}W';
+      specs['Efficiency'] = psu.efficiencyRating ?? 'N/A';
+      specs['Modularity'] = psu.modularityType;
+      break;
+    case ComponentType.pcCase:
+      final pcCase = component as CaseComponent;
+      specs['Form Factor'] = pcCase.formFactor;
+      specs['Max GPU'] = '${pcCase.maxVideoCardLength.toStringAsFixed(0)} mm';
+      specs['Max Cooler'] = '${pcCase.maxCPUCoolerHeight} mm';
+      break;
+    case ComponentType.cooler:
+      final cooler = component as CoolerComponent;
+      specs['Type'] = cooler.isWaterCooled ? 'Water' : 'Air';
+      specs['Height'] = '${cooler.height.toStringAsFixed(0)} mm';
+      specs['Fan Qty'] = cooler.fanQuantity.toString();
+      break;
+    case ComponentType.caseFan:
+      final fan = component as CaseFanComponent;
+      specs['Size'] = '${fan.size.toStringAsFixed(0)} mm';
+      specs['Airflow'] = fan.maxAirflow != null
+          ? '${fan.minAirflow.toStringAsFixed(0)}-${fan.maxAirflow!.toStringAsFixed(0)} CFM'
+          : '${fan.minAirflow.toStringAsFixed(0)} CFM';
+      specs['Noise'] = fan.maxNoiseLevel != null
+          ? '${fan.minNoiseLevel.toStringAsFixed(1)}-${fan.maxNoiseLevel!.toStringAsFixed(1)} dBA'
+          : '${fan.minNoiseLevel.toStringAsFixed(1)} dBA';
+      break;
+    case ComponentType.monitor:
+      final monitor = component as MonitorComponent;
+      specs['Size'] = '${monitor.screenSize.toStringAsFixed(1)}"';
+      specs['Resolution'] =
+          '${monitor.horizontalResolution}x${monitor.verticalResolution}';
+      specs['Refresh Rate'] =
+          '${monitor.maxRefreshRate.toStringAsFixed(0)} Hz';
+      break;
+  }
+  return specs;
+}
+
+class _MobileProductCard extends ConsumerWidget {
+  final BaseComponent product;
+  final Function(BaseComponent)? onComponentSelected;
+
+  const _MobileProductCard({
+    required this.product,
+    this.onComponentSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final specs = buildComparisonMetrics(product);
+    final typeLabel = _getComponentTypeDisplay(product.type);
+
+    // Image logic
+    final rawImageUrl = product.imageUrl.trim();
+    String? imageUrl;
+    if (rawImageUrl.isNotEmpty) {
+      final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      );
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') ||
+          rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
+
+    return Card(
+      color: const Color(0xFF13131F), // Dark card background like reference
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      ),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: () {
+            showDialog(
+            context: context,
+            builder: (context) => _ComponentSpecsDialog(component: product),
+            );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Container
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (c, o, s) => const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey),
+                          )
+                        : const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  // Title and Subtitle
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          typeLabel,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Specs Grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildSpecsGrid(specs, product),
+            ),
+            
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Colors.white10),
+            
+            // Price and Action
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF00E5FF), // Cyan color from reference
+                    ),
+                  ),
+                  SizedBox(
+                    height: 36,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                           if (onComponentSelected != null) {
+                onComponentSelected!(product);
+                Navigator.pop(context);
+              } else {
+                ref.read(buildProvider.notifier).addComponent(product);
+                context.go('/build-now');
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E676), // Green color
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecsGrid(Map<String, String> specs, BaseComponent product) {
+    final items = specs.entries.toList();
+    final displayItems = items.take(5).toList();
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            ...displayItems.map((e) => _buildSpecItem(e.key, e.value)),
+             _buildRatingItem(product.averageRating ?? 0),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildSpecItem(String label, String value) {
+      return SizedBox(
+          width: 90, 
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                  Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+          ),
+      );
+  }
+
+   Widget _buildRatingItem(double rating) {
+      return SizedBox(
+          width: 90,
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                  Text('Rating', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  _RatingStars(rating: rating),
+              ],
+          ),
+      );
   }
 }
