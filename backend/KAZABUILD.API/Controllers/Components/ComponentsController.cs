@@ -2046,6 +2046,7 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by GPU Component class variables
                         gpuQuery = gpuQuery.Where(c =>
+                            (gpuDto.Chipset == null || gpuDto.Chipset.Contains(c.Chipset)) &&
                             (gpuDto.VideoMemoryType == null || gpuDto.VideoMemoryType.Contains(c.VideoMemoryType)) &&
                             (gpuDto.CoolingType == null || gpuDto.CoolingType.Contains(c.CoolingType)) &&
                             (gpuDto.FrameSync == null || gpuDto.FrameSync.Contains(c.FrameSync)) &&
@@ -2076,7 +2077,7 @@ namespace KAZABUILD.API.Controllers.Components
                         //Apply search for the GPU Component
                         if (!string.IsNullOrWhiteSpace(dto.Query))
                         {
-                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Chipset, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
                         }
 
                         query = gpuQuery;
@@ -3101,6 +3102,7 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by GPU Component class variables
                         gpuQuery = gpuQuery.Where(c =>
+                            (gpuDto.Chipset == null || gpuDto.Chipset.Contains(c.Chipset)) &&
                             (gpuDto.VideoMemoryType == null || gpuDto.VideoMemoryType.Contains(c.VideoMemoryType)) &&
                             (gpuDto.CoolingType == null || gpuDto.CoolingType.Contains(c.CoolingType)) &&
                             (gpuDto.FrameSync == null || gpuDto.FrameSync.Contains(c.FrameSync)) &&
@@ -3131,7 +3133,7 @@ namespace KAZABUILD.API.Controllers.Components
                         //Apply search for the GPU Component
                         if (!string.IsNullOrWhiteSpace(dto.Query))
                         {
-                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Chipset, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
                         }
 
                         query = gpuQuery;

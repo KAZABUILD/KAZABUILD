@@ -7,6 +7,7 @@ library;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -24,15 +25,15 @@ String _mapTypeToDiscriminator(ComponentType type) {
     case ComponentType.motherboard:
       return 'Motherboard';
     case ComponentType.ram:
-      return 'Memory';
+      return 'Memory'; // Assuming backend uses Memory
     case ComponentType.storage:
       return 'Storage';
     case ComponentType.psu:
-      return 'PowerSupply';
+      return 'PowerSupply'; // Assuming backend uses PowerSupply
     case ComponentType.cooler:
       return 'Cooler';
     case ComponentType.pcCase:
-      return 'Case';
+      return 'Case'; // Assuming backend uses Case
     case ComponentType.caseFan:
       return 'CaseFan';
     case ComponentType.monitor:
@@ -49,15 +50,15 @@ String _mapTypeToBackendEnum(ComponentType type) {
     case ComponentType.motherboard:
       return 'MOTHERBOARD';
     case ComponentType.ram:
-      return 'MEMORY';
+      return 'MEMORY'; // Reverted back to MEMORY based on backend enum
     case ComponentType.storage:
       return 'STORAGE';
     case ComponentType.psu:
-      return 'POWER_SUPPLY';
+      return 'POWER_SUPPLY'; // Reverted back to POWER_SUPPLY based on backend enum
     case ComponentType.cooler:
       return 'COOLER';
     case ComponentType.pcCase:
-      return 'CASE';
+      return 'CASE'; // Correct as per backend enum
     case ComponentType.caseFan:
       return 'CASE_FAN';
     case ComponentType.monitor:
@@ -105,6 +106,46 @@ class ComponentService {
     }
 
     return allComponents;
+  }
+
+  /// Fetches the count of components matching the criteria.
+  Future<int> getComponentsCount(
+    ComponentType componentType, {
+    Map<String, dynamic>? filters,
+  }) async {
+    final url = '$apiBaseUrl/Components/get-count';
+    final body = _buildRequestBody(
+      componentType,
+      page: 1,
+      pageLength: 1,
+      filters: filters,
+    );
+    // Ensure Paging is false to get the total count of matching items
+    body['Paging'] = false;
+
+    if (kDebugMode) {
+      print('Sending count request to $url');
+    }
+
+    try {
+      final response = await _dio.post(url, data: body);
+
+      if (response.statusCode == 200) {
+        return (response.data as num).toInt();
+      } else {
+        if (kDebugMode) {
+          print(
+            'Failed to get component count: Status code ${response.statusCode}',
+          );
+        }
+        return 0;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching component count: $e');
+      }
+      return 0;
+    }
   }
 
   /// Fetches a single component by its ID.
@@ -184,12 +225,16 @@ class ComponentService {
     ComponentType componentType, {
     int page = 1,
     int pageLength = _defaultComponentPageLength,
+    Map<String, dynamic>? filters,
   }) async {
     final url = '$apiBaseUrl/Components/get';
+    // Ensure paging parameters are set correctly even if null is passed
+    // Backend expects PageLength to be set if Paging is true
     final body = _buildRequestBody(
       componentType,
       page: page,
       pageLength: pageLength,
+      filters: filters,
     );
 
     if (kDebugMode) {
@@ -266,14 +311,33 @@ class ComponentService {
     ComponentType componentType, {
     required int page,
     required int pageLength,
+    Map<String, dynamic>? filters,
   }) {
-    return {
-      r'$type': _mapTypeToDiscriminator(componentType),
-      'Type': [_mapTypeToBackendEnum(componentType)],
+    final discriminator = _mapTypeToDiscriminator(componentType);
+    final baseBody = {
+      r'$type': discriminator, // Ensure this matches exactly what backend expects
       'Paging': true,
       'Page': page,
       'PageLength': pageLength,
+      // Some backend implementations might need Type as well, keeping it for compatibility
+      'Type': [_mapTypeToBackendEnum(componentType)], 
     };
+
+    if (filters != null && filters.isNotEmpty) {
+      // Merge filters into the request body.
+      // We iterate through filters to handle special types if necessary (e.g. ranges)
+      filters.forEach((key, value) {
+        if (value is RangeValues) {
+          // Backend expects ranges as {Key}Start and {Key}End
+          baseBody['${key}Start'] = value.start;
+          baseBody['${key}End'] = value.end;
+        } else {
+          baseBody[key] = value;
+        }
+      });
+    }
+
+    return baseBody;
   }
 
   List<BaseComponent> _parseComponents(
@@ -358,6 +422,18 @@ class ComponentService {
     // Flatten the list of lists into a single list
     return results.expand((list) => list).toList();
   }
+
+  /// Fetches counts for all component types from the backend.
+  Future<Map<ComponentType, int>> getAllComponentCounts() async {
+    // Fetch counts for all component types in parallel
+    final futures = ComponentType.values.map((type) async {
+      final count = await getComponentsCount(type);
+      return MapEntry(type, count);
+    });
+
+    final results = await Future.wait(futures);
+    return Map.fromEntries(results);
+  }
 }
 
 /// Provider for ComponentService using authenticated Dio.
@@ -381,6 +457,14 @@ final allComponentsProvider = FutureProvider.autoDispose<List<BaseComponent>>((
   return componentService.getAllComponents();
 });
 
+/// Provider that fetches counts for all component types.
+final allComponentCountsProvider = FutureProvider.autoDispose<Map<ComponentType, int>>((
+  ref,
+) {
+  final componentService = ref.watch(componentServiceProvider);
+  return componentService.getAllComponentCounts();
+});
+
 @immutable
 class ComponentPagingState {
   static const Object _sentinel = Object();
@@ -393,6 +477,7 @@ class ComponentPagingState {
   final bool hasLoadedAtLeastOnce;
   final String? errorMessage;
   final bool isLoadMoreError;
+  final int totalCount;
 
   bool get isInitialLoading => !hasLoadedAtLeastOnce && isLoading;
 
@@ -404,6 +489,7 @@ class ComponentPagingState {
     required this.currentPage,
     required this.hasLoadedAtLeastOnce,
     required this.isLoadMoreError,
+    required this.totalCount,
     this.errorMessage,
   }) : items = List.unmodifiable(items);
 
@@ -416,6 +502,7 @@ class ComponentPagingState {
     hasLoadedAtLeastOnce: false,
     errorMessage: null,
     isLoadMoreError: false,
+    totalCount: 0,
   );
 
   ComponentPagingState copyWith({
@@ -426,6 +513,7 @@ class ComponentPagingState {
     int? currentPage,
     bool? hasLoadedAtLeastOnce,
     bool? isLoadMoreError,
+    int? totalCount,
     Object? errorMessage = _sentinel,
   }) {
     return ComponentPagingState(
@@ -439,6 +527,7 @@ class ComponentPagingState {
           ? this.errorMessage
           : errorMessage as String?,
       isLoadMoreError: isLoadMoreError ?? this.isLoadMoreError,
+      totalCount: totalCount ?? this.totalCount,
     );
   }
 }
@@ -455,38 +544,38 @@ class ComponentPagingNotifier extends StateNotifier<ComponentPagingState> {
   final int pageLength;
   bool _isDisposed = false;
 
-  Future<void> ensurePage(int page) {
+  Future<void> ensurePage(int page, {Map<String, dynamic>? filters}) {
     final safePage = page < 1 ? 1 : page;
     if (state.isLoading && state.currentPage == safePage) {
       return Future.value();
     }
     if (state.hasLoadedAtLeastOnce &&
         state.currentPage == safePage &&
-        !state.isRefreshing) {
+        !state.isRefreshing && filters == null) {
       return Future.value();
     }
-    return _loadPage(reset: true, targetPage: safePage);
+    return _loadPage(reset: true, targetPage: safePage, filters: filters);
   }
 
-  Future<void> goToPage(int page) => _loadPage(reset: true, targetPage: page);
+  Future<void> goToPage(int page, {Map<String, dynamic>? filters}) => _loadPage(reset: true, targetPage: page, filters: filters);
 
-  Future<void> refresh() {
+  Future<void> refresh({Map<String, dynamic>? filters}) {
     final targetPage = state.currentPage > 0 ? state.currentPage : 1;
-    return _loadPage(reset: true, targetPage: targetPage);
+    return _loadPage(reset: true, targetPage: targetPage, filters: filters);
   }
 
-  Future<void> loadMore() {
+  Future<void> loadMore({Map<String, dynamic>? filters}) {
     if (!state.hasMore) return Future.value();
     final nextPage = state.currentPage + 1;
-    return _loadPage(reset: true, targetPage: nextPage);
+    return _loadPage(reset: false, targetPage: nextPage, filters: filters);
   }
 
-  Future<void> retry() {
+  Future<void> retry({Map<String, dynamic>? filters}) {
     final targetPage = state.currentPage > 0 ? state.currentPage : 1;
-    return _loadPage(reset: true, targetPage: targetPage);
+    return _loadPage(reset: true, targetPage: targetPage, filters: filters);
   }
 
-  Future<void> _loadPage({required bool reset, int? targetPage}) async {
+  Future<void> _loadPage({required bool reset, int? targetPage, Map<String, dynamic>? filters}) async {
     if (_isDisposed) return;
     if (state.isLoading) return;
     if (!reset && !state.hasMore) return;
@@ -505,10 +594,26 @@ class ComponentPagingNotifier extends StateNotifier<ComponentPagingState> {
     );
 
     try {
+      int? newTotalCount;
+      // Fetch count only on reset (initial load or filter change)
+      if (reset) {
+        try {
+          newTotalCount = await _service.getComponentsCount(
+            _componentType,
+            filters: filters,
+          );
+        } catch (e) {
+          if (kDebugMode) {
+            print('Failed to fetch total count: $e');
+          }
+        }
+      }
+
       final pageResult = await _service.getComponentsPage(
         _componentType,
         page: nextPage,
         pageLength: pageLength,
+        filters: filters,
       );
 
       final updatedItems = reset
@@ -524,6 +629,7 @@ class ComponentPagingNotifier extends StateNotifier<ComponentPagingState> {
         hasLoadedAtLeastOnce: true,
         errorMessage: null,
         isLoadMoreError: false,
+        totalCount: newTotalCount ?? state.totalCount,
       );
     } catch (e) {
       final message = e is DioException
