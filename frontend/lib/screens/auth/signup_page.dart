@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,6 +23,7 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/utils/validators.dart';
 
 /// The main widget for the sign-up page.
 class SignUpPage extends ConsumerStatefulWidget {
@@ -54,8 +56,28 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _postalCodeController = TextEditingController();
   final _streetNumberController = TextEditingController();
 
+  // Focus nodes for keyboard navigation
+  final _usernameFocusNode = FocusNode();
+  final _displayNameFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
+  final _phoneNumberFocusNode = FocusNode();
+  final _birthDateFocusNode = FocusNode();
+  final _genderFocusNode = FocusNode();
+  final _countryFocusNode = FocusNode();
+  final _cityFocusNode = FocusNode();
+  final _streetFocusNode = FocusNode();
+  final _postalCodeFocusNode = FocusNode();
+  final _streetNumberFocusNode = FocusNode();
+  final _termsCheckboxFocusNode = FocusNode();
+  final _createAccountButtonFocusNode = FocusNode();
+
   /// The currently selected gender from the dropdown.
   String? _selectedGender;
+
+  /// Key for gender dropdown to programmatically open it
+  final GlobalKey _genderDropdownKey = GlobalKey();
 
   /// The currently selected country from the dropdown. (Currently unused in the UI).
   //String? _selectedCountry;
@@ -68,10 +90,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     'Prefer not to say',
   ];
 
-  /// Regular expression for validating email address format - moved outside build method
-  static final _emailRegex = RegExp(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-  );
 
   /// Tracks the loading state of the sign-up process.
   bool _isLoading = false;
@@ -93,7 +111,21 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       setState(() {
         _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
+      // After date selection, move to gender dropdown
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _genderFocusNode.requestFocus();
+        }
+      });
+    } else {
+      // If cancelled, unfocus
+      _birthDateFocusNode.unfocus();
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
@@ -111,6 +143,21 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     _streetController.dispose();
     _postalCodeController.dispose();
     _streetNumberController.dispose();
+    _usernameFocusNode.dispose();
+    _displayNameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
+    _phoneNumberFocusNode.dispose();
+    _birthDateFocusNode.dispose();
+    _genderFocusNode.dispose();
+    _countryFocusNode.dispose();
+    _cityFocusNode.dispose();
+    _streetFocusNode.dispose();
+    _postalCodeFocusNode.dispose();
+    _streetNumberFocusNode.dispose();
+    _termsCheckboxFocusNode.dispose();
+    _createAccountButtonFocusNode.dispose();
     super.dispose();
   }
 
@@ -505,12 +552,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 controller: _usernameController,
                                 label: 'Username',
                                 icon: Icons.person_outline,
+                                focusNode: _usernameFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => _emailFocusNode.requestFocus(),
                                 autovalidateMode: AutovalidateMode.disabled,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) return 'Please enter a username';
-                                  if (value.length < 8) return 'Username must be at least 8 characters long';
-                                  return null;
-                                },
+                                validator: Validators.username,
                               ),
                               const SizedBox(height: 16),
                               CustomTextField(
@@ -518,14 +564,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 label: 'Email address',
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
+                                focusNode: _emailFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
                                 autovalidateMode: AutovalidateMode.disabled,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty)
-                                    return 'Please enter your email address';
-                                  if (!_emailRegex.hasMatch(value))
-                                    return 'Please enter a valid email address';
-                                  return null;
-                                },
+                                validator: Validators.email,
                               ),
                               const SizedBox(height: 16),
                               CustomTextField(
@@ -533,11 +576,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 label: 'Password',
                                 icon: Icons.lock_outline,
                                 isPassword: true,
+                                focusNode: _passwordFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => _confirmPasswordFocusNode.requestFocus(),
                                 autovalidateMode: AutovalidateMode.disabled,
-                                validator: (value) =>
-                                    (value != null && value.length < 8)
-                                        ? 'Password must be at least 8 characters'
-                                        : null,
+                                validator: Validators.password,
                               ),
                             ],
                           ),
@@ -550,12 +593,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 controller: _displayNameController,
                                 label: 'Display Name',
                                 icon: Icons.badge_outlined,
+                                focusNode: _displayNameFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => _confirmPasswordFocusNode.requestFocus(),
                                 autovalidateMode: AutovalidateMode.disabled,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) return 'Please enter a display name';
-                                  if (value.length < 8) return 'Display Name must be at least 8 characters long';
-                                  return null;
-                                },
+                                validator: Validators.displayName,
                               ),
                               const SizedBox(height: 16),
                               CustomTextField(
@@ -563,14 +605,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 label: 'Confirm Password',
                                 icon: Icons.lock_outline,
                                 isPassword: true,
+                                focusNode: _confirmPasswordFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => _phoneNumberFocusNode.requestFocus(),
                                 autovalidateMode: AutovalidateMode.disabled,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty)
-                                    return 'Please confirm your password';
-                                  if (value != _passwordController.text)
-                                    return 'Passwords do not match';
-                                  return null;
-                                },
+                                validator: (value) => Validators.confirmPassword(value, _passwordController.text),
                               ),
                               const SizedBox(height: 16),
                               const SizedBox(height: 56), // Spacer to align with password field
@@ -587,24 +626,22 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           controller: _usernameController,
                           label: 'Username',
                           icon: Icons.person_outline,
+                          focusNode: _usernameFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _displayNameFocusNode.requestFocus(),
                           autovalidateMode: AutovalidateMode.disabled,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter a username';
-                            if (value.length < 8) return 'Username must be at least 8 characters long';
-                            return null;
-                          },
+                          validator: Validators.username,
                         ),
                         const SizedBox(height: 16),
                         CustomTextField(
                           controller: _displayNameController,
                           label: 'Display Name',
                           icon: Icons.badge_outlined,
+                          focusNode: _displayNameFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _emailFocusNode.requestFocus(),
                           autovalidateMode: AutovalidateMode.disabled,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter a display name';
-                            if (value.length < 8) return 'Display Name must be at least 8 characters long';
-                            return null;
-                          },
+                          validator: Validators.displayName,
                         ),
                         const SizedBox(height: 16),
                         CustomTextField(
@@ -612,14 +649,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           label: 'Email address',
                           icon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
+                          focusNode: _emailFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
                           autovalidateMode: AutovalidateMode.disabled,
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please enter your email address';
-                            if (!_emailRegex.hasMatch(value))
-                              return 'Please enter a valid email address';
-                            return null;
-                          },
+                          validator: Validators.email,
                         ),
                         const SizedBox(height: 16),
                         CustomTextField(
@@ -627,11 +661,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           label: 'Password',
                           icon: Icons.lock_outline,
                           isPassword: true,
+                          focusNode: _passwordFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _confirmPasswordFocusNode.requestFocus(),
                           autovalidateMode: AutovalidateMode.disabled,
-                          validator: (value) =>
-                              (value != null && value.length < 8)
-                                  ? 'Password must be at least 8 characters'
-                                  : null,
+                          validator: Validators.password,
                         ),
                         const SizedBox(height: 16),
                         CustomTextField(
@@ -639,14 +673,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           label: 'Confirm Password',
                           icon: Icons.lock_outline,
                           isPassword: true,
+                          focusNode: _confirmPasswordFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _phoneNumberFocusNode.requestFocus(),
                           autovalidateMode: AutovalidateMode.disabled,
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please confirm your password';
-                            if (value != _passwordController.text)
-                              return 'Passwords do not match';
-                            return null;
-                          },
+                          validator: (value) => Validators.confirmPassword(value, _passwordController.text),
                         ),
                       ],
                     );
@@ -659,7 +690,11 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 label: 'Phone Number (Optional)',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
+                focusNode: _phoneNumberFocusNode,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) => _birthDateFocusNode.requestFocus(),
                 autovalidateMode: AutovalidateMode.disabled,
+                validator: Validators.phoneNumber,
               ),
               const SizedBox(height: 16),
 
@@ -668,45 +703,76 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 label: 'Birth Date',
                 icon: Icons.cake_outlined,
                 controller: _birthDateController,
+                focusNode: _birthDateFocusNode,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) {
+                  // Open date picker when Enter is pressed (keyboard navigation)
+                  _selectDate(context);
+                },
                 readOnly: true,
                 autovalidateMode: AutovalidateMode.disabled,
                 onTap: () => _selectDate(context),
               ),
               const SizedBox(height: 16),
 
-              // Gender dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: InputDecoration(
-                  labelText: 'Gender',
-                  prefixIcon: const Icon(Icons.transgender_outlined),
-                  filled: true,
-                  fillColor: isDark
-                      ? AppColorsDark.backgroundTertiary
-                      : AppColorsLight.backgroundSecondary,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              // Gender dropdown - opens when focused via keyboard navigation
+              Focus(
+                focusNode: _genderFocusNode,
+                onKeyEvent: (node, event) {
+                  // When Enter or Space is pressed while focused, the dropdown will open
+                  // DropdownButtonFormField automatically handles this
+                  if (event is KeyDownEvent && 
+                      (event.logicalKey == LogicalKeyboardKey.enter || 
+                       event.logicalKey == LogicalKeyboardKey.space)) {
+                    // The dropdown's onTap will be called automatically
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: DropdownButtonFormField<String>(
+                  key: _genderDropdownKey,
+                  value: _selectedGender,
+                  decoration: InputDecoration(
+                    labelText: 'Gender',
+                    prefixIcon: const Icon(Icons.transgender_outlined),
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColorsDark.backgroundTertiary
+                        : AppColorsLight.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
-                ),
-                dropdownColor: isDark
-                    ? AppColorsDark.backgroundSecondary
-                    : Colors.white,
-                style: TextStyle(
-                  color: isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack,
-                ),
-                items: _genderOptions
-                    .map(
-                      (String value) => DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          ),
-                    )
-                    .toList(),
-                onChanged: (newValue) => setState(
-                  () => _selectedGender = newValue,
+                  dropdownColor: isDark
+                      ? AppColorsDark.backgroundSecondary
+                      : Colors.white,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                  items: _genderOptions
+                      .map(
+                        (String value) => DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            ),
+                      )
+                      .toList(),
+                  onTap: () {
+                    // Ensure focus is set when tapped
+                    _genderFocusNode.requestFocus();
+                  },
+                  onChanged: (newValue) {
+                    setState(() => _selectedGender = newValue);
+                    // Move to country field after selection
+                    Future.delayed(const Duration(milliseconds: 200), () {
+                      if (mounted) {
+                        _countryFocusNode.requestFocus();
+                      }
+                    });
+                  },
                 ),
               ),
 
@@ -730,6 +796,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 controller: _countryController,
                 label: 'Country (Optional)',
                 icon: Icons.public_outlined,
+                focusNode: _countryFocusNode,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) => _cityFocusNode.requestFocus(),
                 autovalidateMode: AutovalidateMode.disabled,
               ),
               const SizedBox(height: 16),
@@ -737,6 +806,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 controller: _cityController,
                 label: 'City (Optional)',
                 icon: Icons.location_city_outlined,
+                focusNode: _cityFocusNode,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) => _streetFocusNode.requestFocus(),
                 autovalidateMode: AutovalidateMode.disabled,
               ),
               const SizedBox(height: 16),
@@ -744,6 +816,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 controller: _streetController,
                 label: 'Street (Optional)',
                 icon: Icons.home_outlined,
+                focusNode: _streetFocusNode,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) => _postalCodeFocusNode.requestFocus(),
                 autovalidateMode: AutovalidateMode.disabled,
               ),
               const SizedBox(height: 16),
@@ -755,6 +830,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                       label: 'Postal Code',
                       icon: Icons.local_post_office_outlined,
                       keyboardType: TextInputType.text,
+                      focusNode: _postalCodeFocusNode,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) => _streetNumberFocusNode.requestFocus(),
                       autovalidateMode: AutovalidateMode.disabled,
                     ),
                   ),
@@ -765,6 +843,15 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                       label: 'Street No.',
                       icon: Icons.signpost_outlined,
                       keyboardType: TextInputType.numberWithOptions(decimal: false),
+                      focusNode: _streetNumberFocusNode,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) {
+                        // Move to checkbox and check it
+                        setState(() {
+                          _termsAccepted = true;
+                        });
+                        _termsCheckboxFocusNode.requestFocus();
+                      },
                       autovalidateMode: AutovalidateMode.disabled,
                     ),
                   ),
@@ -802,13 +889,30 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Checkbox(
-                          value: _termsAccepted,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              _termsAccepted = value ?? false;
-                            });
+                        child: Focus(
+                          focusNode: _termsCheckboxFocusNode,
+                          onFocusChange: (hasFocus) {
+                            if (hasFocus && mounted) {
+                              // Check the checkbox when focused
+                              setState(() {
+                                _termsAccepted = true;
+                              });
+                              // Move to Create Account button
+                              Future.delayed(const Duration(milliseconds: 100), () {
+                                if (mounted) {
+                                  _createAccountButtonFocusNode.requestFocus();
+                                }
+                              });
+                            }
                           },
+                          child: Checkbox(
+                            value: _termsAccepted,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                _termsAccepted = value ?? false;
+                              });
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -822,10 +926,23 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               const SizedBox(height: 24),
 
               // Create Account button
-              _SignUpButton(
-                isLoading: _isLoading,
-                termsAccepted: _termsAccepted,
-                onPressed: _createAccount,
+              Focus(
+                focusNode: _createAccountButtonFocusNode,
+                onFocusChange: (hasFocus) {
+                  if (hasFocus && mounted && _termsAccepted && !_isLoading) {
+                    // Submit form when button receives focus
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      if (mounted) {
+                        _createAccount();
+                      }
+                    });
+                  }
+                },
+                child: _SignUpButton(
+                  isLoading: _isLoading,
+                  termsAccepted: _termsAccepted,
+                  onPressed: _createAccount,
+                ),
               ),
               const SizedBox(height: 20),
 

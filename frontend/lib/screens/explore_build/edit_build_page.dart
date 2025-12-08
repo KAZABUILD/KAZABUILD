@@ -541,8 +541,8 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
       // Navigate to part picker with callback to handle component selection
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => PartPickerPage(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => PartPickerPage(
             componentType: componentType,
             currentBuild: null, // We don't need compatibility check in edit mode
             onComponentSelected: (BaseComponent selected) async {
@@ -587,6 +587,8 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
               }
             },
           ),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
         ),
       );
 

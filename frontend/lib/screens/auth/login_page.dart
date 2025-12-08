@@ -21,6 +21,7 @@ import 'package:frontend/screens/auth/auth_widgets.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/utils/validators.dart';
 
 /// The main widget for the login page.
 /// It's a `ConsumerStatefulWidget` to interact with Riverpod providers for state management.
@@ -43,6 +44,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Controllers to capture user input for email and password.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  
+  // Focus nodes for keyboard navigation
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   
   // Remember me checkbox state
   bool _rememberMe = false;
@@ -71,9 +76,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
-    // Dispose controllers to free up resources when the widget is removed.
+    // Dispose controllers and focus nodes to free up resources when the widget is removed.
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -465,11 +472,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               controller: _emailController,
               label: 'Username or Email',
               icon: Icons.person_outline,
+              keyboardType: TextInputType.emailAddress,
+              focusNode: _emailFocusNode,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) {
+                // Move focus to password field when Enter is pressed
+                _passwordFocusNode.requestFocus();
+              },
               autovalidateMode: AutovalidateMode.disabled,
-              validator: (value) =>
-                  (value == null || value.isEmpty)
-                      ? 'This field cannot be empty'
-                      : null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Username or Email is required';
+                }
+                // Check if it looks like an email (contains @)
+                if (value.contains('@')) {
+                  // Validate email format
+                  return Validators.email(value.trim());
+                }
+                // If it's a username, validate username format (min 8, max 50)
+                // But for login, we're more lenient - just check it's not empty
+                // Backend will handle the actual validation
+                return null;
+              },
             ),
             const SizedBox(height: 18),
 
@@ -478,11 +502,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               label: 'Password',
               icon: Icons.lock_outline,
               isPassword: true,
+              focusNode: _passwordFocusNode,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                // Submit form when Enter is pressed on password field
+                FocusScope.of(context).unfocus();
+                if (_formKey.currentState!.validate()) {
+                  ref.read(authProvider.notifier).signIn(
+                        _emailController.text.trim(),
+                        _passwordController.text,
+                        rememberMe: _rememberMe,
+                      );
+                }
+              },
               autovalidateMode: AutovalidateMode.disabled,
-              validator: (value) =>
-                  (value == null || value.isEmpty)
-                      ? 'This field cannot be empty'
-                      : null,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Password is required';
+                }
+                // Backend requires password but doesn't specify min length for login
+                // Just check it's not empty
+                return null;
+              },
             ),
             const SizedBox(height: 14),
 

@@ -415,8 +415,10 @@ class _GuideCardState extends State<_GuideCard> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => GuideDetailPage(guide: widget.guide),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => GuideDetailPage(guide: widget.guide),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
               ),
             );
           },

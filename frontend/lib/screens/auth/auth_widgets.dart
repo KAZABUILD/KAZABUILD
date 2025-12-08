@@ -228,6 +228,15 @@ class CustomTextField extends StatefulWidget {
   /// A callback that is triggered when the user taps on the text field.
   final VoidCallback? onTap;
 
+  /// Focus node for managing focus state.
+  final FocusNode? focusNode;
+
+  /// The action button to show on the keyboard.
+  final TextInputAction? textInputAction;
+
+  /// Callback when the user submits the field (e.g., presses Enter).
+  final void Function(String)? onFieldSubmitted;
+
   const CustomTextField({
     super.key,
     required this.label,
@@ -239,6 +248,9 @@ class CustomTextField extends StatefulWidget {
     this.autovalidateMode,
     this.readOnly = false,
     this.onTap,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -262,12 +274,15 @@ class _CustomTextFieldState extends State<CustomTextField> {
     
     return TextFormField(
       controller: widget.controller,
+      focusNode: widget.focusNode,
       obscureText: _isObscured,
       keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
       autovalidateMode: widget.autovalidateMode,
       validator: widget.validator,
       readOnly: widget.readOnly,
       onTap: widget.onTap,
+      onFieldSubmitted: widget.onFieldSubmitted,
       decoration: InputDecoration(
         labelText: widget.label,
         prefixIcon: Icon(
