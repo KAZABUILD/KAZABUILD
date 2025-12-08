@@ -74,6 +74,12 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            //Get the PricesApi settings from appsettings
+            services.AddOptions<PricesApiSettings>()
+                .Bind(config.GetSection("PricesApi"))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             //Return the services with all the options added
             return services;
         }

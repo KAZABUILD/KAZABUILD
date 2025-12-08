@@ -23,12 +23,13 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IPricesApiService pricesService) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
+        private readonly IPricesApiService _pricesService = pricesService;
 
         /// <summary>
         /// API Endpoint for creating a new ComponentPrice for administration.
@@ -261,6 +262,39 @@ namespace KAZABUILD.API.Controllers.Components
 
                 //Return not found response
                 return NotFound(new { componentPrice = "ComponentPrice not found!" });
+            }
+
+            if (componentPrice.FetchedAt < DateTime.UtcNow.AddHours(-48))
+            {
+                // Attempt to get fresh price
+                var freshPriceDto = await _pricesService.GetPartPrice(componentPrice.Component!);
+
+                if (freshPriceDto != null)
+                {
+                    // Create new row
+                    var newComponentPrice = new ComponentPrice
+                    {
+                        ComponentId = componentPrice.ComponentId,
+                        SourceUrl = freshPriceDto.ImageUrl ?? componentPrice.SourceUrl, // Use new Image or fallback to old
+                        VendorName = componentPrice.VendorName, // Assuming Vendor stays same, or map from API if available
+                        FetchedAt = DateTime.UtcNow,
+                        Price = freshPriceDto.Price,
+                        Currency = freshPriceDto.Currency,
+                        DatabaseEntryAt = DateTime.UtcNow,
+                        LastEditedAt = DateTime.UtcNow,
+                        Note = "Auto-refreshed via Smart Fetch"
+                    };
+
+                    _db.ComponentPrices.Add(newComponentPrice);
+                    await _db.SaveChangesAsync();
+
+                    // Swap the reference so the rest of the method returns the NEW object
+                    componentPrice = newComponentPrice;
+
+                    // Update the ID variable so the logs reflect the NEW ID
+                    id = newComponentPrice.Id;
+                }
+                // If API fails, we simply fall through and return the old (stale) data without crashing.
             }
 
             //Log Description string declaration
