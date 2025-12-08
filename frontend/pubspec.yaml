@@ -34,6 +34,7 @@ dependencies:
   url_launcher: ^6.3.1
 
   equatable: ^2.0.5 
+  logger: ^2.6.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

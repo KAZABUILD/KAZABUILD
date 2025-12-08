@@ -4,11 +4,11 @@ Bulk importer for OpenDB JSON exports into the KAZABUILD component tables.
 
 The script is designed to be orchestrated from the backend Admin API but can
 also be executed manually for local debugging.
-note: clone buildcoress opendb dataset from this url https://github.com/buildcores/buildcores-open-db
+note: clone buildcores opendb dataset from this url https://github.com/buildcores/buildcores-open-db
 Usage example:
 
     py -3.11 import_buildcores.py ^
-         --input-dir C:\Users\ziyad\OneDrive\Documents\BUILD_CORES\buildcores-open-db\open-db ^
+         --input-dir C:\Users\user\OneDrive\Documents\BUILD_CORES\buildcores-open-db\open-db ^
         --connection-string "Server=LAPTOP-94H43BFK;Database=KAZABUILD_DB;Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes" ^
         --component-types Motherboard ^
         --odbc-driver "ODBC Driver 17 for SQL Server" ^
