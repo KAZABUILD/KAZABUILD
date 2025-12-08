@@ -20,12 +20,16 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/filter_models.dart';
+import 'package:frontend/models/filter_provider.dart';
 import 'package:frontend/models/component_compatibility_provider.dart'
     as compatibility;
 import 'package:frontend/models/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+
+part 'Parts_filter.dart';
 
 /// The main page for selecting a specific type of PC component.
 ///
@@ -71,65 +75,18 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
 
   /// Controller for the text-based search input.
   final _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   late int _currentPage;
   static const int _maxComparisonItems = 4;
   final Map<String, BaseComponent> _comparisonComponents = {};
 
   // Filter state
-  final Set<String> _selectedManufacturers = {};
-  RangeValues? _priceRange; // Will be initialized based on products
-
-  // Component-specific filter states
-  final Set<String> _selectedCpuSeries = {};
-  final Set<String> _selectedCpuSockets = {};
-  bool? _cpuIncludesCooler;
-
-  final Set<String> _selectedMotherboardSockets = {};
-  final Set<String> _selectedMotherboardChipsets = {};
-  final Set<String> _selectedMotherboardFormFactors = {};
-
-  final Set<String> _selectedRamTypes = {};
-  final Set<int> _selectedRamModules = {};
-  bool? _ramHasRgb;
-
-  final Set<String> _selectedStorageTypes = {};
-  final Set<String> _selectedStorageInterfaces = {};
-
-  final Set<String> _selectedPsuWattages = {};
-  final Set<String> _selectedPsuEfficiencies = {};
-  final Set<String> _selectedPsuModularities = {};
-
-  final Set<String> _selectedCaseFormFactors = {};
-
-  // GPU filters
-  final Set<String> _selectedGpuChipsets = {};
-  RangeValues? _gpuVramRange; // Will be initialized based on products
-  final Set<String> _selectedGpuMemoryTypes = {};
-  final Set<String> _selectedGpuCoolingTypes = {};
-  final Set<String> _selectedGpuFrameSyncs = {};
-
-  // Cooler filters
-  bool? _coolerIsWaterCooled;
-  RangeValues? _coolerHeightRange;
-  RangeValues? _coolerRadiatorSizeRange;
-  RangeValues? _coolerFanSizeRange;
-
-  // Case Fan filters
-  RangeValues? _caseFanSizeRange;
-  final Set<String> _selectedCaseFanLedTypes = {};
-  final Set<String> _selectedCaseFanFlowDirections = {};
-  final Set<String> _selectedCaseFanConnectorTypes = {};
-
-  // Monitor filters
-  RangeValues? _monitorScreenSizeRange;
-  final Set<String> _selectedMonitorPanelTypes = {};
-  RangeValues? _monitorRefreshRateRange;
-  final Set<String> _selectedMonitorAdaptiveSyncTypes = {};
-  final Set<String> _selectedMonitorAspectRatios = {};
-
-  // Case filters (additional)
-  RangeValues? _caseMaxGpuLengthRange;
-  RangeValues? _caseMaxCoolerHeightRange;
+  // Note: Most filter state is now managed by activeFiltersProvider.
+  // We keep these local variables for backward compatibility during refactor
+  // or if they are used by non-dynamic widgets, but eventually they should be removed.
+  
+  // Unused fields removed to clean up warnings
+  // The state is now fully managed by the activeFiltersProvider and DynamicFilterPanel
 
   // Compatibility filter
   bool _enableCompatibilityFilter = false;
@@ -143,6 +100,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     _searchController.addListener(_onSearchChanged);
     _currentPage = _sanitizePage(widget.initialPage);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Clear previous filters on load to ensure clean state
+      ref.read(activeFiltersProvider(widget.componentType).notifier).clearAll();
       _loadCurrentPage();
     });
   }
@@ -151,6 +110,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -161,7 +121,14 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
         widget.initialPage != oldWidget.initialPage) {
       final nextPage = _sanitizePage(widget.initialPage);
       _currentPage = nextPage;
-      _loadCurrentPage(force: true, targetPage: nextPage);
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Clear filters when component type changes
+        if (widget.componentType != oldWidget.componentType) {
+          ref.read(activeFiltersProvider(widget.componentType).notifier).clearAll();
+        }
+        _loadCurrentPage(force: true, targetPage: nextPage);
+      });
     }
     // If componentId changed, reset shown flag so new component details can be shown
     if (widget.componentId != oldWidget.componentId) {
@@ -180,10 +147,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       componentPagingProvider(widget.componentType).notifier,
     );
     final desiredPage = targetPage ?? _currentPage;
+    final filters = ref.read(activeFiltersProvider(widget.componentType));
+    
     if (force) {
-      notifier.goToPage(desiredPage);
+      notifier.goToPage(desiredPage, filters: filters);
     } else {
-      notifier.ensurePage(desiredPage);
+      notifier.ensurePage(desiredPage, filters: filters);
     }
   }
 
@@ -196,6 +165,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     }
     setState(() {
       _currentPage = sanitized;
+    });
+    // Scroll to top after the page update is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     });
     _loadCurrentPage(force: true, targetPage: sanitized);
     _updateUrl(sanitized);
@@ -486,12 +461,14 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   }
 
   /// Filters products based on all active filters
+  // Note: This client-side filtering is now largely redundant as the server handles it,
+  // but we keep search and basic checks here for immediate feedback if needed.
   List<BaseComponent> _filterProducts(
     List<BaseComponent> products, {
     Set<String>? compatibleIds,
   }) {
     return products.where((product) {
-      // Search filter
+      // Search filter - keep client side for immediate responsiveness
       final searchText = _searchController.text.toLowerCase();
       if (searchText.isNotEmpty) {
         if (!product.name.toLowerCase().contains(searchText) &&
@@ -500,239 +477,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
         }
       }
 
-      // Manufacturer filter
-      if (_selectedManufacturers.isNotEmpty &&
-          !_selectedManufacturers.contains(product.manufacturer)) {
-        return false;
-      }
-
-      // Price filter
-      if (_priceRange != null) {
-        final price = product.lowestPrice ?? 0;
-        if (price < _priceRange!.start || price > _priceRange!.end) {
-          return false;
-        }
-      }
-
-      // Component-specific filters
-      switch (widget.componentType) {
-        case ComponentType.cpu:
-          if (product is CPUComponent) {
-            if (_selectedCpuSeries.isNotEmpty &&
-                !_selectedCpuSeries.contains(product.series)) {
-              return false;
-            }
-            if (_selectedCpuSockets.isNotEmpty &&
-                !_selectedCpuSockets.contains(product.socketType)) {
-              return false;
-            }
-            if (_cpuIncludesCooler != null &&
-                product.includesCooler != _cpuIncludesCooler) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.motherboard:
-          if (product is MotherboardComponent) {
-            if (_selectedMotherboardSockets.isNotEmpty &&
-                !_selectedMotherboardSockets.contains(product.socketType)) {
-              return false;
-            }
-            if (_selectedMotherboardChipsets.isNotEmpty &&
-                !_selectedMotherboardChipsets.contains(product.chipsetType)) {
-              return false;
-            }
-            if (_selectedMotherboardFormFactors.isNotEmpty &&
-                !_selectedMotherboardFormFactors.contains(product.formFactor)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.ram:
-          if (product is MemoryComponent) {
-            if (_selectedRamTypes.isNotEmpty &&
-                !_selectedRamTypes.contains(product.ramType)) {
-              return false;
-            }
-            if (_selectedRamModules.isNotEmpty &&
-                !_selectedRamModules.contains(product.moduleQuantity)) {
-              return false;
-            }
-            if (_ramHasRgb != null && product.haveRGB != _ramHasRgb) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.storage:
-          if (product is StorageComponent) {
-            if (_selectedStorageTypes.isNotEmpty &&
-                !_selectedStorageTypes.contains(product.driveType)) {
-              return false;
-            }
-            if (_selectedStorageInterfaces.isNotEmpty &&
-                !_selectedStorageInterfaces.contains(product.interface)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.psu:
-          if (product is PowerSupplyComponent) {
-            // Wattage filter
-            if (_selectedPsuWattages.isNotEmpty) {
-              bool matchesWattage = false;
-              for (final range in _selectedPsuWattages) {
-                final parts = range.split('-');
-                if (parts.length == 2) {
-                  final min = int.tryParse(parts[0]) ?? 0;
-                  final max = int.tryParse(parts[1]) ?? 9999;
-                  if (product.powerOutput >= min &&
-                      product.powerOutput <= max) {
-                    matchesWattage = true;
-                    break;
-                  }
-                }
-              }
-              if (!matchesWattage) return false;
-            }
-            if (_selectedPsuEfficiencies.isNotEmpty &&
-                product.efficiencyRating != null &&
-                !_selectedPsuEfficiencies.contains(product.efficiencyRating)) {
-              return false;
-            }
-            if (_selectedPsuModularities.isNotEmpty &&
-                !_selectedPsuModularities.contains(product.modularityType)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.pcCase:
-          if (product is CaseComponent) {
-            if (_selectedCaseFormFactors.isNotEmpty &&
-                !_selectedCaseFormFactors.contains(product.formFactor)) {
-              return false;
-            }
-            // Max GPU length filter
-            if (_caseMaxGpuLengthRange != null &&
-                (product.maxVideoCardLength < _caseMaxGpuLengthRange!.start ||
-                    product.maxVideoCardLength > _caseMaxGpuLengthRange!.end)) {
-              return false;
-            }
-            // Max Cooler height filter
-            if (_caseMaxCoolerHeightRange != null &&
-                (product.maxCPUCoolerHeight <
-                        _caseMaxCoolerHeightRange!.start ||
-                    product.maxCPUCoolerHeight >
-                        _caseMaxCoolerHeightRange!.end)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.gpu:
-          if (product is GPUComponent) {
-            if (_selectedGpuChipsets.isNotEmpty &&
-                !_selectedGpuChipsets.contains(product.chipset)) {
-              return false;
-            }
-            if (_gpuVramRange != null &&
-                (product.videoMemoryAmount < _gpuVramRange!.start ||
-                    product.videoMemoryAmount > _gpuVramRange!.end)) {
-              return false;
-            }
-            if (_selectedGpuMemoryTypes.isNotEmpty &&
-                !_selectedGpuMemoryTypes.contains(product.videoMemoryType)) {
-              return false;
-            }
-            if (_selectedGpuCoolingTypes.isNotEmpty &&
-                !_selectedGpuCoolingTypes.contains(product.coolingType)) {
-              return false;
-            }
-            if (_selectedGpuFrameSyncs.isNotEmpty &&
-                !_selectedGpuFrameSyncs.contains(product.frameSync)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.cooler:
-          if (product is CoolerComponent) {
-            if (_coolerIsWaterCooled != null &&
-                product.isWaterCooled != _coolerIsWaterCooled) {
-              return false;
-            }
-            if (_coolerHeightRange != null &&
-                (product.height < _coolerHeightRange!.start ||
-                    product.height > _coolerHeightRange!.end)) {
-              return false;
-            }
-            if (_coolerRadiatorSizeRange != null &&
-                product.radiatorSize != null &&
-                (product.radiatorSize! < _coolerRadiatorSizeRange!.start ||
-                    product.radiatorSize! > _coolerRadiatorSizeRange!.end)) {
-              return false;
-            }
-            if (_coolerFanSizeRange != null &&
-                product.fanSize != null &&
-                (product.fanSize! < _coolerFanSizeRange!.start ||
-                    product.fanSize! > _coolerFanSizeRange!.end)) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.caseFan:
-          if (product is CaseFanComponent) {
-            if (_caseFanSizeRange != null &&
-                (product.size < _caseFanSizeRange!.start ||
-                    product.size > _caseFanSizeRange!.end)) {
-              return false;
-            }
-            if (_selectedCaseFanLedTypes.isNotEmpty &&
-                product.ledType != null &&
-                !_selectedCaseFanLedTypes.contains(product.ledType)) {
-              return false;
-            }
-            if (_selectedCaseFanFlowDirections.isNotEmpty &&
-                !_selectedCaseFanFlowDirections.contains(
-                  product.flowDirection,
-                )) {
-              return false;
-            }
-            if (_selectedCaseFanConnectorTypes.isNotEmpty &&
-                product.connectorType != null &&
-                !_selectedCaseFanConnectorTypes.contains(
-                  product.connectorType,
-                )) {
-              return false;
-            }
-          }
-          break;
-        case ComponentType.monitor:
-          if (product is MonitorComponent) {
-            if (_monitorScreenSizeRange != null &&
-                (product.screenSize < _monitorScreenSizeRange!.start ||
-                    product.screenSize > _monitorScreenSizeRange!.end)) {
-              return false;
-            }
-            if (_selectedMonitorPanelTypes.isNotEmpty &&
-                !_selectedMonitorPanelTypes.contains(product.panelType)) {
-              return false;
-            }
-            if (_monitorRefreshRateRange != null &&
-                (product.maxRefreshRate < _monitorRefreshRateRange!.start ||
-                    product.maxRefreshRate > _monitorRefreshRateRange!.end)) {
-              return false;
-            }
-            if (_selectedMonitorAdaptiveSyncTypes.isNotEmpty &&
-                !_selectedMonitorAdaptiveSyncTypes.contains(
-                  product.adaptiveSyncType,
-                )) {
-              return false;
-            }
-            if (_selectedMonitorAspectRatios.isNotEmpty &&
-                !_selectedMonitorAspectRatios.contains(product.aspectRatio)) {
-              return false;
-            }
-          }
-          break;
-      }
+      // Note: Other filters are now handled server-side via the API call parameters.
+      // We skip the redundant client-side checks to avoid conflicts.
 
       // Compatibility filter
       if (_enableCompatibilityFilter && compatibleIds != null) {
@@ -749,6 +495,17 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to filter changes and reload the page
+    ref.listen<Map<String, dynamic>>(
+      activeFiltersProvider(widget.componentType),
+      (previous, next) {
+        // Only reload if filters actually changed
+        if (previous != next) {
+          _loadCurrentPage(force: true, targetPage: 1);
+        }
+      },
+    );
+
     final pagingState = ref.watch(
       componentPagingProvider(widget.componentType),
     );
@@ -756,12 +513,38 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       componentPagingProvider(widget.componentType).notifier,
     );
 
+    final isLargeScreen = MediaQuery.of(context).size.width >= 1300;
+
     return Scaffold(
-      // TODO: Implement a responsive layout that switches to a single-column view on mobile.
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
+      endDrawer: !isLargeScreen
+          ? Drawer(
+              width: 300,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              child: SafeArea(
+                child: Builder(
+                  builder: (context) {
+                    final products = pagingState.items;
+                    final List<PcComponent> currentBuild =
+                        widget.currentBuild ?? ref.watch(buildProvider);
+                    return _LeftPanel(
+                      enableCompatibilityFilter: _enableCompatibilityFilter,
+                      onCompatibilityFilterChanged: (val) {
+                        setState(() {
+                          _enableCompatibilityFilter = val;
+                        });
+                      },
+                      currentBuild: currentBuild,
+                      allProducts: products,
+                      componentType: widget.componentType,
+                    );
+                  },
+                ),
+              ),
+            )
+          : null,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      // The main layout is a Column containing the navigation bar and the page body.
       body: Column(
         children: [
           CustomNavigationBar(scaffoldKey: _scaffoldKey),
@@ -774,687 +557,86 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// The left panel containing the build summary and all filter options.
-                  SizedBox(
-                    width: 280,
-                    child: Builder(
-                      builder: (context) {
-                        if (pagingState.isInitialLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        final products = pagingState.items;
-                        if (pagingState.errorMessage != null &&
-                            products.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        // Show component details dialog if componentId is provided and not shown yet
-                        if (widget.componentId != null &&
-                            widget.componentId != _shownComponentId &&
-                            !pagingState.isInitialLoading &&
-                            !pagingState.isLoading) {
-                          // Mark as shown to prevent multiple dialogs BEFORE async operation
-                          final componentIdToShow = widget.componentId!;
-                          _shownComponentId = componentIdToShow;
-                          
-                          if (kDebugMode) {
-                            debugPrint(
-                              'PartPickerPage: Preparing to show component details for ID: $componentIdToShow',
-                            );
-                            debugPrint(
-                              'PartPickerPage: Products count: ${products.length}',
-                            );
+                  if (isLargeScreen)
+                    SizedBox(
+                      width: 280,
+                      child: Builder(
+                        builder: (context) {
+                          final products = pagingState.items;
+                          if (pagingState.errorMessage != null &&
+                              products.isEmpty) {
+                            return const SizedBox.shrink();
                           }
-                          
-                          WidgetsBinding.instance.addPostFrameCallback((_) async {
-                            if (!mounted || componentIdToShow != widget.componentId) {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Dialog cancelled - widget not mounted or componentId changed',
-                                );
-                              }
-                              return;
-                            }
-                            
-                            // Try to find component in current products first
-                            BaseComponent? componentToShow;
-                            try {
-                              componentToShow = products.firstWhere(
-                                (p) => p.id == componentIdToShow,
-                              );
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Component found in current page: ${componentToShow.name}',
-                                );
-                              }
-                            } catch (e) {
-                              // Component not found in current page, fetch it from API
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Component not found in current page (${products.length} products), fetching from API: $componentIdToShow',
-                                );
-                              }
-                              try {
-                                final componentService =
-                                    ref.read(componentServiceProvider);
-                                componentToShow =
-                                    await componentService.getComponentById(
-                                  componentIdToShow,
-                                );
-                                if (kDebugMode) {
-                                  debugPrint(
-                                    'PartPickerPage: Component fetched from API: ${componentToShow.name}',
-                                  );
-                                }
-                              } catch (fetchError) {
-                                if (kDebugMode) {
-                                  debugPrint(
-                                    'PartPickerPage: Error fetching component $componentIdToShow: $fetchError',
-                                  );
-                                }
-                                // Show error snackbar
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Component not found',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                                // Reset _shownComponentId on error so user can try again
-                                _shownComponentId = null;
+
+                          if (widget.componentId != null &&
+                              widget.componentId != _shownComponentId &&
+                              !pagingState.isInitialLoading &&
+                              !pagingState.isLoading) {
+                            final componentIdToShow = widget.componentId!;
+                            _shownComponentId = componentIdToShow;
+
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) async {
+                              if (!mounted ||
+                                  componentIdToShow != widget.componentId) {
                                 return;
                               }
-                            }
-                            
-                            // Show dialog with component details
-                            if (mounted) {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Showing component details dialog for: ${componentToShow.name}',
-                                );
-                              }
-                              _showSpecsDialog(context, componentToShow);
-                            } else {
-                              if (kDebugMode) {
-                                debugPrint(
-                                  'PartPickerPage: Widget not mounted, cannot show dialog',
-                                );
-                              }
-                            }
-                          });
-                        }
 
-                        // Initialize price range if not set
-                        if (products.isNotEmpty) {
-                          final maxPrice = products
-                              .map((p) => p.lowestPrice ?? 0)
-                              .fold<double>(
-                                0,
-                                (max, price) => price > max ? price : max,
-                              );
-                          final double cappedMax = maxPrice > 0
-                              ? maxPrice
-                              : 10000.0;
-                          if (_priceRange == null) {
-                            _priceRange = RangeValues(0, cappedMax);
-                          } else if (cappedMax > _priceRange!.end) {
-                            _priceRange = RangeValues(
-                              _priceRange!.start,
-                              cappedMax,
-                            );
-                          }
-                        }
-                        // Initialize component-specific range filters
-                        if (widget.componentType == ComponentType.gpu &&
-                            products.isNotEmpty) {
-                          final gpus = products
-                              .whereType<GPUComponent>()
-                              .toList();
-                          if (gpus.isNotEmpty) {
-                            final maxVram = gpus
-                                .map((p) => p.videoMemoryAmount)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
+                              BaseComponent? componentToShow;
+                              try {
+                                componentToShow = products.firstWhere(
+                                  (p) => p.id == componentIdToShow,
                                 );
-                            final double cappedMax = maxVram > 0
-                                ? maxVram
-                                : 24.0;
-                            if (_gpuVramRange == null) {
-                              _gpuVramRange = RangeValues(0, cappedMax);
-                            } else if (cappedMax > _gpuVramRange!.end) {
-                              _gpuVramRange = RangeValues(
-                                _gpuVramRange!.start,
-                                cappedMax,
-                              );
-                            }
-                          }
-                        }
-                        if (widget.componentType == ComponentType.cooler &&
-                            products.isNotEmpty) {
-                          final coolers = products
-                              .whereType<CoolerComponent>()
-                              .toList();
-                          if (coolers.isNotEmpty) {
-                            final maxHeight = coolers
-                                .map((p) => p.height)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedMax = maxHeight > 0
-                                ? maxHeight
-                                : 200.0;
-                            if (_coolerHeightRange == null) {
-                              _coolerHeightRange = RangeValues(0, cappedMax);
-                            } else if (cappedMax > _coolerHeightRange!.end) {
-                              _coolerHeightRange = RangeValues(
-                                _coolerHeightRange!.start,
-                                cappedMax,
-                              );
-                            }
-                          }
-                        }
-                        if (widget.componentType == ComponentType.caseFan &&
-                            products.isNotEmpty) {
-                          final fans = products
-                              .whereType<CaseFanComponent>()
-                              .toList();
-                          if (fans.isNotEmpty) {
-                            final maxSize = fans
-                                .map((p) => p.size)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedMax = maxSize > 0
-                                ? maxSize
-                                : 200.0;
-                            if (_caseFanSizeRange == null) {
-                              _caseFanSizeRange = RangeValues(0, cappedMax);
-                            } else if (cappedMax > _caseFanSizeRange!.end) {
-                              _caseFanSizeRange = RangeValues(
-                                _caseFanSizeRange!.start,
-                                cappedMax,
-                              );
-                            }
-                          }
-                        }
-                        if (widget.componentType == ComponentType.monitor &&
-                            products.isNotEmpty) {
-                          final monitors = products
-                              .whereType<MonitorComponent>()
-                              .toList();
-                          if (monitors.isNotEmpty) {
-                            final maxSize = monitors
-                                .map((p) => p.screenSize)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedSize = maxSize > 0
-                                ? maxSize
-                                : 50.0;
-                            if (_monitorScreenSizeRange == null) {
-                              _monitorScreenSizeRange = RangeValues(
-                                0,
-                                cappedSize,
-                              );
-                            } else if (cappedSize >
-                                _monitorScreenSizeRange!.end) {
-                              _monitorScreenSizeRange = RangeValues(
-                                _monitorScreenSizeRange!.start,
-                                cappedSize,
-                              );
-                            }
+                              } catch (e) {
+                                try {
+                                  final componentService =
+                                      ref.read(componentServiceProvider);
+                                  componentToShow =
+                                      await componentService.getComponentById(
+                                    componentIdToShow,
+                                  );
+                                } catch (fetchError) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Component not found'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  _shownComponentId = null;
+                                  return;
+                                }
+                              }
 
-                            final maxRefresh = monitors
-                                .map((p) => p.maxRefreshRate)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedRefresh = maxRefresh > 0
-                                ? maxRefresh
-                                : 240.0;
-                            if (_monitorRefreshRateRange == null) {
-                              _monitorRefreshRateRange = RangeValues(
-                                0,
-                                cappedRefresh,
-                              );
-                            } else if (cappedRefresh >
-                                _monitorRefreshRateRange!.end) {
-                              _monitorRefreshRateRange = RangeValues(
-                                _monitorRefreshRateRange!.start,
-                                cappedRefresh,
-                              );
-                            }
+                              if (mounted) {
+                                _showSpecsDialog(context, componentToShow);
+                              }
+                            });
                           }
-                        }
-                        if (widget.componentType == ComponentType.pcCase &&
-                            products.isNotEmpty) {
-                          final cases = products
-                              .whereType<CaseComponent>()
-                              .toList();
-                          if (cases.isNotEmpty) {
-                            final maxGpuLength = cases
-                                .map((p) => p.maxVideoCardLength)
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedGpu = maxGpuLength > 0
-                                ? maxGpuLength
-                                : 500.0;
-                            if (_caseMaxGpuLengthRange == null) {
-                              _caseMaxGpuLengthRange = RangeValues(
-                                0,
-                                cappedGpu,
-                              );
-                            } else if (cappedGpu >
-                                _caseMaxGpuLengthRange!.end) {
-                              _caseMaxGpuLengthRange = RangeValues(
-                                _caseMaxGpuLengthRange!.start,
-                                cappedGpu,
-                              );
-                            }
 
-                            final maxCoolerHeight = cases
-                                .map((p) => p.maxCPUCoolerHeight.toDouble())
-                                .fold<double>(
-                                  0,
-                                  (max, val) => val > max ? val : max,
-                                );
-                            final double cappedCooler = maxCoolerHeight > 0
-                                ? maxCoolerHeight
-                                : 200.0;
-                            if (_caseMaxCoolerHeightRange == null) {
-                              _caseMaxCoolerHeightRange = RangeValues(
-                                0,
-                                cappedCooler,
-                              );
-                            } else if (cappedCooler >
-                                _caseMaxCoolerHeightRange!.end) {
-                              _caseMaxCoolerHeightRange = RangeValues(
-                                _caseMaxCoolerHeightRange!.start,
-                                cappedCooler,
-                              );
-                            }
-                          }
-                        }
-                        // Get current build from provider if not provided
-                        final List<PcComponent> currentBuild =
-                            widget.currentBuild ?? ref.watch(buildProvider);
+                          final List<PcComponent> currentBuild =
+                              widget.currentBuild ?? ref.watch(buildProvider);
 
-                        return _LeftPanel(
-                          enableCompatibilityFilter: _enableCompatibilityFilter,
-                          onCompatibilityFilterChanged: (val) {
-                            setState(() {
-                              _enableCompatibilityFilter = val;
-                            });
-                          },
-                          currentBuild: currentBuild,
-                          allProducts: products,
-                          componentType: widget.componentType,
-                          // Filter state and callbacks
-                          selectedManufacturers: _selectedManufacturers,
-                          onManufacturerChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedManufacturers.add(val);
-                              } else {
-                                _selectedManufacturers.remove(val);
-                              }
-                            });
-                          },
-                          priceRange:
-                              _priceRange ?? const RangeValues(0, 10000),
-                          onPriceRangeChanged: (range) {
-                            setState(() {
-                              _priceRange = range;
-                            });
-                          },
-                          // CPU filters
-                          selectedCpuSeries: _selectedCpuSeries,
-                          onCpuSeriesChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCpuSeries.add(val);
-                              } else {
-                                _selectedCpuSeries.remove(val);
-                              }
-                            });
-                          },
-                          selectedCpuSockets: _selectedCpuSockets,
-                          onCpuSocketChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCpuSockets.add(val);
-                              } else {
-                                _selectedCpuSockets.remove(val);
-                              }
-                            });
-                          },
-                          cpuIncludesCooler: _cpuIncludesCooler,
-                          onCpuIncludesCoolerChanged: (val) {
-                            setState(() {
-                              _cpuIncludesCooler = val;
-                            });
-                          },
-                          // Motherboard filters
-                          selectedMotherboardSockets:
-                              _selectedMotherboardSockets,
-                          onMotherboardSocketChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMotherboardSockets.add(val);
-                              } else {
-                                _selectedMotherboardSockets.remove(val);
-                              }
-                            });
-                          },
-                          selectedMotherboardChipsets:
-                              _selectedMotherboardChipsets,
-                          onMotherboardChipsetChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMotherboardChipsets.add(val);
-                              } else {
-                                _selectedMotherboardChipsets.remove(val);
-                              }
-                            });
-                          },
-                          selectedMotherboardFormFactors:
-                              _selectedMotherboardFormFactors,
-                          onMotherboardFormFactorChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMotherboardFormFactors.add(val);
-                              } else {
-                                _selectedMotherboardFormFactors.remove(val);
-                              }
-                            });
-                          },
-                          // RAM filters
-                          selectedRamTypes: _selectedRamTypes,
-                          onRamTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedRamTypes.add(val);
-                              } else {
-                                _selectedRamTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedRamModules: _selectedRamModules,
-                          onRamModuleChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedRamModules.add(val);
-                              } else {
-                                _selectedRamModules.remove(val);
-                              }
-                            });
-                          },
-                          ramHasRgb: _ramHasRgb,
-                          onRamHasRgbChanged: (val) {
-                            setState(() {
-                              _ramHasRgb = val;
-                            });
-                          },
-                          // Storage filters
-                          selectedStorageTypes: _selectedStorageTypes,
-                          onStorageTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedStorageTypes.add(val);
-                              } else {
-                                _selectedStorageTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedStorageInterfaces: _selectedStorageInterfaces,
-                          onStorageInterfaceChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedStorageInterfaces.add(val);
-                              } else {
-                                _selectedStorageInterfaces.remove(val);
-                              }
-                            });
-                          },
-                          // PSU filters
-                          selectedPsuWattages: _selectedPsuWattages,
-                          onPsuWattageChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedPsuWattages.add(val);
-                              } else {
-                                _selectedPsuWattages.remove(val);
-                              }
-                            });
-                          },
-                          selectedPsuEfficiencies: _selectedPsuEfficiencies,
-                          onPsuEfficiencyChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedPsuEfficiencies.add(val);
-                              } else {
-                                _selectedPsuEfficiencies.remove(val);
-                              }
-                            });
-                          },
-                          selectedPsuModularities: _selectedPsuModularities,
-                          onPsuModularityChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedPsuModularities.add(val);
-                              } else {
-                                _selectedPsuModularities.remove(val);
-                              }
-                            });
-                          },
-                          // Case filters
-                          selectedCaseFormFactors: _selectedCaseFormFactors,
-                          onCaseFormFactorChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCaseFormFactors.add(val);
-                              } else {
-                                _selectedCaseFormFactors.remove(val);
-                              }
-                            });
-                          },
-                          caseMaxGpuLengthRange: _caseMaxGpuLengthRange,
-                          onCaseMaxGpuLengthRangeChanged: (range) {
-                            setState(() {
-                              _caseMaxGpuLengthRange = range;
-                            });
-                          },
-                          caseMaxCoolerHeightRange: _caseMaxCoolerHeightRange,
-                          onCaseMaxCoolerHeightRangeChanged: (range) {
-                            setState(() {
-                              _caseMaxCoolerHeightRange = range;
-                            });
-                          },
-                          // GPU filters
-                          selectedGpuChipsets: _selectedGpuChipsets,
-                          onGpuChipsetChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedGpuChipsets.add(val);
-                              } else {
-                                _selectedGpuChipsets.remove(val);
-                              }
-                            });
-                          },
-                          gpuVramRange: _gpuVramRange,
-                          onGpuVramRangeChanged: (range) {
-                            setState(() {
-                              _gpuVramRange = range;
-                            });
-                          },
-                          selectedGpuMemoryTypes: _selectedGpuMemoryTypes,
-                          onGpuMemoryTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedGpuMemoryTypes.add(val);
-                              } else {
-                                _selectedGpuMemoryTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedGpuCoolingTypes: _selectedGpuCoolingTypes,
-                          onGpuCoolingTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedGpuCoolingTypes.add(val);
-                              } else {
-                                _selectedGpuCoolingTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedGpuFrameSyncs: _selectedGpuFrameSyncs,
-                          onGpuFrameSyncChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedGpuFrameSyncs.add(val);
-                              } else {
-                                _selectedGpuFrameSyncs.remove(val);
-                              }
-                            });
-                          },
-                          // Cooler filters
-                          coolerIsWaterCooled: _coolerIsWaterCooled,
-                          onCoolerIsWaterCooledChanged: (val) {
-                            setState(() {
-                              _coolerIsWaterCooled = val;
-                            });
-                          },
-                          coolerHeightRange: _coolerHeightRange,
-                          onCoolerHeightRangeChanged: (range) {
-                            setState(() {
-                              _coolerHeightRange = range;
-                            });
-                          },
-                          coolerRadiatorSizeRange: _coolerRadiatorSizeRange,
-                          onCoolerRadiatorSizeRangeChanged: (range) {
-                            setState(() {
-                              _coolerRadiatorSizeRange = range;
-                            });
-                          },
-                          coolerFanSizeRange: _coolerFanSizeRange,
-                          onCoolerFanSizeRangeChanged: (range) {
-                            setState(() {
-                              _coolerFanSizeRange = range;
-                            });
-                          },
-                          // Case Fan filters
-                          caseFanSizeRange: _caseFanSizeRange,
-                          onCaseFanSizeRangeChanged: (range) {
-                            setState(() {
-                              _caseFanSizeRange = range;
-                            });
-                          },
-                          selectedCaseFanLedTypes: _selectedCaseFanLedTypes,
-                          onCaseFanLedTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCaseFanLedTypes.add(val);
-                              } else {
-                                _selectedCaseFanLedTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedCaseFanFlowDirections:
-                              _selectedCaseFanFlowDirections,
-                          onCaseFanFlowDirectionChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCaseFanFlowDirections.add(val);
-                              } else {
-                                _selectedCaseFanFlowDirections.remove(val);
-                              }
-                            });
-                          },
-                          selectedCaseFanConnectorTypes:
-                              _selectedCaseFanConnectorTypes,
-                          onCaseFanConnectorTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedCaseFanConnectorTypes.add(val);
-                              } else {
-                                _selectedCaseFanConnectorTypes.remove(val);
-                              }
-                            });
-                          },
-                          // Monitor filters
-                          monitorScreenSizeRange: _monitorScreenSizeRange,
-                          onMonitorScreenSizeRangeChanged: (range) {
-                            setState(() {
-                              _monitorScreenSizeRange = range;
-                            });
-                          },
-                          selectedMonitorPanelTypes: _selectedMonitorPanelTypes,
-                          onMonitorPanelTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMonitorPanelTypes.add(val);
-                              } else {
-                                _selectedMonitorPanelTypes.remove(val);
-                              }
-                            });
-                          },
-                          monitorRefreshRateRange: _monitorRefreshRateRange,
-                          onMonitorRefreshRateRangeChanged: (range) {
-                            setState(() {
-                              _monitorRefreshRateRange = range;
-                            });
-                          },
-                          selectedMonitorAdaptiveSyncTypes:
-                              _selectedMonitorAdaptiveSyncTypes,
-                          onMonitorAdaptiveSyncTypeChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMonitorAdaptiveSyncTypes.add(val);
-                              } else {
-                                _selectedMonitorAdaptiveSyncTypes.remove(val);
-                              }
-                            });
-                          },
-                          selectedMonitorAspectRatios:
-                              _selectedMonitorAspectRatios,
-                          onMonitorAspectRatioChanged: (val, sel) {
-                            setState(() {
-                              if (sel) {
-                                _selectedMonitorAspectRatios.add(val);
-                              } else {
-                                _selectedMonitorAspectRatios.remove(val);
-                              }
-                            });
-                          },
-                        );
-                      },
+                          return _LeftPanel(
+                            enableCompatibilityFilter:
+                                _enableCompatibilityFilter,
+                            onCompatibilityFilterChanged: (val) {
+                              setState(() {
+                                _enableCompatibilityFilter = val;
+                              });
+                            },
+                            currentBuild: currentBuild,
+                            allProducts: products,
+                            componentType: widget.componentType,
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 32),
-
-                  /// The right panel displaying the list of filtered products.
+                  if (isLargeScreen) const SizedBox(width: 32),
                   Expanded(
                     child: Builder(
                       builder: (context) {
-                        if (pagingState.isInitialLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
                         if (pagingState.errorMessage != null &&
                             pagingState.items.isEmpty) {
                           return Center(
@@ -1469,9 +651,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'Failed to load components',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -1489,7 +670,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                           );
                         }
 
-                        // Get current build from provider if not provided
                         final List<PcComponent> currentBuild =
                             widget.currentBuild ?? ref.watch(buildProvider);
 
@@ -1520,10 +700,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             products: filteredProducts,
                             onComponentSelected: widget.onComponentSelected,
                             currentPage: _currentPage,
+                            count: pagingState.totalCount,
                             hasMore: pagingState.hasMore,
-                            isLoading:
-                                pagingState.isLoading &&
-                                !pagingState.isInitialLoading,
+                            isLoading: pagingState.isLoading ||
+                                pagingState.isInitialLoading,
                             isRefreshing: pagingState.isRefreshing,
                             onRefresh: pagingNotifier.refresh,
                             onPageChanged: _navigateToPage,
@@ -1532,6 +712,13 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             onCompareToggle: _toggleComparisonSelection,
                             onCompare: _showComparisonDialog,
                             onClearComparison: _clearComparisonSelection,
+                            scrollController: _scrollController,
+                            showCompare: isLargeScreen,
+                            onOpenFilters: !isLargeScreen
+                                ? () {
+                                    _scaffoldKey.currentState?.openEndDrawer();
+                                  }
+                                : null,
                           );
                         }
 
@@ -1573,102 +760,6 @@ class _LeftPanel extends ConsumerWidget {
   final List<BaseComponent> allProducts;
   final ComponentType componentType;
 
-  // Filter state and callbacks
-  final Set<String> selectedManufacturers;
-  final Function(String, bool) onManufacturerChanged;
-  final RangeValues priceRange;
-  final Function(RangeValues) onPriceRangeChanged;
-
-  // CPU filters
-  final Set<String> selectedCpuSeries;
-  final Function(String, bool) onCpuSeriesChanged;
-  final Set<String> selectedCpuSockets;
-  final Function(String, bool) onCpuSocketChanged;
-  final bool? cpuIncludesCooler;
-  final Function(bool?) onCpuIncludesCoolerChanged;
-
-  // Motherboard filters
-  final Set<String> selectedMotherboardSockets;
-  final Function(String, bool) onMotherboardSocketChanged;
-  final Set<String> selectedMotherboardChipsets;
-  final Function(String, bool) onMotherboardChipsetChanged;
-  final Set<String> selectedMotherboardFormFactors;
-  final Function(String, bool) onMotherboardFormFactorChanged;
-
-  // RAM filters
-  final Set<String> selectedRamTypes;
-  final Function(String, bool) onRamTypeChanged;
-  final Set<int> selectedRamModules;
-  final Function(int, bool) onRamModuleChanged;
-  final bool? ramHasRgb;
-  final Function(bool?) onRamHasRgbChanged;
-
-  // Storage filters
-  final Set<String> selectedStorageTypes;
-  final Function(String, bool) onStorageTypeChanged;
-  final Set<String> selectedStorageInterfaces;
-  final Function(String, bool) onStorageInterfaceChanged;
-
-  // PSU filters
-  final Set<String> selectedPsuWattages;
-  final Function(String, bool) onPsuWattageChanged;
-  final Set<String> selectedPsuEfficiencies;
-  final Function(String, bool) onPsuEfficiencyChanged;
-  final Set<String> selectedPsuModularities;
-  final Function(String, bool) onPsuModularityChanged;
-
-  // Case filters
-  final Set<String> selectedCaseFormFactors;
-  final Function(String, bool) onCaseFormFactorChanged;
-  final RangeValues? caseMaxGpuLengthRange;
-  final Function(RangeValues) onCaseMaxGpuLengthRangeChanged;
-  final RangeValues? caseMaxCoolerHeightRange;
-  final Function(RangeValues) onCaseMaxCoolerHeightRangeChanged;
-
-  // GPU filters
-  final Set<String> selectedGpuChipsets;
-  final Function(String, bool) onGpuChipsetChanged;
-  final RangeValues? gpuVramRange;
-  final Function(RangeValues) onGpuVramRangeChanged;
-  final Set<String> selectedGpuMemoryTypes;
-  final Function(String, bool) onGpuMemoryTypeChanged;
-  final Set<String> selectedGpuCoolingTypes;
-  final Function(String, bool) onGpuCoolingTypeChanged;
-  final Set<String> selectedGpuFrameSyncs;
-  final Function(String, bool) onGpuFrameSyncChanged;
-
-  // Cooler filters
-  final bool? coolerIsWaterCooled;
-  final Function(bool?) onCoolerIsWaterCooledChanged;
-  final RangeValues? coolerHeightRange;
-  final Function(RangeValues) onCoolerHeightRangeChanged;
-  final RangeValues? coolerRadiatorSizeRange;
-  final Function(RangeValues) onCoolerRadiatorSizeRangeChanged;
-  final RangeValues? coolerFanSizeRange;
-  final Function(RangeValues) onCoolerFanSizeRangeChanged;
-
-  // Case Fan filters
-  final RangeValues? caseFanSizeRange;
-  final Function(RangeValues) onCaseFanSizeRangeChanged;
-  final Set<String> selectedCaseFanLedTypes;
-  final Function(String, bool) onCaseFanLedTypeChanged;
-  final Set<String> selectedCaseFanFlowDirections;
-  final Function(String, bool) onCaseFanFlowDirectionChanged;
-  final Set<String> selectedCaseFanConnectorTypes;
-  final Function(String, bool) onCaseFanConnectorTypeChanged;
-
-  // Monitor filters
-  final RangeValues? monitorScreenSizeRange;
-  final Function(RangeValues) onMonitorScreenSizeRangeChanged;
-  final Set<String> selectedMonitorPanelTypes;
-  final Function(String, bool) onMonitorPanelTypeChanged;
-  final RangeValues? monitorRefreshRateRange;
-  final Function(RangeValues) onMonitorRefreshRateRangeChanged;
-  final Set<String> selectedMonitorAdaptiveSyncTypes;
-  final Function(String, bool) onMonitorAdaptiveSyncTypeChanged;
-  final Set<String> selectedMonitorAspectRatios;
-  final Function(String, bool) onMonitorAspectRatioChanged;
-
   // Compatibility filter
   final bool enableCompatibilityFilter;
   final Function(bool) onCompatibilityFilterChanged;
@@ -1679,80 +770,6 @@ class _LeftPanel extends ConsumerWidget {
     required this.currentBuild,
     required this.allProducts,
     required this.componentType,
-    required this.selectedManufacturers,
-    required this.onManufacturerChanged,
-    required this.priceRange,
-    required this.onPriceRangeChanged,
-    required this.selectedCpuSeries,
-    required this.onCpuSeriesChanged,
-    required this.selectedCpuSockets,
-    required this.onCpuSocketChanged,
-    required this.cpuIncludesCooler,
-    required this.onCpuIncludesCoolerChanged,
-    required this.selectedMotherboardSockets,
-    required this.onMotherboardSocketChanged,
-    required this.selectedMotherboardChipsets,
-    required this.onMotherboardChipsetChanged,
-    required this.selectedMotherboardFormFactors,
-    required this.onMotherboardFormFactorChanged,
-    required this.selectedRamTypes,
-    required this.onRamTypeChanged,
-    required this.selectedRamModules,
-    required this.onRamModuleChanged,
-    required this.ramHasRgb,
-    required this.onRamHasRgbChanged,
-    required this.selectedStorageTypes,
-    required this.onStorageTypeChanged,
-    required this.selectedStorageInterfaces,
-    required this.onStorageInterfaceChanged,
-    required this.selectedPsuWattages,
-    required this.onPsuWattageChanged,
-    required this.selectedPsuEfficiencies,
-    required this.onPsuEfficiencyChanged,
-    required this.selectedPsuModularities,
-    required this.onPsuModularityChanged,
-    required this.selectedCaseFormFactors,
-    required this.onCaseFormFactorChanged,
-    required this.caseMaxGpuLengthRange,
-    required this.onCaseMaxGpuLengthRangeChanged,
-    required this.caseMaxCoolerHeightRange,
-    required this.onCaseMaxCoolerHeightRangeChanged,
-    required this.selectedGpuChipsets,
-    required this.onGpuChipsetChanged,
-    required this.gpuVramRange,
-    required this.onGpuVramRangeChanged,
-    required this.selectedGpuMemoryTypes,
-    required this.onGpuMemoryTypeChanged,
-    required this.selectedGpuCoolingTypes,
-    required this.onGpuCoolingTypeChanged,
-    required this.selectedGpuFrameSyncs,
-    required this.onGpuFrameSyncChanged,
-    required this.coolerIsWaterCooled,
-    required this.onCoolerIsWaterCooledChanged,
-    required this.coolerHeightRange,
-    required this.onCoolerHeightRangeChanged,
-    required this.coolerRadiatorSizeRange,
-    required this.onCoolerRadiatorSizeRangeChanged,
-    required this.coolerFanSizeRange,
-    required this.onCoolerFanSizeRangeChanged,
-    required this.caseFanSizeRange,
-    required this.onCaseFanSizeRangeChanged,
-    required this.selectedCaseFanLedTypes,
-    required this.onCaseFanLedTypeChanged,
-    required this.selectedCaseFanFlowDirections,
-    required this.onCaseFanFlowDirectionChanged,
-    required this.selectedCaseFanConnectorTypes,
-    required this.onCaseFanConnectorTypeChanged,
-    required this.monitorScreenSizeRange,
-    required this.onMonitorScreenSizeRangeChanged,
-    required this.selectedMonitorPanelTypes,
-    required this.onMonitorPanelTypeChanged,
-    required this.monitorRefreshRateRange,
-    required this.onMonitorRefreshRateRangeChanged,
-    required this.selectedMonitorAdaptiveSyncTypes,
-    required this.onMonitorAdaptiveSyncTypeChanged,
-    required this.selectedMonitorAspectRatios,
-    required this.onMonitorAspectRatioChanged,
   });
 
   /// A computed property that calculates the number of parts currently selected in the build.
@@ -1761,18 +778,18 @@ class _LeftPanel extends ConsumerWidget {
 
   /// A computed property that calculates the total price of the current build.
   double get _totalPrice => currentBuild.fold(
-    0.0,
-    (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
-  );
+        0.0,
+        (sum, item) => sum + (item.selectedProduct?.lowestPrice ?? 0.0),
+      );
 
   /// A computed property that calculates the estimated wattage of the current build based on CPU and GPU TDP.
   // TODO: Make this calculation more comprehensive by including other components.
   int get _estimatedWattage => currentBuild.fold(0, (sum, item) {
-    final p = item.selectedProduct;
-    if (p is CPUComponent) return sum + p.thermalDesignPower.toInt();
-    if (p is GPUComponent) return sum + p.thermalDesignPower.toInt();
-    return sum;
-  });
+        final p = item.selectedProduct;
+        if (p is CPUComponent) return sum + p.thermalDesignPower.toInt();
+        if (p is GPUComponent) return sum + p.thermalDesignPower.toInt();
+        return sum;
+      });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1808,98 +825,18 @@ class _LeftPanel extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: const Color(0xFF13131F),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
-            child: _FilterPanel(
-              allProducts: allProducts,
-              componentType: componentType,
-              selectedManufacturers: selectedManufacturers,
-              onManufacturerChanged: onManufacturerChanged,
-              priceRange: priceRange,
-              onPriceRangeChanged: onPriceRangeChanged,
-              selectedCpuSeries: selectedCpuSeries,
-              onCpuSeriesChanged: onCpuSeriesChanged,
-              selectedCpuSockets: selectedCpuSockets,
-              onCpuSocketChanged: onCpuSocketChanged,
-              cpuIncludesCooler: cpuIncludesCooler,
-              onCpuIncludesCoolerChanged: onCpuIncludesCoolerChanged,
-              selectedMotherboardSockets: selectedMotherboardSockets,
-              onMotherboardSocketChanged: onMotherboardSocketChanged,
-              selectedMotherboardChipsets: selectedMotherboardChipsets,
-              onMotherboardChipsetChanged: onMotherboardChipsetChanged,
-              selectedMotherboardFormFactors: selectedMotherboardFormFactors,
-              onMotherboardFormFactorChanged: onMotherboardFormFactorChanged,
-              selectedRamTypes: selectedRamTypes,
-              onRamTypeChanged: onRamTypeChanged,
-              selectedRamModules: selectedRamModules,
-              onRamModuleChanged: onRamModuleChanged,
-              ramHasRgb: ramHasRgb,
-              onRamHasRgbChanged: onRamHasRgbChanged,
-              selectedStorageTypes: selectedStorageTypes,
-              onStorageTypeChanged: onStorageTypeChanged,
-              selectedStorageInterfaces: selectedStorageInterfaces,
-              onStorageInterfaceChanged: onStorageInterfaceChanged,
-              selectedPsuWattages: selectedPsuWattages,
-              onPsuWattageChanged: onPsuWattageChanged,
-              selectedPsuEfficiencies: selectedPsuEfficiencies,
-              onPsuEfficiencyChanged: onPsuEfficiencyChanged,
-              selectedPsuModularities: selectedPsuModularities,
-              onPsuModularityChanged: onPsuModularityChanged,
-              selectedCaseFormFactors: selectedCaseFormFactors,
-              onCaseFormFactorChanged: onCaseFormFactorChanged,
-              caseMaxGpuLengthRange: caseMaxGpuLengthRange,
-              onCaseMaxGpuLengthRangeChanged: onCaseMaxGpuLengthRangeChanged,
-              caseMaxCoolerHeightRange: caseMaxCoolerHeightRange,
-              onCaseMaxCoolerHeightRangeChanged:
-                  onCaseMaxCoolerHeightRangeChanged,
-              selectedGpuChipsets: selectedGpuChipsets,
-              onGpuChipsetChanged: onGpuChipsetChanged,
-              gpuVramRange: gpuVramRange,
-              onGpuVramRangeChanged: onGpuVramRangeChanged,
-              selectedGpuMemoryTypes: selectedGpuMemoryTypes,
-              onGpuMemoryTypeChanged: onGpuMemoryTypeChanged,
-              selectedGpuCoolingTypes: selectedGpuCoolingTypes,
-              onGpuCoolingTypeChanged: onGpuCoolingTypeChanged,
-              selectedGpuFrameSyncs: selectedGpuFrameSyncs,
-              onGpuFrameSyncChanged: onGpuFrameSyncChanged,
-              coolerIsWaterCooled: coolerIsWaterCooled,
-              onCoolerIsWaterCooledChanged: onCoolerIsWaterCooledChanged,
-              coolerHeightRange: coolerHeightRange,
-              onCoolerHeightRangeChanged: onCoolerHeightRangeChanged,
-              coolerRadiatorSizeRange: coolerRadiatorSizeRange,
-              onCoolerRadiatorSizeRangeChanged:
-                  onCoolerRadiatorSizeRangeChanged,
-              coolerFanSizeRange: coolerFanSizeRange,
-              onCoolerFanSizeRangeChanged: onCoolerFanSizeRangeChanged,
-              caseFanSizeRange: caseFanSizeRange,
-              onCaseFanSizeRangeChanged: onCaseFanSizeRangeChanged,
-              selectedCaseFanLedTypes: selectedCaseFanLedTypes,
-              onCaseFanLedTypeChanged: onCaseFanLedTypeChanged,
-              selectedCaseFanFlowDirections: selectedCaseFanFlowDirections,
-              onCaseFanFlowDirectionChanged: onCaseFanFlowDirectionChanged,
-              selectedCaseFanConnectorTypes: selectedCaseFanConnectorTypes,
-              onCaseFanConnectorTypeChanged: onCaseFanConnectorTypeChanged,
-              monitorScreenSizeRange: monitorScreenSizeRange,
-              onMonitorScreenSizeRangeChanged: onMonitorScreenSizeRangeChanged,
-              selectedMonitorPanelTypes: selectedMonitorPanelTypes,
-              onMonitorPanelTypeChanged: onMonitorPanelTypeChanged,
-              monitorRefreshRateRange: monitorRefreshRateRange,
-              onMonitorRefreshRateRangeChanged:
-                  onMonitorRefreshRateRangeChanged,
-              selectedMonitorAdaptiveSyncTypes:
-                  selectedMonitorAdaptiveSyncTypes,
-              onMonitorAdaptiveSyncTypeChanged:
-                  onMonitorAdaptiveSyncTypeChanged,
-              selectedMonitorAspectRatios: selectedMonitorAspectRatios,
-              onMonitorAspectRatioChanged: onMonitorAspectRatioChanged,
-            ),
+            child: DynamicFilterPanel(componentType: componentType),
           ),
         ),
       ],
     );
   }
 }
+
 
 /// A widget that displays a summary of the current build (part count, price, wattage).
 class _BuildSummary extends StatelessWidget {
@@ -1918,8 +855,9 @@ class _BuildSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color(0xFF13131F),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         // Each piece of information is displayed in a `_SummaryRow`.
@@ -1929,7 +867,7 @@ class _BuildSummary extends StatelessWidget {
           _SummaryRow(
             label: 'Total Price:',
             value: '\$${totalPrice.toStringAsFixed(2)}',
-            valueColor: AppColorsDark.textPurple,
+            valueColor: const Color(0xFF00E5FF),
           ),
           const SizedBox(height: 8),
           _SummaryRow(label: 'Est. Wattage:', value: '${estimatedWattage}W'),
@@ -1968,977 +906,6 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-/// The main filter panel widget that dynamically builds filter options based on the component type.
-// TODO: Consider breaking this down into smaller, more manageable widgets if it becomes too complex.
-class _FilterPanel extends ConsumerWidget {
-  final List<BaseComponent> allProducts;
-  final ComponentType componentType;
-
-  // Filter state and callbacks
-  final Set<String> selectedManufacturers;
-  final Function(String, bool) onManufacturerChanged;
-  final RangeValues priceRange;
-  final Function(RangeValues) onPriceRangeChanged;
-
-  // CPU filters
-  final Set<String> selectedCpuSeries;
-  final Function(String, bool) onCpuSeriesChanged;
-  final Set<String> selectedCpuSockets;
-  final Function(String, bool) onCpuSocketChanged;
-  final bool? cpuIncludesCooler;
-  final Function(bool?) onCpuIncludesCoolerChanged;
-
-  // Motherboard filters
-  final Set<String> selectedMotherboardSockets;
-  final Function(String, bool) onMotherboardSocketChanged;
-  final Set<String> selectedMotherboardChipsets;
-  final Function(String, bool) onMotherboardChipsetChanged;
-  final Set<String> selectedMotherboardFormFactors;
-  final Function(String, bool) onMotherboardFormFactorChanged;
-
-  // RAM filters
-  final Set<String> selectedRamTypes;
-  final Function(String, bool) onRamTypeChanged;
-  final Set<int> selectedRamModules;
-  final Function(int, bool) onRamModuleChanged;
-  final bool? ramHasRgb;
-  final Function(bool?) onRamHasRgbChanged;
-
-  // Storage filters
-  final Set<String> selectedStorageTypes;
-  final Function(String, bool) onStorageTypeChanged;
-  final Set<String> selectedStorageInterfaces;
-  final Function(String, bool) onStorageInterfaceChanged;
-
-  // PSU filters
-  final Set<String> selectedPsuWattages;
-  final Function(String, bool) onPsuWattageChanged;
-  final Set<String> selectedPsuEfficiencies;
-  final Function(String, bool) onPsuEfficiencyChanged;
-  final Set<String> selectedPsuModularities;
-  final Function(String, bool) onPsuModularityChanged;
-
-  // Case filters
-  final Set<String> selectedCaseFormFactors;
-  final Function(String, bool) onCaseFormFactorChanged;
-  final RangeValues? caseMaxGpuLengthRange;
-  final Function(RangeValues) onCaseMaxGpuLengthRangeChanged;
-  final RangeValues? caseMaxCoolerHeightRange;
-  final Function(RangeValues) onCaseMaxCoolerHeightRangeChanged;
-
-  // GPU filters
-  final Set<String> selectedGpuChipsets;
-  final Function(String, bool) onGpuChipsetChanged;
-  final RangeValues? gpuVramRange;
-  final Function(RangeValues) onGpuVramRangeChanged;
-  final Set<String> selectedGpuMemoryTypes;
-  final Function(String, bool) onGpuMemoryTypeChanged;
-  final Set<String> selectedGpuCoolingTypes;
-  final Function(String, bool) onGpuCoolingTypeChanged;
-  final Set<String> selectedGpuFrameSyncs;
-  final Function(String, bool) onGpuFrameSyncChanged;
-
-  // Cooler filters
-  final bool? coolerIsWaterCooled;
-  final Function(bool?) onCoolerIsWaterCooledChanged;
-  final RangeValues? coolerHeightRange;
-  final Function(RangeValues) onCoolerHeightRangeChanged;
-  final RangeValues? coolerRadiatorSizeRange;
-  final Function(RangeValues) onCoolerRadiatorSizeRangeChanged;
-  final RangeValues? coolerFanSizeRange;
-  final Function(RangeValues) onCoolerFanSizeRangeChanged;
-
-  // Case Fan filters
-  final RangeValues? caseFanSizeRange;
-  final Function(RangeValues) onCaseFanSizeRangeChanged;
-  final Set<String> selectedCaseFanLedTypes;
-  final Function(String, bool) onCaseFanLedTypeChanged;
-  final Set<String> selectedCaseFanFlowDirections;
-  final Function(String, bool) onCaseFanFlowDirectionChanged;
-  final Set<String> selectedCaseFanConnectorTypes;
-  final Function(String, bool) onCaseFanConnectorTypeChanged;
-
-  // Monitor filters
-  final RangeValues? monitorScreenSizeRange;
-  final Function(RangeValues) onMonitorScreenSizeRangeChanged;
-  final Set<String> selectedMonitorPanelTypes;
-  final Function(String, bool) onMonitorPanelTypeChanged;
-  final RangeValues? monitorRefreshRateRange;
-  final Function(RangeValues) onMonitorRefreshRateRangeChanged;
-  final Set<String> selectedMonitorAdaptiveSyncTypes;
-  final Function(String, bool) onMonitorAdaptiveSyncTypeChanged;
-  final Set<String> selectedMonitorAspectRatios;
-  final Function(String, bool) onMonitorAspectRatioChanged;
-
-  const _FilterPanel({
-    required this.allProducts,
-    required this.componentType,
-    required this.selectedManufacturers,
-    required this.onManufacturerChanged,
-    required this.priceRange,
-    required this.onPriceRangeChanged,
-    required this.selectedCpuSeries,
-    required this.onCpuSeriesChanged,
-    required this.selectedCpuSockets,
-    required this.onCpuSocketChanged,
-    required this.cpuIncludesCooler,
-    required this.onCpuIncludesCoolerChanged,
-    required this.selectedMotherboardSockets,
-    required this.onMotherboardSocketChanged,
-    required this.selectedMotherboardChipsets,
-    required this.onMotherboardChipsetChanged,
-    required this.selectedMotherboardFormFactors,
-    required this.onMotherboardFormFactorChanged,
-    required this.selectedRamTypes,
-    required this.onRamTypeChanged,
-    required this.selectedRamModules,
-    required this.onRamModuleChanged,
-    required this.ramHasRgb,
-    required this.onRamHasRgbChanged,
-    required this.selectedStorageTypes,
-    required this.onStorageTypeChanged,
-    required this.selectedStorageInterfaces,
-    required this.onStorageInterfaceChanged,
-    required this.selectedPsuWattages,
-    required this.onPsuWattageChanged,
-    required this.selectedPsuEfficiencies,
-    required this.onPsuEfficiencyChanged,
-    required this.selectedPsuModularities,
-    required this.onPsuModularityChanged,
-    required this.selectedCaseFormFactors,
-    required this.onCaseFormFactorChanged,
-    required this.caseMaxGpuLengthRange,
-    required this.onCaseMaxGpuLengthRangeChanged,
-    required this.caseMaxCoolerHeightRange,
-    required this.onCaseMaxCoolerHeightRangeChanged,
-    required this.selectedGpuChipsets,
-    required this.onGpuChipsetChanged,
-    required this.gpuVramRange,
-    required this.onGpuVramRangeChanged,
-    required this.selectedGpuMemoryTypes,
-    required this.onGpuMemoryTypeChanged,
-    required this.selectedGpuCoolingTypes,
-    required this.onGpuCoolingTypeChanged,
-    required this.selectedGpuFrameSyncs,
-    required this.onGpuFrameSyncChanged,
-    required this.coolerIsWaterCooled,
-    required this.onCoolerIsWaterCooledChanged,
-    required this.coolerHeightRange,
-    required this.onCoolerHeightRangeChanged,
-    required this.coolerRadiatorSizeRange,
-    required this.onCoolerRadiatorSizeRangeChanged,
-    required this.coolerFanSizeRange,
-    required this.onCoolerFanSizeRangeChanged,
-    required this.caseFanSizeRange,
-    required this.onCaseFanSizeRangeChanged,
-    required this.selectedCaseFanLedTypes,
-    required this.onCaseFanLedTypeChanged,
-    required this.selectedCaseFanFlowDirections,
-    required this.onCaseFanFlowDirectionChanged,
-    required this.selectedCaseFanConnectorTypes,
-    required this.onCaseFanConnectorTypeChanged,
-    required this.monitorScreenSizeRange,
-    required this.onMonitorScreenSizeRangeChanged,
-    required this.selectedMonitorPanelTypes,
-    required this.onMonitorPanelTypeChanged,
-    required this.monitorRefreshRateRange,
-    required this.onMonitorRefreshRateRangeChanged,
-    required this.selectedMonitorAdaptiveSyncTypes,
-    required this.onMonitorAdaptiveSyncTypeChanged,
-    required this.selectedMonitorAspectRatios,
-    required this.onMonitorAspectRatioChanged,
-  });
-
-  /// A generic function to extract unique, non-null values for a specific property
-  /// from the list of all products. This is used to populate filter options.
-  List<T> _getUniqueValuesFor<T, C extends BaseComponent>(
-    T Function(C) mapper,
-  ) {
-    return allProducts
-        .whereType<C>()
-        .map(mapper)
-        .where((item) => item != null)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toString().compareTo(b.toString()));
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      // The list of filters is built dynamically.
-      children: [
-        ..._buildComponentSpecificFilters(ref),
-        _buildFilterSection<String>(
-          title: 'Manufacturer',
-          items: _getUniqueValuesFor<String, BaseComponent>(
-            (p) => p.manufacturer,
-          ),
-          selectedItems: selectedManufacturers.toList(),
-          onChanged: onManufacturerChanged,
-        ),
-        _buildPriceFilter(context),
-      ],
-    );
-  }
-
-  /// Dynamically builds the list of filter widgets based on the current [componentType].
-  List<Widget> _buildComponentSpecificFilters(WidgetRef ref) {
-    // TODO: Implement component-specific filters by updating the filter provider.
-
-    // A switch statement determines which set of filters to show.
-    List<Widget> filters = const [];
-    switch (componentType) {
-      case ComponentType.cpu:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Series',
-            items: _getUniqueValuesFor<String, CPUComponent>((p) => p.series),
-            selectedItems: selectedCpuSeries.toList(),
-            onChanged: onCpuSeriesChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Socket',
-            items: _getUniqueValuesFor<String, CPUComponent>(
-              (p) => p.socketType,
-            ),
-            selectedItems: selectedCpuSockets.toList(),
-            onChanged: onCpuSocketChanged,
-          ),
-          _buildBooleanFilter(
-            title: 'Includes Cooler',
-            value: cpuIncludesCooler,
-            onChanged: onCpuIncludesCoolerChanged,
-          ),
-        ];
-        break;
-      case ComponentType.motherboard:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Socket',
-            items: _getUniqueValuesFor<String, MotherboardComponent>(
-              (p) => p.socketType,
-            ),
-            selectedItems: selectedMotherboardSockets.toList(),
-            onChanged: onMotherboardSocketChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Chipset',
-            items: _getUniqueValuesFor<String, MotherboardComponent>(
-              (p) => p.chipsetType,
-            ),
-            selectedItems: selectedMotherboardChipsets.toList(),
-            onChanged: onMotherboardChipsetChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Form Factor',
-            items: _getUniqueValuesFor<String, MotherboardComponent>(
-              (p) => p.formFactor,
-            ),
-            selectedItems: selectedMotherboardFormFactors.toList(),
-            onChanged: onMotherboardFormFactorChanged,
-          ),
-        ];
-        break;
-      case ComponentType.ram:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Type',
-            items: _getUniqueValuesFor<String, MemoryComponent>(
-              (p) => p.ramType,
-            ),
-            selectedItems: selectedRamTypes.toList(),
-            onChanged: onRamTypeChanged,
-          ),
-          _buildFilterSection<int>(
-            title: 'Modules',
-            items: _getUniqueValuesFor<int, MemoryComponent>(
-              (p) => p.moduleQuantity,
-            ),
-            selectedItems: selectedRamModules.toList(),
-            onChanged: onRamModuleChanged,
-            displayMapper: (val) => '$val module(s)',
-          ),
-          _buildBooleanFilter(
-            title: 'RGB',
-            value: ramHasRgb,
-            onChanged: onRamHasRgbChanged,
-          ),
-        ];
-        break;
-      case ComponentType.psu:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Wattage',
-            items: const ['0-550', '551-750', '751-1000', '1001-9999'],
-            displayItems: const [
-              'Up to 550W',
-              '551W - 750W',
-              '751W - 1000W',
-              '1000W+',
-            ],
-            selectedItems: selectedPsuWattages.toList(),
-            onChanged: onPsuWattageChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Efficiency',
-            items: _getUniqueValuesFor<String, PowerSupplyComponent>(
-              (p) => p.efficiencyRating!,
-            ),
-            selectedItems: selectedPsuEfficiencies.toList(),
-            onChanged: onPsuEfficiencyChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Modularity',
-            items: _getUniqueValuesFor<String, PowerSupplyComponent>(
-              (p) => p.modularityType,
-            ),
-            selectedItems: selectedPsuModularities.toList(),
-            onChanged: onPsuModularityChanged,
-          ),
-        ];
-        break;
-      case ComponentType.storage:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Type',
-            items: _getUniqueValuesFor<String, StorageComponent>(
-              (p) => p.driveType,
-            ),
-            selectedItems: selectedStorageTypes.toList(),
-            onChanged: onStorageTypeChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Interface',
-            items: _getUniqueValuesFor<String, StorageComponent>(
-              (p) => p.interface,
-            ),
-            selectedItems: selectedStorageInterfaces.toList(),
-            onChanged: onStorageInterfaceChanged,
-          ),
-        ];
-        break;
-      case ComponentType.pcCase:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Form Factor',
-            items: _getUniqueValuesFor<String, CaseComponent>(
-              (p) => p.formFactor,
-            ),
-            selectedItems: selectedCaseFormFactors.toList(),
-            onChanged: onCaseFormFactorChanged,
-          ),
-          Builder(
-            builder: (context) {
-              final cases = allProducts.whereType<CaseComponent>().toList();
-              if (cases.isEmpty) return const SizedBox.shrink();
-              final maxGpuLength = cases
-                  .map((p) => p.maxVideoCardLength)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Max GPU Length (mm)',
-                range: caseMaxGpuLengthRange,
-                onRangeChanged: onCaseMaxGpuLengthRangeChanged,
-                min: 0,
-                max: maxGpuLength > 0 ? maxGpuLength : 500,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-          Builder(
-            builder: (context) {
-              final cases = allProducts.whereType<CaseComponent>().toList();
-              if (cases.isEmpty) return const SizedBox.shrink();
-              final maxCoolerHeight = cases
-                  .map((p) => p.maxCPUCoolerHeight.toDouble())
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Max Cooler Height (mm)',
-                range: caseMaxCoolerHeightRange,
-                onRangeChanged: onCaseMaxCoolerHeightRangeChanged,
-                min: 0,
-                max: maxCoolerHeight > 0 ? maxCoolerHeight : 200,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-        ];
-        break;
-      case ComponentType.gpu:
-        filters = [
-          _buildFilterSection<String>(
-            title: 'Chipset',
-            items: _getUniqueValuesFor<String, GPUComponent>((p) => p.chipset),
-            selectedItems: selectedGpuChipsets.toList(),
-            onChanged: onGpuChipsetChanged,
-          ),
-          Builder(
-            builder: (context) {
-              final gpus = allProducts.whereType<GPUComponent>().toList();
-              if (gpus.isEmpty) return const SizedBox.shrink();
-              final maxVram = gpus
-                  .map((p) => p.videoMemoryAmount)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'VRAM (GB)',
-                range: gpuVramRange,
-                onRangeChanged: onGpuVramRangeChanged,
-                min: 0,
-                max: maxVram > 0 ? maxVram : 24,
-                formatValue: (val) => '${val.toStringAsFixed(0)}GB',
-              );
-            },
-          ),
-          _buildFilterSection<String>(
-            title: 'Memory Type',
-            items: _getUniqueValuesFor<String, GPUComponent>(
-              (p) => p.videoMemoryType,
-            ),
-            selectedItems: selectedGpuMemoryTypes.toList(),
-            onChanged: onGpuMemoryTypeChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Cooling Type',
-            items: _getUniqueValuesFor<String, GPUComponent>(
-              (p) => p.coolingType,
-            ),
-            selectedItems: selectedGpuCoolingTypes.toList(),
-            onChanged: onGpuCoolingTypeChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Frame Sync',
-            items: _getUniqueValuesFor<String, GPUComponent>(
-              (p) => p.frameSync,
-            ),
-            selectedItems: selectedGpuFrameSyncs.toList(),
-            onChanged: onGpuFrameSyncChanged,
-          ),
-        ];
-        break;
-      case ComponentType.cooler:
-        filters = [
-          _buildBooleanFilter(
-            title: 'Water Cooled',
-            value: coolerIsWaterCooled,
-            onChanged: onCoolerIsWaterCooledChanged,
-          ),
-          Builder(
-            builder: (context) {
-              final coolers = allProducts.whereType<CoolerComponent>().toList();
-              if (coolers.isEmpty) return const SizedBox.shrink();
-              final maxHeight = coolers
-                  .map((p) => p.height)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Height (mm)',
-                range: coolerHeightRange,
-                onRangeChanged: onCoolerHeightRangeChanged,
-                min: 0,
-                max: maxHeight > 0 ? maxHeight : 200,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-          Builder(
-            builder: (context) {
-              final coolers = allProducts
-                  .whereType<CoolerComponent>()
-                  .where((p) => p.radiatorSize != null)
-                  .toList();
-              if (coolers.isEmpty) return const SizedBox.shrink();
-              final maxRadiator = coolers
-                  .map((p) => p.radiatorSize!)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Radiator Size (mm)',
-                range: coolerRadiatorSizeRange,
-                onRangeChanged: onCoolerRadiatorSizeRangeChanged,
-                min: 0,
-                max: maxRadiator > 0 ? maxRadiator : 480,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-          Builder(
-            builder: (context) {
-              final coolers = allProducts
-                  .whereType<CoolerComponent>()
-                  .where((p) => p.fanSize != null)
-                  .toList();
-              if (coolers.isEmpty) return const SizedBox.shrink();
-              final maxFanSize = coolers
-                  .map((p) => p.fanSize!)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Fan Size (mm)',
-                range: coolerFanSizeRange,
-                onRangeChanged: onCoolerFanSizeRangeChanged,
-                min: 0,
-                max: maxFanSize > 0 ? maxFanSize : 140,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-        ];
-        break;
-      case ComponentType.caseFan:
-        filters = [
-          Builder(
-            builder: (context) {
-              final fans = allProducts.whereType<CaseFanComponent>().toList();
-              if (fans.isEmpty) return const SizedBox.shrink();
-              final maxSize = fans
-                  .map((p) => p.size)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Size (mm)',
-                range: caseFanSizeRange,
-                onRangeChanged: onCaseFanSizeRangeChanged,
-                min: 0,
-                max: maxSize > 0 ? maxSize : 200,
-                formatValue: (val) => '${val.toStringAsFixed(0)}mm',
-              );
-            },
-          ),
-          _buildFilterSection<String>(
-            title: 'LED Type',
-            items: _getUniqueValuesFor<String, CaseFanComponent>(
-              (p) => p.ledType ?? '',
-            ).where((v) => v.isNotEmpty).toList(),
-            selectedItems: selectedCaseFanLedTypes.toList(),
-            onChanged: onCaseFanLedTypeChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Flow Direction',
-            items: _getUniqueValuesFor<String, CaseFanComponent>(
-              (p) => p.flowDirection,
-            ),
-            selectedItems: selectedCaseFanFlowDirections.toList(),
-            onChanged: onCaseFanFlowDirectionChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Connector Type',
-            items: _getUniqueValuesFor<String, CaseFanComponent>(
-              (p) => p.connectorType ?? '',
-            ).where((v) => v.isNotEmpty).toList(),
-            selectedItems: selectedCaseFanConnectorTypes.toList(),
-            onChanged: onCaseFanConnectorTypeChanged,
-          ),
-        ];
-        break;
-      case ComponentType.monitor:
-        filters = [
-          Builder(
-            builder: (context) {
-              final monitors = allProducts
-                  .whereType<MonitorComponent>()
-                  .toList();
-              if (monitors.isEmpty) return const SizedBox.shrink();
-              final maxSize = monitors
-                  .map((p) => p.screenSize)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Screen Size (inches)',
-                range: monitorScreenSizeRange,
-                onRangeChanged: onMonitorScreenSizeRangeChanged,
-                min: 0,
-                max: maxSize > 0 ? maxSize : 50,
-                formatValue: (val) => '${val.toStringAsFixed(1)}"',
-              );
-            },
-          ),
-          _buildFilterSection<String>(
-            title: 'Panel Type',
-            items: _getUniqueValuesFor<String, MonitorComponent>(
-              (p) => p.panelType,
-            ),
-            selectedItems: selectedMonitorPanelTypes.toList(),
-            onChanged: onMonitorPanelTypeChanged,
-          ),
-          Builder(
-            builder: (context) {
-              final monitors = allProducts
-                  .whereType<MonitorComponent>()
-                  .toList();
-              if (monitors.isEmpty) return const SizedBox.shrink();
-              final maxRefresh = monitors
-                  .map((p) => p.maxRefreshRate)
-                  .fold<double>(0, (max, val) => val > max ? val : max);
-              return _buildRangeFilter<double>(
-                context: context,
-                title: 'Refresh Rate (Hz)',
-                range: monitorRefreshRateRange,
-                onRangeChanged: onMonitorRefreshRateRangeChanged,
-                min: 0,
-                max: maxRefresh > 0 ? maxRefresh : 240,
-                formatValue: (val) => '${val.toStringAsFixed(0)}Hz',
-              );
-            },
-          ),
-          _buildFilterSection<String>(
-            title: 'Adaptive Sync',
-            items: _getUniqueValuesFor<String, MonitorComponent>(
-              (p) => p.adaptiveSyncType,
-            ),
-            selectedItems: selectedMonitorAdaptiveSyncTypes.toList(),
-            onChanged: onMonitorAdaptiveSyncTypeChanged,
-          ),
-          _buildFilterSection<String>(
-            title: 'Aspect Ratio',
-            items: _getUniqueValuesFor<String, MonitorComponent>(
-              (p) => p.aspectRatio,
-            ),
-            selectedItems: selectedMonitorAspectRatios.toList(),
-            onChanged: onMonitorAspectRatioChanged,
-          ),
-        ];
-        break;
-    }
-    return filters;
-  }
-
-  /// Builds the price range slider filter.
-  Widget _buildPriceFilter(BuildContext context) {
-    // Calculate max price from products
-    final maxPrice = allProducts
-        .map((p) => p.lowestPrice ?? 0)
-        .fold<double>(0, (max, price) => price > max ? price : max);
-    final actualMax = maxPrice > 0 ? maxPrice : 10000;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section title.
-        Text(
-          'Price Range',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppColorsDark.textPurple,
-            inactiveTrackColor: Colors.grey.shade800,
-            thumbColor: AppColorsDark.textPurple,
-            overlayColor: AppColorsDark.textPurple.withAlpha(32),
-            valueIndicatorColor: AppColorsDark.buttonPurple,
-          ),
-          // The actual RangeSlider widget.
-          child: RangeSlider(
-            values: RangeValues(
-              priceRange.start.clamp(0.0, actualMax).toDouble(),
-              priceRange.end.clamp(0.0, actualMax).toDouble(),
-            ),
-            min: 0.0,
-            max: actualMax.toDouble(),
-            divisions: actualMax > 0 ? (actualMax / 50).round() : 100,
-            labels: RangeLabels(
-              '\$${priceRange.start.toStringAsFixed(0)}',
-              '\$${priceRange.end.toStringAsFixed(0)}',
-            ),
-            onChanged: onPriceRangeChanged,
-          ),
-        ),
-        // Labels showing the current min and max values of the slider.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('\$0', style: TextStyle(color: Colors.grey.shade400)),
-            Text(
-              '\$${actualMax.toStringAsFixed(0)}+',
-              style: TextStyle(color: Colors.grey.shade400),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// Builds a range slider filter for numeric values
-  Widget _buildRangeFilter<T extends num>({
-    required BuildContext context,
-    required String title,
-    required RangeValues? range,
-    required Function(RangeValues) onRangeChanged,
-    required T min,
-    required T max,
-    required String Function(T) formatValue,
-  }) {
-    if (max <= min) return const SizedBox.shrink();
-
-    final actualRange = range ?? RangeValues(min.toDouble(), max.toDouble());
-
-    // Helper to format double values
-    String formatDouble(double val) {
-      if (T == int) {
-        return formatValue(val.round() as T);
-      } else {
-        return formatValue(val as T);
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppColorsDark.textPurple,
-            inactiveTrackColor: Colors.grey.shade800,
-            thumbColor: AppColorsDark.textPurple,
-            overlayColor: AppColorsDark.textPurple.withAlpha(32),
-            valueIndicatorColor: AppColorsDark.buttonPurple,
-          ),
-          child: RangeSlider(
-            values: RangeValues(
-              actualRange.start
-                  .clamp(min.toDouble(), max.toDouble())
-                  .toDouble(),
-              actualRange.end.clamp(min.toDouble(), max.toDouble()).toDouble(),
-            ),
-            min: min.toDouble(),
-            max: max.toDouble(),
-            divisions: (max.toDouble() - min.toDouble() > 0)
-                ? ((max.toDouble() - min.toDouble()) / 10).round().clamp(
-                    10,
-                    100,
-                  )
-                : 100,
-            labels: RangeLabels(
-              formatDouble(actualRange.start),
-              formatDouble(actualRange.end),
-            ),
-            onChanged: onRangeChanged,
-          ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              formatValue(min),
-              style: TextStyle(color: Colors.grey.shade400),
-            ),
-            Text(
-              formatValue(max),
-              style: TextStyle(color: Colors.grey.shade400),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// A generic function to build a section of dropdown filters for accessibility.
-  Widget _buildFilterSection<T>({
-    required String title,
-    required List<T> items,
-    List<String>? displayItems,
-    required List<T> selectedItems,
-    required Function(T, bool) onChanged,
-    String Function(T)? displayMapper,
-  }) {
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    // Build a multi-select dropdown for better accessibility
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        _MultiSelectDropdown<T>(
-          items: items,
-          displayItems: displayItems,
-          selectedItems: selectedItems,
-          onChanged: onChanged,
-          displayMapper: displayMapper,
-          title: title,
-        ),
-        const Divider(height: 32, color: Colors.transparent),
-      ],
-    );
-  }
-
-  /// Builds a filter with three choices: "Any", "Yes", and "No".
-  Widget _buildBooleanFilter({
-    required String title,
-    required bool? value,
-    required Function(bool?) onChanged,
-  }) {
-    // This filter uses custom `_BooleanChip` widgets for selection.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _BooleanChip(
-                label: 'Any',
-                isSelected: value == null,
-                onSelected: () => onChanged(null),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _BooleanChip(
-                label: 'Yes',
-                isSelected: value == true,
-                onSelected: () => onChanged(true),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _BooleanChip(
-                label: 'No',
-                isSelected: value == false,
-                onSelected: () => onChanged(false),
-              ),
-            ),
-          ],
-        ),
-        const Divider(height: 32, color: Colors.transparent),
-      ],
-    );
-  }
-}
-
-/// A multi-select dropdown widget for better accessibility.
-class _MultiSelectDropdown<T> extends StatefulWidget {
-  final List<T> items;
-  final List<String>? displayItems;
-  final List<T> selectedItems;
-  final Function(T, bool) onChanged;
-  final String Function(T)? displayMapper;
-  final String title;
-
-  const _MultiSelectDropdown({
-    required this.items,
-    this.displayItems,
-    required this.selectedItems,
-    required this.onChanged,
-    this.displayMapper,
-    required this.title,
-  });
-
-  @override
-  State<_MultiSelectDropdown<T>> createState() =>
-      _MultiSelectDropdownState<T>();
-}
-
-class _MultiSelectDropdownState<T> extends State<_MultiSelectDropdown<T>> {
-  @override
-  Widget build(BuildContext context) {
-    final selectedCount = widget.selectedItems.length;
-    final displayText = selectedCount == 0
-        ? 'Select ${widget.title}'
-        : selectedCount == widget.items.length
-        ? 'All selected'
-        : '$selectedCount selected';
-
-    return MenuAnchor(
-      menuChildren: widget.items.map((item) {
-        final index = widget.items.indexOf(item);
-        final displayItem =
-            widget.displayMapper?.call(item) ??
-            widget.displayItems?[index] ??
-            item.toString();
-        final isSelected = widget.selectedItems.contains(item);
-
-        return MenuItemButton(
-          child: Row(
-            children: [
-              Checkbox(
-                value: isSelected,
-                onChanged: (value) {
-                  widget.onChanged(item, value ?? false);
-                },
-                activeColor: AppColorsDark.textPurple,
-              ),
-              Expanded(child: Text(displayItem)),
-            ],
-          ),
-          onPressed: () {
-            widget.onChanged(item, !isSelected);
-          },
-        );
-      }).toList(),
-      builder: (context, controller, child) {
-        return SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {
-              if (controller.isOpen) {
-                controller.close();
-              } else {
-                controller.open();
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              alignment: Alignment.centerLeft,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    displayText,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.left,
-                  ),
-                ),
-                Icon(
-                  controller.isOpen
-                      ? Icons.arrow_drop_up
-                      : Icons.arrow_drop_down,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// A custom chip widget used for the boolean ("Any", "Yes", "No") filters.
-class _BooleanChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onSelected;
-  const _BooleanChip({
-    required this.label,
-    required this.isSelected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      onPressed: onSelected,
-      backgroundColor: isSelected
-          ? AppColorsDark.textPurple
-          : Colors.grey.shade800,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.black : Colors.white,
-        fontWeight: FontWeight.bold,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-}
-
 /// The right-side panel that displays the list of products.
 class _ProductList extends ConsumerWidget {
   final ComponentType componentType;
@@ -2946,6 +913,7 @@ class _ProductList extends ConsumerWidget {
   final List<BaseComponent> products;
   final Function(BaseComponent)? onComponentSelected;
   final int currentPage;
+  final int count;
   final bool hasMore;
   final bool isLoading;
   final bool isRefreshing;
@@ -2957,12 +925,16 @@ class _ProductList extends ConsumerWidget {
       onCompareToggle;
   final VoidCallback onCompare;
   final VoidCallback onClearComparison;
+  final ScrollController scrollController;
+  final bool showCompare;
+  final VoidCallback? onOpenFilters;
 
   const _ProductList({
     required this.componentType,
     required this.searchController,
     required this.products,
     required this.currentPage,
+    required this.count,
     required this.hasMore,
     required this.isLoading,
     required this.isRefreshing,
@@ -2973,7 +945,10 @@ class _ProductList extends ConsumerWidget {
     required this.onCompareToggle,
     required this.onCompare,
     required this.onClearComparison,
+    required this.scrollController,
     this.onComponentSelected,
+    this.showCompare = true,
+    this.onOpenFilters,
   });
 
   @override
@@ -2983,30 +958,37 @@ class _ProductList extends ConsumerWidget {
       children: [
         _TopBar(
           searchController: searchController,
-          count: products.length,
+          count: count,
           currentPage: currentPage,
           selectedComparisonCount: comparisonSelection.length,
           maxComparisonItems: maxComparisonItems,
           onCompare: onCompare,
           onClearComparison: onClearComparison,
+          onClearFilters: () {
+            ref.read(activeFiltersProvider(componentType).notifier).clearAll();
+          },
+          showCompare: showCompare,
+          onOpenFilters: onOpenFilters,
         ),
         const SizedBox(height: 24),
         if (isRefreshing || isLoading)
           const LinearProgressIndicator(minHeight: 2),
         if (isRefreshing || isLoading) const SizedBox(height: 12),
-        _ProductListHeader(componentType: componentType),
-        const SizedBox(height: 8),
+        if (showCompare) _ProductListHeader(componentType: componentType),
+        if (showCompare) const SizedBox(height: 8),
         Expanded(
           child: products.isEmpty
               ? RefreshIndicator.adaptive(
                   onRefresh: onRefresh,
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
+                    children: [
                       SizedBox(
                         height: 200,
                         child: Center(
-                          child: Text("No products match your criteria."),
+                          child: isLoading
+                              ? const SizedBox.shrink()
+                              : const Text("No products match your criteria."),
                         ),
                       ),
                     ],
@@ -3021,14 +1003,13 @@ class _ProductList extends ConsumerWidget {
                     comparisonSelection: comparisonSelection,
                     maxComparisonItems: maxComparisonItems,
                     onCompareToggle: onCompareToggle,
+                    scrollController: scrollController,
+                    currentPage: currentPage,
+                    hasMore: hasMore,
+                    onPageChanged: onPageChanged,
+                    showCompare: showCompare,
                   ),
                 ),
-        ),
-        const SizedBox(height: 16),
-        _PaginationControls(
-          currentPage: currentPage,
-          hasMore: hasMore,
-          onPageChanged: onPageChanged,
         ),
       ],
     );
@@ -3043,6 +1024,11 @@ class _ProductListWithCompatibility extends ConsumerWidget {
   final int maxComparisonItems;
   final void Function(BaseComponent component, bool shouldSelect)
       onCompareToggle;
+  final ScrollController scrollController;
+  final int currentPage;
+  final bool hasMore;
+  final void Function(int page) onPageChanged;
+  final bool showCompare;
 
   const _ProductListWithCompatibility({
     required this.products,
@@ -3050,18 +1036,42 @@ class _ProductListWithCompatibility extends ConsumerWidget {
     required this.comparisonSelection,
     required this.maxComparisonItems,
     required this.onCompareToggle,
+    required this.scrollController,
+    required this.currentPage,
+    required this.hasMore,
+    required this.onPageChanged,
     this.onComponentSelected,
+    this.showCompare = true,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView.builder(
+      controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: products.length,
+      itemCount: products.length + 1,
       itemBuilder: (context, index) {
-        final product = products[index];
+        if (index == products.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 32.0),
+            child: _PaginationControls(
+              currentPage: currentPage,
+              hasMore: hasMore,
+              onPageChanged: onPageChanged,
+            ),
+          );
+        }
 
+        final product = products[index];
         final onComponentSelected = this.onComponentSelected;
+
+        if (!showCompare) {
+          return _MobileProductCard(
+            product: product,
+            onComponentSelected: onComponentSelected,
+          );
+        }
+
         Widget row = _GenericProductRow(
           product: product,
           onComponentSelected: onComponentSelected,
@@ -3217,6 +1227,10 @@ class _TopBar extends StatelessWidget {
   final int maxComparisonItems;
   final VoidCallback onCompare;
   final VoidCallback onClearComparison;
+  final VoidCallback onClearFilters;
+  final bool showCompare;
+  final VoidCallback? onOpenFilters;
+
   const _TopBar({
     required this.searchController,
     required this.count,
@@ -3225,32 +1239,95 @@ class _TopBar extends StatelessWidget {
     required this.maxComparisonItems,
     required this.onCompare,
     required this.onClearComparison,
+    required this.onClearFilters,
+    this.showCompare = true,
+    this.onOpenFilters,
   });
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Make this layout responsive for mobile.
+    if (!showCompare) {
+      // Mobile Layout
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Compatible Products ($count)',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              FilledButton.icon(
+                onPressed: onOpenFilters,
+                icon: const Icon(Icons.filter_list),
+                label: const Text('Filters'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2A2A35),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Search processors...',
+              hintStyle: TextStyle(color: Colors.grey.shade600),
+              prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+              filled: true,
+              fillColor: const Color(0xFF13131F),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      );
+    }
+
+    // Desktop Layout
     return Row(
       children: [
-        Text(
-          'Compatible Products ($count) • Page $currentPage',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Expanded(
+          flex: 2,
+          child: Text(
+            'Compatible Products ($count) • Page $currentPage',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         const Spacer(),
         SizedBox(
           width: 250,
           child: TextField(
-            // The search input field.
             controller: searchController,
             decoration: InputDecoration(
               hintText: 'Search processors...',
               hintStyle: TextStyle(color: Colors.grey.shade500),
               prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
               filled: true,
-              fillColor: AppColorsDark.backgroundTertiary,
+              fillColor: const Color(0xFF13131F),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             ),
@@ -3258,8 +1335,7 @@ class _TopBar extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         OutlinedButton.icon(
-          onPressed:
-              selectedComparisonCount >= 2 ? onCompare : null,
+          onPressed: selectedComparisonCount >= 2 ? onCompare : null,
           icon: const Icon(Icons.compare_arrows),
           label: Text(
             'Compare ($selectedComparisonCount/$maxComparisonItems)',
@@ -3281,14 +1357,13 @@ class _TopBar extends StatelessWidget {
           ),
         ],
         const SizedBox(width: 16),
-        // A button to add all filtered items to the build (not yet implemented).
         ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.add, size: 20),
-          label: const Text('Add From Filter'),
+          onPressed: onClearFilters,
+          icon: const Icon(Icons.filter_alt_off, size: 20),
+          label: const Text('Clear Filters'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColorsDark.buttonPurple,
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -3420,20 +1495,26 @@ abstract class _ProductRow extends ConsumerWidget {
   final Function(BaseComponent)? onComponentSelected;
   final bool isSelectedForCompare;
   final void Function(bool)? onCompareToggle;
+  final bool showCompare;
+
   const _ProductRow({
     required this.product,
     this.onComponentSelected,
     this.isSelectedForCompare = false,
     this.onCompareToggle,
+    this.showCompare = true,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The base structure for every product row is a Card with a Row inside.
     return Card(
-      color: Theme.of(context).colorScheme.surface,
+      color: const Color(0xFF13131F),
       margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      ),
       child: InkWell(
         onTap: () => _showSpecsDialog(context, product),
         borderRadius: BorderRadius.circular(8),
@@ -3442,13 +1523,15 @@ abstract class _ProductRow extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Checkbox(
-                value: isSelectedForCompare,
-                onChanged: onCompareToggle == null
-                    ? null
-                    : (value) => onCompareToggle!(value ?? false),
-              ),
-              const SizedBox(width: 8),
+              if (showCompare) ...[
+                Checkbox(
+                  value: isSelectedForCompare,
+                  onChanged: onCompareToggle == null
+                      ? null
+                      : (value) => onCompareToggle!(value ?? false),
+                ),
+                const SizedBox(width: 8),
+              ],
               ...buildRow(context, ref),
             ],
           ),
@@ -3596,7 +1679,7 @@ abstract class _ProductRow extends ConsumerWidget {
           Text(
             '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
             style: const TextStyle(
-              color: AppColorsDark.buttonGreen,
+              color: Color(0xFF00E5FF),
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -3620,7 +1703,7 @@ abstract class _ProductRow extends ConsumerWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColorsDark.buttonGreen,
+              backgroundColor: const Color(0xFF00E676),
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -3628,7 +1711,7 @@ abstract class _ProductRow extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add'),
+            label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -3643,11 +1726,13 @@ class _CpuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3677,11 +1762,13 @@ class _MotherboardProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3705,11 +1792,13 @@ class _RamProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3736,11 +1825,13 @@ class _StorageProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3764,11 +1855,13 @@ class _PsuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3792,11 +1885,13 @@ class _CaseProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3820,11 +1915,13 @@ class _GpuProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3853,11 +1950,13 @@ class _CoolerProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3890,11 +1989,13 @@ class _CaseFanProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3929,11 +2030,13 @@ class _MonitorProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -3961,11 +2064,13 @@ class _GenericProductRow extends _ProductRow {
     Function(BaseComponent)? onComponentSelected,
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
+    bool showCompare = true,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
+          showCompare: showCompare,
         );
 
   @override
@@ -4682,5 +2787,315 @@ class _ComponentSpecsDialog extends ConsumerWidget {
     ];
 
     return _buildSpecSection('General Information', specs, theme);
+  }
+}
+
+// Helper for display name
+String _getComponentTypeDisplay(ComponentType type) {
+  switch (type) {
+    case ComponentType.cpu: return 'Desktop Processor';
+    case ComponentType.gpu: return 'Graphics Card';
+    case ComponentType.motherboard: return 'Motherboard';
+    case ComponentType.ram: return 'Memory';
+    case ComponentType.storage: return 'Storage';
+    case ComponentType.psu: return 'Power Supply';
+    case ComponentType.pcCase: return 'Case';
+    case ComponentType.cooler: return 'CPU Cooler';
+    case ComponentType.caseFan: return 'Case Fan';
+    case ComponentType.monitor: return 'Monitor';
+  }
+}
+
+Map<String, String> buildComparisonMetrics(BaseComponent component) {
+  final specs = <String, String>{};
+  switch (component.type) {
+    case ComponentType.cpu:
+      final cpu = component as CPUComponent;
+      specs['Cores'] = '${cpu.coreTotal}';
+      specs['Base/Boost'] =
+          '${cpu.basePerformanceSpeed ?? '-'} / ${cpu.boostPerformanceSpeed ?? '-'} GHz';
+      specs['Arch'] = cpu.microarchitecture;
+      specs['TDP'] = '${cpu.thermalDesignPower.toStringAsFixed(0)}W';
+      specs['Graphics'] = cpu.graphics;
+      break;
+    case ComponentType.gpu:
+      final gpu = component as GPUComponent;
+      specs['Chipset'] = gpu.chipset;
+      specs['VRAM'] = '${gpu.videoMemoryAmount.toStringAsFixed(0)} GB';
+      specs['Base/Boost'] =
+          '${gpu.coreBaseClockSpeed.toStringAsFixed(0)}/${gpu.coreBoostClockSpeed.toStringAsFixed(0)} MHz';
+      specs['Length'] = '${gpu.length.toStringAsFixed(0)} mm';
+      break;
+    case ComponentType.motherboard:
+      final mb = component as MotherboardComponent;
+      specs['Socket'] = mb.socketType;
+      specs['Form Factor'] = mb.formFactor;
+      specs['RAM Slots'] = mb.ramSlotsAmount.toString();
+      specs['Chipset'] = mb.chipsetType;
+      break;
+    case ComponentType.ram:
+      final ram = component as MemoryComponent;
+      specs['Speed'] = '${ram.speed.toStringAsFixed(0)} MHz';
+      specs['Type'] = ram.ramType;
+      specs['Modules'] =
+          '${ram.moduleQuantity}x${ram.moduleCapacity.toStringAsFixed(0)}GB';
+      break;
+    case ComponentType.storage:
+      final storage = component as StorageComponent;
+      specs['Capacity'] = '${storage.capacity.toStringAsFixed(0)} GB';
+      specs['Type'] = storage.driveType;
+      specs['Interface'] = storage.interface;
+      break;
+    case ComponentType.psu:
+      final psu = component as PowerSupplyComponent;
+      specs['Wattage'] = '${psu.powerOutput.toStringAsFixed(0)}W';
+      specs['Efficiency'] = psu.efficiencyRating ?? 'N/A';
+      specs['Modularity'] = psu.modularityType;
+      break;
+    case ComponentType.pcCase:
+      final pcCase = component as CaseComponent;
+      specs['Form Factor'] = pcCase.formFactor;
+      specs['Max GPU'] = '${pcCase.maxVideoCardLength.toStringAsFixed(0)} mm';
+      specs['Max Cooler'] = '${pcCase.maxCPUCoolerHeight} mm';
+      break;
+    case ComponentType.cooler:
+      final cooler = component as CoolerComponent;
+      specs['Type'] = cooler.isWaterCooled ? 'Water' : 'Air';
+      specs['Height'] = '${cooler.height.toStringAsFixed(0)} mm';
+      specs['Fan Qty'] = cooler.fanQuantity.toString();
+      break;
+    case ComponentType.caseFan:
+      final fan = component as CaseFanComponent;
+      specs['Size'] = '${fan.size.toStringAsFixed(0)} mm';
+      specs['Airflow'] = fan.maxAirflow != null
+          ? '${fan.minAirflow.toStringAsFixed(0)}-${fan.maxAirflow!.toStringAsFixed(0)} CFM'
+          : '${fan.minAirflow.toStringAsFixed(0)} CFM';
+      specs['Noise'] = fan.maxNoiseLevel != null
+          ? '${fan.minNoiseLevel.toStringAsFixed(1)}-${fan.maxNoiseLevel!.toStringAsFixed(1)} dBA'
+          : '${fan.minNoiseLevel.toStringAsFixed(1)} dBA';
+      break;
+    case ComponentType.monitor:
+      final monitor = component as MonitorComponent;
+      specs['Size'] = '${monitor.screenSize.toStringAsFixed(1)}"';
+      specs['Resolution'] =
+          '${monitor.horizontalResolution}x${monitor.verticalResolution}';
+      specs['Refresh Rate'] =
+          '${monitor.maxRefreshRate.toStringAsFixed(0)} Hz';
+      break;
+  }
+  return specs;
+}
+
+class _MobileProductCard extends ConsumerWidget {
+  final BaseComponent product;
+  final Function(BaseComponent)? onComponentSelected;
+
+  const _MobileProductCard({
+    required this.product,
+    this.onComponentSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final specs = buildComparisonMetrics(product);
+    final typeLabel = _getComponentTypeDisplay(product.type);
+
+    // Image logic
+    final rawImageUrl = product.imageUrl.trim();
+    String? imageUrl;
+    if (rawImageUrl.isNotEmpty) {
+      final guidPattern = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      );
+      if (guidPattern.hasMatch(rawImageUrl)) {
+        imageUrl = '$apiBaseUrl/Images/download/$rawImageUrl';
+      } else if (rawImageUrl.startsWith('http://') ||
+          rawImageUrl.startsWith('https://')) {
+        imageUrl = rawImageUrl;
+      } else if (rawImageUrl.startsWith('/')) {
+        imageUrl = '$apiBaseUrl$rawImageUrl';
+      } else {
+        imageUrl = '$apiBaseUrl/$rawImageUrl';
+      }
+    }
+
+    return Card(
+      color: const Color(0xFF13131F), // Dark card background like reference
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      ),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: () {
+            showDialog(
+            context: context,
+            builder: (context) => _ComponentSpecsDialog(component: product),
+            );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Container
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (c, o, s) => const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey),
+                          )
+                        : const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  // Title and Subtitle
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          typeLabel,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Specs Grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildSpecsGrid(specs, product),
+            ),
+            
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Colors.white10),
+            
+            // Price and Action
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF00E5FF), // Cyan color from reference
+                    ),
+                  ),
+                  SizedBox(
+                    height: 36,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                           if (onComponentSelected != null) {
+                onComponentSelected!(product);
+                Navigator.pop(context);
+              } else {
+                ref.read(buildProvider.notifier).addComponent(product);
+                context.go('/build-now');
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E676), // Green color
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecsGrid(Map<String, String> specs, BaseComponent product) {
+    final items = specs.entries.toList();
+    final displayItems = items.take(5).toList();
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            ...displayItems.map((e) => _buildSpecItem(e.key, e.value)),
+             _buildRatingItem(product.averageRating ?? 0),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildSpecItem(String label, String value) {
+      return SizedBox(
+          width: 90, 
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                  Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+          ),
+      );
+  }
+
+   Widget _buildRatingItem(double rating) {
+      return SizedBox(
+          width: 90,
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                  Text('Rating', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  _RatingStars(rating: rating),
+              ],
+          ),
+      );
   }
 }

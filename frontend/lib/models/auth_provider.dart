@@ -96,10 +96,10 @@ class AuthService {
     return _dio.post('$apiBaseUrl/Auth/register', data: userData);
   }
 
-  /// Sends a Google login request to the backend with the Google ID token.
-  Future<Response> googleLogin(String idToken) {
-    return _dio.post('$apiBaseUrl/Auth/google-login', data: {'idToken': idToken});
-  }
+  // /// Sends a Google login request to the backend with the Google ID token.
+  // Future<Response> googleLogin(String idToken) {
+  //   return _dio.post('$apiBaseUrl/Auth/google-login', data: {'idToken': idToken});
+  // }
 
   /// Sends a password reset request to the backend.
   Future<Response> resetPassword(String email) async {
@@ -618,42 +618,42 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   }
 
   /// Signs in a user with Google OAuth (Web via Google Identity Services).
-  Future<void> signInWithGoogleWeb() async {
-    state = const AsyncValue.loading();
-    try {
-      if (googleWebClientId.isEmpty) {
-        throw Exception('Missing GOOGLE_WEB_CLIENT_ID. Start Flutter with --dart-define=GOOGLE_WEB_CLIENT_ID=your-client-id.apps.googleusercontent.com');
-      }
+  // Future<void> signInWithGoogleWeb() async {
+  //   state = const AsyncValue.loading();
+  //   try {
+  //     if (googleWebClientId.isEmpty) {
+  //       throw Exception('Missing GOOGLE_WEB_CLIENT_ID. Start Flutter with --dart-define=GOOGLE_WEB_CLIENT_ID=your-client-id.apps.googleusercontent.com');
+  //     }
 
-      final idToken = await getGoogleIdToken(googleWebClientId);
-      if (idToken == null || idToken.isEmpty) {
-        throw Exception('Google sign-in was cancelled or blocked. Ensure your Google OAuth "Authorized JavaScript origins" include your frontend origin and the browser allows the Google prompt.');
-      }
+  //     final idToken = await getGoogleIdToken(googleWebClientId);
+  //     if (idToken == null || idToken.isEmpty) {
+  //       throw Exception('Google sign-in was cancelled or blocked. Ensure your Google OAuth "Authorized JavaScript origins" include your frontend origin and the browser allows the Google prompt.');
+  //     }
 
-      final response = await _authService.googleLogin(idToken);
-      final token = response.data['token'];
+  //     final response = await _authService.googleLogin(idToken);
+  //     final token = response.data['token'];
 
-      await _tokenStorage.saveToken(token);
-      _authService._dio.options.headers['Authorization'] = 'Bearer $token';
+  //     await _tokenStorage.saveToken(token);
+  //     _authService._dio.options.headers['Authorization'] = 'Bearer $token';
 
-      final decoded = JwtDecoder.decode(token);
-      final userId = decoded['nameid'];
-      if (userId == null) {
-        throw Exception('User ID not found in token');
-      }
+  //     final decoded = JwtDecoder.decode(token);
+  //     final userId = decoded['nameid'];
+  //     if (userId == null) {
+  //       throw Exception('User ID not found in token');
+  //     }
 
-      final userResponse = await _authService.getUserById(userId);
-      final userData = userResponse.data;
-      state = AsyncValue.data(AppUser.fromJson(userData));
-    } on DioException catch (e, st) {
-      final errorMessage = e.response?.data['message'] ?? e.message;
-      log('Google sign-in failed: $errorMessage', error: e, stackTrace: st);
-      state = AsyncValue.error(errorMessage ?? 'An unknown error occurred', st);
-    } catch (e, st) {
-      log('Google sign-in failed', error: e, stackTrace: st);
-      state = AsyncValue.error(e.toString(), st);
-    }
-  }
+  //     final userResponse = await _authService.getUserById(userId);
+  //     final userData = userResponse.data;
+  //     state = AsyncValue.data(AppUser.fromJson(userData));
+  //   } on DioException catch (e, st) {
+  //     final errorMessage = e.response?.data['message'] ?? e.message;
+  //     log('Google sign-in failed: $errorMessage', error: e, stackTrace: st);
+  //     state = AsyncValue.error(errorMessage ?? 'An unknown error occurred', st);
+  //   } catch (e, st) {
+  //     log('Google sign-in failed', error: e, stackTrace: st);
+  //     state = AsyncValue.error(e.toString(), st);
+  //   }
+  // }
 
   /// Registers a new user.
   ///

@@ -31,7 +31,7 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncComponents = ref.watch(allComponentsProvider);
+    final asyncCounts = ref.watch(allComponentCountsProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -64,14 +64,8 @@ class _AllPartsPageState extends ConsumerState<AllPartsPage> {
                       const _HeaderSection(),
                       const SizedBox(height: 32),
                       // Category Menu
-                      asyncComponents.when(
-                        data: (components) {
-                          // Count components by type for display
-                          final countsByType = <ComponentType, int>{};
-                          for (final component in components) {
-                            countsByType[component.type] = (countsByType[component.type] ?? 0) + 1;
-                          }
-                          
+                      asyncCounts.when(
+                        data: (countsByType) {
                           return _CategoryMenuGrid(countsByType: countsByType);
                         },
                         loading: () => const Center(

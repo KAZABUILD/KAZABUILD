@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Bulk importer for OpenDB JSON exports into the KAZABUILD component tables.
 
 The script is designed to be orchestrated from the backend Admin API but can
