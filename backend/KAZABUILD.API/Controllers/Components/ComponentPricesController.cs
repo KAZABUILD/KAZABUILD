@@ -264,19 +264,20 @@ namespace KAZABUILD.API.Controllers.Components
                 return NotFound(new { componentPrice = "ComponentPrice not found!" });
             }
 
+            //Check if the price hasn't been fetched for more than 48 hours
             if (componentPrice.FetchedAt < DateTime.UtcNow.AddHours(-48))
             {
-                // Attempt to get fresh price
+                //Attempt to get fresh price from an external service
                 var freshPriceDto = await _pricesService.GetPartPrice(componentPrice.Component!);
 
                 if (freshPriceDto != null)
                 {
-                    // Create new row
+                    //Create a new price using the fetched data
                     var newComponentPrice = new ComponentPrice
                     {
                         ComponentId = componentPrice.ComponentId,
-                        SourceUrl = freshPriceDto.ImageUrl ?? componentPrice.SourceUrl, // Use new Image or fallback to old
-                        VendorName = componentPrice.VendorName, // Assuming Vendor stays same, or map from API if available
+                        SourceUrl = freshPriceDto.ImageUrl ?? componentPrice.SourceUrl,
+                        VendorName = componentPrice.VendorName,
                         FetchedAt = DateTime.UtcNow,
                         Price = freshPriceDto.Price,
                         Currency = freshPriceDto.Currency,
@@ -285,16 +286,17 @@ namespace KAZABUILD.API.Controllers.Components
                         Note = "Auto-refreshed via Smart Fetch"
                     };
 
+                    //Add the new price to the database
                     _db.ComponentPrices.Add(newComponentPrice);
                     await _db.SaveChangesAsync();
 
-                    // Swap the reference so the rest of the method returns the NEW object
+                    //Swap the reference so the rest of the method returns the NEW object
                     componentPrice = newComponentPrice;
 
-                    // Update the ID variable so the logs reflect the NEW ID
+                    //Update the ID variable so the logs reflect the NEW ID
                     id = newComponentPrice.Id;
                 }
-                // If API fails, we simply fall through and return the old (stale) data without crashing.
+                //If API fails, we simply fall through and return the old (stale) data without crashing.
             }
 
             //Log Description string declaration
