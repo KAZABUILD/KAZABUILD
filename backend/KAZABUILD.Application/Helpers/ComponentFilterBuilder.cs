@@ -45,8 +45,16 @@ namespace KAZABUILD.Application.Helpers
                 //Iterate over each property in a component
                 foreach (var property in properties)
                 {
-                    //Skip over the Id property and properties that are missing a getter
+                    //Skip over the unwanted properties and those that are missing a getter
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (property.Name.Equals("Name", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (property.Name.Equals("LastEditedAt", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (property.Name.Equals("DatabaseEntryAt", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (property.Name.Equals("Note", StringComparison.OrdinalIgnoreCase))
                         continue;
                     if (property.GetMethod == null)
                         continue;
