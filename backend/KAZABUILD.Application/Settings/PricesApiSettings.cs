@@ -4,6 +4,8 @@
     {
         public string Url { get; set; } = default!;
 
-        public string PriceApiEndpoinnt { get; set; } = default!;
+        public string PriceApiEndpoint { get; set; } = default!;
+
+        public string VendorName { get; set; } = default!;
     }
 }

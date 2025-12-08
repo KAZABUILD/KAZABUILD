@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
+using KAZABUILD.Application.Settings;
+using Microsoft.Extensions.Options;
 
 namespace KAZABUILD.API.Controllers.Components
 {
@@ -23,14 +25,14 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="publisher"></param>
     [ApiController]
     [Route("[controller]")]
-    public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IPricesApiService pricesService) : ControllerBase
+    public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IPricesApiService pricesService, IOptions<PricesApiSettings> pricesApiSettings) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
         private readonly IPricesApiService _pricesService = pricesService;
-
+        private readonly PricesApiSettings _pricesApiSettings = pricesApiSettings.Value;
         /// <summary>
         /// API Endpoint for creating a new ComponentPrice for administration.
         /// </summary>
@@ -276,8 +278,8 @@ namespace KAZABUILD.API.Controllers.Components
                     var newComponentPrice = new ComponentPrice
                     {
                         ComponentId = componentPrice.ComponentId,
-                        SourceUrl = freshPriceDto.ImageUrl ?? componentPrice.SourceUrl,
-                        VendorName = componentPrice.VendorName,
+                        SourceUrl = _pricesApiSettings.Url,
+                        VendorName = _pricesApiSettings.VendorName,
                         FetchedAt = DateTime.UtcNow,
                         Price = freshPriceDto.Price,
                         Currency = freshPriceDto.Currency,

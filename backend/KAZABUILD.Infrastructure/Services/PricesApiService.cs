@@ -47,7 +47,7 @@ namespace KAZABUILD.Infrastructure.Services
                 };
 
                 //Call the External API
-                var response = await _httpClient.PostAsJsonAsync(_settings.PriceApiEndpoinnt, requestDto);
+                var response = await _httpClient.PostAsJsonAsync(_settings.PriceApiEndpoint, requestDto);
 
                 if (!response.IsSuccessStatusCode)
                 {
