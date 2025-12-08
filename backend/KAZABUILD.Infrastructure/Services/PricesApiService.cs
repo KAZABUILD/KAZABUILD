@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace KAZABUILD.Infrastructure.Services
 {
     /// <summary>
-    /// Service that sends API calls to external prices provider
+    /// Service that sends API calls to external prices provider.
     /// </summary>
     public class PricesApiService : IPricesApiService
     {
@@ -17,16 +17,13 @@ namespace KAZABUILD.Infrastructure.Services
         private readonly HttpClient _httpClient;
         private readonly ILoggerService _logger;
 
-        public PricesApiService(
-            IOptions<PricesApiSettings> settings,
-            HttpClient httpClient,
-            ILoggerService logger)
+        public PricesApiService(IOptions<PricesApiSettings> settings, HttpClient httpClient, ILoggerService logger)
         {
             _settings = settings.Value;
             _httpClient = httpClient;
             _logger = logger;
 
-            // Ensure the BaseAddress is set either here or in Program.cs
+            //Ensure the BaseAddress is set either here or in Program.cs
             if (_httpClient.BaseAddress == null && !string.IsNullOrEmpty(_settings.Url))
             {
                 _httpClient.BaseAddress = new Uri(_settings.Url);
@@ -49,17 +46,17 @@ namespace KAZABUILD.Infrastructure.Services
                     Currency = "PLN"
                 };
 
-                // Call the External API
+                //Call the External API
                 var response = await _httpClient.PostAsJsonAsync(_settings.PriceApiEndpoinnt, requestDto);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // Log the external API failure
+                    //Log the external API failure
                     await _logger.LogAsync(
                         Guid.Empty,
-                        "POST",
+                        "GET",
                         "ExternalPriceApi",
-                        "127.0.0.1",
+                        "",
                         component.Id,
                         PrivacyLevel.WARNING,
                         $"External API returned error: {response.StatusCode}" // Message
@@ -68,17 +65,17 @@ namespace KAZABUILD.Infrastructure.Services
                     return null;
                 }
 
-                // Deserialize response
+                //Deserialize response
                 return await response.Content.ReadFromJsonAsync<PricesApiPriceResponseDto>();
             }
             catch (Exception ex)
             {
-                // Log the exception
+                //Log the exception
                 await _logger.LogAsync(
                     Guid.Empty,
-                    "POST",
+                    "GET",
                     "ExternalPriceApi",
-                    "127.0.0.1",
+                    "",
                     component.Id,
                     PrivacyLevel.WARNING,
                     $"Exception while fetching external price: {ex.Message}"
