@@ -258,6 +258,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Create tag response
                 response = new TagResponseDto
                 {
+                    Id = tag.Id,
                     Name = tag.Name,
                     Description = tag.Description
                 };
@@ -270,6 +271,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Create tag response
                 response = new TagResponseDto
                 {
+                    Id = tag.Id,
                     Name = tag.Name,
                     Description = tag.Description,
                     DatabaseEntryAt = tag.DatabaseEntryAt,
@@ -364,6 +366,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Return a follow response
                     return new TagResponseDto
                     {
+                        Id = tag.Id,
                         Name = tag.Name,
                         Description = tag.Description
                     };
@@ -377,6 +380,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 //Create a tag response list
                 responses = [.. tags.Select(tag => new TagResponseDto
                 {
+                    Id = tag.Id,
                     Name = tag.Name,
                     Description = tag.Description,
                     DatabaseEntryAt = tag.DatabaseEntryAt,

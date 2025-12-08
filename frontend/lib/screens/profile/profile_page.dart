@@ -14,7 +14,7 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/l10n/app_localization.dart';
 
 /// Provider to fetch a user's profile by ID
@@ -29,13 +29,15 @@ final userProfileProvider = FutureProvider.family<AppUser?, String>((ref, userId
         return user;
       } catch (parseError) {
         debugPrint('Error parsing user $userId: $parseError');
-        return null;
+        debugPrint('Response data: ${userResponse.data}');
+        throw Exception('Failed to parse user data: $parseError');
       }
+    } else {
+      throw Exception('Failed to fetch user: Status ${userResponse.statusCode}');
     }
-    return null;
   } catch (e) {
     debugPrint('Error fetching user $userId: $e');
-    return null;
+    rethrow; // Re-throw to trigger error state
   }
 });
 
@@ -283,19 +285,13 @@ class ProfilePage extends ConsumerWidget {
                     child: CircleAvatar(
                       radius: 70,
                       backgroundColor: theme.colorScheme.surface,
-                      child: CircleAvatar(
+                      child: AuthenticatedImage(
+                        imageUrl: user.photoURL,
+                        isCircle: true,
                         radius: 66,
-                        backgroundImage: UserImageUtils.getUserImageUrl(user.photoURL) != null
-                            ? NetworkImage(UserImageUtils.getUserImageUrl(user.photoURL)!)
-                            : null,
                         backgroundColor: theme.colorScheme.surfaceVariant,
-                        child: UserImageUtils.getUserImageUrl(user.photoURL) == null
-                            ? Icon(
-                                Icons.person,
-                                size: 70,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )
-                            : null,
+                        username: user.username,
+                        userId: user.uid,
                       ),
                     ),
                   ),
@@ -403,11 +399,30 @@ class ProfilePage extends ConsumerWidget {
                   ],
                 ),
               ] else if (currentUser != null) ...[
-                // Other user's profile: Show Follow/Unfollow button
-                _FollowButton(
-                  followedUserId: user.uid,
-                  currentUserId: currentUser.uid,
-                  theme: theme,
+                // Other user's profile: Show Follow/Unfollow button and Edit button if admin
+                Column(
+                  children: [
+                    _FollowButton(
+                      followedUserId: user.uid,
+                      currentUserId: currentUser.uid,
+                      theme: theme,
+                    ),
+                    if (currentUser.userRole.isAdministrator) ...[
+                      const SizedBox(height: 12),
+                      _ActionButton(
+                        icon: Icons.edit_rounded,
+                        label: 'Edit User',
+                        onPressed: () {
+                          // Navigate to settings page with userId query parameter
+                          final settingsUrl = '/settings?userId=${user.uid}';
+                          debugPrint('Navigating to settings: $settingsUrl');
+                          context.go(settingsUrl);
+                        },
+                        isPrimary: false,
+                        theme: theme,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ],
@@ -471,7 +486,9 @@ class ProfilePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.myBuilds,
+                          isOwnProfile 
+                              ? AppLocalizations.of(context)!.myBuilds
+                              : AppLocalizations.of(context)!.builds,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,

@@ -13,7 +13,6 @@ namespace KAZABUILD.Application.DTOs.Users.UserPreferenceAnswer
         /// Content of the Answer.
         /// </summary>
         [StringLength(128, ErrorMessage = "Answer cannot be longer than 50 characters!")]
-        [MinLength(8, ErrorMessage = "Answer must be at least 8 characters long!")]
         public string? Answer { get; set; }
 
         [StringLength(255, ErrorMessage = "Location cannot be longer than 255 characters!")]

@@ -17,12 +17,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using KAZABUILD.Application.DTOs.Components.ComponentPrice;
 
 namespace KAZABUILD.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings, IWebHostEnvironment env) : ControllerBase
+    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings, IWebHostEnvironment env, IPricesApiService pricesApiService, IOptions<PricesApiSettings> pricesApiSettings) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -33,6 +34,8 @@ namespace KAZABUILD.API.Controllers
         private readonly SystemAdminSetings _systemAdminSettigns = systemAdminSettigns.Value;
         private readonly SmtpSettings _smtpServiceSettings = SmtpServiceSettings.Value;
         private readonly IWebHostEnvironment _env = env;
+        private readonly IPricesApiService _pricesApiService = pricesApiService;
+        private readonly PricesApiSettings _pricesApiSettings = pricesApiSettings.Value;
 
         /// <summary>
         /// Allows the super admins to reset the system admin account in case of data breach.
@@ -243,16 +246,19 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get all table names
-            var tableNames = _db.Model.GetEntityTypes()
-                .Select(t => t.GetTableName())
-                .Distinct()
-                .ToList();
-
             //Go through every table and reset them
-            foreach (var tableName in tableNames)
+            foreach (var entityType in _db.Model.GetEntityTypes())
             {
-                _db.Database.ExecuteSql($"DELETE FROM [{tableName}]");
+                //Get table name
+                var tableName = entityType.GetTableName();
+
+                //Omit cleaning invalid tables
+                if (string.IsNullOrWhiteSpace(tableName) || tableName == "__EFMigrationsHistory")
+                    continue;
+
+                //Build and execute a query for resetting
+                var sql = $"DELETE FROM [{tableName}]";
+                await _db.Database.ExecuteSqlRawAsync(sql);
             }
 
             //Log the creation
@@ -273,7 +279,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "Database reset successfully!" });
+            return Ok(new { message = "Database reset successfully! Restart the backend to reinitialize." });
         }
 
         /// <summary>
@@ -465,6 +471,68 @@ namespace KAZABUILD.API.Controllers
 
             //Return success response
             return Ok(new { message = $"Ip has been unblocked!" });
+        }
+
+        /// <summary>
+        /// Seed first set of prices for each component (call after data seeding)
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("fetch-component-prices")]
+        [Authorize(Policy = "SuperAdmins")]
+        public async Task<IActionResult> FetchComponentPrices()
+        {
+            //Get user id from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                     ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            var testComponent = new BaseComponent {Name = "Test Component TESTTEST"};
+            var testCall = _pricesApiService.GetPartPrice(testComponent);
+
+            if (testCall.Status.ToString() != "404")
+            {
+                //Log lack of connection to external api
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Admin",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.CRITICAL,
+                    $"External api connection failed."
+                );
+
+                return StatusCode(503, "External api unavailable.");
+            };
+
+            var components = _db.Components.ToListAsync().Result;
+
+            PricesApiPriceResponseDto response;
+            ComponentPrice tempComponentPrice;
+
+            foreach (BaseComponent comp in components)
+            {
+                response = await _pricesApiService.GetPartPrice(comp);
+
+                tempComponentPrice = new ComponentPrice
+                {
+                    ComponentId = comp.Id,
+                    SourceUrl = _pricesApiSettings.Url,
+                    VendorName = _pricesApiSettings.VendorName,
+                    FetchedAt = DateTime.UtcNow,
+                    Price = response.Price,
+                    Currency = response.Currency,
+                    DatabaseEntryAt = DateTime.UtcNow,
+                    LastEditedAt = DateTime.UtcNow,
+                    Note = "First price pull"
+                };
+                _db.ComponentPrices.Add(tempComponentPrice);
+            }
+
+            //Return success response
+            return Ok(new { message = $"Part prices have been successfully fetched." });
         }
     }
 }

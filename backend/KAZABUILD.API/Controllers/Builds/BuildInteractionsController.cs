@@ -540,7 +540,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -676,7 +676,7 @@ namespace KAZABUILD.API.Controllers.Builds
         /// <returns></returns>
         [HttpPost("get-count")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<BuildInteractionResponseDto>>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
+        public async Task<ActionResult<double>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
         {
             //Get buildInteraction id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -699,7 +699,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -793,7 +793,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {

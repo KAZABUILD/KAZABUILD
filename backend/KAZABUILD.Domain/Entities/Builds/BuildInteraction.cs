@@ -21,9 +21,9 @@ namespace KAZABUILD.Domain.Entities.Builds
 
         /// <summary>
         /// Id of the Build the user Interacted with.
+        /// It is set to null only if the build gets deleted. 
         /// </summary>
-        [Required]
-        public Guid BuildId { get; set; } = default!;
+        public Guid? BuildId { get; set; }
 
         /// <summary>
         /// Whether the user Wishlisted the Build.

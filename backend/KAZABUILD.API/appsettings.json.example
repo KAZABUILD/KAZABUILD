@@ -74,5 +74,10 @@
   },
   "Encryption": {
     "Key": "YOUR_ENCRYPTION_KEY"
+  },
+  "PricesAPI": { // Settings for external price provider via API
+      "Url": "SERVICE_URL",
+      "PriceApiEndpoint": "PRICE_ENDPOINT",
+      "VendorName": "VENDOR_NAME"
   }
 }

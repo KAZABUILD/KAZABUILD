@@ -29,7 +29,7 @@
 
 [00004] Reloading the website taken a long time and takes the user to the main page.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00005] User cannot open any link in a new card in the browser.
@@ -201,7 +201,7 @@
 
 [00033] Explore builds and build pages takes around 10 seconds to load.
 - Type: error
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00005-A] User cannot open any link in a new card in the browser - the bug was not fixed.
@@ -248,11 +248,11 @@
 - Type: incorrect implementation/error/missing feature
 - Status: pending
 - Source: backend/frontend
-- Details: The backend should only return notification based on whether the data passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
+- Details: The backend should only return notification based on whether the date passed or not, the frontend should allow the admins to choose the date. This feature will be necessary for sending promotional notifs later on.
 
 [00039] No paging in the admin panel.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 
 [00021-A] The admin page editing and viewing are broken - not fully fixed.
@@ -274,19 +274,19 @@
 
 [00042] Administrators receive an unauthorized access notice for editing.
 - Type: incorrect implementation
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Administrators should be able to edit anything, while moderators should be able to modify user related parts of the website (comments/user profiles/etc).
 
 [00043] The administrators and moderators should be able to assign user roles.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: frontend
 - Details: Assigning roles should function normally except for bans which should allow the staff to assigned the bannedUntil value.
 
 [00044] The UserGuide model is missing.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
 
 [00045] There are no filters in the explore builds page.
@@ -307,5 +307,65 @@
 
 [00047] Add limit for the images and gifs per components.
 - Type: missing feature
-- Status: pending
+- Status: FIXED
 - Source: backend
+
+[00048] SQL Foreign Key Conflict (FK_UserComments_UserComments_ParentCommentId) prevents deletion of Builds/ForumPosts
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend / database
+- Details: The Error: When attempting to delete a Build or Forum Post via the Admin Panel, the operation fails with the following SQL exception: The DELETE statement conflicted with the SAME TABLE REFERENCE constraint "FK_UserComments_UserComments_ParentCommentId". The conflict occurred in database "KAZABUILD_DB", table "dbo.UserComments", column 'ParentCommentId'.
+
+[00049] User Deletion Fails due to Linked Forum Posts & Comments.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend / database
+- Details: The Error: When attempting to delete a User, the operation fails with: The DELETE statement conflicted with the REFERENCE constraint "FK_UserComments_ForumPosts_ForumPostId". Root Cause: When a User is deleted, the system attempts to cascade delete the Forum Posts created by that user. However, the database blocks the deletion of the Forum Post because there are UserComments attached to that post. The deletion chain breaks at: User -> ForumPost -> [BLOCKED] -> UserComments.
+
+[00050] Introduce an additional column in every model that has a nullable foreign key to store the key in case of deletion.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend
+- Details: This will enable preservation of deleted users for message chats and similar situations.
+
+[00051] Incorrect labeling in the imagesController.
+- Type: missing implementation
+- status: INCORRECT
+- Source: backend
+
+
+[00052] SentAtStart filter failing in both MessagesController and NotifcationsController.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend
+- Details: When filtering by `SentAtStart`, the query uses `dto.SentAtEnd` instead of `dto.SentAtStart`, causing date range filters to malfunction. Users filtering by start date will get incorrect results. This should compare against `dto.SentAtStart`.
+
+[00053] UserAnswerController checks wrong table for preference answer.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: backend
+- Details: When validating that a `UserPreferenceAnswer` exists, the code queries `_db.Users` instead of the correct table (`_db.UserPreferenceAnswers`). This will always fail to find the preference answer, causing all user answer creation attempts to fail with "Answer not found!" error.
+
+[00054] Backend connection fail error in the frontend is worded incorrectly.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: Frontend
+- Details: The website should inform the user that the internal servers are failing and that the user needs to try to reconnect later.
+
+[00055] The guides are stored in the website, when they should be stored in the server.
+- Type: missing implementation
+- Status: FIXED
+- Source: Frontend
+- Details: The newly added UserGuideController should be used.
+
+[00056] Distinction between moderation and administration missing from the website.
+- Type: incorrect implementation
+- Status: FIXED
+- Source: Frontend
+- Details: Moderation should have access to editing options for things in the user and build domains (builds, guides, user profiles, etc.).
+
+[00057] User's profile image doesn't update correctly.
+- Type: error
+- Status: FIXED
+- Source: Frontend
+- Details: If the user already has an image, changing it to a different one causes the website to display the default one instead. The image is correctly stored in the backend.

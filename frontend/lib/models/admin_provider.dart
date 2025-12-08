@@ -170,11 +170,11 @@ final adminUsersProvider = FutureProvider.autoDispose.family<List<AdminUser>, Ma
     final paramStr = 'query:${params['query']}, page:${params['page']}, pageLength:${params['pageLength']}';
     print('AdminUsersProvider: Fetching users with params: $paramStr');
     
-    // Ensure page and pageLength are always provided for pagination
+    // Fetch only the requested page
     final page = params['page'] as int? ?? 1;
     final pageLength = params['pageLength'] as int? ?? 20;
     
-    print('AdminUsersProvider: page=$page, pageLength=$pageLength');
+    print('AdminUsersProvider: Fetching page $page with pageLength $pageLength');
     
     final response = await adminService.getUsers(
       query: params['query'] as String?,
@@ -185,7 +185,7 @@ final adminUsersProvider = FutureProvider.autoDispose.family<List<AdminUser>, Ma
       orderBy: params['orderBy'] as String?,
       sortDirection: params['sortDirection'] as String? ?? 'asc',
     );
-
+    
     print('AdminUsersProvider: Response status: ${response.statusCode}');
     print('AdminUsersProvider: Response data type: ${response.data.runtimeType}');
 
@@ -525,6 +525,7 @@ class AdminComponent {
   final String componentType;
   final DateTime? release;
   final int? numberOfParts;
+  final String? note;
 
   AdminComponent({
     required this.id,
@@ -533,6 +534,7 @@ class AdminComponent {
     required this.componentType,
     this.release,
     this.numberOfParts,
+    this.note,
   });
 
   factory AdminComponent.fromJson(Map<String, dynamic> json) {
@@ -579,6 +581,7 @@ class AdminComponent {
         componentType: componentTypeStr,
         release: parseDateTime(json['release'] ?? json['Release']),
         numberOfParts: json['numberOfParts'] ?? json['NumberOfParts'],
+        note: json['note'] ?? json['Note'],
       );
     } catch (e, stack) {
       print('Error in AdminComponent.fromJson: $e');
@@ -654,4 +657,137 @@ final adminComponentsProvider = FutureProvider.autoDispose.family<List<AdminComp
     rethrow;
   }
 });
+
+/// Quiz question DTO for admin panel
+class AdminQuizQuestion {
+  final String id;
+  final String question;
+  final String? parentAnswerId;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final String? note;
+
+  AdminQuizQuestion({
+    required this.id,
+    required this.question,
+    this.parentAnswerId,
+    this.createdAt,
+    this.updatedAt,
+    this.note,
+  });
+
+  factory AdminQuizQuestion.fromJson(Map<String, dynamic> json) {
+    return AdminQuizQuestion(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      question: json['question'] ?? json['Question'] ?? '',
+      parentAnswerId:
+          json['userPreferenceAnswerId']?.toString() ?? json['UserPreferenceAnswerId']?.toString(),
+      createdAt: _parseDateTime(json['databaseEntryAt'] ?? json['DatabaseEntryAt']),
+      updatedAt: _parseDateTime(json['lastEditedAt'] ?? json['LastEditedAt']),
+      note: json['note'] ?? json['Note'],
+    );
+  }
+}
+
+/// Quiz answer DTO for admin panel
+class AdminQuizAnswer {
+  final String id;
+  final String questionId;
+  final String answer;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final String? note;
+
+  AdminQuizAnswer({
+    required this.id,
+    required this.questionId,
+    required this.answer,
+    this.createdAt,
+    this.updatedAt,
+    this.note,
+  });
+
+  factory AdminQuizAnswer.fromJson(Map<String, dynamic> json) {
+    return AdminQuizAnswer(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      questionId: json['userPreferenceId']?.toString() ?? json['UserPreferenceId']?.toString() ?? '',
+      answer: json['answer'] ?? json['Answer'] ?? '',
+      createdAt: _parseDateTime(json['databaseEntryAt'] ?? json['DatabaseEntryAt']),
+      updatedAt: _parseDateTime(json['lastEditedAt'] ?? json['LastEditedAt']),
+      note: json['note'] ?? json['Note'],
+    );
+  }
+}
+
+class AdminQuizData {
+  final List<AdminQuizQuestion> questions;
+  final List<AdminQuizAnswer> answers;
+
+  AdminQuizData({required this.questions, required this.answers});
+}
+
+final adminQuizDataProvider = FutureProvider.autoDispose<AdminQuizData>((ref) async {
+  final adminService = ref.watch(adminServiceProvider);
+
+  try {
+    final questionsResponse = await adminService.getQuizQuestions();
+    final answersResponse = await adminService.getQuizAnswers();
+
+    final questionsData = questionsResponse.data;
+    final answersData = answersResponse.data;
+
+    List<dynamic> questionList;
+    if (questionsData is List) {
+      questionList = questionsData;
+    } else if (questionsData is Map && questionsData.containsKey('data')) {
+      questionList = questionsData['data'] as List<dynamic>;
+    } else {
+      questionList = [];
+    }
+
+    List<dynamic> answerList;
+    if (answersData is List) {
+      answerList = answersData;
+    } else if (answersData is Map && answersData.containsKey('data')) {
+      answerList = answersData['data'] as List<dynamic>;
+    } else {
+      answerList = [];
+    }
+
+    final questions = questionList
+        .whereType<Map<String, dynamic>>()
+        .map(AdminQuizQuestion.fromJson)
+        .toList();
+
+    final answers = answerList
+        .whereType<Map<String, dynamic>>()
+        .map(AdminQuizAnswer.fromJson)
+        .toList();
+
+    return AdminQuizData(questions: questions, answers: answers);
+  } catch (e, stack) {
+    print('Error in adminQuizDataProvider: $e');
+    print(stack);
+    rethrow;
+  }
+});
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) {
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      final ms = int.tryParse(value);
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    }
+  }
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  return null;
+}
 

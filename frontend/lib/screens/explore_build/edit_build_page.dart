@@ -13,6 +13,7 @@ import 'package:frontend/models/component_models.dart';
 import 'package:frontend/screens/parts/part_picker_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 import 'package:flutter/foundation.dart';
 
 /// A page that allows editing a build's details.
@@ -61,8 +62,13 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
           Expanded(
             child: buildAsync.when(
               data: (build) {
-                // Check if user is the owner
-                if (currentUser == null || currentUser.uid != build.userId) {
+                // Check if user is the owner, administrator, or moderator
+                final isOwner = currentUser != null && currentUser.uid == build.userId;
+                final isAdmin = currentUser?.userRole.isAdministrator ?? false;
+                final isModerator = currentUser?.userRole.isModeratorOrHigher ?? false;
+                final canEdit = isOwner || isAdmin || isModerator;
+                
+                if (currentUser == null || !canEdit) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
@@ -83,7 +89,9 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'You can only edit your own builds.',
+                            isAdmin || isModerator
+                                ? 'Unable to load build information.'
+                                : 'You can only edit your own builds.',
                             style: theme.textTheme.bodyMedium,
                           ),
                           const SizedBox(height: 24),
@@ -236,7 +244,7 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        err.toString(),
+                        getUserFriendlyError(err),
                         style: theme.textTheme.bodyMedium,
                         textAlign: TextAlign.center,
                       ),
@@ -329,7 +337,7 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating build: $e'),
+            content: Text('Failed to update build: ${getUserFriendlyError(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -533,8 +541,8 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
       // Navigate to part picker with callback to handle component selection
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => PartPickerPage(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => PartPickerPage(
             componentType: componentType,
             currentBuild: null, // We don't need compatibility check in edit mode
             onComponentSelected: (BaseComponent selected) async {
@@ -571,7 +579,7 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error adding component: $e'),
+                      content: Text('Failed to add component: ${getUserFriendlyError(e)}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -579,6 +587,8 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
               }
             },
           ),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
         ),
       );
 
@@ -652,7 +662,7 @@ class _EditBuildPageState extends ConsumerState<EditBuildPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error removing component: $e'),
+              content: Text('Failed to remove component: ${getUserFriendlyError(e)}'),
               backgroundColor: Colors.red,
             ),
           );

@@ -5,23 +5,26 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:frontend/screens/home/homepage.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:frontend/widgets/last_bar.dart';
+import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/api_constants.dart';
 
 /// The main stateful widget for the feedback page.
-class FeedbackPage extends StatefulWidget {
+class FeedbackPage extends ConsumerStatefulWidget {
   const FeedbackPage({super.key});
 
   @override
-  State<FeedbackPage> createState() => _FeedbackPageState();
+  ConsumerState<FeedbackPage> createState() => _FeedbackPageState();
 }
 
 /// The state for the [FeedbackPage], managing animations and form submission.
 ///
 /// It uses a [SingleTickerProviderStateMixin] to provide a ticker for the
 /// animation controller.
-class _FeedbackPageState extends State<FeedbackPage>
+class _FeedbackPageState extends ConsumerState<FeedbackPage>
     with SingleTickerProviderStateMixin {
   /// A key to manage the form state, used for validation.
   final _formKey = GlobalKey<FormState>();
@@ -32,6 +35,15 @@ class _FeedbackPageState extends State<FeedbackPage>
 
   /// The animation controller that drives all the animations on this page.
   late AnimationController _controller;
+
+  /// Controllers for form fields to access their values.
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _subjectController = TextEditingController();
+  final _messageController = TextEditingController();
+
+  /// Loading state for form submission.
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -47,8 +59,12 @@ class _FeedbackPageState extends State<FeedbackPage>
 
   @override
   void dispose() {
-    /// Dispose the controller when the widget is removed from the tree to free up resources.
+    /// Dispose the controllers when the widget is removed from the tree to free up resources.
     _controller.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _subjectController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -161,6 +177,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                             child: _buildTextFormField(
                               label: 'Name',
                               hint: 'Enter your name',
+                              controller: _nameController,
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -173,6 +190,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                             child: _buildTextFormField(
                               label: 'Email',
                               hint: 'Enter your registered email',
+                              controller: _emailController,
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'This field cannot be empty.';
@@ -194,6 +212,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                             child: _buildTextFormField(
                               label: 'Subject',
                               hint: 'What is this about?',
+                              controller: _subjectController,
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -206,6 +225,7 @@ class _FeedbackPageState extends State<FeedbackPage>
                             child: _buildTextFormField(
                               label: 'Message',
                               hint: 'Describe your feedback in detail...',
+                              controller: _messageController,
                               maxLines: 5,
                             ),
                           ),
@@ -217,37 +237,11 @@ class _FeedbackPageState extends State<FeedbackPage>
                               curve: Curves.easeOut,
                             ),
                             child: _SubmitButton(
-                              onPressed: () {
+                              isLoading: _isSubmitting,
+                              onPressed: _isSubmitting ? null : () async {
                                 /// Validate the form before proceeding.
                                 if (_formKey.currentState!.validate()) {
-                                  // TODO: Implement a real API call to send the feedback data to a backend service.
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    // Show a success message to the user.
-                                    const SnackBar(
-                                      content: Text(
-                                        'Your message has been sent successfully!',
-                                      ),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-
-                                  /// After a short delay, navigate back to the homepage.
-                                  Future.delayed(
-                                    const Duration(milliseconds: 1500),
-                                    () {
-                                      if (context.mounted) {
-                                        Navigator.of(
-                                          context,
-                                        ).pushAndRemoveUntil(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const HomePage(),
-                                          ),
-                                          (Route<dynamic> route) => false,
-                                        );
-                                      }
-                                    },
-                                  );
+                                  await _submitFeedback();
                                 }
                               },
                             ),
@@ -265,15 +259,127 @@ class _FeedbackPageState extends State<FeedbackPage>
     );
   }
 
+  /// Submits the feedback to the backend API.
+  Future<void> _submitFeedback() async {
+    // Get the current user
+    final user = ref.read(authProvider).valueOrNull;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You must be logged in to submit feedback.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Get the authenticated Dio instance
+      final dio = ref.read(authProvider.notifier).getDioInstance();
+
+      // Combine form fields into a single feedback message
+      final feedbackText = '''
+Name: ${_nameController.text.trim()}
+Email: ${_emailController.text.trim()}
+Subject: ${_subjectController.text.trim()}
+
+Message:
+${_messageController.text.trim()}
+''';
+
+      // Make the API call to submit feedback
+      final response = await dio.post(
+        '$apiBaseUrl/UserFeedback/add',
+        data: {
+          'UserId': user.uid,
+          'Feedback': feedbackText.trim(),
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.data['message']?.toString() ?? 
+              'Your message has been sent successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        /// After a short delay, navigate back to the homepage.
+        Future.delayed(
+          const Duration(milliseconds: 1500),
+          () {
+            if (mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const HomePage(),
+                ),
+                (Route<dynamic> route) => false,
+              );
+            }
+          },
+        );
+      }
+    } on DioException catch (e) {
+      String errorMessage = 'Failed to submit feedback. Please try again.';
+      
+      if (e.response != null) {
+        final responseData = e.response?.data;
+        if (responseData is Map<String, dynamic>) {
+          errorMessage = responseData['message']?.toString() ?? errorMessage;
+        } else if (responseData is String) {
+          errorMessage = responseData;
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+                 e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
   /// A helper method to create a consistently styled text form field.
   Widget _buildTextFormField({
     required String label,
     required String hint,
+    required TextEditingController controller,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
     // A standard TextFormField with consistent styling for this page.
     return TextFormField(
+      controller: controller,
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
@@ -307,8 +413,9 @@ class _FeedbackPageState extends State<FeedbackPage>
 
 /// A custom submit button with a hover animation for a better desktop experience.
 class _SubmitButton extends StatefulWidget {
-  final VoidCallback onPressed;
-  const _SubmitButton({required this.onPressed});
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  const _SubmitButton({required this.onPressed, this.isLoading = false});
 
   @override
   State<_SubmitButton> createState() => _SubmitButtonState();
@@ -347,7 +454,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
             ],
           ),
           child: ElevatedButton(
-            onPressed: widget.onPressed,
+            onPressed: widget.isLoading ? null : widget.onPressed,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               backgroundColor: theme.colorScheme.secondary,
@@ -356,14 +463,23 @@ class _SubmitButtonState extends State<_SubmitButton> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Submit'),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward, size: 18),
-              ],
-            ),
+            child: widget.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Submit'),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 18),
+                    ],
+                  ),
           ),
         ),
       ),

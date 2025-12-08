@@ -1,7 +1,9 @@
+using KAZABUILD.API.Controllers.Builds;
 using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
@@ -907,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
 
         /// <summary>
         /// API endpoint for deleting the selected user for staff.
-        /// Removes all related UserFollows as well.
+        /// Removes all related objects as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -924,7 +926,26 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users
+                .AsSplitQuery()
+                .Include(u => u.Images)
+                .Include(u => u.ReceivedMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.SentMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Images)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.ChildComments)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.Images)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Components)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Interactions)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -982,6 +1003,153 @@ namespace KAZABUILD.API.Controllers.Users
             if (follows.Count != 0)
             {
                 _db.UserFollows.RemoveRange(follows);
+            }
+
+            //Set all sent messages' foreign key field to null or delete it if receiver also null
+            if (user.SentMessages.Count != 0)
+            {
+                foreach (var message in user.SentMessages)
+                {
+                    if(message.ReceiverId != null)
+                        message.SenderId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
+            }
+
+            //Set all received messages' foreign key field to null or delete it if sender also null
+            if (user.ReceivedMessages.Count != 0)
+            {
+                foreach (var message in user.ReceivedMessages)
+                {
+                    if (message.SenderId != null)
+                        message.ReceiverId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
+            }
+
+            //Remove all builds created by the user
+            if (user.Builds.Count != 0)
+            {
+                foreach(var build in user.Builds)
+                {
+                    //Remove all related images
+                    if (build.Images.Count != 0)
+                    {
+                        foreach (var image in build.Images)
+                        {
+                            //Remove the file from the file system
+                            if (System.IO.File.Exists(image.Location))
+                                System.IO.File.Delete(image.Location);
+                        }
+
+                        //Delete all related images
+                        _db.Images.RemoveRange(build.Images);
+                    }
+
+                    //Remove all related comments
+                    if (build.Comments.Count != 0)
+                    {
+                        foreach(var comment in build.Comments)
+                        {
+                            //Remove all related images
+                            if (comment.Images.Count != 0)
+                            {
+                                foreach (var image in comment.Images)
+                                {
+                                    //Remove the file from the file system
+                                    if (System.IO.File.Exists(image.Location))
+                                        System.IO.File.Delete(image.Location);
+                                }
+
+                                //Delete all related images
+                                _db.Images.RemoveRange(comment.Images);
+                            }
+
+                            //Set the ParentCommentId field to null for all children
+                            foreach (var child in comment.ChildComments)
+                            {
+                                child.ParentCommentId = null;
+                            }
+
+                            //Delete the userComment
+                            _db.UserComments.Remove(comment);
+                        }
+                    }
+
+                    //Handle deleting build tags to avoid conflicts with cascade deletes
+                    //Get all tags
+                    var tags = await _db.BuildTags.Where(f => f.BuildId == build.Id).ToListAsync();
+
+                    //Remove all related tags
+                    if (tags.Count != 0)
+                    {
+                        _db.BuildTags.RemoveRange(tags);
+                    }
+
+                    //Set all related interactions foreign key field to null
+                    if (build.Interactions.Count != 0)
+                    {
+                        foreach (var interaction in build.Interactions)
+                        {
+                            interaction.BuildId = null;
+                        }
+                    }
+
+                    //Remove all components from build
+                    if (build.Components.Count != 0)
+                    {
+                        _db.BuildComponents.RemoveRange(build.Components);
+                    }
+
+                    //Delete the build
+                    _db.Builds.Remove(build);
+                }
             }
 
             //Delete the user

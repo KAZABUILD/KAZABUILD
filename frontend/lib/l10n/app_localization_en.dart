@@ -111,6 +111,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get buildNow => 'Build Now';
 
   @override
+  String get openInBuilder => 'Open in Builder';
+
+  @override
   String get guides => 'Guides';
 
   @override

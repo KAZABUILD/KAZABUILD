@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
-import 'package:frontend/utils/user_image_utils.dart';
+import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/widgets/theme_provider.dart';
 import 'package:frontend/models/notification_provider.dart';
@@ -115,7 +115,6 @@ class CustomNavigationBar extends ConsumerWidget {
                   );
                 },
               ),
-              _NavButton(title: AppLocalizations.of(context)!.aboutUs, route: '/about'),
               _PartsDropdownMenu(),
             ],
           ),
@@ -270,34 +269,13 @@ class _MobileAppBar extends ConsumerWidget {
                             value: 'profile',
                             child: Row(
                               children: [
-                                CircleAvatar(
+                                AuthenticatedImage(
+                                  imageUrl: user.photoURL,
+                                  isCircle: true,
                                   radius: 12,
                                   backgroundColor: colorScheme.primaryContainer,
-                                  backgroundImage:
-                                      UserImageUtils.getUserImageUrl(
-                                            user.photoURL,
-                                          ) !=
-                                          null
-                                      ? NetworkImage(
-                                          UserImageUtils.getUserImageUrl(
-                                            user.photoURL,
-                                          )!,
-                                        )
-                                      : null,
-                                  child:
-                                      UserImageUtils.getUserImageUrl(
-                                            user.photoURL,
-                                          ) ==
-                                          null
-                                      ? Text(
-                                          user.username[0].toUpperCase(),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color:
-                                                colorScheme.onPrimaryContainer,
-                                          ),
-                                        )
-                                      : null,
+                                  username: user.username,
+                                  userId: user.uid,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -344,33 +322,13 @@ class _MobileAppBar extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: CircleAvatar(
+                              child: AuthenticatedImage(
+                                imageUrl: user.photoURL,
+                                isCircle: true,
                                 radius: 16,
                                 backgroundColor: colorScheme.primaryContainer,
-                                backgroundImage:
-                                    UserImageUtils.getUserImageUrl(
-                                          user.photoURL,
-                                        ) !=
-                                        null
-                                    ? NetworkImage(
-                                        UserImageUtils.getUserImageUrl(
-                                          user.photoURL,
-                                        )!,
-                                      )
-                                    : null,
-                                child:
-                                    UserImageUtils.getUserImageUrl(
-                                          user.photoURL,
-                                        ) ==
-                                        null
-                                    ? Text(
-                                        user.username[0].toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: colorScheme.onPrimaryContainer,
-                                        ),
-                                      )
-                                    : null,
+                                username: user.username,
+                                userId: user.uid,
                               ),
                             ),
                           ),
@@ -437,7 +395,7 @@ class CustomDrawer extends ConsumerWidget {
               children: [
                 Image.asset("assets/logo/kaza.png", width: 45, height: 45),
                 Text(
-                  'azaBuild',
+                  'KazaBuild',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimary,
                     fontSize: 24,
@@ -590,19 +548,6 @@ class CustomDrawer extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(AppLocalizations.of(context)!.aboutUs),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 8,
-            ),
-            minVerticalPadding: 12,
-            onTap: () {
-              Navigator.pop(context);
-              context.go('/about');
             },
           ),
           const Divider(),
@@ -920,18 +865,13 @@ class _LoggedInProfileArea extends ConsumerWidget {
             return const _SignInArea(); // Should not happen, but as a fallback
           return Row(
             children: [
-              CircleAvatar(
+              AuthenticatedImage(
+                imageUrl: user.photoURL,
+                isCircle: true,
                 radius: 14,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                backgroundImage:
-                    UserImageUtils.getUserImageUrl(user.photoURL) != null
-                    ? NetworkImage(
-                        UserImageUtils.getUserImageUrl(user.photoURL)!,
-                      )
-                    : null,
-                child: UserImageUtils.getUserImageUrl(user.photoURL) == null
-                    ? Text(user.username[0].toUpperCase())
-                    : null,
+                username: user.username,
+                userId: user.uid,
               ),
               const SizedBox(width: 8),
               Column(

@@ -5,7 +5,7 @@ namespace KAZABUILD.Domain.Enums
     /// </summary>
     public enum SubComponentType
     {
-        COOLER_SCOKET,
+        COOLER_SOCKET,
         INTEGRATED_GRAPHICS,
         M2_SLOT,
         ONBOARD_ETHERNET,

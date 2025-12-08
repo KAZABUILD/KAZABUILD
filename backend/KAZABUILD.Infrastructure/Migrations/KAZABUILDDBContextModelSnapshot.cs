@@ -115,7 +115,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<Guid>("BuildId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("ComponentId")
+                    b.Property<Guid?>("ComponentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("DatabaseEntryAt")
@@ -146,7 +146,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("BuildId")
+                    b.Property<Guid?>("BuildId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("DatabaseEntryAt")
@@ -638,6 +638,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -653,6 +656,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<Guid?>("UserCommentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("UserGuideId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -664,9 +670,13 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.HasIndex("ForumPostId");
 
+                    b.HasIndex("MessageId");
+
                     b.HasIndex("SubComponentId");
 
                     b.HasIndex("UserCommentId");
+
+                    b.HasIndex("UserGuideId");
 
                     b.HasIndex("UserId");
 
@@ -721,7 +731,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<Guid>("CreatorId")
+                    b.Property<Guid?>("CreatorId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("DatabaseEntryAt")
@@ -768,6 +778,12 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<DateTime>("DatabaseEntryAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("DeletedReceiverId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DeletedSenderId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("IV")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -789,10 +805,10 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<Guid?>("ParentMessageId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("ReceiverId")
+                    b.Property<Guid?>("ReceiverId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("SenderId")
+                    b.Property<Guid?>("SenderId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("SentAt")
@@ -993,7 +1009,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -1092,6 +1108,9 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<DateTime>("DatabaseEntryAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("DeletedUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("ForumPostId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1108,7 +1127,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Property<DateTime>("PostedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -1150,7 +1169,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<Guid>("UserCommentId")
+                    b.Property<Guid?>("UserCommentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("UserId")
@@ -1186,7 +1205,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -1228,6 +1247,53 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasIndex("FollowerId");
 
                     b.ToTable("UserFollows");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserGuide", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("DatabaseEntryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastEditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TimeToRead")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserGuides");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>
@@ -2152,8 +2218,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
                         .WithMany("Builds")
                         .HasForeignKey("ComponentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Build");
 
@@ -2165,8 +2230,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
                         .WithMany("Interactions")
                         .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("BuildInteractions")
@@ -2324,6 +2388,11 @@ namespace KAZABUILD.Infrastructure.Migrations
                         .HasForeignKey("ForumPostId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.Message", "Message")
+                        .WithMany("Images")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("KAZABUILD.Domain.Entities.Components.SubComponents.BaseSubComponent", "SubComponent")
                         .WithMany("Images")
                         .HasForeignKey("SubComponentId")
@@ -2332,6 +2401,11 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "UserComment")
                         .WithMany("Images")
                         .HasForeignKey("UserCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KAZABUILD.Domain.Entities.Users.UserGuide", "UserGuide")
+                        .WithMany("Images")
+                        .HasForeignKey("UserGuideId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
@@ -2345,11 +2419,15 @@ namespace KAZABUILD.Infrastructure.Migrations
 
                     b.Navigation("ForumPost");
 
+                    b.Navigation("Message");
+
                     b.Navigation("SubComponent");
 
                     b.Navigation("User");
 
                     b.Navigation("UserComment");
+
+                    b.Navigation("UserGuide");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.ForumPost", b =>
@@ -2357,8 +2435,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Creator")
                         .WithMany("ForumPosts")
                         .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Creator");
                 });
@@ -2368,19 +2445,17 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.Message", "ParentMessage")
                         .WithMany("ChildMessages")
                         .HasForeignKey("ParentMessageId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Receiver")
                         .WithMany("ReceivedMessages")
                         .HasForeignKey("ReceiverId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "Sender")
                         .WithMany("SentMessages")
                         .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentMessage");
 
@@ -2405,7 +2480,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Image", "Image")
                         .WithMany("Users")
                         .HasForeignKey("ImageId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.OwnsOne("KAZABUILD.Domain.ValueObjects.Address", "Address", b1 =>
                         {
@@ -2463,8 +2538,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserActivities")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });
@@ -2512,33 +2586,32 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Builds.Build", "Build")
                         .WithMany("Comments")
                         .HasForeignKey("BuildId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Components.Components.BaseComponent", "Component")
                         .WithMany("Comments")
                         .HasForeignKey("ComponentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Components.ComponentReview", "ComponentReview")
                         .WithMany("Comments")
                         .HasForeignKey("ComponentReviewId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.ForumPost", "ForumPost")
                         .WithMany("Comments")
                         .HasForeignKey("ForumPostId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "ParentComment")
                         .WithMany("ChildComments")
                         .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserComments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Build");
 
@@ -2558,8 +2631,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.UserComment", "UserComment")
                         .WithMany("UserCommentInteractions")
                         .HasForeignKey("UserCommentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserCommentInteractions")
@@ -2577,8 +2649,7 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.HasOne("KAZABUILD.Domain.Entities.Users.User", "User")
                         .WithMany("UserFeedback")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });
@@ -2937,6 +3008,8 @@ namespace KAZABUILD.Infrastructure.Migrations
                 {
                     b.Navigation("ChildMessages");
 
+                    b.Navigation("Images");
+
                     b.Navigation("UserReports");
                 });
 
@@ -2990,6 +3063,11 @@ namespace KAZABUILD.Infrastructure.Migrations
                     b.Navigation("UserCommentInteractions");
 
                     b.Navigation("UserReports");
+                });
+
+            modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserGuide", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("KAZABUILD.Domain.Entities.Users.UserPreference", b =>

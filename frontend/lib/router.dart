@@ -50,18 +50,24 @@ import 'package:frontend/screens/admin/admin_dashboard.dart';
 import 'package:frontend/screens/admin/admin_users_page.dart';
 import 'package:frontend/screens/admin/admin_access_debug_page.dart';
 import 'package:frontend/screens/admin/admin_builds_page.dart';
+import 'package:frontend/screens/admin/admin_featured_builds_page.dart';
 import 'package:frontend/screens/admin/admin_forums_page.dart';
 import 'package:frontend/screens/admin/admin_parts_page.dart';
 import 'package:frontend/screens/admin/admin_guides_page.dart';
-import 'package:frontend/screens/admin/admin_analytics_page.dart';
 import 'package:frontend/screens/admin/admin_base_layout.dart';
 import 'package:frontend/screens/admin/admin_tags_page.dart';
+import 'package:frontend/screens/admin/admin_settings_page.dart';
 import 'package:frontend/screens/admin/admin_component_compatibility_test_page.dart';
+import 'package:frontend/screens/admin/admin_notifications_page.dart';
+import 'package:frontend/screens/admin/admin_quiz_page.dart';
 
 // ──────────────────────── Auth State Listener ─────────────────────────────
 class AuthStateListener extends ChangeNotifier {
   AuthStateListener(this.ref) {
-    ref.listen<AsyncValue<AppUser?>>(authProvider, (_, __) => notifyListeners());
+    ref.listen<AsyncValue<AppUser?>>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
   }
 
   final Ref ref;
@@ -77,27 +83,61 @@ String? _handleEmailLinkRedirect() {
 
   try {
     final href = html.window.location.href;
-    if (!href.contains('#/auth/confirm')) return null;
+    
+    // Check both main URL and hash for confirm paths
+    final mainPart = href.split('#').first;
+    final hashPart = href.contains('#') ? href.split('#').last : '';
+    
+    final mainUri = Uri.parse(mainPart);
+    final isMainConfirm = mainUri.path.contains('/auth/confirm-register') || 
+                          mainUri.path.contains('/auth/confirm-reset-password');
+    
+    final isHashConfirm = hashPart.contains('/auth/confirm-register') || 
+                          hashPart.contains('/auth/confirm-reset-password');
+    
+    if (!isMainConfirm && !isHashConfirm) return null;
 
-    final hashPart = href.split('#').last;
-    final uri = Uri.parse('https://example.com$hashPart');
-
-    final path = uri.path;
-    if (!path.startsWith('/auth/confirm-register') &&
-        !path.startsWith('/auth/confirm-reset-password')) {
-      return null;
+    // Extract path and query params
+    String cleanPath;
+    String query = '';
+    
+    if (isMainConfirm) {
+      // Token is in main URL
+      cleanPath = mainUri.path;
+      query = mainUri.query;
+    } else {
+      // Token might be in hash
+      final hashUri = Uri.parse('https://example.com$hashPart');
+      cleanPath = hashUri.path;
+      query = hashUri.query;
     }
 
     // Build clean URL without hash
-    final cleanPath = uri.path;
-    final query = uri.queryParameters.isNotEmpty ? '?${uri.query}' : '';
-    final cleanUrl = '${html.window.location.origin}$cleanPath$query';
-
+    final cleanUrl = '${html.window.location.origin}$cleanPath${query.isNotEmpty ? '?$query' : ''}';
     html.window.history.replaceState(null, '', cleanUrl);
-    return '$cleanPath$query';
+    
+    return '$cleanPath${query.isNotEmpty ? '?$query' : ''}';
   } catch (_) {
     return null;
   }
+}
+
+// ─────────────────────── Helper: No Transition Page Builder ─────────────────────
+/// Creates a page without transition animations
+Page<T> noTransitionPage<T extends Object?>({
+  required Widget child,
+  LocalKey? key,
+  String? name,
+  Object? arguments,
+  String? restorationId,
+}) {
+  return NoTransitionPage<T>(
+    key: key,
+    name: name,
+    arguments: arguments,
+    restorationId: restorationId,
+    child: child,
+  );
 }
 
 // ─────────────────────── Post Detail Wrapper (unchanged) ─────────────────────
@@ -111,9 +151,8 @@ class _PostDetailWrapper extends ConsumerWidget {
 
     return postAsync.when(
       data: (post) => PostDetailPage(post: post),
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (_, __) => Scaffold(
         body: Center(
           child: Column(
@@ -157,11 +196,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // 2. Admin routes – require admin role
+      // 2. Admin routes – require admin or moderator role, with specific routes admin-only
       if (path.startsWith('/admin') && path != '/admin/debug') {
         if (loading) return null;
         if (user == null) return '/login';
-        if (!user.userRole.isAdministrator) return '/home';
+        
+        // Check if user has staff privileges (moderator or higher)
+        if (!user.userRole.isModeratorOrHigher) return '/home';
+        
+        // Admin-only routes (component management) - require administrator role
+        final adminOnlyRoutes = [
+          '/admin/tags',
+          '/admin/parts',
+          '/admin/settings',
+          '/admin/notifications',
+        ];
+        
+        final isAdminOnlyRoute = adminOnlyRoutes.any(path.startsWith);
+        if (isAdminOnlyRoute && !user.userRole.isAdministrator) {
+          return '/home'; // Redirect moderators away from admin-only routes
+        }
+        
         return null;
       }
 
@@ -173,8 +228,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // 4. Protected pages – require login
-      if (!loggedIn && ['/profile', '/settings'].contains(path)) {
-        return '/login';
+      // Wait for auth to finish loading before redirecting
+      if (path.startsWith('/profile') || path == '/settings') {
+        if (loading) return null; // Wait for auth to load
+        if (!loggedIn) return '/login';
+        return null;
+      }
+
+      // 5. Forum post detail - allow access but wait for auth to load
+      if (path.startsWith('/forums/') && path.split('/').length > 2) {
+        // This is a forum post detail page (e.g., /forums/123)
+        // Allow access but wait for auth to load
+        if (loading) return null;
+        return null;
       }
 
       // 5. Logged-in users can't access auth pages
@@ -189,127 +255,419 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
 
-      routes: [
-       GoRoute(path: '/', redirect: (_, __) => '/home'),
+    routes: [
+      GoRoute(path: '/', redirect: (_, __) => '/home'),
 
       // ───── Main App Routes ─────
-      GoRoute(path: '/home', name: 'home', builder: (_, __) => const HomePage()),
-      GoRoute(path: '/explore', name: 'explore', builder: (_, state) {
-        final tag = state.uri.queryParameters['tag'];
-        return ExploreBuildsPage(initialTag: tag);
-      }),
-       GoRoute(path: '/explore-builds', redirect: (_, __) => '/explore'), // backward compat
-      GoRoute(path: '/guides', name: 'guides', builder: (_, __) => const GuidesPage()),
-      GoRoute(path: '/forums', name: 'forums', builder: (_, __) => const ForumsPage()),
-      GoRoute(path: '/forums/new', name: 'new-post', builder: (_, state) {
-        final buildId = state.uri.queryParameters['buildId'];
-        return NewPostPage(buildId: buildId);
-      }),
-      GoRoute(path: '/forums/:id', name: 'forum-post-detail', builder: (_, state) {
-        final id = state.pathParameters['id']!;
-        return _PostDetailWrapper(postId: id);
-      }),
-      GoRoute(path: '/messages', name: 'messages', builder: (_, __) => const MessagesPage()),
-      GoRoute(path: '/messages/:userId', name: 'message-detail', builder: (_, state) {
-        final userId = state.pathParameters['userId']!;
-        return MessageDetailPage(otherUserId: userId);
-      }),
-      GoRoute(path: '/notifications', name: 'notifications', builder: (_, __) => const NotificationsPage()),
-      GoRoute(path: '/profile', name: 'profile', builder: (_, __) => const ProfilePage()),
-      GoRoute(path: '/profile/:id', name: 'user-profile', builder: (_, state) {
-        final id = state.pathParameters['id']!;
-        return ProfilePage(userId: id);
-      }),
-      GoRoute(path: '/settings', name: 'settings', builder: (_, __) => const SettingsPage()),
-      GoRoute(path: '/build-now', name: 'build-now', builder: (_, __) => const BuildNowPage()),
-      GoRoute(path: '/quiz', name: 'quiz', builder: (_, __) => const QuizPage()),
+      GoRoute(
+        path: '/home',
+        name: 'home',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const HomePage(),
+        ),
+      ),
+      GoRoute(
+        path: '/explore',
+        name: 'explore',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: ExploreBuildsPage(initialTag: state.uri.queryParameters['tag']),
+        ),
+      ),
+      GoRoute(
+        path: '/explore-builds',
+        redirect: (_, __) => '/explore',
+      ), // backward compat
+      GoRoute(
+        path: '/guides',
+        name: 'guides',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const GuidesPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/forums',
+        name: 'forums',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const ForumsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/forums/new',
+        name: 'new-post',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: NewPostPage(buildId: state.uri.queryParameters['buildId']),
+        ),
+      ),
+      GoRoute(
+        path: '/forums/:id',
+        name: 'forum-post-detail',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: _PostDetailWrapper(postId: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/forums/:id/edit',
+        name: 'edit-forum-post',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: NewPostPage(postId: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/messages',
+        name: 'messages',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const MessagesPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/messages/:userId',
+        name: 'message-detail',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: MessageDetailPage(otherUserId: state.pathParameters['userId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const NotificationsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const ProfilePage(),
+        ),
+      ),
+      GoRoute(
+        path: '/profile/:id',
+        name: 'user-profile',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: ProfilePage(userId: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        pageBuilder: (_, state) {
+          // Get userId from query parameters (works with hash-based routing)
+          final userId = state.uri.queryParameters['userId'];
+          if (kDebugMode) {
+            print('Settings route - userId from query: $userId');
+            print('Settings route - full URI: ${state.uri}');
+            print('Settings route - query parameters: ${state.uri.queryParameters}');
+          }
+          return noTransitionPage(
+            key: state.pageKey,
+            child: SettingsPage(userId: userId),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/build-now',
+        name: 'build-now',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const BuildNowPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/quiz',
+        name: 'quiz',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const QuizPage(),
+        ),
+      ),
 
       // ───── Parts & Builds ─────
-      GoRoute(path: '/parts', name: 'all-parts', builder: (_, __) => const AllPartsPage()),
-      GoRoute(path: '/parts/:type', name: 'parts', builder: (_, state) {
-        final typeStr = state.pathParameters['type'] ?? 'cpu';
-        final type = ComponentType.values.firstWhere(
-          (e) => e.name == typeStr,
-          orElse: () => ComponentType.cpu,
-        );
-        return PartPickerPage(componentType: type);
-      }),
-      GoRoute(path: '/build/:id', name: 'build-detail', builder: (_, state) {
-        final id = state.pathParameters['id']!;
-        return BuildDetailPage(buildId: id);
-      }),
-      GoRoute(path: '/build/:id/edit', name: 'edit-build', builder: (_, state) {
-        final id = state.pathParameters['id']!;
-        return EditBuildPage(buildId: id);
-      }),
+      GoRoute(
+        path: '/parts',
+        name: 'all-parts',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AllPartsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/parts/:type',
+        name: 'parts',
+        pageBuilder: (_, state) {
+          final typeStr = state.pathParameters['type'] ?? 'cpu';
+          final type = ComponentType.values.firstWhere(
+            (e) => e.name == typeStr,
+            orElse: () => ComponentType.cpu,
+          );
+          final initialPage =
+              int.tryParse(state.uri.queryParameters['page'] ?? '1') ?? 1;
+          final componentId = state.uri.queryParameters['componentId'];
+          final currentBuild = state.extra is List<PcComponent>
+              ? state.extra as List<PcComponent>
+              : null;
+          return noTransitionPage(
+            key: state.pageKey,
+            child: PartPickerPage(
+              componentType: type,
+              initialPage: initialPage,
+              componentId: componentId,
+              currentBuild: currentBuild,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/build/:id',
+        name: 'build-detail',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: BuildDetailPage(buildId: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/build/:id/edit',
+        name: 'edit-build',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: EditBuildPage(buildId: state.pathParameters['id']!),
+        ),
+      ),
 
       // ───── Info Pages ─────
-      GoRoute(path: '/about', name: 'about', builder: (_, __) => const AboutUsPage()),
-      GoRoute(path: '/feedback', name: 'feedback', builder: (_, __) => const FeedbackPage()),
-      GoRoute(path: '/faq', name: 'faq', builder: (_, __) => const FaqPage()),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AboutUsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/feedback',
+        name: 'feedback',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const FeedbackPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/faq',
+        name: 'faq',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const FaqPage(),
+        ),
+      ),
 
       // ───── Auth Routes ─────
-      GoRoute(path: '/login', name: 'login', builder: (_, __) => const LoginPage()),
-      GoRoute(path: '/signup', name: 'signup', builder: (_, __) => const SignUpPage()),
-      GoRoute(path: '/forgot-password', name: 'forgot-password', builder: (_, __) => const ForgotPasswordPage()),
-      GoRoute(path: '/change-password', name: 'change-password', builder: (_, __) => const ChangePasswordPage()),
-      GoRoute(path: '/auth/confirm-register', name: 'confirm-register', builder: (_, state) {
-        return ConfirmRegisterPage(
-          token: state.uri.queryParameters['token'],
-          userId: state.uri.queryParameters['userId'],
-        );
-      }),
-      GoRoute(path: '/auth/confirm-reset-password', name: 'confirm-reset-password', builder: (_, state) {
-        return ConfirmResetPasswordPage(
-          token: state.uri.queryParameters['token'],
-          userId: state.uri.queryParameters['userId'],
-        );
-      }),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const LoginPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/signup',
+        name: 'signup',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const SignUpPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot-password',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const ForgotPasswordPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/change-password',
+        name: 'change-password',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const ChangePasswordPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/auth/confirm-register',
+        name: 'confirm-register',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: ConfirmRegisterPage(
+            token: state.uri.queryParameters['token'],
+            userId: state.uri.queryParameters['userId'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/auth/confirm-reset-password',
+        name: 'confirm-reset-password',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: ConfirmResetPasswordPage(
+            token: state.uri.queryParameters['token'],
+            userId: state.uri.queryParameters['userId'],
+          ),
+        ),
+      ),
 
       // ───── Admin Routes ─────
-      GoRoute(path: '/admin', name: 'admin-dashboard', builder: (_, __) => const AdminDashboard()),
-      GoRoute(path: '/admin/debug', name: 'admin-debug', builder: (_, __) => const AdminAccessDebugPage()),
-      GoRoute(path: '/admin/users', name: 'admin-users', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/users',
-        pageTitle: 'User Management',
-        child: const AdminUsersPage(),
-      )),
-      GoRoute(path: '/admin/builds', name: 'admin-builds', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/builds',
-        pageTitle: 'Build Management',
-        child: const AdminBuildsPage(),
-      )),
-      GoRoute(path: '/admin/forums', name: 'admin-forums', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/forums',
-        pageTitle: 'Forum Moderation',
-        child: const AdminForumsPage(),
-      )),
-      GoRoute(path: '/admin/parts', name: 'admin-parts', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/parts',
-        pageTitle: 'Parts Management',
-        child: const AdminPartsPage(),
-      )),
-      GoRoute(path: '/admin/guides', name: 'admin-guides', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/guides',
-        pageTitle: 'Guides Management',
-        child: const AdminGuidesPage(),
-      )),
-      GoRoute(path: '/admin/analytics', name: 'admin-analytics', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/analytics',
-        pageTitle: 'Analytics Dashboard',
-        child: const AdminAnalyticsPage(),
-      )),
-      GoRoute(path: '/admin/tags', name: 'admin-tags', builder: (_, __) => AdminBaseLayout(
-        currentRoute: '/admin/tags',
-        pageTitle: 'Tags Management',
-        child: const AdminTagsPage(),
-      )),
+      GoRoute(
+        path: '/admin',
+        name: 'admin-dashboard',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AdminDashboard(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/debug',
+        name: 'admin-debug',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AdminAccessDebugPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        name: 'admin-users',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/users',
+            pageTitle: 'User Management',
+            child: const AdminUsersPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/builds',
+        name: 'admin-builds',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/builds',
+            pageTitle: 'Build Management',
+            child: const AdminBuildsPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/featured-builds',
+        name: 'admin-featured-builds',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AdminFeaturedBuildsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/forums',
+        name: 'admin-forums',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/forums',
+            pageTitle: 'Forum Moderation',
+            child: const AdminForumsPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/parts',
+        name: 'admin-parts',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/parts',
+            pageTitle: 'Parts Management',
+            child: const AdminPartsPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/guides',
+        name: 'admin-guides',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/guides',
+            pageTitle: 'Guides Management',
+            child: const AdminGuidesPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/quiz',
+        name: 'admin-quiz',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/quiz',
+            pageTitle: 'Quiz Management',
+            child: const AdminQuizPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/tags',
+        name: 'admin-tags',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/tags',
+            pageTitle: 'Tags Management',
+            child: const AdminTagsPage(),
+          ),
+        ),
+      ),
       GoRoute(
         path: '/admin/component-compatibility-test',
         name: 'admin-component-compatibility-test',
-        builder: (_, __) => const AdminComponentCompatibilityTestPage(),
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: const AdminComponentCompatibilityTestPage(),
+        ),
       ),
-       GoRoute(path: '/admin/settings', redirect: (_, __) => '/settings'),
+      GoRoute(
+        path: '/admin/settings',
+        name: 'admin-settings',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/settings',
+            pageTitle: 'Admin Settings',
+            child: const AdminSettingsPage(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/notifications',
+        name: 'admin-notifications',
+        pageBuilder: (_, state) => noTransitionPage(
+          key: state.pageKey,
+          child: AdminBaseLayout(
+            currentRoute: '/admin/notifications',
+            pageTitle: 'Send Notifications',
+            child: const AdminNotificationsPage(),
+          ),
+        ),
+      ),
     ],
   );
 });

@@ -23,6 +23,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
   final List<String> _statuses = ['All', 'Draft', 'Published', 'Official', 'Generated'];
   String? _orderBy;
   String _sortDirection = 'desc';
+  int _currentPage = 1;
+  final int _pageSize = 20; // Show 20 builds per page
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
@@ -145,6 +147,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                   ),
                   onChanged: (value) {
                     setState(() {
+                      _currentPage = 1; // Reset to first page on search
                       _cachedQueryParams = null; // Invalidate cache
                     });
                   },
@@ -170,6 +173,7 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                   onChanged: (value) {
                     setState(() {
                       _selectedStatus = value!;
+                      _currentPage = 1; // Reset to first page on filter change
                       _cachedQueryParams = null; // Invalidate cache
                     });
                   },
@@ -196,6 +200,8 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
           : [_selectedStatus.toUpperCase()],
       'orderBy': _orderBy ?? 'DatabaseEntryAt',
       'sortDirection': _sortDirection,
+      'page': _currentPage,
+      'pageLength': _pageSize,
     };
     
     // Check if params actually changed to prevent unnecessary rebuilds
@@ -283,13 +289,20 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
                           );
                         }
                         
-                        return ListView.separated(
-                          itemCount: builds.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 0),
-                          itemBuilder: (context, index) {
-                            final build = builds[index];
-                            return _buildBuildRow(build, isDark);
-                          },
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: builds.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 0),
+                                itemBuilder: (context, index) {
+                                  final build = builds[index];
+                                  return _buildBuildRow(build, isDark);
+                                },
+                              ),
+                            ),
+                            _buildPagination(isDark, buildsAsync),
+                          ],
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
@@ -726,6 +739,84 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildPagination(bool isDark, AsyncValue<List<AdminBuild>> buildsAsync) {
+    return buildsAsync.when(
+      data: (builds) {
+        final currentPageBuilds = builds.length;
+        final start = currentPageBuilds > 0 ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final end = currentPageBuilds > 0 ? start + currentPageBuilds - 1 : 0;
+        
+        // If we got a full page, there might be more pages
+        // If we got less than pageSize, we're on the last page
+        final hasMore = currentPageBuilds == _pageSize;
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                currentPageBuilds > 0
+                    ? 'Showing $start-$end builds (Page $_currentPage${hasMore ? '+' : ''})'
+                    : 'No builds',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                ),
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 1
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                  Text(
+                    'Page $_currentPage',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: hasMore || currentPageBuilds == _pageSize
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
   }
 }
 

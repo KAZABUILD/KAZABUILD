@@ -12,7 +12,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get language => 'Türkçe';
 
   @override
-  String get appTitle => 'Kaza Build';
+  String get appTitle => 'KazaBuild';
 
   @override
   String get exploreBuilds => 'Build\'leri Keşfet';
@@ -111,6 +111,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get buildNow => 'Build Oluştur';
 
   @override
+  String get openInBuilder => 'Builder`da Aç';
+
+  @override
   String get guides => 'Kılavuzlar';
 
   @override
@@ -174,7 +177,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noTagsAvailable => 'Etiket mevcut değil';
 
   @override
-  String get errorLoadingTags => 'Etiketler yüklenirken hata';
+  String get errorLoadingTags => 'Etiketler yüklenirken hata oluştu';
 
   @override
   String get buildSavedSuccessfully => 'Build başarıyla kaydedildi!';
@@ -199,7 +202,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get enterBuildName => 'Build\'iniz için bir ad girin';
 
   @override
-  String get describeBuild => 'Build\'inizi açıklayın...';
+  String get describeBuild => 'Build\'inizi için açıklama...';
 
   @override
   String get pleaseEnterName => 'Lütfen bir ad girin';
@@ -327,14 +330,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get builds => 'Build\'ler';
 
   @override
-  String get pcPartsCategories => 'PC Parça Kategorileri';
+  String get pcPartsCategories => 'PC Parçaları Kategorileri';
 
   @override
   String get chooseCategoryToBrowse =>
       'Mevcut PC bileşenlerini görmek için bir kategori seçin';
 
   @override
-  String get errorLoadingParts => 'Parçalar yüklenirken hata';
+  String get errorLoadingParts => 'Parçalar yüklenirken hata oluştu';
 
   @override
   String itemsCount(num count) {
@@ -361,10 +364,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get profileInformation => 'Profil Bilgileri';
 
   @override
-  String get displayName => 'Görünen Ad';
+  String get displayName => 'Görünen Adınız';
 
   @override
-  String get username => 'Kullanıcı Adı';
+  String get username => 'Kullanıcı Adınız';
 
   @override
   String get usernameCannotBeChanged => 'Kullanıcı adı değiştirilemez';
@@ -541,7 +544,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pleaseSignInToComment =>
-      'Lütfen yorum yapmak için giriş yapın. Giriş yapmak için navigasyonu kullanın.';
+      'Lütfen yorum yapmak için giriş yapın. Giriş yapmak için navigasyon barını kullanın.';
 
   @override
   String get writeComment => 'Yorum yazın...';

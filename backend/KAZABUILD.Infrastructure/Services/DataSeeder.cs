@@ -119,7 +119,7 @@ namespace KAZABUILD.Infrastructure.Services
 
                 var userIds = ids1 ?? [Guid.Empty];
 
-                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains(m.SenderId)).Select(m => m.Id).ToListAsync();
+                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains((Guid)m.SenderId!)).Select(m => m.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetMessageFaker(userIds, messageIds);
             }
@@ -134,7 +134,7 @@ namespace KAZABUILD.Infrastructure.Services
                 var componentReviewIds = ids5 ?? [Guid.Empty];
 
                 //Get comments from the same generation batch
-                var commentIds = await _context.UserComments.Where(c => userIds.Contains(c.UserId)).Select(c => c.Id).ToListAsync();
+                var commentIds = await _context.UserComments.Where(c => userIds.Contains((Guid)c.UserId!)).Select(c => c.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildIds, componentIds, componentReviewIds, commentTargetTypes, commentIds);
             }
@@ -1049,7 +1049,7 @@ namespace KAZABUILD.Infrastructure.Services
         private static readonly string[] socketTypes = ["AM4", "AM5", "LGA1200", "LGA1700", "TR4", "sTRX4", "SP5"];
         private Faker<CoolerSocketSubComponent> GetCoolerSocketSubComponentFaker() => new Faker<CoolerSocketSubComponent>("en")
             .RuleFor(s => s.Id, _ => Guid.NewGuid())
-            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SCOKET)
+            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SOCKET)
             .RuleFor(s => s.SocketType, f => f.PickRandom(socketTypes))
             .RuleFor(s => s.Name, (f, s) => $"Socket Compatibility: {s.SocketType}")
             .RuleFor(s => s.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))

@@ -111,12 +111,40 @@ class AppNotification {
   }
 
   /// Helper method to parse DateTime from various formats.
+  /// Backend sends UTC time, so we parse it as UTC and convert to local time.
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
-    if (value is DateTime) return value;
+    if (value is DateTime) {
+      // If DateTime is already UTC, convert to local
+      return value.isUtc ? value.toLocal() : value;
+    }
     if (value is String) {
       try {
-        return DateTime.parse(value);
+        // Backend sends UTC time in ISO8601 format (e.g., "2025-12-03T20:51:20.562")
+        // DateTime.parse will parse it as local time if no timezone is specified
+        // We need to explicitly treat it as UTC
+        final parsed = DateTime.parse(value);
+        
+        // If the string doesn't have timezone info, assume it's UTC
+        // Check if parsed DateTime is in UTC (ends with Z) or has timezone offset
+        if (!value.endsWith('Z') && !value.contains('+') && !value.contains('-', value.length - 6)) {
+          // No timezone indicator in string, treat as UTC
+          // Create UTC DateTime from the parsed values
+          final utcDateTime = DateTime.utc(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+            parsed.hour,
+            parsed.minute,
+            parsed.second,
+            parsed.millisecond,
+            parsed.microsecond,
+          );
+          return utcDateTime.toLocal();
+        }
+        
+        // String has timezone info, DateTime.parse handled it correctly
+        return parsed.isUtc ? parsed.toLocal() : parsed;
       } catch (e) {
         return null;
       }

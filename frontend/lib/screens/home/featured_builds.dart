@@ -10,8 +10,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/explore_build_model.dart';
-
+import '../../models/component_models.dart';
 import '../../models/build_provider.dart';
+import '../admin/admin_featured_builds_page.dart';
+
+/// Provider to fetch featured builds based on selected IDs
+final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) async {
+  final featuredIds = ref.watch(featuredBuildIdsProvider);
+  
+  if (featuredIds.isEmpty) {
+    return [];
+  }
+  
+  // Take first 3 featured builds
+  final idsToFetch = featuredIds.take(3).toList();
+  final buildService = ref.read(buildServiceProvider);
+  final builds = <Build>[];
+  
+  for (final buildId in idsToFetch) {
+    try {
+      final build = await buildService.getBuildById(buildId);
+      builds.add(build);
+    } catch (e) {
+      debugPrint('Failed to load featured build $buildId: $e');
+    }
+  }
+  
+  return builds;
+});
+
 /// A stateful widget that displays a carousel of featured PC builds.
 class FeaturedBuilds extends ConsumerStatefulWidget {
   const FeaturedBuilds({super.key});
@@ -40,31 +67,28 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final buildsAsync = ref.watch(allBuildsProvider);
+    
+    // Watch the featured builds provider
+    final buildsAsync = ref.watch(featuredBuildsProvider);
 
     return buildsAsync.when(
       data: (builds) {
-        // Filter for builds created by the site's official account and take the first 3.
-        final siteBuilds = builds
-            .where((build) => build.author?.username == 'KazaBuild')
-            .take(3)
-            .toList();
-
-        if (siteBuilds.isEmpty) {
+        if (builds.isEmpty) {
           return Container(
             height: 500,
             alignment: Alignment.center,
             padding: const EdgeInsets.all(40),
             child: Text(
-              'Featured builds will be shown here soon!',
+              'No featured builds selected yet',
               style: theme.textTheme.headlineMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           );
         }
+
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -78,78 +102,38 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
           ),
           child: Column(
             children: [
-              // Premium Section Title
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 4,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: isDarkMode
-                            ? [
-                                AppColorsDark.textNeon,
-                                AppColorsDark.textPurple,
-                              ]
-                            : [
-                                AppColorsLight.textNeon,
-                                AppColorsLight.textPurple,
-                              ],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'Featured Builds',
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 42,
-                      letterSpacing: -0.5,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    width: 4,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: isDarkMode
-                            ? [
-                                AppColorsDark.textPurple,
-                                AppColorsDark.textNeon,
-                              ]
-                            : [
-                                AppColorsLight.textPurple,
-                                AppColorsLight.textNeon,
-                              ],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
+              // Section Title
+              Text(
+                'Featured Builds',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 42,
+                  letterSpacing: -0.5,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 60),
               CarouselSlider.builder(
-                itemCount: siteBuilds.length,
+                itemCount: builds.length,
                 carouselController: _controller,
                 itemBuilder: (context, index, realIndex) {
-                  final item = siteBuilds[index];
-                  return _BuildCard(buildData: item, theme: theme, isDarkMode: isDarkMode);
+                  final item = builds[index];
+                  return _BuildCard(
+                    key: ValueKey(item.id), // Add key to prevent rebuilds
+                    buildData: item,
+                    theme: theme,
+                    isDarkMode: isDarkMode,
+                  );
                 },
                 options: CarouselOptions(
-                  height: 480,
-                  autoPlay: siteBuilds.length > 1,
-                  autoPlayInterval: const Duration(seconds: 4),
+                  height: 650,
+                  autoPlay: builds.length > 1,
+                  autoPlayInterval: const Duration(seconds: 5),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                  autoPlayCurve: Curves.fastOutSlowIn,
                   enlargeCenterPage: true,
-                  viewportFraction: 0.75,
-                  aspectRatio: 2.0,
+                  viewportFraction: MediaQuery.of(context).size.width < 768 ? 0.85 : 0.35,
+                  aspectRatio: 2 / 3,
                   onPageChanged: (index, reason) {
                     if (mounted) {
                       setState(() {
@@ -160,9 +144,10 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
                 ),
               ),
               const SizedBox(height: 30),
+              // Carousel indicators
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: siteBuilds.asMap().entries.map((entry) {
+                children: builds.asMap().entries.map((entry) {
                   return GestureDetector(
                     onTap: () {
                       if (mounted) {
@@ -253,8 +238,9 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
 
 /// A card widget that displays a summary of a single [CommunityBuild].
 ///
-/// It includes the build's image, title, price, and a button to view details.
-/// Tapping anywhere on the card also navigates to the detail page.
+/// Inspired by the Figma design with a modern glassmorphic card layout.
+/// Features a prominent image, specifications, price badge, and action button.
+/// Tapping anywhere on the card navigates to the build detail page.
 class _BuildCard extends StatefulWidget {
   /// The build data to display in the card.
   final Build buildData;
@@ -264,6 +250,7 @@ class _BuildCard extends StatefulWidget {
   final bool isDarkMode;
 
   const _BuildCard({
+    super.key,
     required this.buildData,
     required this.theme,
     required this.isDarkMode,
@@ -283,10 +270,10 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 300),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutCubic),
     );
   }
 
@@ -296,209 +283,207 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
     super.dispose();
   }
 
+  String _truncateName(String name, {int maxLength = 20}) {
+    if (name.length <= maxLength) return name;
+    return '${name.substring(0, maxLength)}...';
+  }
+
+  double _calculateTotalPrice() {
+    return widget.buildData.components.fold(0.0, (sum, component) {
+      // Get the lowest price from the component's prices list
+      final lowestPrice = component.lowestPrice ?? 0.0;
+      return sum + lowestPrice;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final totalPrice = _calculateTotalPrice();
+
     return MouseRegion(
       onEnter: (_) {
-        setState(() => _isHovered = true);
-        _scaleController.forward();
+        if (mounted) {
+          setState(() => _isHovered = true);
+          _scaleController.forward();
+        }
       },
       onExit: (_) {
-        setState(() => _isHovered = false);
-        _scaleController.reverse();
+        if (mounted) {
+          setState(() => _isHovered = false);
+          _scaleController.reverse();
+        }
       },
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: InkWell(
-          onTap: () {
-            context.go('/build/${widget.buildData.id}');
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            margin: const EdgeInsets.symmetric(horizontal: 8.0),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  widget.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                  widget.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: _isHovered
-                    ? (widget.isDarkMode
-                            ? AppColorsDark.textNeon
-                            : AppColorsLight.textNeon)
-                        .withValues(alpha: 0.5)
-                    : Colors.transparent,
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _isHovered
-                      ? (widget.isDarkMode
-                              ? AppColorsDark.textPurple
-                              : AppColorsLight.textPurple)
-                          .withValues(alpha: 0.3)
-                      : Colors.black.withValues(alpha: 0.2),
-                  blurRadius: _isHovered ? 30 : 15,
-                  spreadRadius: _isHovered ? 5 : 0,
-                ),
-              ],
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width < 768 ? double.infinity : 420,
+            maxHeight: 650,
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 16.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: widget.isDarkMode
+                  ? [
+                      const Color(0xFF1e1432),
+                      const Color(0xFF0f0915),
+                    ]
+                  : [
+                      const Color(0xFFF5F5F5),
+                      const Color(0xFFE8E8E8),
+                    ],
             ),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: _isHovered ? 30 : 20,
+                spreadRadius: 0,
+                offset: Offset(0, _isHovered ? 15 : 10),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
             child: Column(
               children: [
+                // Image Section - Large and prominent
                 Expanded(
-                  flex: 3,
+                  flex: 5,
                   child: Container(
-                    margin: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.theme.colorScheme.surface,
-                          widget.theme.colorScheme.surface.withValues(alpha: 0.8),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          spreadRadius: 0,
-                        ),
-                      ],
+                      color: widget.isDarkMode
+                          ? const Color(0xFF1a1533)
+                          : const Color(0xFFE0E0E0),
                     ),
-                    clipBehavior: Clip.antiAlias,
                     child: widget.buildData.imageUrl != null
                         ? Image.network(
                             widget.buildData.imageUrl!,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Center(
                               child: Icon(
-                                Icons.broken_image,
-                                size: 48,
-                                color: widget.theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                Icons.computer,
+                                size: 100,
+                                color: widget.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : Colors.black.withValues(alpha: 0.2),
                               ),
                             ),
                           )
                         : Center(
                             child: Icon(
-                              Icons.image_not_supported,
-                              size: 48,
-                              color: widget.theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              Icons.computer,
+                              size: 100,
+                              color: widget.isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : Colors.black.withValues(alpha: 0.2),
                             ),
                           ),
                   ),
                 ),
+                // Content Section - Specifications
                 Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                  flex: 5,
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.buildData.name,
-                          style: widget.theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 24,
-                            letterSpacing: -0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: widget.isDarkMode
-                                  ? [
-                                      AppColorsDark.textNeon.withValues(alpha: 0.2),
-                                      AppColorsDark.textPurple.withValues(alpha: 0.2),
-                                    ]
-                                  : [
-                                      AppColorsLight.textNeon.withValues(alpha: 0.2),
-                                      AppColorsLight.textPurple.withValues(alpha: 0.2),
-                                    ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Price not available', // TODO: Add price when available
-                            style: widget.theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: widget.isDarkMode
-                                  ? AppColorsDark.textNeon
-                                  : AppColorsLight.textNeon,
-                            ),
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: widget.isDarkMode
-                                  ? [
-                                      AppColorsDark.buttonPurple,
-                                      AppColorsDark.buttonBlue,
-                                    ]
-                                  : [
-                                      AppColorsLight.buttonPurple,
-                                      AppColorsLight.buttonBlue,
-                                    ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: _isHovered
-                                ? [
-                                    BoxShadow(
-                                      color: (widget.isDarkMode
-                                              ? AppColorsDark.buttonPurple
-                                              : AppColorsLight.buttonPurple)
-                                          .withValues(alpha: 0.5),
-                                      blurRadius: 15,
-                                      spreadRadius: 2,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                context.go('/build/${widget.buildData.id}');
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 16,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Specification:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: widget.isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.7)
+                                      : Colors.black.withValues(alpha: 0.7),
+                                  letterSpacing: 0.5,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'View Details',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: Scrollbar(
+                                  thumbVisibility: false,
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: _buildSpecsList(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Price
+                        Center(
+                          child: Text(
+                            totalPrice > 0 ? 'Price: ${totalPrice.toStringAsFixed(0)} Pin' : 'Price: N/A',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: widget.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Show More Button
+                        Center(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00e573),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: _isHovered
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF00e573).withValues(alpha: 0.5),
+                                        blurRadius: 20,
+                                        spreadRadius: 2,
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Icon(
-                                      Icons.arrow_forward,
+                                    ]
+                                  : [
+                                      BoxShadow(
+                                        color: const Color(0xFF00e573).withValues(alpha: 0.3),
+                                        blurRadius: 10,
+                                        spreadRadius: 0,
+                                      ),
+                                    ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  context.go('/build/${widget.buildData.id}');
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 48,
+                                    vertical: 14,
+                                  ),
+                                  child: Text(
+                                    'Show more',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
                                       color: Colors.white,
-                                      size: 18,
+                                      letterSpacing: 0.5,
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -514,5 +499,48 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSpecsList() {
+    final components = widget.buildData.components;
+    final specs = <String>[];
+
+    // Find CPU
+    try {
+      final cpu = components.firstWhere((c) => c.type == ComponentType.cpu);
+      specs.add(_truncateName(cpu.name, maxLength: 30));
+    } catch (_) {}
+
+    // Find RAM
+    try {
+      final ram = components.firstWhere((c) => c.type == ComponentType.ram);
+      specs.add(_truncateName(ram.name, maxLength: 30));
+    } catch (_) {}
+
+    // Find Storage
+    try {
+      final storage = components.firstWhere((c) => c.type == ComponentType.storage);
+      specs.add(_truncateName(storage.name, maxLength: 30));
+    } catch (_) {}
+
+    // Find GPU
+    try {
+      final gpu = components.firstWhere((c) => c.type == ComponentType.gpu);
+      specs.add(_truncateName(gpu.name, maxLength: 30));
+    } catch (_) {}
+
+    return specs.map((spec) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        spec,
+        style: TextStyle(
+          fontSize: 13,
+          color: widget.isDarkMode
+              ? Colors.white.withValues(alpha: 0.9)
+              : Colors.black.withValues(alpha: 0.9),
+          height: 1.6,
+        ),
+      ),
+    )).toList();
   }
 }

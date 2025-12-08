@@ -19,7 +19,7 @@ String getUserFriendlyError(dynamic error) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'The request took too long. Please check your internet connection and try again.';
+        return 'The internal servers are experiencing issues. Please try to reconnect later.';
       
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
@@ -47,7 +47,7 @@ String getUserFriendlyError(dynamic error) {
             errorMessage.contains('failed host lookup') ||
             errorMessage.contains('no internet') ||
             errorMessage.contains('network is unreachable')) {
-          return 'Unable to connect to the server. Please check your internet connection and try again.';
+          return 'The internal servers are experiencing issues. Please try to reconnect later.';
         }
         return 'An error occurred. Please try again.';
       
@@ -66,7 +66,7 @@ String getUserFriendlyError(dynamic error) {
       errorString.contains('failed host lookup') ||
       errorString.contains('no internet') ||
       errorString.contains('network is unreachable')) {
-    return 'Unable to connect to the server. Please check your internet connection and try again.';
+    return 'The internal servers are experiencing issues. Please try to reconnect later.';
   }
 
   // Authentication errors

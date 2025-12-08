@@ -415,7 +415,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                           margin: const EdgeInsets.only(bottom: 12),
                                           child: ListTile(
                                             leading: const Icon(Icons.error),
-                                            title: Text('Error: ${conversation.otherUserId}'),
+                                            title: Text(getUserFriendlyError(error)),
                                           ),
                                         ),
                                       );
@@ -477,7 +477,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          error.toString(),
+                          getUserFriendlyError(error),
                           style: TextStyle(
                             fontSize: 14,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -499,7 +499,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text('Error: $error'),
+                child: Text(getUserFriendlyError(error)),
               ),
             ),
           ),
@@ -747,10 +747,25 @@ class _UserSelectionDialogState extends ConsumerState<_UserSelectionDialog> {
                   final usersList = response.data as List<dynamic>? ?? [];
                   
                   // Filter out current user and convert to AppUser
-                  final users = usersList
+                  final allUsers = usersList
                       .map((json) => AppUser.fromJson(json))
                       .where((user) => user.uid != widget.currentUserId)
                       .toList();
+                  
+                  // Filter out private profiles for non-admin users
+                  // Backend returns private profiles with limited info (only DisplayName, UserRole)
+                  // We can detect private profiles by checking if they have minimal information
+                  final users = allUsers.where((user) {
+                    // If ProfileAccessibility is explicitly set to private, filter it out
+                    if (user.profileAccessibility == ProfileAccessibility.private) {
+                      return false;
+                    }
+                    // If ProfileAccessibility is follows, we'd need to check follow status
+                    // For now, we'll show them (backend should handle this, but as fallback)
+                    // If user has very limited info (no bio, no photoURL, empty email), it might be private
+                    // But this is unreliable, so we rely on ProfileAccessibility field
+                    return true;
+                  }).toList();
                   
                   // Update total pages based on response
                   // If we got fewer users than page size, this is the last page

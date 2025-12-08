@@ -111,10 +111,19 @@ class NotificationService {
       }
       
       final notifications = <AppNotification>[];
+      final seenIds = <String>{};
+      
       for (var i = 0; i < notificationsJson.length; i++) {
         try {
           final notification = AppNotification.fromJson(notificationsJson[i] as Map<String, dynamic>);
-          notifications.add(notification);
+          
+          // Remove duplicates by ID - if we've already seen this notification ID, skip it
+          if (!seenIds.contains(notification.id)) {
+            seenIds.add(notification.id);
+            notifications.add(notification);
+          } else {
+            debugPrint('Skipping duplicate notification with ID: ${notification.id}');
+          }
         } catch (e, stackTrace) {
           debugPrint('Error parsing notification at index $i: $e');
           debugPrint('Notification JSON: ${notificationsJson[i]}');
@@ -123,7 +132,7 @@ class NotificationService {
         }
       }
       
-      debugPrint('Successfully parsed ${notifications.length} notifications');
+      debugPrint('Successfully parsed ${notifications.length} unique notifications (removed ${notificationsJson.length - notifications.length} duplicates)');
       return notifications;
     } catch (e, stackTrace) {
       debugPrint('Error fetching notifications: $e');
@@ -210,6 +219,45 @@ class NotificationService {
   /// Marks a notification as unread.
   Future<void> markAsUnread(String notificationId) async {
     await updateNotification(notificationId: notificationId, isRead: false);
+  }
+
+  /// Creates a new notification.
+  /// POST /Notifications/add
+  /// Used to send notifications to users.
+  Future<Map<String, dynamic>> createNotification({
+    required String userId,
+    required NotificationType notificationType,
+    required String title,
+    required String body,
+    String? linkUrl,
+    required DateTime sentAt,
+    bool isRead = false,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {
+        'UserId': userId,
+        'NotificationType': notificationType.toApiString(),
+        'Title': title,
+        'Body': body,
+        'SentAt': sentAt.toIso8601String(),
+        'IsRead': isRead,
+      };
+
+      if (linkUrl != null && linkUrl.isNotEmpty) {
+        data['LinkUrl'] = linkUrl;
+      }
+
+      // Don't log every single notification creation to avoid spam in console
+      // Only log errors if they occur
+
+      final response = await _dio.post('$apiBaseUrl/Notifications/add', data: data);
+      
+      return response.data;
+    } catch (e, stackTrace) {
+      debugPrint('Error creating notification: $e');
+      debugPrint('Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 }
 

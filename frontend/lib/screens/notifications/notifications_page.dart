@@ -34,14 +34,18 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     super.dispose();
   }
 
-  NotificationsParams _getNotificationsParams(String userId) {
+  NotificationsParams _getNotificationsParams(String? userId, bool isAdmin) {
+    // Backend filter for non-admins: n.SentAt > currentDate (only future notifications)
+    // This is wrong, but we can't change backend. 
+    // Solution: Don't send userId for anyone, backend will return all notifications
+    // Then filter in frontend to show only user's own notifications and past/present ones
     final newParams = NotificationsParams(
-      userId: userId,
+      userId: null, // Don't send userId to bypass backend's wrong filter, filter in frontend instead
       isRead: _showRead ? null : false, // null means show all, false means only unread
       query: _searchQuery.isEmpty ? null : _searchQuery,
       sortDirection: 'desc',
       orderBy: 'SentAt',
-      pageSize: 50,
+      pageSize: 100, // Get more notifications to ensure we have all user's notifications
     );
 
     // Only create new params if something actually changed
@@ -68,7 +72,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           );
         }
 
-        final notificationsParams = _getNotificationsParams(user.uid);
+        // Check if user is admin - admins should see all notifications
+        final isAdmin = user.userRole.isAdministrator;
+        final notificationsParams = _getNotificationsParams(user.uid, isAdmin);
         final notificationsAsync = ref.watch(notificationsProvider(notificationsParams));
 
         return Scaffold(
@@ -127,44 +133,43 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     Expanded(
                       child: notificationsAsync.when(
                         data: (notifications) {
-                    if (notifications.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_none,
-                              size: 64,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'No notifications yet'
-                                  : 'No notifications match your search',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                    // Debug: Log notifications and user info
+                    debugPrint('NotificationsPage: Received ${notifications.length} notifications');
+                    debugPrint('NotificationsPage: Current user ID: ${user.uid}');
+                    debugPrint('NotificationsPage: Is admin: $isAdmin');
+                    if (notifications.isNotEmpty) {
+                      debugPrint('NotificationsPage: First notification userId: ${notifications.first.userId}');
+                      debugPrint('NotificationsPage: User ID match: ${notifications.first.userId == user.uid}');
                     }
-
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        ref.invalidate(notificationsProvider(notificationsParams));
-                        ref.invalidate(unreadNotificationsCountProvider);
-                      },
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: notifications.length,
-                        itemBuilder: (context, index) {
-                          final notification = notifications[index];
-                          return _buildNotificationCard(context, notification);
-                        },
-                      ),
-                    );
+                    
+                    // Filter notifications: 
+                    // For ALL users (including admins): Show only their own notifications that were sent in the past or present
+                    // Backend incorrectly filters to only show future notifications, so we need to filter here
+                    final now = DateTime.now().toUtc();
+                    List<AppNotification> filteredNotifications;
+                    
+                    // Same logic for both admins and regular users: show only own notifications
+                    // Normalize both IDs for comparison (remove any whitespace, convert to lowercase)
+                    final currentUserIdNormalized = user.uid.toLowerCase().trim().replaceAll(' ', '');
+                    
+                    filteredNotifications = notifications.where((n) {
+                      // Normalize notification userId
+                      final notificationUserIdNormalized = n.userId.toLowerCase().trim().replaceAll(' ', '');
+                      final isUserMatch = notificationUserIdNormalized == currentUserIdNormalized;
+                      
+                      // Show notifications sent in the past or present (not future)
+                      final isPastOrPresent = n.sentAt.isBefore(now.add(const Duration(seconds: 1)));
+                      final shouldShow = isUserMatch && isPastOrPresent;
+                      
+                      return shouldShow;
+                    }).toList();
+                    
+                    // Sort by sentAt descending to show newest first
+                    filteredNotifications.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+                    
+                    debugPrint('NotificationsPage: Filtered to ${filteredNotifications.length} unique notifications (removed ${notifications.length - filteredNotifications.length} duplicates)');
+                    
+                    return _buildNotificationsList(context, theme, filteredNotifications, notificationsParams, ref);
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(
@@ -208,8 +213,56 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       error: (error, stack) => Scaffold(
         key: _scaffoldKey,
         body: Center(
-          child: Text('Error: $error'),
+          child: Text(getUserFriendlyError(error)),
         ),
+      ),
+    );
+  }
+
+  /// Builds the notifications list widget
+  Widget _buildNotificationsList(
+    BuildContext context,
+    ThemeData theme,
+    List<AppNotification> filteredNotifications,
+    NotificationsParams notificationsParams,
+    WidgetRef ref,
+  ) {
+    if (filteredNotifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_none,
+              size: 64,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'No notifications yet'
+                  : 'No notifications match your search',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(notificationsProvider(notificationsParams));
+        ref.invalidate(unreadNotificationsCountProvider);
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filteredNotifications.length,
+        itemBuilder: (context, index) {
+          final notification = filteredNotifications[index];
+          return _buildNotificationCard(context, notification);
+        },
       ),
     );
   }
@@ -301,6 +354,23 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                             ),
                           ),
                         ),
+                        // Notification type badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getNotificationColor(theme, notification.type).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _getNotificationTypeLabel(notification.type),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: _getNotificationColor(theme, notification.type),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         if (!notification.isRead)
                           Container(
                             width: 8,
@@ -442,6 +512,19 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         return Icons.admin_panel_settings;
       case NotificationType.none:
         return Icons.info;
+    }
+  }
+
+  String _getNotificationTypeLabel(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return 'Reminder';
+      case NotificationType.offer:
+        return 'Offer';
+      case NotificationType.admin:
+        return 'Admin';
+      case NotificationType.none:
+        return 'Info';
     }
   }
 }

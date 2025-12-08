@@ -20,6 +20,10 @@ namespace KAZABUILD.Application.DTOs.Image
 
         public List<Guid>? UserCommentId { get; set; }
 
+        public List<Guid>? MessageId { get; set; }
+
+        public List<Guid>? UserGuideId { get; set; }
+
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.

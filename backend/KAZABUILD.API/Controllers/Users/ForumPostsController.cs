@@ -395,7 +395,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.CreatorId != null)
             {
-                query = query.Where(p => dto.CreatorId.Contains(p.CreatorId));
+                query = query.Where(p => p.CreatorId != null && dto.CreatorId.Contains((Guid)p.CreatorId));
             }
             if (dto.PostedAtStart != null)
             {

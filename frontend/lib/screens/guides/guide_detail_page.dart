@@ -46,49 +46,7 @@ class GuideDetailPage extends StatelessWidget {
                 /// The tag must match the tag on the source page (`_GuideCard`)
                 /// to enable the hero (shared element) transition animation.
                 tag: 'guide_image_${guide.id}',
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      guide.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                theme.colorScheme.primary.withValues(alpha: 0.3),
-                                theme.colorScheme.secondary.withValues(alpha: 0.2),
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.article_outlined,
-                              size: 64,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    /// Apply a dark overlay to the image to make the title text more readable
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildHeroBackground(theme),
               ),
             ),
           ),
@@ -106,7 +64,10 @@ class GuideDetailPage extends StatelessWidget {
                   children: [
                     /// Category badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -120,6 +81,7 @@ class GuideDetailPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
+
                     /// Metadata row for author, read time, and publication date.
                     Row(
                       children: [
@@ -139,13 +101,15 @@ class GuideDetailPage extends StatelessWidget {
                                   Icon(
                                     Icons.access_time,
                                     size: 16,
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     guide.readTime,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],
@@ -156,7 +120,9 @@ class GuideDetailPage extends StatelessWidget {
                         Text(
                           DateFormat.yMMMMd().format(guide.publishedDate),
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                       ],
@@ -195,6 +161,67 @@ class GuideDetailPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeroBackground(ThemeData theme) {
+    final imageUrl = guide.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary.withValues(alpha: 0.3),
+              theme.colorScheme.secondary.withValues(alpha: 0.2),
+            ],
+          ),
+        ),
+        child: Icon(
+          Icons.article_outlined,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary.withValues(alpha: 0.3),
+                    theme.colorScheme.secondary.withValues(alpha: 0.2),
+                  ],
+                ),
+              ),
+              child: Icon(
+                Icons.article_outlined,
+                size: 64,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

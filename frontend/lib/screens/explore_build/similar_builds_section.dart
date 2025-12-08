@@ -78,12 +78,24 @@ class _SimilarBuildsSectionState extends ConsumerState<SimilarBuildsSection> {
       return const SizedBox.shrink();
     }
 
-    final allBuildsAsync = ref.watch(allBuildsProvider);
+    // Use paginated provider with tag filter to get similar builds
+    // Request first page with larger page size to get more similar builds
+    final params = ExploreBuildsParams(
+      searchQuery: null,
+      selectedTags: widget.tags.toSet(), // Filter by matching tags
+      selectedStatuses: null,
+      dateRange: null,
+      selectedUserIds: null,
+      sortBy: 'Popular', // Sort by popularity/rating
+      page: 1,
+      pageLength: 30, // Get first 30 builds with matching tags
+    );
+    final buildsAsync = ref.watch(exploreBuildsProvider(params));
 
-    return allBuildsAsync.when(
-      data: (allBuilds) {
-        // Find builds with at least one matching tag, excluding the current build
-        final similarBuilds = allBuilds
+    return buildsAsync.when(
+      data: (builds) {
+        // Exclude the current build and filter builds with at least one matching tag
+        final similarBuilds = builds
             .where((build) => build.id != widget.buildId)
             .where((build) => build.tags.isNotEmpty && build.tags.any((tag) => widget.tags.contains(tag)))
             .toList();

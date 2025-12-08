@@ -253,7 +253,6 @@ namespace KAZABUILD.API.Controllers.Users
                 response = new UserActivityResponseDto
                 {
                     Id = userActivity.Id,
-                    UserId = userActivity.UserId,
                     ActivityType = userActivity.ActivityType,
                     TargetId = userActivity.TargetId,
                     Timestamp = userActivity.Timestamp
@@ -325,9 +324,12 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserActivities.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && (isPrivileged || dto.UserId.Any(id => id == currentUserId)))
             {
-                query = query.Where(a => dto.UserId.Contains(a.UserId));
+                if(isPrivileged)
+                    query = query.Where(a => a.UserId != null && dto.UserId.Contains((Guid)a.UserId));
+                else
+                    query = query.Where(a => a.UserId != null && a.UserId == currentUserId);
             }
             if (dto.ActivityType != null)
             {
@@ -388,7 +390,6 @@ namespace KAZABUILD.API.Controllers.Users
                     return new UserActivityResponseDto
                     {
                         Id = userActivity.Id,
-                        UserId = userActivity.UserId,
                         ActivityType = userActivity.ActivityType,
                         TargetId = userActivity.TargetId,
                         Timestamp = userActivity.Timestamp
@@ -458,6 +459,9 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
             //Generate a cache key
             var cacheKey = CacheHelper.GetUserActivityCountCacheKey(dto);
 
@@ -483,9 +487,12 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserActivities.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && (isPrivileged || dto.UserId.Any(id => id == currentUserId)))
             {
-                query = query.Where(a => dto.UserId.Contains(a.UserId));
+                if (isPrivileged)
+                    query = query.Where(a => a.UserId != null && dto.UserId.Contains((Guid)a.UserId));
+                else
+                    query = query.Where(a => a.UserId != null && a.UserId == currentUserId);
             }
             if (dto.ActivityType != null)
             {

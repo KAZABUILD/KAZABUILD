@@ -101,6 +101,16 @@ class ForumService {
     }
   }
 
+  /// Updates an existing forum post.
+  Future<Response> updatePost(String postId, Map<String, dynamic> postData) async {
+    try {
+      final response = await _dio.put('$apiBaseUrl/ForumPosts/$postId', data: postData);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Creates a new reply to a forum post.
   Future<Response> createReply(Map<String, dynamic> replyData) async {
     try {
@@ -215,7 +225,7 @@ final forumPostsProvider = FutureProvider.family<List<ForumPost>, ForumPostsPara
 final allForumPostsProvider = FutureProvider<List<ForumPost>>((ref) async {
   final forumService = ref.watch(forumServiceProvider);
   // Fetch all posts, disable paging to get all of them for now.
-  return forumService.getPosts({'paging': false});
+  return forumService.getPosts({'paging': true, 'page': 1, 'pageLength': 10});
 });
 
 /// Manages the state for creating a new forum post.
@@ -255,6 +265,30 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
             ? (responseData['message'] ?? 'Post created successfully!')
             : 'Post created successfully!',
         'id': postId,
+      };
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  /// Updates an existing forum post.
+  /// Returns a map with 'message' if successful.
+  Future<Map<String, dynamic>> updateForumPost(String postId, Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    try {
+      final response = await _forumService.updatePost(postId, data);
+      state = const AsyncValue.data(null);
+      // Invalidate all forum posts providers to refetch the list.
+      _ref.invalidate(allForumPostsProvider);
+      _ref.invalidate(forumPostsProvider);
+      
+      // Extract message from response
+      final responseData = response.data;
+      return {
+        'message': responseData is Map<String, dynamic> 
+            ? (responseData['message'] ?? 'Post updated successfully!')
+            : 'Post updated successfully!',
       };
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);

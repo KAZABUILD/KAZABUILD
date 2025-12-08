@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/auth_provider.dart';
 import '../../widgets/theme_provider.dart';
+import '../../utils/error_utils.dart';
 
 class AdminSettingsPage extends ConsumerStatefulWidget {
   const AdminSettingsPage({super.key});
@@ -68,7 +69,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving settings: $e'),
+            content: Text('Failed to save settings: ${getUserFriendlyError(e)}'),
             backgroundColor: AppColorsDark.error,
           ),
         );
@@ -146,7 +147,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating theme: $e'),
+            content: Text('Failed to update theme: ${getUserFriendlyError(e)}'),
             backgroundColor: AppColorsDark.error,
           ),
         );
@@ -172,7 +173,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error clearing cache: $e'),
+            content: Text('Failed to clear cache: ${getUserFriendlyError(e)}'),
             backgroundColor: AppColorsDark.error,
           ),
         );

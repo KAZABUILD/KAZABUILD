@@ -21,9 +21,9 @@ namespace KAZABUILD.Domain.Entities.Builds
 
         /// <summary>
         /// Id of the Component used in the Build.
+        /// It is set to null only if the component gets deleted.
         /// </summary>
-        [Required]
-        public Guid ComponentId { get; set; } = default!;
+        public Guid? ComponentId { get; set; }
 
         /// <summary>
         /// Amount of the Component used in the Build.

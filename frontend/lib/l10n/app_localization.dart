@@ -286,6 +286,12 @@ abstract class AppLocalizations {
   /// **'Build Now'**
   String get buildNow;
 
+  /// No description provided for @openInBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Builder'**
+  String get openInBuilder;
+
   /// No description provided for @guides.
   ///
   /// In en, this message translates to:

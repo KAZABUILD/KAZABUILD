@@ -93,6 +93,7 @@ namespace KAZABUILD.API.Controllers.Users
             UserComment userComment = new()
             {
                 UserId = dto.UserId,
+                DeletedUserId = dto.UserId,
                 Content = dto.Content,
                 PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
                 ParentCommentId = dto.ParentCommentId,
@@ -495,6 +496,10 @@ namespace KAZABUILD.API.Controllers.Users
                     return BadRequest(new { message = "Invalid Target Type!" });
             }
 
+            //If the id is null a deleted id field in the response
+            if (response.UserId == null)
+                response.DeletedUserId = userComment.DeletedUserId;
+
             //Log success
             await _logger.LogAsync(
                 currentUserId,
@@ -544,7 +549,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(c => dto.UserId.Contains(c.UserId));
+                query = query.Where(c => c.UserId != null && dto.UserId.Contains((Guid)c.UserId));
             }
             if (dto.PostedAtStart != null)
             {
@@ -652,6 +657,10 @@ namespace KAZABUILD.API.Controllers.Users
                             
                     }
 
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
+
                     return response;
                 })];
 
@@ -697,6 +706,10 @@ namespace KAZABUILD.API.Controllers.Users
                             break;
 
                     }
+
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
 
                     return response;
                 })];
@@ -761,7 +774,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userComment to delete
-            var userComment = await _db.UserComments.Include(c => c.Images).FirstOrDefaultAsync(c => c.Id == id);
+            var userComment = await _db.UserComments.Include(c => c.Images).Include(c => c.ChildComments).FirstOrDefaultAsync(c => c.Id == id);
             if (userComment == null)
             {
                 //Log failure
@@ -813,6 +826,12 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Delete all related images
                 _db.Images.RemoveRange(userComment.Images);
+            }
+
+            //Set the ParentCommentId field to null for all children
+            foreach (var child in userComment.ChildComments)
+            {
+                child.ParentCommentId = null;
             }
 
             //Delete the userComment

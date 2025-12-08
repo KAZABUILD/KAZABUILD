@@ -41,16 +41,9 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   final TextEditingController _searchController = TextEditingController();
   int _currentPage = 1;
   final int _pageSize = 20;
-  AsyncValue<List<Tag>>? _tagsAsync;
-
-  @override
-  void initState() {
-    super.initState();
-    // Load tags after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTags();
-    });
-  }
+  
+  // Cache query params to prevent Map recreation on every build
+  Map<String, dynamic>? _cachedQueryParams;
 
   @override
   void dispose() {
@@ -58,32 +51,29 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
     super.dispose();
   }
 
-  Future<void> _loadTags() async {
-    final buildService = ref.read(buildServiceProvider);
-    final query = _searchController.text.isEmpty ? null : _searchController.text;
+  Map<String, dynamic> _buildQueryParams() {
+    final newParams = {
+      'query': _searchController.text.isEmpty ? null : _searchController.text,
+      'page': _currentPage,
+      'pageLength': _pageSize,
+    };
     
-    setState(() {
-      _tagsAsync = const AsyncValue.loading();
-    });
-    
-    try {
-      debugPrint('AdminTagsPage: Loading tags with query=$query, page=$_currentPage');
-      final tags = await buildService.getTags(
-        query: query,
-        page: _currentPage,
-        pageLength: _pageSize,
-      );
-      debugPrint('AdminTagsPage: Successfully loaded ${tags.length} tags');
-      setState(() {
-        _tagsAsync = AsyncValue.data(tags);
-      });
-    } catch (e, stack) {
-      debugPrint('AdminTagsPage: Error loading tags: $e');
-      debugPrint('AdminTagsPage: Stack: $stack');
-      setState(() {
-        _tagsAsync = AsyncValue.error(e, stack);
-      });
+    // Check if params actually changed to prevent unnecessary rebuilds
+    if (_cachedQueryParams != null) {
+      bool changed = false;
+      for (var key in newParams.keys) {
+        if (_cachedQueryParams![key] != newParams[key]) {
+          changed = true;
+          break;
+        }
+      }
+      if (!changed) {
+        return _cachedQueryParams!;
+      }
     }
+    
+    _cachedQueryParams = newParams;
+    return _cachedQueryParams!;
   }
 
   @override
@@ -183,9 +173,9 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
             ),
               onChanged: (value) {
               setState(() {
-                _currentPage = 1;
+                _currentPage = 1; // Reset to first page on search
+                _cachedQueryParams = null; // Invalidate cache
               });
-              _loadTags();
             },
           ),
         ],
@@ -194,7 +184,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   }
 
   Widget _buildContent(bool isDark) {
-    final tagsAsync = _tagsAsync ?? const AsyncValue.loading();
+    final queryParams = _buildQueryParams();
+    final tagsAsync = ref.watch(adminTagsProvider(queryParams));
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -287,7 +278,10 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: () {
-                                  _loadTags();
+                                  setState(() {
+                                    _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                                  });
+                                  ref.invalidate(adminTagsProvider(_buildQueryParams()));
                                 },
                                 child: const Text('Retry'),
                               ),
@@ -523,7 +517,6 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   Widget _buildPagination(bool isDark, AsyncValue<List<Tag>> tagsAsync) {
     return tagsAsync.when(
       data: (tags) {
-        final totalTags = tags.length;
         final hasMore = tags.length == _pageSize;
         
         return Container(
@@ -541,7 +534,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Showing ${(_currentPage - 1) * _pageSize + 1}-${(_currentPage - 1) * _pageSize + tags.length} of ${hasMore ? '?' : totalTags} tags',
+                'Showing ${(_currentPage - 1) * _pageSize + 1}-${(_currentPage - 1) * _pageSize + tags.length} tags (Page $_currentPage${hasMore ? '+' : ''})',
                 style: TextStyle(
                   color: isDark
                       ? AppColorsDark.textWhite.withValues(alpha: 0.7)
@@ -556,8 +549,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                         ? () {
                             setState(() {
                               _currentPage--;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
                             });
-                            _loadTags();
                           }
                         : null,
                   ),
@@ -575,8 +568,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                         ? () {
                             setState(() {
                               _currentPage++;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
                             });
-                            _loadTags();
                           }
                         : null,
                   ),
@@ -702,7 +695,10 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                 Navigator.of(context).pop();
                 
                 if (mounted) {
-                  _loadTags();
+                  setState(() {
+                    _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                  });
+                  ref.invalidate(adminTagsProvider(_buildQueryParams()));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Tag updated successfully'),
@@ -747,7 +743,10 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                 await buildService.deleteTag(tag.id);
                 
                 if (mounted) {
-                  _loadTags();
+                  setState(() {
+                    _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                  });
+                  ref.invalidate(adminTagsProvider(_buildQueryParams()));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Tag deleted successfully'),

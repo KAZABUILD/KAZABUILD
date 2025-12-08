@@ -37,7 +37,7 @@ namespace KAZABUILD.Infrastructure.Services
                 message.To.Add(MailboxAddress.Parse(to));
                 message.Subject = subject;
 
-                //Create a builder that allows embeding in a message 
+                //Create a builder that allows embedding in a message 
                 var builder = new BodyBuilder
                 {
                     HtmlBody = content.HtmlBody

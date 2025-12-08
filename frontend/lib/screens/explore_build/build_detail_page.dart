@@ -15,6 +15,7 @@ import 'package:frontend/models/comments_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -23,13 +24,15 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/screens/builder/build_now_page.dart' show buildProvider;
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/image_provider.dart';
 import 'package:frontend/widgets/linkable_text.dart';
 import 'dart:typed_data';
 
 /// Provider to fetch user details based on their ID
-final buildUserProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+/// Uses autoDispose to prevent caching - data will be refetched each time the page is opened.
+final buildUserProvider = FutureProvider.autoDispose.family<AppUser?, String>((ref, userId) async {
   try {
     final authService = ref.read(authServiceProvider);
     final userResponse = await authService.getUserById(userId);
@@ -251,6 +254,8 @@ class BuildDetailPage extends ConsumerWidget {
         : ref.watch(buildUserProvider(build.userId));
     final currentUser = ref.watch(authProvider).valueOrNull;
     final isOwner = currentUser != null && currentUser.uid == build.userId;
+    final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+    final canEdit = isOwner || isStaff;
 
     return authorAsync.when(
       data: (author) {
@@ -267,11 +272,12 @@ class BuildDetailPage extends ConsumerWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      UserImageUtils.buildUserAvatar(
+                      AuthenticatedImage(
                         imageUrl: author.photoURL,
+                        isCircle: true,
+                        radius: 12,
                         username: author.username,
                         userId: author.uid,
-                        radius: 12,
                       ),
                       const SizedBox(width: 8),
                       Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
@@ -289,8 +295,8 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            // Show Edit button if user is the owner
-            if (isOwner) ...[
+            // Show Edit button if user is the owner or staff (moderator/admin)
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -308,6 +314,8 @@ class BuildDetailPage extends ConsumerWidget {
       loading: () {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
+        final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+        final canEdit = isOwner || isStaff;
         return Row(
           children: <Widget>[
             const SizedBox(
@@ -321,7 +329,7 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            if (isOwner) ...[
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -338,6 +346,8 @@ class BuildDetailPage extends ConsumerWidget {
       error: (error, stack) {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
+        final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
+        final canEdit = isOwner || isStaff;
         return Row(
           children: <Widget>[
             Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
@@ -351,7 +361,7 @@ class BuildDetailPage extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
             const Spacer(),
-            if (isOwner) ...[
+            if (canEdit) ...[
               OutlinedButton.icon(
                 onPressed: () {
                   context.go('/build/${build.id}/edit');
@@ -494,7 +504,7 @@ class _ComponentsSection extends ConsumerWidget {
       case ComponentType.cooler:
         return Icons.ac_unit;
       case ComponentType.caseFan:
-        return Icons.toys;
+        return Icons.air;
       case ComponentType.pcCase:
         return Icons.computer;
       case ComponentType.monitor:
@@ -1033,6 +1043,7 @@ class _ComponentsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1046,12 +1057,26 @@ class _ComponentsSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: components.isEmpty
+                  ? null
+                  : () {
+                      ref.read(buildProvider.notifier).loadComponentsFromBuild(components);
+                      context.go('/build-now');
+                    },
+              icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+              label: Text(l10n.openInBuilder),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (components.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  AppLocalizations.of(context)!.noComponentsListed,
+                  l10n.noComponentsListed,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -1406,7 +1431,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error picking images: $e'),
+          content: Text('Failed to pick images: ${getUserFriendlyError(e)}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1501,10 +1526,24 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    UserImageUtils.buildUserAvatar(
-                      username: userAsync.valueOrNull?.username,
-                      userId: userAsync.valueOrNull?.uid,
-                      radius: 16,
+                    userAsync.when(
+                      data: (user) => AuthenticatedImage(
+                        imageUrl: user?.photoURL,
+                        isCircle: true,
+                        radius: 16,
+                        username: user?.username,
+                        userId: user?.uid,
+                      ),
+                      loading: () => UserImageUtils.buildUserAvatar(
+                        username: userAsync.valueOrNull?.username,
+                        userId: userAsync.valueOrNull?.uid,
+                        radius: 16,
+                      ),
+                      error: (_, __) => UserImageUtils.buildUserAvatar(
+                        username: userAsync.valueOrNull?.username,
+                        userId: userAsync.valueOrNull?.uid,
+                        radius: 16,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1726,18 +1765,32 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                       if (c.userId != null)
-                        InkWell(
-                          onTap: () {
-                            context.go('/profile/${c.userId}');
-                          },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: UserImageUtils.buildUserAvatar(
-                              username: c.authorName,
-                              userId: c.userId,
-                              radius: 16,
+                        ref.watch(buildUserProvider(c.userId!)).when(
+                          data: (user) => InkWell(
+                            onTap: () {
+                              context.go('/profile/${c.userId}');
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: AuthenticatedImage(
+                                imageUrl: user?.photoURL,
+                                isCircle: true,
+                                radius: 16,
+                                username: c.authorName,
+                                userId: c.userId,
+                              ),
                             ),
+                          ),
+                          loading: () => UserImageUtils.buildUserAvatar(
+                            username: c.authorName,
+                            userId: c.userId,
+                            radius: 16,
+                          ),
+                          error: (_, __) => UserImageUtils.buildUserAvatar(
+                            username: c.authorName,
+                            userId: c.userId,
+                            radius: 16,
                           ),
                         )
                       else

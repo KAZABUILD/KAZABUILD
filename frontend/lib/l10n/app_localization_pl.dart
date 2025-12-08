@@ -12,7 +12,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get language => 'Polski';
 
   @override
-  String get appTitle => 'Kaza Build';
+  String get appTitle => 'KazaBuild';
 
   @override
   String get exploreBuilds => 'Przeglądaj Buildy';
@@ -109,6 +109,9 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get buildNow => 'Utwórz Build';
+
+  @override
+  String get openInBuilder => 'Otwórz w Kreatorze';
 
   @override
   String get guides => 'Przewodniki';

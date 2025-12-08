@@ -23,6 +23,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
   final List<String> _filters = ['All', 'Gaming', 'Hardware', 'Software', 'General'];
   String? _orderBy;
   String _sortDirection = 'desc';
+  int _currentPage = 1;
+  final int _pageSize = 20; // Show 20 posts per page
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
@@ -109,6 +111,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                   ),
                   onChanged: (value) {
                     setState(() {
+                      _currentPage = 1; // Reset to first page on search
                       _cachedQueryParams = null; // Invalidate cache
                     });
                   },
@@ -134,6 +137,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                   onChanged: (value) {
                     setState(() {
                       _selectedFilter = value!;
+                      _currentPage = 1; // Reset to first page on filter change
                       _cachedQueryParams = null; // Invalidate cache
                     });
                   },
@@ -160,6 +164,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
           : [_selectedFilter],
       'orderBy': _orderBy ?? 'DatabaseEntryAt',
       'sortDirection': _sortDirection,
+      'page': _currentPage,
+      'pageLength': _pageSize,
     };
     
     // Check if params actually changed to prevent unnecessary rebuilds
@@ -247,13 +253,20 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                           );
                         }
                         
-                        return ListView.separated(
-                          itemCount: posts.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 0),
-                          itemBuilder: (context, index) {
-                            final post = posts[index];
-                            return _buildPostRow(post, isDark);
-                          },
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: posts.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 0),
+                                itemBuilder: (context, index) {
+                                  final post = posts[index];
+                                  return _buildPostRow(post, isDark);
+                                },
+                              ),
+                            ),
+                            _buildPagination(isDark, postsAsync),
+                          ],
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
@@ -264,7 +277,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                             Icon(Icons.error_outline, size: 48, color: AppColorsDark.error),
                             const SizedBox(height: 16),
                             Text(
-                              'Error loading forum posts: ${error.toString()}',
+                              'Unable to load forum posts: ${getUserFriendlyError(error)}',
                               style: TextStyle(
                                 color: isDark
                                     ? AppColorsDark.textWhite
@@ -575,8 +588,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                   IconButton(
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
-                      // Navigate to forum post detail page where editing may be available
-                      context.go('/forums/${post.id}');
+                      // Navigate to forum post edit page
+                      context.go('/forums/${post.id}/edit');
                     },
                     tooltip: 'Edit',
                   ),
@@ -649,6 +662,84 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildPagination(bool isDark, AsyncValue<List<AdminForumPost>> postsAsync) {
+    return postsAsync.when(
+      data: (posts) {
+        final currentPagePosts = posts.length;
+        final start = currentPagePosts > 0 ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final end = currentPagePosts > 0 ? start + currentPagePosts - 1 : 0;
+        
+        // If we got a full page, there might be more pages
+        // If we got less than pageSize, we're on the last page
+        final hasMore = currentPagePosts == _pageSize;
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                currentPagePosts > 0
+                    ? 'Showing $start-$end posts (Page $_currentPage${hasMore ? '+' : ''})'
+                    : 'No posts',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                ),
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 1
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                  Text(
+                    'Page $_currentPage',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: hasMore || currentPagePosts == _pageSize
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                            });
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
   }
 }
 
