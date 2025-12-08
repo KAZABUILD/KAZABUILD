@@ -62,6 +62,10 @@ namespace KAZABUILD.Application.Helpers
                     //Get the property type
                     var propertyType = property.PropertyType;
 
+                    //Skip over collection types (except string) to avoid processing other table connections
+                    if (propertyType != typeof(string) && typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType))
+                        continue;
+
                     //Flatten nested complex properties
                     if (!propertyType.IsPrimitive && propertyType != typeof(string) && !propertyType.IsEnum && !numericTypes.Contains(propertyType) && !dateTypes.Contains(propertyType) && propertyType != typeof(bool) && propertyType != typeof(bool?))
                     {
