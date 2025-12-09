@@ -57,7 +57,7 @@ namespace KAZABUILD.Tests.Utils
                 Followers = [],
                 Followed = [],
                 UserTokens = [],
-                UserPreferences = [],
+                UserAnswers = [],
                 UserComments = [],
                 ForumPosts = [],
                 ReceivedMessages = [],
