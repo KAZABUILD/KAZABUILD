@@ -89,22 +89,6 @@ services:
         networks:
             - app_network
 
-    jenkins:
-        image: jenkins/jenkins:lts
-        container_name: jenkins
-        privileged: true
-        user: root
-        ports:
-            - "8080:8080"
-            - "50000:50000"
-        volumes:
-            - jenkins_home:/var/jenkins_home
-            - /var/run/docker.sock:/var/run/docker.sock #Enable Jenkins to run Docker commands in the host's Docker
-        environment:
-            JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
-        networks:
-            - backend_network
-
     prometheus:
         image: prom/prometheus:latest
         container_name: prometheus
@@ -143,7 +127,6 @@ networks:
         driver: bridge
 
 volumes:
-  jenkins_home:
   rabbitmq-lib:
     driver: local
   rabbitmq-log:
