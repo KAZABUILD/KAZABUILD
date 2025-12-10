@@ -23,7 +23,8 @@ import sys
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
+from tqdm import tqdm
 
 try:
     import pyodbc  # type: ignore
@@ -383,7 +384,7 @@ def load_cpus(db: DatabaseConnection) -> List[CPUComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading CPUs", unit="cpu", leave=False):
         cpu = CPUComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -418,7 +419,7 @@ def load_motherboards(db: DatabaseConnection) -> List[MotherboardComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Motherboards", unit="mb", leave=False):
         # Parse RAMSlotsAmount - it might be stored as a string
         ram_slots = row[7]
         if isinstance(ram_slots, str):
@@ -463,7 +464,7 @@ def load_cases(db: DatabaseConnection) -> List[CaseComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Cases", unit="case", leave=False):
         case = CaseComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -499,7 +500,7 @@ def load_gpus(db: DatabaseConnection) -> List[GPUComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading GPUs", unit="gpu", leave=False):
         gpu = GPUComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -532,7 +533,7 @@ def load_memory(db: DatabaseConnection) -> List[MemoryComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Memory", unit="mem", leave=False):
         memory = MemoryComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -564,7 +565,7 @@ def load_storage(db: DatabaseConnection) -> List[StorageComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Storage", unit="storage", leave=False):
         storage = StorageComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -594,7 +595,7 @@ def load_power_supplies(db: DatabaseConnection) -> List[PowerSupplyComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading PSUs", unit="psu", leave=False):
         psu = PowerSupplyComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -626,7 +627,7 @@ def load_coolers(db: DatabaseConnection) -> List[CoolerComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Coolers", unit="cooler", leave=False):
         cooler = CoolerComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -659,7 +660,7 @@ def load_case_fans(db: DatabaseConnection) -> List[CaseFanComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Case Fans", unit="fan", leave=False):
         case_fan = CaseFanComponent(
             id=str(row[0]),
             name=row[1] or "",
@@ -671,6 +672,7 @@ def load_case_fans(db: DatabaseConnection) -> List[CaseFanComponent]:
     
     logger.info(f"Loaded {len(case_fans)} Case Fan components")
     return case_fans
+
 
 def load_monitors(db: DatabaseConnection) -> List[MonitorComponent]:
     """Load all monitor components from the database."""
@@ -686,11 +688,11 @@ def load_monitors(db: DatabaseConnection) -> List[MonitorComponent]:
     db.execute(query)
     rows = db.fetchall()
     
-    for row in rows:
+    for row in tqdm(rows, desc="Loading Monitors", unit="monitor", leave=False):
         monitor = MonitorComponent(
             id=str(row[0]),
             name=row[1] or "",
-            type=row[2] or "CASE_FAN",
+            type=row[2] or "MONITOR",
         )
         monitor.subcomponents = load_subcomponents_for_component(db, monitor.id)
         monitors.append(monitor)
@@ -1392,230 +1394,199 @@ def generate_all_compatibilities(
     compatible_count = 0
     
     # CPU <-> Motherboard
-    logger.info("Checking CPU <-> Motherboard compatibilities...")
-    for cpu in cpus:
-        for mb in motherboards:
-            total_checks += 1
-            is_compat, reason = check_cpu_motherboard_compatibility(cpu, mb)
-            if is_compat:
-                compatible_count += 1
-                compatible_pairs.append(CompatibilityResult(cpu.id, mb.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(mb.id, cpu.id, True, reason))
+    cpu_mb_pairs = [(cpu, mb) for cpu in cpus for mb in motherboards]
+    for cpu, mb in tqdm(cpu_mb_pairs, desc="CPU <-> Motherboard", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_cpu_motherboard_compatibility(cpu, mb)
+        if is_compat:
+            compatible_count += 1
+            compatible_pairs.append(CompatibilityResult(cpu.id, mb.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(mb.id, cpu.id, True, reason))
     logger.info(f"  CPU <-> Motherboard: {compatible_count} compatible pairs found")
     
     # Motherboard <-> Case
-    logger.info("Checking Motherboard <-> Case compatibilities...")
+    mb_case_pairs = [(mb, case) for mb in motherboards for case in cases]
     mb_case_count = 0
-    for mb in motherboards:
-        for case in cases:
-            total_checks += 1
-            is_compat, reason = check_motherboard_case_compatibility(mb, case)
-            if is_compat:
-                mb_case_count += 1
-                compatible_pairs.append(CompatibilityResult(mb.id, case.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(case.id, mb.id, True, reason))
+    for mb, case in tqdm(mb_case_pairs, desc="Motherboard <-> Case", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_motherboard_case_compatibility(mb, case)
+        if is_compat:
+            mb_case_count += 1
+            compatible_pairs.append(CompatibilityResult(mb.id, case.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(case.id, mb.id, True, reason))
     compatible_count += mb_case_count
     logger.info(f"  Motherboard <-> Case: {mb_case_count} compatible pairs found")
     
     # Memory <-> Motherboard
-    logger.info("Checking Memory <-> Motherboard compatibilities...")
+    mem_mb_pairs = [(memory, mb) for memory in memories for mb in motherboards]
     mem_mb_count = 0
-    for memory in memories:
-        for mb in motherboards:
-            total_checks += 1
-            is_compat, reason = check_memory_motherboard_compatibility(memory, mb)
-            if is_compat:
-                mem_mb_count += 1
-                compatible_pairs.append(CompatibilityResult(memory.id, mb.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(mb.id, memory.id, True, reason))
+    for memory, mb in tqdm(mem_mb_pairs, desc="Memory <-> Motherboard", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_memory_motherboard_compatibility(memory, mb)
+        if is_compat:
+            mem_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(memory.id, mb.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(mb.id, memory.id, True, reason))
     compatible_count += mem_mb_count
     logger.info(f"  Memory <-> Motherboard: {mem_mb_count} compatible pairs found")
     
     # GPU <-> Case
-    logger.info("Checking GPU <-> Case compatibilities...")
+    gpu_case_pairs = [(gpu, case) for gpu in gpus for case in cases]
     gpu_case_count = 0
-    for gpu in gpus:
-        for case in cases:
-            total_checks += 1
-            is_compat, reason = check_gpu_case_compatibility(gpu, case)
-            if is_compat:
-                gpu_case_count += 1
-                compatible_pairs.append(CompatibilityResult(gpu.id, case.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(case.id, gpu.id, True, reason))
+    for gpu, case in tqdm(gpu_case_pairs, desc="GPU <-> Case", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_gpu_case_compatibility(gpu, case)
+        if is_compat:
+            gpu_case_count += 1
+            compatible_pairs.append(CompatibilityResult(gpu.id, case.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(case.id, gpu.id, True, reason))
     compatible_count += gpu_case_count
     logger.info(f"  GPU <-> Case: {gpu_case_count} compatible pairs found")
     
     # Cooler <-> CPU
-    logger.info("Checking Cooler <-> CPU compatibilities...")
+    cooler_cpu_pairs = [(cooler, cpu) for cooler in coolers for cpu in cpus]
     cooler_cpu_count = 0
-    for cooler in coolers:
-        for cpu in cpus:
-            total_checks += 1
-            is_compat, reason = check_cooler_cpu_compatibility(cooler, cpu)
-            if is_compat:
-                cooler_cpu_count += 1
-                compatible_pairs.append(CompatibilityResult(cooler.id, cpu.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(cpu.id, cooler.id, True, reason))
+    for cooler, cpu in tqdm(cooler_cpu_pairs, desc="Cooler <-> CPU", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_cooler_cpu_compatibility(cooler, cpu)
+        if is_compat:
+            cooler_cpu_count += 1
+            compatible_pairs.append(CompatibilityResult(cooler.id, cpu.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(cpu.id, cooler.id, True, reason))
     compatible_count += cooler_cpu_count
     logger.info(f"  Cooler <-> CPU: {cooler_cpu_count} compatible pairs found")
     
     # Cooler <-> Case
-    logger.info("Checking Cooler <-> Case compatibilities...")
+    cooler_case_pairs = [(cooler, case) for cooler in coolers for case in cases]
     cooler_case_count = 0
-    for cooler in coolers:
-        for case in cases:
-            total_checks += 1
-            is_compat, reason = check_cooler_case_compatibility(cooler, case)
-            if is_compat:
-                cooler_case_count += 1
-                compatible_pairs.append(CompatibilityResult(cooler.id, case.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(case.id, cooler.id, True, reason))
+    for cooler, case in tqdm(cooler_case_pairs, desc="Cooler <-> Case", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_cooler_case_compatibility(cooler, case)
+        if is_compat:
+            cooler_case_count += 1
+            compatible_pairs.append(CompatibilityResult(cooler.id, case.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(case.id, cooler.id, True, reason))
     compatible_count += cooler_case_count
     logger.info(f"  Cooler <-> Case: {cooler_case_count} compatible pairs found")
     
     # Storage <-> Motherboard
-    logger.info("Checking Storage <-> Motherboard compatibilities...")
+    storage_mb_pairs = [(storage, mb) for storage in storages for mb in motherboards]
     storage_mb_count = 0
-    for storage in storages:
-        for mb in motherboards:
-            total_checks += 1
-            is_compat, reason = check_storage_motherboard_compatibility(storage, mb)
-            if is_compat:
-                storage_mb_count += 1
-                compatible_pairs.append(CompatibilityResult(storage.id, mb.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(mb.id, storage.id, True, reason))
+    for storage, mb in tqdm(storage_mb_pairs, desc="Storage <-> Motherboard", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_storage_motherboard_compatibility(storage, mb)
+        if is_compat:
+            storage_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(storage.id, mb.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(mb.id, storage.id, True, reason))
     compatible_count += storage_mb_count
     logger.info(f"  Storage <-> Motherboard: {storage_mb_count} compatible pairs found")
     
     # PSU <-> Case
-    logger.info("Checking PSU <-> Case compatibilities...")
+    psu_case_pairs = [(psu, case) for psu in psus for case in cases]
     psu_case_count = 0
-    for psu in psus:
-        for case in cases:
-            total_checks += 1
-            is_compat, reason = check_psu_case_compatibility(psu, case)
-            if is_compat:
-                psu_case_count += 1
-                compatible_pairs.append(CompatibilityResult(psu.id, case.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(case.id, psu.id, True, reason))
+    for psu, case in tqdm(psu_case_pairs, desc="PSU <-> Case", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_psu_case_compatibility(psu, case)
+        if is_compat:
+            psu_case_count += 1
+            compatible_pairs.append(CompatibilityResult(psu.id, case.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(case.id, psu.id, True, reason))
     compatible_count += psu_case_count
     logger.info(f"  PSU <-> Case: {psu_case_count} compatible pairs found")
     
     # PSU <-> GPU
-    logger.info("Checking PSU <-> GPU compatibilities...")
+    psu_gpu_pairs = [(psu, gpu) for psu in psus for gpu in gpus]
     psu_gpu_count = 0
-    for psu in psus:
-        for gpu in gpus:
-            total_checks += 1
-            is_compat, reason = check_psu_gpu_compatibility(psu, gpu)
-            if is_compat:
-                psu_gpu_count += 1
-                compatible_pairs.append(CompatibilityResult(psu.id, gpu.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(gpu.id, psu.id, True, reason))
+    for psu, gpu in tqdm(psu_gpu_pairs, desc="PSU <-> GPU", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_psu_gpu_compatibility(psu, gpu)
+        if is_compat:
+            psu_gpu_count += 1
+            compatible_pairs.append(CompatibilityResult(psu.id, gpu.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(gpu.id, psu.id, True, reason))
     compatible_count += psu_gpu_count
     logger.info(f"  PSU <-> GPU: {psu_gpu_count} compatible pairs found")
     
     # PSU <-> CPU
-    logger.info("Checking PSU <-> CPU compatibilities...")
+    psu_cpu_pairs = [(psu, cpu) for psu in psus for cpu in cpus]
     psu_cpu_count = 0
-    for psu in psus:
-        for cpu in cpus:
-            total_checks += 1
-            is_compat, reason = check_psu_cpu_compatibility(psu, cpu)
-            if is_compat:
-                psu_cpu_count += 1
-                compatible_pairs.append(CompatibilityResult(psu.id, cpu.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(cpu.id, psu.id, True, reason))
+    for psu, cpu in tqdm(psu_cpu_pairs, desc="PSU <-> CPU", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_psu_cpu_compatibility(psu, cpu)
+        if is_compat:
+            psu_cpu_count += 1
+            compatible_pairs.append(CompatibilityResult(psu.id, cpu.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(cpu.id, psu.id, True, reason))
     compatible_count += psu_cpu_count
     logger.info(f"  PSU <-> CPU: {psu_cpu_count} compatible pairs found")
     
-    # Case <-> Motherboard (front panel USB)
-    logger.info("Checking Case <-> Motherboard (USB headers) compatibilities...")
-    case_mb_usb_count = 0
-    for case in cases:
-        for mb in motherboards:
-            total_checks += 1
-            is_compat, reason = check_case_front_panel_motherboard_compatibility(case, mb)
-            if is_compat:
-                case_mb_usb_count += 1
-                # Note: This is additional compatibility info, not a new pair
-                # The Motherboard <-> Case check already handles form factor
-    logger.info(f"  Case <-> Motherboard (USB): {case_mb_usb_count} compatible pairs found")
-    
-    # Case Fan <-> Motherboard
-    logger.info("Checking Case Fan <-> Motherboard compatibilities...")
+    # Case Fan <-> Motherboard (with check)
+    fan_mb_pairs = [(fan, mb) for fan in case_fans for mb in motherboards]
     fan_mb_count = 0
-    for fan in case_fans:
-        for mb in motherboards:
-            total_checks += 1
-            is_compat, reason = check_case_fan_motherboard_compatibility(fan, mb)
-            if is_compat:
-                fan_mb_count += 1
-                compatible_pairs.append(CompatibilityResult(fan.id, mb.id, True, reason))
-                compatible_pairs.append(CompatibilityResult(mb.id, fan.id, True, reason))
+    for fan, mb in tqdm(fan_mb_pairs, desc="Case Fan <-> MB", unit="pair", leave=False):
+        total_checks += 1
+        is_compat, reason = check_case_fan_motherboard_compatibility(fan, mb)
+        if is_compat:
+            fan_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(fan.id, mb.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(mb.id, fan.id, True, reason))
     compatible_count += fan_mb_count
     logger.info(f"  Case Fan <-> Motherboard: {fan_mb_count} compatible pairs found")
     
-    logger.info(f"Total checks performed: {total_checks}")
-    logger.info(f"Total compatible pairs found: {len(compatible_pairs)}")
+    # ========================================================================== #
+    # ALWAYS COMPATIBLE PAIRINGS (no checks required)                            #
+    # ========================================================================== #
     
     # Cooler <-> Motherboard (always compatible)
-    logger.info("Checking Cooler <-> Motherboard compatibilities (always compatible)...")
+    cooler_mb_pairs = [(cooler, mb) for cooler in coolers for mb in motherboards]
     cooler_mb_count = 0
-    for cooler in coolers:
-        for mb in motherboards:
-            cooler_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(cooler.id, mb.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(mb.id, cooler.id, True, reason))
+    for cooler, mb in tqdm(cooler_mb_pairs, desc="Cooler <-> MB (auto)", unit="pair", leave=False):
+        cooler_mb_count += 1
+        compatible_pairs.append(CompatibilityResult(cooler.id, mb.id, True, "Always compatible"))
+        compatible_pairs.append(CompatibilityResult(mb.id, cooler.id, True, "Always compatible"))
     compatible_count += cooler_mb_count
-    logger.info(f"  Cooler <-> Motherboard: {cooler_mb_count} compatible pairs found")
+    logger.info(f"  Cooler <-> Motherboard: {cooler_mb_count} compatible pairs added")
     
     # GPU <-> Motherboard (always compatible)
-    logger.info("Adding GPU <-> Motherboard compatibilities (always compatible)...")
+    gpu_mb_pairs = [(gpu, mb) for gpu in gpus for mb in motherboards]
     gpu_mb_count = 0
-    for gpu in gpus:
-        for mb in motherboards:
-            gpu_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(gpu.id, mb.id, True, "Always compatible"))
-            compatible_pairs.append(CompatibilityResult(mb.id, gpu.id, True, "Always compatible"))
+    for gpu, mb in tqdm(gpu_mb_pairs, desc="GPU <-> MB (auto)", unit="pair", leave=False):
+        gpu_mb_count += 1
+        compatible_pairs.append(CompatibilityResult(gpu.id, mb.id, True, "Always compatible"))
+        compatible_pairs.append(CompatibilityResult(mb.id, gpu.id, True, "Always compatible"))
     compatible_count += gpu_mb_count
     logger.info(f"  GPU <-> Motherboard: {gpu_mb_count} compatible pairs added")
     
     # PSU <-> Motherboard (always compatible)
-    logger.info("Adding PSU <-> Motherboard compatibilities (always compatible)...")
+    psu_mb_pairs = [(psu, mb) for psu in psus for mb in motherboards]
     psu_mb_count = 0
-    for psu in psus:
-        for mb in motherboards:
-            psu_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(psu.id, mb.id, True, "Always compatible"))
-            compatible_pairs.append(CompatibilityResult(mb.id, psu.id, True, "Always compatible"))
+    for psu, mb in tqdm(psu_mb_pairs, desc="PSU <-> MB (auto)", unit="pair", leave=False):
+        psu_mb_count += 1
+        compatible_pairs.append(CompatibilityResult(psu.id, mb.id, True, "Always compatible"))
+        compatible_pairs.append(CompatibilityResult(mb.id, psu.id, True, "Always compatible"))
     compatible_count += psu_mb_count
     logger.info(f"  PSU <-> Motherboard: {psu_mb_count} compatible pairs added")
     
     # Case Fan <-> Case (always compatible)
-    logger.info("Adding Case Fan <-> Case compatibilities (always compatible)...")
+    fan_case_pairs = [(fan, case) for fan in case_fans for case in cases]
     fan_case_count = 0
-    for fan in case_fans:
-        for case in cases:
-            fan_case_count += 1
-            compatible_pairs.append(CompatibilityResult(fan.id, case.id, True, "Always compatible"))
-            compatible_pairs.append(CompatibilityResult(case.id, fan.id, True, "Always compatible"))
+    for fan, case in tqdm(fan_case_pairs, desc="Fan <-> Case (auto)", unit="pair", leave=False):
+        fan_case_count += 1
+        compatible_pairs.append(CompatibilityResult(fan.id, case.id, True, "Always compatible"))
+        compatible_pairs.append(CompatibilityResult(case.id, fan.id, True, "Always compatible"))
     compatible_count += fan_case_count
     logger.info(f"  Case Fan <-> Case: {fan_case_count} compatible pairs added")
     
     # Monitor <-> GPU (always compatible)
-    logger.info("Adding Monitor <-> GPU compatibilities (always compatible)...")
+    monitor_gpu_pairs = [(monitor, gpu) for monitor in monitors for gpu in gpus]
     monitor_gpu_count = 0
-    for monitor in monitors:
-        for gpu in gpus:
-            monitor_gpu_count += 1
-            compatible_pairs.append(CompatibilityResult(monitor.id, gpu.id, True, "Always compatible"))
-            compatible_pairs.append(CompatibilityResult(gpu.id, monitor.id, True, "Always compatible"))
+    for monitor, gpu in tqdm(monitor_gpu_pairs, desc="Monitor <-> GPU (auto)", unit="pair", leave=False):
+        monitor_gpu_count += 1
+        compatible_pairs.append(CompatibilityResult(monitor.id, gpu.id, True, "Always compatible"))
+        compatible_pairs.append(CompatibilityResult(gpu.id, monitor.id, True, "Always compatible"))
     compatible_count += monitor_gpu_count
     logger.info(f"  Monitor <-> GPU: {monitor_gpu_count} compatible pairs added")
-    
-    logger.info(f"Total checks performed: {total_checks}")
-    logger.info(f"Total compatible pairs found: {len(compatible_pairs)}")
     
     return compatible_pairs
 
@@ -1637,17 +1608,21 @@ def delete_existing_compatibilities(db: DatabaseConnection, component_ids: Set[s
     component_list = list(component_ids)
     batch_size = 500
     
-    for i in range(0, len(component_list), batch_size):
-        batch = component_list[i:i + batch_size]
-        placeholders = ",".join(["?" for _ in batch])
-        
-        # Delete where ComponentId is in batch
-        query = f"""
-            DELETE FROM ComponentCompatibilities 
-            WHERE ComponentId IN ({placeholders}) OR CompatibleComponentId IN ({placeholders})
-        """
-        db.execute(query, tuple(batch + batch))
-        deleted_count += db.cursor.rowcount
+    total_batches = (len(component_list) + batch_size - 1) // batch_size
+    
+    with tqdm(total=total_batches, desc="Deleting old compatibilities", unit="batch") as pbar:
+        for i in range(0, len(component_list), batch_size):
+            batch = component_list[i:i + batch_size]
+            placeholders = ",".join(["?" for _ in batch])
+            
+            # Delete where ComponentId is in batch
+            query = f"""
+                DELETE FROM ComponentCompatibilities 
+                WHERE ComponentId IN ({placeholders}) OR CompatibleComponentId IN ({placeholders})
+            """
+            db.execute(query, tuple(batch + batch))
+            deleted_count += db.cursor.rowcount
+            pbar.update(1)
     
     db.commit()
     logger.info(f"Deleted {deleted_count} existing compatibility records")
@@ -1675,38 +1650,41 @@ def insert_compatibilities(
         VALUES (?, ?, ?, ?, ?, ?)
     """
     
-    # Process in batches
-    for i in range(0, len(compatible_pairs), batch_size):
-        batch = compatible_pairs[i:i + batch_size]
-        params_list = []
-        
-        for result in batch:
-            params = (
-                str(uuid.uuid4()),
-                result.component_id,
-                result.compatible_component_id,
-                now,
-                now,
-                None,  # Note
-            )
-            params_list.append(params)
-        
-        try:
-            db.cursor.fast_executemany = True
-            db.executemany(insert_sql, params_list)
-            db.commit()
-            inserted_count += len(batch)
-            logger.info(f"Inserted batch {i // batch_size + 1}: {len(batch)} records")
-        except pyodbc.Error as e:
-            logger.error(f"Error inserting batch: {e}")
-            # Try inserting one by one to identify problematic records
-            for params in params_list:
-                try:
-                    db.execute(insert_sql, params)
-                    db.commit()
-                    inserted_count += 1
-                except pyodbc.Error as inner_e:
-                    logger.warning(f"Failed to insert compatibility {params[1]} <-> {params[2]}: {inner_e}")
+    # Process in batches with progress bar
+    with tqdm(total=len(compatible_pairs), desc="Inserting compatibilities", unit="record") as pbar:
+        for i in range(0, len(compatible_pairs), batch_size):
+            batch = compatible_pairs[i:i + batch_size]
+            params_list = []
+            
+            for result in batch:
+                params = (
+                    str(uuid.uuid4()),
+                    result.component_id,
+                    result.compatible_component_id,
+                    now,
+                    now,
+                    None,  # Note
+                )
+                params_list.append(params)
+            
+            try:
+                db.cursor.fast_executemany = True
+                db.executemany(insert_sql, params_list)
+                db.commit()
+                inserted_count += len(batch)
+                pbar.update(len(batch))
+            except pyodbc.Error as e:
+                logger.error(f"Error inserting batch: {e}")
+                # Try inserting one by one to identify problematic records
+                for params in params_list:
+                    try:
+                        db.execute(insert_sql, params)
+                        db.commit()
+                        inserted_count += 1
+                        pbar.update(1)
+                    except pyodbc.Error as inner_e:
+                        logger.warning(f"Failed to insert compatibility {params[1]} <-> {params[2]}: {inner_e}")
+                        pbar.update(1)
     
     logger.info(f"Total inserted: {inserted_count} compatibility records")
     return inserted_count
