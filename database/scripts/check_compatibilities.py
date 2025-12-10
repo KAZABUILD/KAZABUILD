@@ -391,7 +391,7 @@ def load_subcomponents_for_component(db: DatabaseConnection, component_id: str) 
             sc.Id, sc.Name, sc.Type, cp.Amount,
             ps.PortType,
             pcie.Gen, pcie.Lanes,
-            m2.Type as M2Type, m2.Size as M2Size,
+            m2.KeyType as M2Type, m2.Size as M2Size,
             eth.Speed as EthernetSpeed,
             ig.BaseClockSpeed as IGBaseClock, ig.BoostClockSpeed as IGBoostClock, ig.CoreCount as IGCoreCount,
             cs.SocketType
