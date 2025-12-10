@@ -36,9 +36,15 @@ class FaqSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 24.0),
       decoration: BoxDecoration(
-        color: isDark
-            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.5)
-            : AppColorsLight.backgroundSecondary.withValues(alpha: 0.3),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.colorScheme.surface.withValues(alpha: 0.0),
+            theme.colorScheme.surface.withValues(alpha: 0.3),
+            theme.colorScheme.surface.withValues(alpha: 0.0),
+          ],
+        ),
       ),
       child: Center(
         child: ConstrainedBox(
@@ -113,28 +119,8 @@ class FaqSection extends StatelessWidget {
         answer: l10n.howDoICreateABuildAnswer,
       ),
       FaqItem(
-        question: l10n.arePricesUpToDate,
-        answer: l10n.arePricesUpToDateAnswer,
-      ),
-      FaqItem(
-        question: l10n.canIShareMyBuilds,
-        answer: l10n.canIShareMyBuildsAnswer,
-      ),
-      FaqItem(
         question: l10n.howDoICheckCompatibility,
         answer: l10n.howDoICheckCompatibilityAnswer,
-      ),
-      FaqItem(
-        question: l10n.isKazabuildFree,
-        answer: l10n.isKazabuildFreeAnswer,
-      ),
-      FaqItem(
-        question: l10n.howCanIGetHelp,
-        answer: l10n.howCanIGetHelpAnswer,
-      ),
-      FaqItem(
-        question: l10n.canISaveMultipleBuilds,
-        answer: l10n.canISaveMultipleBuildsAnswer,
       ),
     ];
   }

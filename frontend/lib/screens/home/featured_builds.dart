@@ -351,7 +351,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
               children: [
                 // Image Section - Large and prominent
                 Expanded(
-                  flex: 5,
+                  flex: 4,
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -387,9 +387,9 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                 ),
                 // Content Section - Specifications
                 Expanded(
-                  flex: 5,
+                  flex: 6,
                   child: Container(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -424,7 +424,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         // Price
                         Center(
                           child: Text(
@@ -439,7 +439,7 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         // Show More Button
                         Center(
                           child: AnimatedContainer(
