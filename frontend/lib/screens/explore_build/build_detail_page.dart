@@ -90,23 +90,31 @@ class BuildDetailPage extends ConsumerWidget {
 
   Widget _buildContentView(BuildContext context, WidgetRef ref, Build build) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 900;
+    final contentPadding = EdgeInsets.symmetric(
+      horizontal: isMobile ? 16 : 32,
+      vertical: isMobile ? 16 : 32,
+    );
+    final maxContentWidth = isMobile ? double.infinity : 900.0;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
+      padding: contentPadding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: BoxConstraints(maxWidth: maxContentWidth),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _buildBuildImage(context, theme, build),
+              _buildBuildImage(context, theme, build, isMobile: isMobile),
               const SizedBox(height: 24),
-              _buildMetaInfo(context, ref, theme, build),
+              _buildMetaInfo(context, ref, theme, build, isMobile: isMobile),
               const SizedBox(height: 16),
-              _buildTitleAndRating(theme, build),
+              _buildTitleAndRating(theme, build, isMobile: isMobile),
               const SizedBox(height: 24),
               if (build.description != null && build.description!.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.all(isMobile ? 16 : 24),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
@@ -160,8 +168,9 @@ class BuildDetailPage extends ConsumerWidget {
   }
 
   /// Builds the build image widget with proper URL construction and error handling
-  Widget _buildBuildImage(BuildContext context, ThemeData theme, Build build) {
+  Widget _buildBuildImage(BuildContext context, ThemeData theme, Build build, {required bool isMobile}) {
     final imageUrl = _getImageUrl(build);
+    final imageHeight = isMobile ? 260.0 : 400.0;
     
     if (imageUrl == null || imageUrl.isEmpty) {
       return _buildPlaceholderImage(context, theme);
@@ -173,12 +182,12 @@ class BuildDetailPage extends ConsumerWidget {
         imageUrl,
         fit: BoxFit.cover,
         width: double.infinity,
-        height: 400,
+        height: imageHeight,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
             width: double.infinity,
-            height: 400,
+            height: imageHeight,
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(20),
@@ -248,7 +257,7 @@ class BuildDetailPage extends ConsumerWidget {
   }
 
   /// Builds the row containing metadata about the build, such as the author and post date.
-  Widget _buildMetaInfo(BuildContext context, WidgetRef ref, ThemeData theme, Build build) {
+  Widget _buildMetaInfo(BuildContext context, WidgetRef ref, ThemeData theme, Build build, {required bool isMobile}) {
     // If author is not included in build, fetch it using userId
     final authorAsync = build.author != null 
         ? AsyncValue.data(build.author) 
@@ -258,129 +267,149 @@ class BuildDetailPage extends ConsumerWidget {
     final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
     final canEdit = isOwner || isStaff;
 
+    List<Widget> buildMetaItems({
+      Widget? authorWidget,
+      required String postedText,
+      required bool canEditAction,
+    }) {
+      return [
+        if (authorWidget != null) authorWidget,
+        if (authorWidget != null)
+          Text('•', style: theme.textTheme.bodySmall),
+        Text(
+          postedText,
+          style: theme.textTheme.bodySmall,
+        ),
+        if (canEditAction)
+          OutlinedButton.icon(
+            onPressed: () {
+              context.go('/build/${build.id}/edit');
+            },
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Edit'),
+          ),
+        OutlinedButton(
+          onPressed: () {},
+          child: Text(AppLocalizations.of(context)!.wishlistBuild),
+        ),
+      ];
+    }
+
+    Widget wrapMeta(List<Widget> children) {
+      return Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        alignment: WrapAlignment.start,
+        children: children,
+      );
+    }
+
+    final postedText =
+        '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}';
+
     return authorAsync.when(
       data: (author) {
-        return Row(
-          children: <Widget>[
-            if (author != null) ...[
-              InkWell(
-                onTap: () {
-                  context.go('/profile/${author.uid}');
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AuthenticatedImage(
-                        imageUrl: author.photoURL,
-                        isCircle: true,
-                        radius: 12,
-                        username: author.username,
-                        userId: author.uid,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(author.displayName.isNotEmpty ? author.displayName : author.username, style: theme.textTheme.bodyMedium),
-                    ],
+        Widget? authorWidget;
+        if (author != null) {
+          authorWidget = InkWell(
+            onTap: () {
+              context.go('/profile/${author.uid}');
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AuthenticatedImage(
+                    imageUrl: author.photoURL,
+                    isCircle: true,
+                    radius: 12,
+                    username: author.username,
+                    userId: author.uid,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Text(
+                    author.displayName.isNotEmpty ? author.displayName : author.username,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text('•', style: theme.textTheme.bodySmall),
-              const SizedBox(width: 8),
-            ],
-            // TODO: Add 'Posted on' date when available from backend
-            Text(
-              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
-              style: theme.textTheme.bodySmall,
             ),
-            const Spacer(),
-            // Show Edit button if user is the owner or staff (moderator/admin)
-            if (canEdit) ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  context.go('/build/${build.id}/edit');
-                },
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit'),
-              ),
-              const SizedBox(width: 8),
-            ],
-            // TODO: Implement "Wishlist" functionality.
-            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-          ],
+          );
+        }
+
+        return wrapMeta(
+          buildMetaItems(
+            authorWidget: authorWidget,
+            postedText: postedText,
+            canEditAction: canEdit,
+          ),
         );
       },
       loading: () {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
         final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
-        final canEdit = isOwner || isStaff;
-        return Row(
-          children: <Widget>[
-            const SizedBox(
+        final canEditLoading = isOwner || isStaff;
+
+        return wrapMeta(
+          buildMetaItems(
+            authorWidget: const SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
-              style: theme.textTheme.bodySmall,
-            ),
-            const Spacer(),
-            if (canEdit) ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  context.go('/build/${build.id}/edit');
-                },
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit'),
-              ),
-              const SizedBox(width: 8),
-            ],
-            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-          ],
+            postedText: postedText,
+            canEditAction: canEditLoading,
+          ),
         );
       },
       error: (error, stack) {
         final currentUser = ref.watch(authProvider).valueOrNull;
         final isOwner = currentUser != null && currentUser.uid == build.userId;
         final isStaff = currentUser?.userRole.isModeratorOrHigher ?? false;
-        final canEdit = isOwner || isStaff;
-        return Row(
-          children: <Widget>[
-            Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
-            const SizedBox(width: 8),
-            Text('Unknown User', style: theme.textTheme.bodyMedium),
-            const SizedBox(width: 8),
-            Text('•', style: theme.textTheme.bodySmall),
-            const SizedBox(width: 8),
-            Text(
-              '${AppLocalizations.of(context)!.postedOn}: ${build.databaseEntryAt != null ? DateFormat.yMMMMd().format(build.databaseEntryAt!) : DateFormat.yMMMMd().format(DateTime.now())}',
-              style: theme.textTheme.bodySmall,
+        final canEditError = isOwner || isStaff;
+
+        return wrapMeta(
+          buildMetaItems(
+            authorWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
+                const SizedBox(width: 8),
+                Text('Unknown User', style: theme.textTheme.bodyMedium),
+              ],
             ),
-            const Spacer(),
-            if (canEdit) ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  context.go('/build/${build.id}/edit');
-                },
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit'),
-              ),
-              const SizedBox(width: 8),
-            ],
-            OutlinedButton(onPressed: () {}, child: Text(AppLocalizations.of(context)!.wishlistBuild)),
-          ],
+            postedText: postedText,
+            canEditAction: canEditError,
+          ),
         );
       },
     );
   }
 
   /// Builds the row containing the build's title and its star rating.
-  Widget _buildTitleAndRating(ThemeData theme, Build build) {
+  Widget _buildTitleAndRating(ThemeData theme, Build build, {required bool isMobile}) {
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            build.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _RatingBar(build: build),
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
