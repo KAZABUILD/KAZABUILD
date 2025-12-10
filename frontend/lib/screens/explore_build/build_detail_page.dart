@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
@@ -1401,6 +1402,26 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
   final ImagePicker _imagePicker = ImagePicker();
   String? _replyingToCommentId; // Track which comment we're replying to
 
+  void _copyToClipboard(String text) {
+    if (text.trim().isEmpty || text == '[Image]') return;
+    Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copied to clipboard')),
+      );
+    }
+  }
+
+  void _copyImageUrlToClipboard(String url) {
+    if (url.trim().isEmpty) return;
+    Clipboard.setData(ClipboardData(text: url));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image link copied to clipboard')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -1827,35 +1848,53 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                 usernameToUserIdMap: usernameToUserIdMap,
                               ),
                             const SizedBox(height: 8),
-                            // Reply button
-                            if (isLoggedIn)
-                              TextButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    _replyingToCommentId = _replyingToCommentId == c.id ? null : c.id;
-                                    if (_replyingToCommentId == c.id) {
-                                      _controller.text = '@${c.authorName} ';
-                                      _controller.selection = TextSelection.fromPosition(
-                                        TextPosition(offset: _controller.text.length),
-                                      );
-                                    } else {
-                                      _controller.clear();
-                                    }
-                                  });
-                                },
-                                icon: Icon(
-                                  _replyingToCommentId == c.id ? Icons.close : Icons.reply,
-                                  size: 16,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                  iconSize: 16,
+                                  tooltip: 'Copy',
+                                  onPressed: c.text.trim().isEmpty || c.text == '[Image]'
+                                      ? null
+                                      : () => _copyToClipboard(c.text),
+                                  icon: Icon(
+                                    Icons.copy,
+                                    size: 16,
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
                                 ),
-                                label: Text(
-                                  _replyingToCommentId == c.id ? 'Cancel' : 'Reply',
-                                ),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
+                                if (isLoggedIn)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _replyingToCommentId = _replyingToCommentId == c.id ? null : c.id;
+                                        if (_replyingToCommentId == c.id) {
+                                          _controller.text = '@${c.authorName} ';
+                                          _controller.selection = TextSelection.fromPosition(
+                                            TextPosition(offset: _controller.text.length),
+                                          );
+                                        } else {
+                                          _controller.clear();
+                                        }
+                                      });
+                                    },
+                                    icon: Icon(
+                                      _replyingToCommentId == c.id ? Icons.close : Icons.reply,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      _replyingToCommentId == c.id ? 'Cancel' : 'Reply',
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                              ],
+                            ),
                             // Display images attached to the comment
                             ref.watch(commentImagesProvider(c.id)).when(
                               data: (imageUrls) {
@@ -1868,51 +1907,65 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                       spacing: 8,
                                       runSpacing: 8,
                                       children: imageUrls.map((imageUrl) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            // Show fullscreen image viewer
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => Dialog(
-                                                backgroundColor: Colors.transparent,
-                                                insetPadding: const EdgeInsets.all(20),
-                                                child: Stack(
-                                                  children: [
-                                                    Center(
-                                                      child: InteractiveViewer(
-                                                        minScale: 0.5,
-                                                        maxScale: 4.0,
-                                                        child: Image.network(
-                                                          imageUrl,
-                                                          fit: BoxFit.contain,
-                                                          errorBuilder: (context, error, stackTrace) {
-                                                            return Container(
-                                                              width: 300,
-                                                              height: 300,
-                                                              color: theme.colorScheme.surfaceVariant,
-                                                              child: const Icon(Icons.broken_image, size: 64),
-                                                            );
-                                                          },
-                                                        ),
-                                                      ),
+                                    return GestureDetector(
+                                      onTap: () {
+                                        // Show fullscreen image viewer
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => Dialog(
+                                            backgroundColor: Colors.transparent,
+                                            insetPadding: const EdgeInsets.all(20),
+                                            child: Stack(
+                                              children: [
+                                                Center(
+                                                  child: InteractiveViewer(
+                                                    minScale: 0.5,
+                                                    maxScale: 4.0,
+                                                    child: Image.network(
+                                                      imageUrl,
+                                                      fit: BoxFit.contain,
+                                                      errorBuilder: (context, error, stackTrace) {
+                                                        return Container(
+                                                          width: 300,
+                                                          height: 300,
+                                                          color: theme.colorScheme.surfaceVariant,
+                                                          child: const Icon(Icons.broken_image, size: 64),
+                                                        );
+                                                      },
                                                     ),
-                                                    Positioned(
-                                                      top: 10,
-                                                      right: 10,
-                                                      child: IconButton(
-                                                        icon: const Icon(Icons.close, color: Colors.white),
-                                                        onPressed: () => Navigator.of(context).pop(),
-                                                        style: IconButton.styleFrom(
-                                                          backgroundColor: Colors.black54,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                  ),
                                                 ),
-                                              ),
-                                            );
-                                          },
-                                          child: ClipRRect(
+                                                Positioned(
+                                                  top: 10,
+                                                  right: 10,
+                                                  child: IconButton(
+                                                    icon: const Icon(Icons.close, color: Colors.white),
+                                                    onPressed: () => Navigator.of(context).pop(),
+                                                    style: IconButton.styleFrom(
+                                                      backgroundColor: Colors.black54,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Positioned(
+                                                  top: 10,
+                                                  left: 10,
+                                                  child: IconButton(
+                                                    icon: const Icon(Icons.copy, color: Colors.white),
+                                                    tooltip: 'Copy image link',
+                                                    onPressed: () => _copyImageUrlToClipboard(imageUrl),
+                                                    style: IconButton.styleFrom(
+                                                      backgroundColor: Colors.black54,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Stack(
+                                        children: [
+                                          ClipRRect(
                                             borderRadius: BorderRadius.circular(8),
                                             child: Image.network(
                                               imageUrl,
@@ -1929,7 +1982,29 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                               },
                                             ),
                                           ),
-                                        );
+                                          Positioned(
+                                            top: 6,
+                                            right: 6,
+                                            child: Material(
+                                              color: Colors.black54,
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: InkWell(
+                                                borderRadius: BorderRadius.circular(16),
+                                                onTap: () => _copyImageUrlToClipboard(imageUrl),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(4.0),
+                                                  child: Icon(
+                                                    Icons.copy,
+                                                    size: 14,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
                                       }).toList(),
                                     ),
                                   ],

@@ -100,21 +100,6 @@ class CustomNavigationBar extends ConsumerWidget {
               _NavButton(title: AppLocalizations.of(context)!.exploreBuilds, route: '/explore'),
               _NavButton(title: AppLocalizations.of(context)!.guides,route: '/guides'),
               _NavButton(title: AppLocalizations.of(context)!.forums, route: '/forums'),
-              Consumer(
-                builder: (context, ref, child) {
-                  final authState = ref.watch(authProvider);
-                  return authState.when(
-                    data: (user) {
-                      if (user != null) {
-                        return _NavButton(title: 'Messages', route: '/messages');
-                      }
-                      return const SizedBox.shrink();
-                    },
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  );
-                },
-              ),
               _PartsDropdownMenu(),
             ],
           ),
@@ -138,6 +123,8 @@ class CustomNavigationBar extends ConsumerWidget {
                   );
                 },
               ),
+              const SizedBox(width: 8),
+              const _MessagesButton(),
               const SizedBox(width: 8),
               if (showProfileArea) ...[
                 authState.when(
@@ -534,13 +521,25 @@ class CustomDrawer extends ConsumerWidget {
               return authState.when(
                 data: (user) {
                   if (user != null) {
-                    return ListTile(
-                      leading: const Icon(Icons.message),
-                      title: const Text('Messages'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/messages');
-                      },
+                    return Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.notifications_outlined),
+                          title: const Text('Notifications'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/notifications');
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.message),
+                          title: const Text('Messages'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/messages');
+                          },
+                        ),
+                      ],
                     );
                   }
                   return const SizedBox.shrink();
@@ -652,6 +651,19 @@ class CustomDrawer extends ConsumerWidget {
                   return Column(
                     children: [
                       const Divider(),
+                      ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(AppLocalizations.of(context)!.profile),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        minVerticalPadding: 12,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/profile');
+                        },
+                      ),
                       ListTile(
                         leading: const Icon(Icons.settings),
                         title: Text(AppLocalizations.of(context)!.settings),
@@ -1181,6 +1193,51 @@ class _DropdownItemState extends State<_DropdownItem> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A compact messages shortcut placed next to the notifications icon.
+class _MessagesButton extends ConsumerWidget {
+  const _MessagesButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final authState = ref.watch(authProvider);
+
+    return authState.when(
+      data: (user) {
+        if (user == null) return const SizedBox.shrink();
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go('/messages'),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Icon(
+                Icons.message_outlined,
+                size: 24,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 40,
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
