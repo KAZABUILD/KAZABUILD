@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Components.ComponentPrice;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ComponentPricesControllerClient(HttpClient _client)
+public class ComponentPricesControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddComponentPrice(CreateComponentPriceDto dto)
     {

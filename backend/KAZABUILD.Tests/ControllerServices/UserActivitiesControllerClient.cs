@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserActivity;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserActivitiesControllerClient(HttpClient _client)
+public class UserActivitiesControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserActivity(CreateUserActivityDto dto)
     {

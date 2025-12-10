@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Builds.BuildInteraction;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class BuildInteractionsControllerClient(HttpClient _client)
+public class BuildInteractionsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddBuildInteraction(CreateBuildInteractionDto dto)
     {

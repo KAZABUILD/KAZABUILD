@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using System.Diagnostics; 
+using System.Diagnostics.Metrics; 
+using System.Net.Http.Json;
 using KAZABUILD.Application.DTOs.Components.ComponentPrice;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
@@ -16,6 +18,17 @@ namespace KAZABUILD.Infrastructure.Services
         private readonly PricesApiSettings _settings;
         private readonly HttpClient _httpClient;
         private readonly ILoggerService _logger;
+
+        // Metrics Definitions
+        private static readonly Meter _meter = new("KazaBuild.PricesApi");
+        private static readonly Histogram<double> _requestDuration = _meter.CreateHistogram<double>(
+            "app_external_prices_request_duration_seconds", 
+            unit: "s", 
+            description: "Duration of external price API requests");
+        
+        private static readonly Counter<long> _requestErrors = _meter.CreateCounter<long>(
+            "app_external_prices_errors_total", 
+            description: "Count of failed external price API requests");
 
         public PricesApiService(IOptions<PricesApiSettings> settings, HttpClient httpClient, ILoggerService logger)
         {
@@ -37,6 +50,8 @@ namespace KAZABUILD.Infrastructure.Services
         /// <returns></returns>
         public async Task<PricesApiPriceResponseDto?> GetPartPrice(BaseComponent component)
         {
+            var stopwatch = Stopwatch.StartNew();
+            
             try
             {
                 var requestDto = new PricesApiPriceDto
@@ -49,9 +64,15 @@ namespace KAZABUILD.Infrastructure.Services
                 //Call the External API
                 var response = await _httpClient.PostAsJsonAsync(_settings.PriceApiEndpoint, requestDto);
 
+                // Stop timer and record metric
+                stopwatch.Stop();
+                _requestDuration.Record(stopwatch.Elapsed.TotalSeconds);
+
                 if (!response.IsSuccessStatusCode)
                 {
                     //Log the external API failure
+                    _requestErrors.Add(1, new KeyValuePair<string, object?>("reason", "http_error"));
+                    
                     await _logger.LogAsync(
                         Guid.Empty,
                         "GET",
@@ -70,6 +91,9 @@ namespace KAZABUILD.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                stopwatch.Stop();
+                _requestDuration.Record(stopwatch.Elapsed.TotalSeconds);
+                _requestErrors.Add(1, new KeyValuePair<string, object?>("reason", "exception"));
                 //Log the exception
                 await _logger.LogAsync(
                     Guid.Empty,

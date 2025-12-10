@@ -4,6 +4,7 @@ using KAZABUILD.Domain.Enums;
 
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics.Metrics; 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -17,6 +18,12 @@ namespace KAZABUILD.Infrastructure.Services
     public class AuthorizationService(IOptions<JwtSettings> jwtOptions) : IAuthorizationService
     {
         private readonly JwtSettings _jwt = jwtOptions.Value;
+
+        // Metrics Definitions
+        private static readonly Meter _meter = new("KazaBuild.Auth");
+        private static readonly Counter<long> _loginSuccessCounter = _meter.CreateCounter<long>(
+            "app_auth_login_attempts_total", 
+            description: "Total number of successful authentication tokens issued");
 
         /// <summary>
         /// Generates JWT tokens based on provided user data.
@@ -50,6 +57,8 @@ namespace KAZABUILD.Infrastructure.Services
             );
 
             //Return a new security token
+            _loginSuccessCounter.Add(1, new KeyValuePair<string, object?>("status", "success"));
+
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }

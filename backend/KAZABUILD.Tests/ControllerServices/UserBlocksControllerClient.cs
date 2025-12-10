@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserBlock;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserBlocksControllerClient(HttpClient _client)
+public class UserBlocksControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserBlock(CreateUserBlockDto dto)
     {

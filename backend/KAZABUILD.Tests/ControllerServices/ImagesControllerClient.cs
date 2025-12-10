@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Image;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ImagesControllerClient(HttpClient _client)
+public class ImagesControllerClient(HttpClient _client): BaseApiControllerService
 {
     /// <summary>
     /// Add a new image with file upload

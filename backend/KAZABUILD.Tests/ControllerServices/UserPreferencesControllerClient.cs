@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserPreference;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserPreferencesControllerClient(HttpClient _client)
+public class UserPreferencesControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserPreference(CreateUserPreferenceDto dto)
     {

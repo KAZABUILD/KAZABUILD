@@ -4,7 +4,7 @@ using KAZABUILD.Application.DTOs.Components.SubComponents;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class SubComponentsControllerClient(HttpClient _client)
+public class SubComponentsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddSubComponent(CreateSubComponentPartDto dto)
     {

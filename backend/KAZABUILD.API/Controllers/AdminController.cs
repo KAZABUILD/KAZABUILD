@@ -17,6 +17,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using Prometheus;
 using KAZABUILD.Application.DTOs.Components.ComponentPrice;
 
 namespace KAZABUILD.API.Controllers
@@ -36,6 +38,12 @@ namespace KAZABUILD.API.Controllers
         private readonly IWebHostEnvironment _env = env;
         private readonly IPricesApiService _pricesApiService = pricesApiService;
         private readonly PricesApiSettings _pricesApiSettings = pricesApiSettings.Value;
+
+        // Prometheus metric for tracking number of banned users (blocked IPs)
+        private static readonly Gauge BannedUsersGauge = Metrics
+            .CreateGauge(
+                "kazabuild_banned_users_total",
+                "Current number of banned users (blocked IPs)");
 
         /// <summary>
         /// Allows the super admins to reset the system admin account in case of data breach.
@@ -332,6 +340,9 @@ namespace KAZABUILD.API.Controllers
             //Save changes to the database
             await _db.SaveChangesAsync();
 
+            // Increment the banned users gauge
+            BannedUsersGauge.Inc();
+
             //Log the creation
             await _logger.LogAsync(
                 currentUserId,
@@ -450,6 +461,9 @@ namespace KAZABUILD.API.Controllers
 
             //Save changes to the database
             await _db.SaveChangesAsync();
+
+            //Decrement the banned users gauge
+            BannedUsersGauge.Dec();
 
             //Log the creation
             await _logger.LogAsync(

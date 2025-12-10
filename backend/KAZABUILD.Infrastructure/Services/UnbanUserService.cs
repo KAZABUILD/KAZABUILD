@@ -5,6 +5,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Diagnostics.Metrics; 
 using System.Threading;
 
 namespace KAZABUILD.Infrastructure.Services
@@ -16,6 +17,12 @@ namespace KAZABUILD.Infrastructure.Services
     public class UnbanUserService(IServiceScopeFactory scopeFactory) : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+
+        // Metrics Definitions
+        private static readonly Meter _meter = new("KazaBuild.Unban");
+        private static readonly Counter<long> _unbannedUsersCounter = _meter.CreateCounter<long>(
+            "app_users_unbanned_total", 
+            description: "Total number of users automatically unbanned");
 
         /// <summary>
         /// The cleanup task executed once a day.
@@ -56,6 +63,9 @@ namespace KAZABUILD.Infrastructure.Services
 
                         //Save changes to the database
                         await db.SaveChangesAsync(stoppingToken);
+
+                        // Record metric
+                        _unbannedUsersCounter.Add(expiredBans.Count, new KeyValuePair<string, object?>("trigger", "auto_expiry"));
 
                         //Log unban
                         await logger.LogAsync(

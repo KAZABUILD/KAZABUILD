@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Components.ComponentVariant;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ComponentVariantsControllerClient(HttpClient _client)
+public class ComponentVariantsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddComponentVariant(CreateComponentVariantDto dto)
     {
