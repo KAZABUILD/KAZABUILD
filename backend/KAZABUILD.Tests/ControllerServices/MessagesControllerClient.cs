@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.Message;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class MessagesControllerClient(HttpClient _client)
+public class MessagesControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> SendMessage(CreateMessageDto dto)
     {

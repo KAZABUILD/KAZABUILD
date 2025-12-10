@@ -16,6 +16,9 @@ COPY . .
 RUN dotnet tool install --global dotnet-watch
 ENV PATH="$PATH:/root/.dotnet/tools"
 
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+CMD ["sh", "-c", "echo 'Waiting for database...' && sleep 15 && dotnet watch run --no-launch-profile"]
+
 # Expose the dev port
 EXPOSE 5000
 

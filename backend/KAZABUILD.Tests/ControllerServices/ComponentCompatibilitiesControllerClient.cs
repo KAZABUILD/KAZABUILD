@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Components.ComponentCompatibility;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ComponentCompatibilitiesControllerClient(HttpClient _client)
+public class ComponentCompatibilitiesControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddComponentCompatibility(CreateComponentCompatibilityDto dto)
     {

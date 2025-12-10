@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Components.ComponentPart;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class ComponentPartsControllerClient(HttpClient _client)
+public class ComponentPartsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddComponentPart(CreateComponentPartDto dto)
     {

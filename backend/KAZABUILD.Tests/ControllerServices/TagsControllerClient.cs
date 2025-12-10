@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Builds.Tag;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class TagsControllerClient(HttpClient _client)
+public class TagsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddTag(CreateTagDto dto)
     {

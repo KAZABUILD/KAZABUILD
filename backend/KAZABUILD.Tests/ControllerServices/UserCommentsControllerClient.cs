@@ -3,7 +3,7 @@ using KAZABUILD.Application.DTOs.Users.UserComment;
 
 namespace KAZABUILD.Tests.ControllerServices;
 
-public class UserCommentsControllerClient(HttpClient _client)
+public class UserCommentsControllerClient(HttpClient _client): BaseApiControllerService
 {
     public async Task<HttpResponseMessage> AddUserComment(CreateUserCommentDto dto)
     {
