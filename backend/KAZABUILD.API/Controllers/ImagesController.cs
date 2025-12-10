@@ -785,30 +785,60 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Check the user has correct privileges or if the image isn't private
-            if (!isPrivileged &&
-                !(image.UserId == null && image.BuildId == null && image.MessageId == null) &&
-                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT)) &&
-                !(image.User != null &&
-                (
-                    image.UserId == currentUserId ||
-                    image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
-                    (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
-                ) &&
-                !(image.Message != null && (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId))))
+            //Check the user has correct privileges or if the image isn't private
+            if (!isPrivileged)
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "Image",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
+                bool hasAccess = false;
 
-                //Return proper unauthorized response
-                return Forbid();
+                //If image is not attached to User, Build, or Message, allow access
+                if (image.UserId == null && image.BuildId == null && image.MessageId == null)
+                {
+                    hasAccess = true;
+                }
+                //Check Build access
+                else if (image.Build != null)
+                {
+                    if (image.Build.UserId == currentUserId ||
+                        (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check User profile access
+                else if (image.User != null)
+                {
+                    if (image.UserId == currentUserId ||
+                        image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
+                        (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check Message access
+                else if (image.Message != null)
+                {
+                    if (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId)
+                    {
+                        hasAccess = true;
+                    }
+                }
+
+                if (!hasAccess)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "GET",
+                        "Image",
+                        ip,
+                        id,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - Unauthorized Access"
+                    );
+
+                    //Return proper unauthorized response
+                    return Forbid();
+                }
             }
 
             //Log Description string declaration
@@ -1317,30 +1347,59 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Check the user has correct privileges or if the image isn't private
-            if (!isPrivileged &&
-                !(image.UserId == null && image.BuildId == null && image.MessageId == null) &&
-                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT)) &&
-                !(image.User != null &&
-                (
-                    image.UserId == currentUserId ||
-                    image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
-                    (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
-                ) &&
-                !(image.Message != null && (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId))))
+            if (!isPrivileged)
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "Image",
-                    ip,
-                    id,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
+                bool hasAccess = false;
 
-                //Return proper unauthorized response
-                return Forbid();
+                //If image is not attached to User, Build, or Message, allow access
+                if (image.UserId == null && image.BuildId == null && image.MessageId == null)
+                {
+                    hasAccess = true;
+                }
+                //Check Build access
+                else if (image.Build != null)
+                {
+                    if (image.Build.UserId == currentUserId ||
+                        (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check User profile access
+                else if (image.User != null)
+                {
+                    if (image.UserId == currentUserId ||
+                        image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
+                        (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check Message access
+                else if (image.Message != null)
+                {
+                    if (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId)
+                    {
+                        hasAccess = true;
+                    }
+                }
+
+                if (!hasAccess)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "GET",
+                        "Image",
+                        ip,
+                        id,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - Unauthorized Access"
+                    );
+
+                    //Return proper unauthorized response
+                    return Forbid();
+                }
             }
 
             //Check if the file exists

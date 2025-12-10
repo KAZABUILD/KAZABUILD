@@ -62,11 +62,8 @@ class ComponentType:
 
 class SubComponentType:
     PORT = "PORT"
-    PCIE_SLOT = "PCIE_SLOT"
     M2_SLOT = "M2_SLOT"
-    ONBOARD_ETHERNET = "ONBOARD_ETHERNET"
-    INTEGRATED_GRAPHICS = "INTEGRATED_GRAPHICS"
-    COOLER_SOCKET = "COOLER_SCOKET"  # Note: typo matches database
+    COOLER_SOCKET = "COOLER_SOCKET"
 
 
 # ========================================================================== #
@@ -82,18 +79,6 @@ class SubComponent:
     amount: int = 1
     # Port-specific
     port_type: Optional[str] = None
-    # PCIe-specific
-    pcie_gen: Optional[str] = None
-    pcie_lanes: Optional[str] = None
-    # M.2-specific
-    m2_type: Optional[str] = None
-    m2_size: Optional[str] = None
-    # Ethernet-specific
-    ethernet_speed: Optional[Decimal] = None
-    # Integrated Graphics-specific
-    ig_base_clock: Optional[Decimal] = None
-    ig_boost_clock: Optional[Decimal] = None
-    ig_core_count: Optional[int] = None
     # Cooler Socket-specific
     socket_type: Optional[str] = None
 
@@ -116,10 +101,7 @@ class CPUComponent(BaseComponent):
     microarchitecture: Optional[str] = None
     core_family: Optional[str] = None
     socket_type: Optional[str] = None
-    core_total: Optional[int] = None
-    threads_amount: Optional[int] = None
     thermal_design_power: Optional[Decimal] = None
-    memory_type: Optional[str] = None  # e.g., "DDR5", "DDR4"
 
 
 @dataclass
@@ -131,9 +113,7 @@ class MotherboardComponent(BaseComponent):
     ram_type: Optional[str] = None  # e.g., "DDR5", "DDR4"
     ram_slots_amount: Optional[int] = None
     max_ram_amount: Optional[int] = None  # in GB
-    cpu_fan_header_amount: Optional[int] = None
     case_fan_header_amount: Optional[int] = None
-    pump_header_amount: Optional[int] = None
 
 
 @dataclass
@@ -145,18 +125,11 @@ class CaseComponent(BaseComponent):
     expansion_slot_amount: Optional[int] = None
     dimensions_depth: Optional[Decimal] = None
     dimensions_height: Optional[Decimal] = None
-    dimensions_width: Optional[Decimal] = None
-    power_supply_amount: Optional[Decimal] = None  # Built-in PSU wattage
-    # Internal bays for determining PSU clearance indirectly
-    internal_35_bay_amount: Optional[int] = None
-    internal_25_bay_amount: Optional[int] = None
 
 
 @dataclass
 class GPUComponent(BaseComponent):
     """GPU component with specific properties."""
-    chipset: Optional[str] = None
-    video_memory_amount: Optional[Decimal] = None
     thermal_design_power: Optional[Decimal] = None
     length: Optional[Decimal] = None  # in mm
     case_expansion_slot_width: Optional[int] = None
@@ -166,22 +139,15 @@ class GPUComponent(BaseComponent):
 @dataclass
 class MemoryComponent(BaseComponent):
     """Memory/RAM component with specific properties."""
-    speed: Optional[Decimal] = None
     ram_type: Optional[str] = None  # e.g., "DDR5", "DDR4"
     capacity: Optional[Decimal] = None  # Total capacity in MB
     module_quantity: Optional[int] = None
-    module_capacity: Optional[Decimal] = None  # Per module in MB
 
 
 @dataclass
 class StorageComponent(BaseComponent):
     """Storage component with specific properties."""
-    series: Optional[str] = None
-    capacity: Optional[Decimal] = None
-    drive_type: Optional[str] = None  # SSD, HDD, etc.
     form_factor: Optional[str] = None  # M.2, 2.5", etc.
-    interface: Optional[str] = None
-    has_nvme: Optional[bool] = None
 
 
 @dataclass
@@ -189,9 +155,7 @@ class PowerSupplyComponent(BaseComponent):
     """Power Supply component with specific properties."""
     power_output: Optional[Decimal] = None  # in Watts
     form_factor: Optional[str] = None  # ATX, SFX, etc.
-    modularity_type: Optional[str] = None
     length: Optional[Decimal] = None  # in mm
-    is_fanless: Optional[bool] = None
 
 
 @dataclass
@@ -200,30 +164,22 @@ class CoolerComponent(BaseComponent):
     height: Optional[Decimal] = None  # in mm
     is_water_cooled: Optional[bool] = None
     radiator_size: Optional[Decimal] = None  # in mm
-    can_operate_fanless: Optional[bool] = None
-    fan_size: Optional[Decimal] = None
     fan_quantity: Optional[int] = None
 
 
 @dataclass
 class CaseFanComponent(BaseComponent):
     """Case Fan component with specific properties."""
-    size: Optional[Decimal] = None
     quantity: Optional[int] = None
 
 
 @dataclass
 class MonitorComponent(BaseComponent):
     """Monitor component with specific properties."""
-    screen_size: Optional[Decimal] = None
-    horizontal_resolution: Optional[int] = None
-    vertical_resolution: Optional[int] = None
-    panel_type: Optional[str] = None
 
 
 @dataclass
 class ComponentCompatibility:
-    """Represents a compatibility relationship between two components."""
     id: str
     component_id: str
     compatible_component_id: str
@@ -314,9 +270,6 @@ PSU_CASE_FORM_FACTOR_COMPAT = {
     "Flex ATX": ["SFF", "Mini-ITX"],
 }
 
-# Common radiator sizes and their typical case support
-RADIATOR_SIZES = [120, 140, 240, 280, 360, 420]
-
 
 # ========================================================================== #
 # DATABASE CONNECTION AND QUERY FUNCTIONS                                    #
@@ -390,18 +343,10 @@ def load_subcomponents_for_component(db: DatabaseConnection, component_id: str) 
         SELECT 
             sc.Id, sc.Name, sc.Type, cp.Amount,
             ps.PortType,
-            pcie.Gen, pcie.Lanes,
-            m2.KeyType as M2Type, m2.Size as M2Size,
-            eth.Speed as EthernetSpeed,
-            ig.BaseClockSpeed as IGBaseClock, ig.BoostClockSpeed as IGBoostClock, ig.CoreCount as IGCoreCount,
             cs.SocketType
         FROM ComponentParts cp
         INNER JOIN SubComponents sc ON cp.SubComponentId = sc.Id
         LEFT JOIN PortSubComponents ps ON sc.Id = ps.Id
-        LEFT JOIN PCIeSlotSubComponents pcie ON sc.Id = pcie.Id
-        LEFT JOIN M2SlotSubComponents m2 ON sc.Id = m2.Id
-        LEFT JOIN OnboardEthernetSubComponents eth ON sc.Id = eth.Id
-        LEFT JOIN IntegratedGraphicsSubComponents ig ON sc.Id = ig.Id
         LEFT JOIN CoolerSocketSubComponents cs ON sc.Id = cs.Id
         WHERE cp.ComponentId = ?
     """
@@ -416,15 +361,7 @@ def load_subcomponents_for_component(db: DatabaseConnection, component_id: str) 
             type=row[2] or "",
             amount=row[3] or 1,
             port_type=row[4],
-            pcie_gen=row[5],
-            pcie_lanes=row[6],
-            m2_type=row[7],
-            m2_size=row[8],
-            ethernet_speed=Decimal(str(row[9])) if row[9] is not None else None,
-            ig_base_clock=Decimal(str(row[10])) if row[10] is not None else None,
-            ig_boost_clock=Decimal(str(row[11])) if row[11] is not None else None,
-            ig_core_count=row[12],
-            socket_type=row[13],
+            socket_type=row[5],
         )
         subcomponents.append(subcomponent)
     
@@ -437,9 +374,9 @@ def load_cpus(db: DatabaseConnection) -> List[CPUComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
+            c.Id, c.Name, c.Type,
             cpu.Series, cpu.Microarchitecture, cpu.CoreFamily, cpu.SocketType,
-            cpu.CoreTotal, cpu.ThreadsAmount, cpu.ThermalDesignPower, cpu.MemoryType
+            cpu.ThermalDesignPower
         FROM Components c
         INNER JOIN CPUComponents cpu ON c.Id = cpu.Id
         WHERE c.Type = 'CPU'
@@ -452,17 +389,12 @@ def load_cpus(db: DatabaseConnection) -> List[CPUComponent]:
         cpu = CPUComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "CPU",
-            series=row[5],
-            microarchitecture=row[6],
-            core_family=row[7],
-            socket_type=row[8],
-            core_total=row[9],
-            threads_amount=row[10],
-            thermal_design_power=Decimal(str(row[11])) if row[11] is not None else None,
-            memory_type=row[12],
+            type=row[2] or "CPU",
+            series=row[3],
+            microarchitecture=row[4],
+            core_family=row[5],
+            socket_type=row[6],
+            thermal_design_power=Decimal(str(row[7])) if row[7] is not None else None,
         )
         cpu.subcomponents = load_subcomponents_for_component(db, cpu.id)
         cpus.append(cpu)
@@ -477,10 +409,9 @@ def load_motherboards(db: DatabaseConnection) -> List[MotherboardComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
+            c.Id, c.Name, c.Type,
             mb.SocketType, mb.FormFactor, mb.ChipsetType, mb.RAMType,
-            mb.RAMSlotsAmount, mb.MaxRAMAmount, mb.CPUFanHeaderAmount,
-            mb.CaseFanHeaderAmount, mb.PumpHeaderAmount
+            mb.RAMSlotsAmount, mb.MaxRAMAmount, mb.CaseFanHeaderAmount
         FROM Components c
         INNER JOIN MotherboardComponents mb ON c.Id = mb.Id
         WHERE c.Type = 'MOTHERBOARD'
@@ -491,7 +422,7 @@ def load_motherboards(db: DatabaseConnection) -> List[MotherboardComponent]:
     
     for row in rows:
         # Parse RAMSlotsAmount - it might be stored as a string
-        ram_slots = row[9]
+        ram_slots = row[7]
         if isinstance(ram_slots, str):
             try:
                 ram_slots = int(ram_slots)
@@ -501,18 +432,14 @@ def load_motherboards(db: DatabaseConnection) -> List[MotherboardComponent]:
         mb = MotherboardComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "MOTHERBOARD",
-            socket_type=row[5],
-            form_factor=row[6],
-            chipset_type=row[7],
-            ram_type=row[8],
+            type=row[2] or "MOTHERBOARD",
+            socket_type=row[3],
+            form_factor=row[4],
+            chipset_type=row[5],
+            ram_type=row[6],
             ram_slots_amount=ram_slots,
-            max_ram_amount=row[10],
-            cpu_fan_header_amount=row[11],
-            case_fan_header_amount=row[12],
-            pump_header_amount=row[13],
+            max_ram_amount=row[8],
+            case_fan_header_amount=row[9],
         )
         mb.subcomponents = load_subcomponents_for_component(db, mb.id)
         motherboards.append(mb)
@@ -527,11 +454,9 @@ def load_cases(db: DatabaseConnection) -> List[CaseComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
+            c.Id, c.Name, c.Type,
             cs.FormFactor, cs.MaxVideoCardLength, cs.MaxCPUCoolerHeight,
-            cs.ExpansionSlotAmount, cs.Dimensions_Depth, cs.Dimensions_Height,
-            cs.Dimensions_Width, cs.PowerSupplyAmount, cs.Internal35BayAmount,
-            cs.Internal25BayAmount
+            cs.ExpansionSlotAmount, cs.Dimensions_Depth, cs.Dimensions_Height
         FROM Components c
         INNER JOIN CaseComponents cs ON c.Id = cs.Id
         WHERE c.Type = 'CASE'
@@ -544,19 +469,13 @@ def load_cases(db: DatabaseConnection) -> List[CaseComponent]:
         case = CaseComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "CASE",
-            form_factor=row[5],
-            max_video_card_length=Decimal(str(row[6])) if row[6] is not None else None,
-            max_cpu_cooler_height=Decimal(str(row[7])) if row[7] is not None else None,
-            expansion_slot_amount=row[8],
-            dimensions_depth=Decimal(str(row[9])) if row[9] is not None else None,
-            dimensions_height=Decimal(str(row[10])) if row[10] is not None else None,
-            dimensions_width=Decimal(str(row[11])) if row[11] is not None else None,
-            power_supply_amount=Decimal(str(row[12])) if row[12] is not None else None,
-            internal_35_bay_amount=row[13],
-            internal_25_bay_amount=row[14],
+            type=row[2] or "CASE",
+            form_factor=row[3],
+            max_video_card_length=Decimal(str(row[4])) if row[4] is not None else None,
+            max_cpu_cooler_height=Decimal(str(row[5])) if row[5] is not None else None,
+            expansion_slot_amount=row[6],
+            dimensions_depth=Decimal(str(row[7])) if row[7] is not None else None,
+            dimensions_height=Decimal(str(row[8])) if row[8] is not None else None,
         )
         case.subcomponents = load_subcomponents_for_component(db, case.id)
         cases.append(case)
@@ -571,9 +490,9 @@ def load_gpus(db: DatabaseConnection) -> List[GPUComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            gpu.Chipset, gpu.VideoMemoryAmount, gpu.ThermalDesignPower,
-            gpu.Length, gpu.CaseExpansionSlotWidth, gpu.TotalSlotAmount
+            c.Id, c.Name, c.Type,
+            gpu.ThermalDesignPower, gpu.Length, 
+            gpu.CaseExpansionSlotWidth, gpu.TotalSlotAmount
         FROM Components c
         INNER JOIN GPUComponents gpu ON c.Id = gpu.Id
         WHERE c.Type = 'GPU'
@@ -586,15 +505,11 @@ def load_gpus(db: DatabaseConnection) -> List[GPUComponent]:
         gpu = GPUComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "GPU",
-            chipset=row[5],
-            video_memory_amount=Decimal(str(row[6])) if row[6] is not None else None,
-            thermal_design_power=Decimal(str(row[7])) if row[7] is not None else None,
-            length=Decimal(str(row[8])) if row[8] is not None else None,
-            case_expansion_slot_width=row[9],
-            total_slot_amount=row[10],
+            type=row[2] or "GPU",
+            thermal_design_power=Decimal(str(row[3])) if row[3] is not None else None,
+            length=Decimal(str(row[4])) if row[4] is not None else None,
+            case_expansion_slot_width=row[5],
+            total_slot_amount=row[6],
         )
         gpu.subcomponents = load_subcomponents_for_component(db, gpu.id)
         gpus.append(gpu)
@@ -609,8 +524,8 @@ def load_memory(db: DatabaseConnection) -> List[MemoryComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            mem.Speed, mem.RAMType, mem.Capacity, mem.ModuleQuantity, mem.ModuleCapacity
+            c.Id, c.Name, c.Type,
+            mem.RAMType, mem.Capacity, mem.ModuleQuantity
         FROM Components c
         INNER JOIN MemoryComponents mem ON c.Id = mem.Id
         WHERE c.Type = 'MEMORY'
@@ -623,14 +538,10 @@ def load_memory(db: DatabaseConnection) -> List[MemoryComponent]:
         memory = MemoryComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "MEMORY",
-            speed=Decimal(str(row[5])) if row[5] is not None else None,
-            ram_type=row[6],
-            capacity=Decimal(str(row[7])) if row[7] is not None else None,
-            module_quantity=row[8],
-            module_capacity=Decimal(str(row[9])) if row[9] is not None else None,
+            type=row[2] or "MEMORY",
+            ram_type=row[3],
+            capacity=Decimal(str(row[4])) if row[4] is not None else None,
+            module_quantity=row[5],
         )
         memory.subcomponents = load_subcomponents_for_component(db, memory.id)
         memories.append(memory)
@@ -645,8 +556,8 @@ def load_storage(db: DatabaseConnection) -> List[StorageComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            st.Series, st.Capacity, st.DriveType, st.FormFactor, st.Interface, st.HasNVMe
+            c.Id, c.Name, c.Type,
+            st.FormFactor
         FROM Components c
         INNER JOIN StorageComponents st ON c.Id = st.Id
         WHERE c.Type = 'STORAGE'
@@ -659,15 +570,8 @@ def load_storage(db: DatabaseConnection) -> List[StorageComponent]:
         storage = StorageComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "STORAGE",
-            series=row[5],
-            capacity=Decimal(str(row[6])) if row[6] is not None else None,
-            drive_type=row[7],
-            form_factor=row[8],
-            interface=row[9],
-            has_nvme=row[10],
+            type=row[2] or "STORAGE",
+            form_factor=row[3],
         )
         storage.subcomponents = load_subcomponents_for_component(db, storage.id)
         storages.append(storage)
@@ -682,8 +586,8 @@ def load_power_supplies(db: DatabaseConnection) -> List[PowerSupplyComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            psu.PowerOutput, psu.FormFactor, psu.ModularityType, psu.Length, psu.IsFanless
+            c.Id, c.Name, c.Type,
+            psu.PowerOutput, psu.FormFactor, psu.Length
         FROM Components c
         INNER JOIN PowerSupplyComponents psu ON c.Id = psu.Id
         WHERE c.Type = 'POWER_SUPPLY'
@@ -696,14 +600,10 @@ def load_power_supplies(db: DatabaseConnection) -> List[PowerSupplyComponent]:
         psu = PowerSupplyComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "POWER_SUPPLY",
-            power_output=Decimal(str(row[5])) if row[5] is not None else None,
-            form_factor=row[6],
-            modularity_type=row[7],
-            length=Decimal(str(row[8])) if row[8] is not None else None,
-            is_fanless=row[9],
+            type=row[2] or "POWER_SUPPLY",
+            power_output=Decimal(str(row[3])) if row[3] is not None else None,
+            form_factor=row[4],
+            length=Decimal(str(row[5])) if row[5] is not None else None,
         )
         psu.subcomponents = load_subcomponents_for_component(db, psu.id)
         psus.append(psu)
@@ -718,9 +618,8 @@ def load_coolers(db: DatabaseConnection) -> List[CoolerComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            cl.Height, cl.IsWaterCooled, cl.RadiatorSize, cl.CanOperateFanless,
-            cl.FanSize, cl.FanQuantity
+            c.Id, c.Name, c.Type,
+            cl.Height, cl.IsWaterCooled, cl.RadiatorSize, cl.FanQuantity
         FROM Components c
         INNER JOIN CoolerComponents cl ON c.Id = cl.Id
         WHERE c.Type = 'COOLER'
@@ -733,15 +632,11 @@ def load_coolers(db: DatabaseConnection) -> List[CoolerComponent]:
         cooler = CoolerComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "COOLER",
-            height=Decimal(str(row[5])) if row[5] is not None else None,
-            is_water_cooled=row[6],
-            radiator_size=Decimal(str(row[7])) if row[7] is not None else None,
-            can_operate_fanless=row[8],
-            fan_size=Decimal(str(row[9])) if row[9] is not None else None,
-            fan_quantity=row[10],
+            type=row[2] or "COOLER",
+            height=Decimal(str(row[3])) if row[3] is not None else None,
+            is_water_cooled=row[4],
+            radiator_size=Decimal(str(row[5])) if row[5] is not None else None,
+            fan_quantity=row[6],
         )
         cooler.subcomponents = load_subcomponents_for_component(db, cooler.id)
         coolers.append(cooler)
@@ -756,8 +651,8 @@ def load_case_fans(db: DatabaseConnection) -> List[CaseFanComponent]:
     
     query = """
         SELECT 
-            c.Id, c.Name, c.Manufacturer, c.Release, c.Type,
-            cf.Size, cf.Quantity
+            c.Id, c.Name, c.Type,
+            cf.Quantity
         FROM Components c
         INNER JOIN CaseFanComponents cf ON c.Id = cf.Id
         WHERE c.Type = 'CASE_FAN'
@@ -770,17 +665,40 @@ def load_case_fans(db: DatabaseConnection) -> List[CaseFanComponent]:
         case_fan = CaseFanComponent(
             id=str(row[0]),
             name=row[1] or "",
-            manufacturer=row[2] or "",
-            release=row[3],
-            type=row[4] or "CASE_FAN",
-            size=Decimal(str(row[5])) if row[5] is not None else None,
-            quantity=row[6],
+            type=row[2] or "CASE_FAN",
+            quantity=row[3],
         )
         case_fan.subcomponents = load_subcomponents_for_component(db, case_fan.id)
         case_fans.append(case_fan)
     
     logger.info(f"Loaded {len(case_fans)} Case Fan components")
     return case_fans
+
+def load_monitors(db: DatabaseConnection) -> List[MonitorComponent]:
+    """Load all monitor components from the database."""
+    monitors = []
+    
+    query = """
+        SELECT 
+            c.Id, c.Name, c.Type
+        FROM Components c
+        WHERE c.Type = 'MONITOR'
+    """
+    
+    db.execute(query)
+    rows = db.fetchall()
+    
+    for row in rows:
+        monitor = MonitorComponent(
+            id=str(row[0]),
+            name=row[1] or "",
+            type=row[2] or "CASE_FAN",
+        )
+        monitor.subcomponents = load_subcomponents_for_component(db, monitor.id)
+        monitors.append(monitor)
+    
+    logger.info(f"Loaded {len(monitors)} Monitor components")
+    return monitors
 
 
 def load_existing_compatibilities(db: DatabaseConnection) -> Set[Tuple[str, str]]:
@@ -1464,6 +1382,7 @@ def generate_all_compatibilities(
     psus: List[PowerSupplyComponent],
     coolers: List[CoolerComponent],
     case_fans: List[CaseFanComponent],
+    monitors: List[MonitorComponent],
 ) -> List[CompatibilityResult]:
     """
     Generate all compatibility pairs between components.
@@ -1642,6 +1561,64 @@ def generate_all_compatibilities(
     logger.info(f"Total checks performed: {total_checks}")
     logger.info(f"Total compatible pairs found: {len(compatible_pairs)}")
     
+    # Cooler <-> Motherboard (always compatible)
+    logger.info("Checking Cooler <-> Motherboard compatibilities (always compatible)...")
+    cooler_mb_count = 0
+    for cooler in coolers:
+        for mb in motherboards:
+            cooler_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(cooler.id, mb.id, True, reason))
+            compatible_pairs.append(CompatibilityResult(mb.id, cooler.id, True, reason))
+    compatible_count += cooler_mb_count
+    logger.info(f"  Cooler <-> Motherboard: {cooler_mb_count} compatible pairs found")
+    
+    # GPU <-> Motherboard (always compatible)
+    logger.info("Adding GPU <-> Motherboard compatibilities (always compatible)...")
+    gpu_mb_count = 0
+    for gpu in gpus:
+        for mb in motherboards:
+            gpu_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(gpu.id, mb.id, True, "Always compatible"))
+            compatible_pairs.append(CompatibilityResult(mb.id, gpu.id, True, "Always compatible"))
+    compatible_count += gpu_mb_count
+    logger.info(f"  GPU <-> Motherboard: {gpu_mb_count} compatible pairs added")
+    
+    # PSU <-> Motherboard (always compatible)
+    logger.info("Adding PSU <-> Motherboard compatibilities (always compatible)...")
+    psu_mb_count = 0
+    for psu in psus:
+        for mb in motherboards:
+            psu_mb_count += 1
+            compatible_pairs.append(CompatibilityResult(psu.id, mb.id, True, "Always compatible"))
+            compatible_pairs.append(CompatibilityResult(mb.id, psu.id, True, "Always compatible"))
+    compatible_count += psu_mb_count
+    logger.info(f"  PSU <-> Motherboard: {psu_mb_count} compatible pairs added")
+    
+    # Case Fan <-> Case (always compatible)
+    logger.info("Adding Case Fan <-> Case compatibilities (always compatible)...")
+    fan_case_count = 0
+    for fan in case_fans:
+        for case in cases:
+            fan_case_count += 1
+            compatible_pairs.append(CompatibilityResult(fan.id, case.id, True, "Always compatible"))
+            compatible_pairs.append(CompatibilityResult(case.id, fan.id, True, "Always compatible"))
+    compatible_count += fan_case_count
+    logger.info(f"  Case Fan <-> Case: {fan_case_count} compatible pairs added")
+    
+    # Monitor <-> GPU (always compatible)
+    logger.info("Adding Monitor <-> GPU compatibilities (always compatible)...")
+    monitor_gpu_count = 0
+    for monitor in monitors:
+        for gpu in gpus:
+            monitor_gpu_count += 1
+            compatible_pairs.append(CompatibilityResult(monitor.id, gpu.id, True, "Always compatible"))
+            compatible_pairs.append(CompatibilityResult(gpu.id, monitor.id, True, "Always compatible"))
+    compatible_count += monitor_gpu_count
+    logger.info(f"  Monitor <-> GPU: {monitor_gpu_count} compatible pairs added")
+    
+    logger.info(f"Total checks performed: {total_checks}")
+    logger.info(f"Total compatible pairs found: {len(compatible_pairs)}")
+    
     return compatible_pairs
 
 
@@ -1747,10 +1724,11 @@ def get_all_component_ids(
     psus: List[PowerSupplyComponent],
     coolers: List[CoolerComponent],
     case_fans: List[CaseFanComponent],
+    monitors: List[MonitorComponent],
 ) -> Set[str]:
     """Get all component IDs from the loaded components."""
     ids = set()
-    for component_list in [cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans]:
+    for component_list in [cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans, monitors]:
         for component in component_list:
             ids.add(component.id)
     return ids
@@ -1829,10 +1807,12 @@ def main() -> int:
         psus = load_power_supplies(db)
         coolers = load_coolers(db)
         case_fans = load_case_fans(db)
+        monitors = load_monitors(db)
         
         total_components = (
             len(cpus) + len(motherboards) + len(cases) + len(gpus) +
-            len(memories) + len(storages) + len(psus) + len(coolers) + len(case_fans)
+            len(memories) + len(storages) + len(psus) + len(coolers) +
+            len(case_fans) + len(monitors)
         )
         logger.info(f"Total components loaded: {total_components}")
         
@@ -1843,7 +1823,7 @@ def main() -> int:
         # Generate compatibility pairs
         logger.info("Generating compatibility pairs...")
         compatible_pairs = generate_all_compatibilities(
-            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans
+            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans, monitors
         )
         
         if args.dry_run:
@@ -1853,7 +1833,7 @@ def main() -> int:
         
         # Get all component IDs for deletion
         all_component_ids = get_all_component_ids(
-            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans
+            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans, monitors
         )
         
         # Delete existing compatibilities
@@ -1878,6 +1858,7 @@ def main() -> int:
         logger.info(f"  - Power Supplies: {len(psus)}")
         logger.info(f"  - Coolers: {len(coolers)}")
         logger.info(f"  - Case Fans: {len(case_fans)}")
+        logger.info(f"  - Monitors: {len(monitors)}")
         logger.info(f"Compatibility records deleted: {deleted_count}")
         logger.info(f"Compatibility records inserted: {inserted_count}")
         logger.info("=" * 70)
