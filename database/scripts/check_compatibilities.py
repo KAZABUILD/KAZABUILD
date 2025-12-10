@@ -88,8 +88,6 @@ class BaseComponent:
     """Base component with common fields."""
     id: str
     name: str
-    manufacturer: str
-    release: Optional[dt.datetime]
     type: str
     subcomponents: List[SubComponent] = field(default_factory=list)
 
