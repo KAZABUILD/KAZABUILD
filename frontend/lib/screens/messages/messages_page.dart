@@ -61,368 +61,471 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
     final authState = ref.watch(authProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: CustomDrawer(showProfileArea: true),
-      body: Column(
-        children: [
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            child: authState.when(
-              data: (user) {
-                if (user == null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Please log in to view messages',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 700;
+        final maxContentWidth = isMobile ? double.infinity : 1600.0;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          drawer: CustomDrawer(showProfileArea: true),
+          body: Column(
+            children: [
+              CustomNavigationBar(scaffoldKey: _scaffoldKey),
+              Expanded(
+                child: authState.when(
+                  data: (user) {
+                    if (user == null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Please log in to view messages',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () => context.go('/login'),
+                              child: const Text('Go to Login'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () => context.go('/login'),
-                          child: const Text('Go to Login'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                // Fetch both sent and received messages to show all conversations
-                final sentMessagesParams = MessagesParams(
-                  senderId: user.uid,
-                  sortDirection: 'desc',
-                  orderBy: 'SentAt',
-                  pageSize: 1000, // Get all messages to group conversations
-                );
+                    final sentMessagesParams = MessagesParams(
+                      senderId: user.uid,
+                      sortDirection: 'desc',
+                      orderBy: 'SentAt',
+                      pageSize: 1000,
+                    );
 
-                final receivedMessagesParams = MessagesParams(
-                  receiverId: user.uid,
-                  sortDirection: 'desc',
-                  orderBy: 'SentAt',
-                  pageSize: 1000, // Get all messages to group conversations
-                );
+                    final receivedMessagesParams = MessagesParams(
+                      receiverId: user.uid,
+                      sortDirection: 'desc',
+                      orderBy: 'SentAt',
+                      pageSize: 1000,
+                    );
 
-                final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
-                final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
+                    final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
+                    final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
 
-                return sentMessagesAsync.when(
-                  data: (sentMessages) {
-                    return receivedMessagesAsync.when(
-                      data: (receivedMessages) {
-                        // Combine both sent and received messages
-                        final allMessages = [...sentMessages, ...receivedMessages];
-                        
-                        // Filter by search query if provided
-                        final filteredMessages = _searchQuery.isNotEmpty
-                            ? allMessages.where((m) => 
-                                m.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                (m.title != null && m.title!.toLowerCase().contains(_searchQuery.toLowerCase()))
-                              ).toList()
-                            : allMessages;
-                        
-                        // Group messages into conversations
-                        // For sent messages: otherUserId = receiverId
-                        // For received messages: otherUserId = senderId
-                        final conversations = <String, Conversation>{};
-                        final unreadCounts = <String, int>{};
-                        
-                        for (final message in filteredMessages) {
-                          // Determine the other user ID based on whether current user is sender or receiver
-                          final otherUserId = message.senderId == user.uid 
-                              ? message.receiverId 
-                              : message.senderId;
-                          
-                          // Count unread messages where current user is receiver
-                          if (message.receiverId == user.uid && !message.isRead) {
-                            unreadCounts[otherUserId] = (unreadCounts[otherUserId] ?? 0) + 1;
-                          }
-                          
-                          if (!conversations.containsKey(otherUserId)) {
-                            conversations[otherUserId] = Conversation(
-                              otherUserId: otherUserId,
-                              otherUser: null, // Will be fetched separately
-                              lastMessage: message,
-                              unreadCount: unreadCounts[otherUserId] ?? 0,
-                            );
-                          } else {
-                            final conversation = conversations[otherUserId]!;
-                            if (conversation.lastMessage == null ||
-                                message.createdAt.isAfter(conversation.lastMessage!.createdAt)) {
-                              conversations[otherUserId] = Conversation(
-                                otherUserId: otherUserId,
-                                otherUser: conversation.otherUser,
-                                lastMessage: message,
-                                unreadCount: unreadCounts[otherUserId] ?? 0,
-                              );
+                    return sentMessagesAsync.when(
+                      data: (sentMessages) {
+                        return receivedMessagesAsync.when(
+                          data: (receivedMessages) {
+                            final allMessages = [...sentMessages, ...receivedMessages];
+
+                            final filteredMessages = _searchQuery.isNotEmpty
+                                ? allMessages.where((m) =>
+                                    m.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                    (m.title != null &&
+                                        m.title!.toLowerCase().contains(_searchQuery.toLowerCase()))).toList()
+                                : allMessages;
+
+                            final conversations = <String, Conversation>{};
+                            final unreadCounts = <String, int>{};
+
+                            for (final message in filteredMessages) {
+                              final otherUserId =
+                                  message.senderId == user.uid ? message.receiverId : message.senderId;
+
+                              if (message.receiverId == user.uid && !message.isRead) {
+                                unreadCounts[otherUserId] = (unreadCounts[otherUserId] ?? 0) + 1;
+                              }
+
+                              if (!conversations.containsKey(otherUserId)) {
+                                conversations[otherUserId] = Conversation(
+                                  otherUserId: otherUserId,
+                                  otherUser: null,
+                                  lastMessage: message,
+                                  unreadCount: unreadCounts[otherUserId] ?? 0,
+                                );
+                              } else {
+                                final conversation = conversations[otherUserId]!;
+                                if (conversation.lastMessage == null ||
+                                    message.createdAt.isAfter(conversation.lastMessage!.createdAt)) {
+                                  conversations[otherUserId] = Conversation(
+                                    otherUserId: otherUserId,
+                                    otherUser: conversation.otherUser,
+                                    lastMessage: message,
+                                    unreadCount: unreadCounts[otherUserId] ?? 0,
+                                  );
+                                }
+                              }
                             }
-                          }
-                        }
-                        
-                        final conversationList = conversations.values.toList();
 
-                        // Sort by last message time (newest first)
-                        conversationList.sort((a, b) {
-                          if (a.lastMessage == null && b.lastMessage == null) return 0;
-                          if (a.lastMessage == null) return 1;
-                          if (b.lastMessage == null) return -1;
-                          return b.lastMessage!.createdAt
-                              .compareTo(a.lastMessage!.createdAt);
-                        });
+                            final conversationList = conversations.values.toList();
+                            conversationList.sort((a, b) {
+                              if (a.lastMessage == null && b.lastMessage == null) return 0;
+                              if (a.lastMessage == null) return 1;
+                              if (b.lastMessage == null) return -1;
+                              return b.lastMessage!.createdAt.compareTo(a.lastMessage!.createdAt);
+                            });
 
-                        return Column(
-                      children: [
-                        // Header
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.message, color: colorScheme.primary),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Messages',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              const Spacer(),
-                              // New Message button
-                              IconButton(
-                                icon: const Icon(Icons.add),
-                                tooltip: 'New Message',
-                                onPressed: () {
-                                  _showNewMessageDialog(context, ref, user.uid);
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              // Search bar
-                              SizedBox(
-                                width: 300,
-                                child: TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Search messages...',
-                                    prefixIcon: const Icon(Icons.search),
-                                    suffixIcon: _searchQuery.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear),
-                                            onPressed: () {
-                                              setState(() {
-                                                _searchQuery = '';
-                                                _searchController.clear();
-                                              });
-                                            },
-                                          )
-                                        : null,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    filled: true,
-                                    fillColor: colorScheme.surfaceContainerHighest,
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _searchQuery = value;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                          // Messages list
-                          Expanded(
-                            child: conversationList.isEmpty
-                                ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.inbox_outlined,
-                                        size: 64,
-                                        color: colorScheme.onSurface.withValues(alpha: 0.3),
+                            return Column(
+                              children: [
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                                    child: Container(
+                                      padding: EdgeInsets.all(isMobile ? 12 : 16),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.surface,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.05),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No messages yet',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Start a conversation by messaging another user',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      ElevatedButton.icon(
-                                        icon: const Icon(Icons.add),
-                                        label: const Text('New Message'),
-                                        onPressed: () {
-                                          _showNewMessageDialog(context, ref, user.uid);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.all(16),
-                                    itemCount: conversationList.length,
-                                    itemBuilder: (context, index) {
-                                      final conversation = conversationList[index];
-                                      final lastMessage = conversation.lastMessage;
-                                      
-                                      // Fetch user info for this conversation
-                                      final otherUserAsync = ref.watch(
-                                        conversationUserProvider(conversation.otherUserId),
-                                      );
-                                      
-                                      return otherUserAsync.when(
-                                        data: (otherUser) {
-                                          final displayUser = otherUser ?? conversation.otherUser;
-
-                                          return Card(
-                                            margin: const EdgeInsets.only(bottom: 12),
-                                            elevation: 2,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: ListTile(
-                                              contentPadding: const EdgeInsets.all(16),
-                                              leading: CircleAvatar(
-                                                radius: 28,
-                                                backgroundImage: displayUser?.photoURL != null &&
-                                                        UserImageUtils.getUserImageUrl(
-                                                                displayUser?.photoURL) != null
-                                                    ? NetworkImage(UserImageUtils.getUserImageUrl(
-                                                            displayUser?.photoURL)!)
-                                                    : null,
-                                                child: displayUser?.photoURL == null ||
-                                                        UserImageUtils.getUserImageUrl(
-                                                                displayUser?.photoURL) == null
-                                                    ? Text(
-                                                        (displayUser?.displayName ?? 'U')
-                                                            .substring(0, 1)
-                                                            .toUpperCase(),
-                                                        style: const TextStyle(fontSize: 20),
-                                                      )
-                                                    : null,
-                                              ),
-                                              title: Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      displayUser?.displayName ?? 'Unknown User',
+                                      child: isMobile
+                                          ? Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.message, color: colorScheme.primary),
+                                                    const SizedBox(width: 10),
+                                                    Text(
+                                                      'Messages',
                                                       style: TextStyle(
-                                                        fontWeight: conversation.unreadCount > 0
-                                                            ? FontWeight.bold
-                                                            : FontWeight.normal,
-                                                        fontSize: 16,
+                                                        fontSize: 20,
+                                                        fontWeight: FontWeight.bold,
                                                         color: colorScheme.onSurface,
                                                       ),
                                                     ),
-                                                  ),
-                                                  if (conversation.unreadCount > 0)
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: colorScheme.primary,
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                      child: Text(
-                                                        '${conversation.unreadCount}',
-                                                        style: TextStyle(
-                                                          color: colorScheme.onPrimary,
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                              subtitle: Padding(
-                                                padding: const EdgeInsets.only(top: 8),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      lastMessage?.content ?? 'No messages',
-                                                      maxLines: 2,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        color: conversation.unreadCount > 0
-                                                            ? colorScheme.onSurface
-                                                            : colorScheme.onSurface.withValues(alpha: 0.7),
-                                                        fontWeight: conversation.unreadCount > 0
-                                                            ? FontWeight.w500
-                                                            : FontWeight.normal,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      lastMessage != null
-                                                          ? _formatMessageTime(lastMessage.createdAt)
-                                                          : '',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                                      ),
+                                                    const Spacer(),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.add),
+                                                      tooltip: 'New Message',
+                                                      onPressed: () {
+                                                        _showNewMessageDialog(context, ref, user.uid);
+                                                      },
                                                     ),
                                                   ],
                                                 ),
+                                                const SizedBox(height: 12),
+                                                TextField(
+                                                  controller: _searchController,
+                                                  decoration: InputDecoration(
+                                                    hintText: 'Search messages...',
+                                                    prefixIcon: const Icon(Icons.search),
+                                                    suffixIcon: _searchQuery.isNotEmpty
+                                                        ? IconButton(
+                                                            icon: const Icon(Icons.clear),
+                                                            onPressed: () {
+                                                              setState(() {
+                                                                _searchQuery = '';
+                                                                _searchController.clear();
+                                                              });
+                                                            },
+                                                          )
+                                                        : null,
+                                                    border: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10),
+                                                    ),
+                                                    filled: true,
+                                                    fillColor: colorScheme.surfaceContainerHighest,
+                                                  ),
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      _searchQuery = value;
+                                                    });
+                                                  },
+                                                ),
+                                              ],
+                                            )
+                                          : Row(
+                                              children: [
+                                                Icon(Icons.message, color: colorScheme.primary),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  'Messages',
+                                                  style: TextStyle(
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorScheme.onSurface,
+                                                  ),
+                                                ),
+                                                const Spacer(),
+                                                IconButton(
+                                                  icon: const Icon(Icons.add),
+                                                  tooltip: 'New Message',
+                                                  onPressed: () {
+                                                    _showNewMessageDialog(context, ref, user.uid);
+                                                  },
+                                                ),
+                                                const SizedBox(width: 8),
+                                                SizedBox(
+                                                  width: 320,
+                                                  child: TextField(
+                                                    controller: _searchController,
+                                                    decoration: InputDecoration(
+                                                      hintText: 'Search messages...',
+                                                      prefixIcon: const Icon(Icons.search),
+                                                      suffixIcon: _searchQuery.isNotEmpty
+                                                          ? IconButton(
+                                                              icon: const Icon(Icons.clear),
+                                                              onPressed: () {
+                                                                setState(() {
+                                                                  _searchQuery = '';
+                                                                  _searchController.clear();
+                                                                });
+                                                              },
+                                                            )
+                                                          : null,
+                                                      border: OutlineInputBorder(
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      filled: true,
+                                                      fillColor: colorScheme.surfaceContainerHighest,
+                                                    ),
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        _searchQuery = value;
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(maxWidth: maxContentWidth),
+                                      child: conversationList.isEmpty
+                                          ? Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.inbox_outlined,
+                                                    size: 64,
+                                                    color: colorScheme.onSurface.withValues(alpha: 0.3),
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  Text(
+                                                    'No messages yet',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'Start a conversation by messaging another user',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 24),
+                                                  ElevatedButton.icon(
+                                                    icon: const Icon(Icons.add),
+                                                    label: const Text('New Message'),
+                                                    onPressed: () {
+                                                      _showNewMessageDialog(context, ref, user.uid);
+                                                    },
+                                                  ),
+                                                ],
                                               ),
-                                              onTap: () {
-                                                context.push(
-                                                  '/messages/${conversation.otherUserId}',
+                                            )
+                                          : ListView.builder(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isMobile ? 12 : 16,
+                                                vertical: isMobile ? 12 : 16,
+                                              ),
+                                              itemCount: conversationList.length,
+                                              itemBuilder: (context, index) {
+                                                final conversation = conversationList[index];
+                                                final lastMessage = conversation.lastMessage;
+
+                                                final otherUserAsync =
+                                                    ref.watch(conversationUserProvider(conversation.otherUserId));
+
+                                                return otherUserAsync.when(
+                                                  data: (otherUser) {
+                                                    final displayUser = otherUser ?? conversation.otherUser;
+
+                                                    return Card(
+                                                      margin: const EdgeInsets.only(bottom: 12),
+                                                      elevation: 2,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: ListTile(
+                                                        contentPadding:
+                                                            EdgeInsets.all(isMobile ? 12 : 16),
+                                                        leading: CircleAvatar(
+                                                          radius: isMobile ? 22 : 28,
+                                                          backgroundImage: displayUser?.photoURL != null &&
+                                                                  UserImageUtils.getUserImageUrl(
+                                                                          displayUser?.photoURL) !=
+                                                                      null
+                                                              ? NetworkImage(UserImageUtils.getUserImageUrl(
+                                                                  displayUser?.photoURL)!)
+                                                              : null,
+                                                          child: displayUser?.photoURL == null ||
+                                                                  UserImageUtils.getUserImageUrl(
+                                                                          displayUser?.photoURL) ==
+                                                                      null
+                                                              ? Text(
+                                                                  (displayUser?.displayName ?? 'U')
+                                                                      .substring(0, 1)
+                                                                      .toUpperCase(),
+                                                                  style:
+                                                                      TextStyle(fontSize: isMobile ? 18 : 20),
+                                                                )
+                                                              : null,
+                                                        ),
+                                                        title: Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                displayUser?.displayName ?? 'Unknown User',
+                                                                style: TextStyle(
+                                                                  fontWeight: conversation.unreadCount > 0
+                                                                      ? FontWeight.bold
+                                                                      : FontWeight.normal,
+                                                                  fontSize: isMobile ? 15 : 16,
+                                                                  color: colorScheme.onSurface,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                            ),
+                                                            if (conversation.unreadCount > 0)
+                                                              Container(
+                                                                padding: const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                  vertical: 4,
+                                                                ),
+                                                                decoration: BoxDecoration(
+                                                                  color: colorScheme.primary,
+                                                                  borderRadius: BorderRadius.circular(12),
+                                                                ),
+                                                                child: Text(
+                                                                  '${conversation.unreadCount}',
+                                                                  style: TextStyle(
+                                                                    color: colorScheme.onPrimary,
+                                                                    fontWeight: FontWeight.bold,
+                                                                    fontSize: 12,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                          ],
+                                                        ),
+                                                        subtitle: Padding(
+                                                          padding: EdgeInsets.only(top: isMobile ? 6 : 8),
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                lastMessage?.content ?? 'No messages',
+                                                                maxLines: 2,
+                                                                overflow: TextOverflow.ellipsis,
+                                                                style: TextStyle(
+                                                                  color: conversation.unreadCount > 0
+                                                                      ? colorScheme.onSurface
+                                                                      : colorScheme.onSurface
+                                                                          .withValues(alpha: 0.7),
+                                                                  fontWeight: conversation.unreadCount > 0
+                                                                      ? FontWeight.w500
+                                                                      : FontWeight.normal,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              Text(
+                                                                lastMessage != null
+                                                                    ? _formatMessageTime(lastMessage.createdAt)
+                                                                    : '',
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  color:
+                                                                      colorScheme.onSurface.withValues(alpha: 0.5),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          context.push(
+                                                            '/messages/${conversation.otherUserId}',
+                                                          );
+                                                        },
+                                                      ),
+                                                    );
+                                                  },
+                                                  loading: () => Card(
+                                                    margin: const EdgeInsets.only(bottom: 12),
+                                                    child: ListTile(
+                                                      leading: const CircularProgressIndicator(),
+                                                      title: const Text('Loading user...'),
+                                                    ),
+                                                  ),
+                                                  error: (error, stack) => Card(
+                                                    margin: const EdgeInsets.only(bottom: 12),
+                                                    child: ListTile(
+                                                      leading: const Icon(Icons.error),
+                                                      title: Text(getUserFriendlyError(error)),
+                                                    ),
+                                                  ),
                                                 );
                                               },
                                             ),
-                                          );
-                                        },
-                                        loading: () => Card(
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          child: ListTile(
-                                            leading: const CircularProgressIndicator(),
-                                            title: const Text('Loading user...'),
-                                          ),
-                                        ),
-                                        error: (error, stack) => Card(
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          child: ListTile(
-                                            leading: const Icon(Icons.error),
-                                            title: Text(getUserFriendlyError(error)),
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                    ),
                                   ),
+                                ),
+                              ],
+                            );
+                          },
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (error, stack) => Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Error loading received messages',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  getUserFriendlyError(error),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    ref.invalidate(messagesProvider(sentMessagesParams));
+                                    ref.invalidate(messagesProvider(receivedMessagesParams));
+                                  },
+                                  child: const Text('Retry'),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
@@ -433,7 +536,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                             const Icon(Icons.error_outline, size: 64, color: Colors.red),
                             const SizedBox(height: 16),
                             Text(
-                              'Error loading received messages',
+                              'Error loading sent messages',
                               style: TextStyle(
                                 fontSize: 18,
                                 color: colorScheme.onSurface,
@@ -463,48 +566,14 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading sent messages',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          getUserFriendlyError(error),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            ref.invalidate(messagesProvider(sentMessagesParams));
-                            ref.invalidate(messagesProvider(receivedMessagesParams));
-                          },
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
+                    child: Text(getUserFriendlyError(error)),
                   ),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text(getUserFriendlyError(error)),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

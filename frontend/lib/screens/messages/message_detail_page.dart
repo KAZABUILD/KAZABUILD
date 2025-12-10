@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/models/message_model.dart';
@@ -55,6 +56,26 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
+
+  void _copyToClipboard(String text) {
+    if (text.trim().isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copied to clipboard')),
+      );
+    }
+  }
+
+  void _copyImageUrlToClipboard(String url) {
+    if (url.trim().isEmpty) return;
+    Clipboard.setData(ClipboardData(text: url));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image link copied to clipboard')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -278,420 +299,444 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final otherUserAsync = ref.watch(conversationUserProvider(widget.otherUserId));
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: CustomDrawer(showProfileArea: true),
-      body: Column(
-        children: [
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            child: authState.when(
-              data: (currentUser) {
-                if (currentUser == null) {
-                  return const Center(child: Text('Please log in to view messages'));
-                }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 700;
+        final maxContentWidth = isMobile ? double.infinity : 1600.0;
 
-                return otherUserAsync.when(
-                  data: (otherUser) {
-                    // Fetch both sent and received messages for this conversation
-                    final sentMessagesParams = MessagesParams(
-                      senderId: currentUser.uid,
-                      receiverId: widget.otherUserId, // Messages sent by current user to other user
-                      sortDirection: 'asc',
-                      orderBy: 'SentAt',
-                      pageSize: 1000,
-                    );
+        return Scaffold(
+          key: _scaffoldKey,
+          drawer: CustomDrawer(showProfileArea: true),
+          body: Column(
+            children: [
+              CustomNavigationBar(scaffoldKey: _scaffoldKey),
+              Expanded(
+                child: authState.when(
+                  data: (currentUser) {
+                    if (currentUser == null) {
+                      return const Center(child: Text('Please log in to view messages'));
+                    }
 
-                    final receivedMessagesParams = MessagesParams(
-                      senderId: widget.otherUserId, // Messages sent by other user
-                      receiverId: currentUser.uid, // to current user
-                      sortDirection: 'asc',
-                      orderBy: 'SentAt',
-                      pageSize: 1000,
-                    );
+                    return otherUserAsync.when(
+                      data: (otherUser) {
+                        final sentMessagesParams = MessagesParams(
+                          senderId: currentUser.uid,
+                          receiverId: widget.otherUserId,
+                          sortDirection: 'asc',
+                          orderBy: 'SentAt',
+                          pageSize: 1000,
+                        );
 
-                    final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
-                    final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
+                        final receivedMessagesParams = MessagesParams(
+                          senderId: widget.otherUserId,
+                          receiverId: currentUser.uid,
+                          sortDirection: 'asc',
+                          orderBy: 'SentAt',
+                          pageSize: 1000,
+                        );
 
-                    return Column(
-                      children: [
-                        // Header with other user info
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back),
-                                onPressed: () => context.pop(),
-                              ),
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundImage: otherUser?.photoURL != null &&
-                                        UserImageUtils.getUserImageUrl(otherUser?.photoURL) != null
-                                    ? NetworkImage(UserImageUtils.getUserImageUrl(
-                                            otherUser?.photoURL)!)
-                                    : null,
-                                child: otherUser?.photoURL == null ||
-                                        UserImageUtils.getUserImageUrl(otherUser?.photoURL) == null
-                                    ? Text(
-                                        (otherUser?.displayName ?? 'U')
-                                            .substring(0, 1)
-                                            .toUpperCase(),
-                                        style: const TextStyle(fontSize: 16),
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      otherUser?.displayName ?? 'Unknown User',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    ),
-                                    if (otherUser?.email != null)
-                                      Text(
-                                        otherUser?.email ?? '',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Messages list
-                        Expanded(
-                          child: sentMessagesAsync.when(
-                            data: (sentMessages) {
-                              return receivedMessagesAsync.when(
-                                data: (receivedMessages) {
-                                  // Combine both sent and received messages
-                                  final allMessages = [...sentMessages, ...receivedMessages];
-                                  allMessages.sort((a, b) =>
-                                      a.createdAt.compareTo(b.createdAt));
+                        final sentMessagesAsync = ref.watch(messagesProvider(sentMessagesParams));
+                        final receivedMessagesAsync = ref.watch(messagesProvider(receivedMessagesParams));
 
-                              if (allMessages.isEmpty) {
-                                return Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.chat_bubble_outline,
-                                        size: 64,
-                                        color: colorScheme.onSurface.withValues(alpha: 0.3),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No messages yet',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Start the conversation!',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                        ),
+                        return Column(
+                          children: [
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMobile ? 12 : 16,
+                                    vertical: isMobile ? 12 : 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
-                                );
-                              }
-
-                              return ListView.builder(
-                                controller: _scrollController,
-                                padding: const EdgeInsets.all(16),
-                                itemCount: allMessages.length,
-                                itemBuilder: (context, index) {
-                                  final message = allMessages[index];
-                                  final isCurrentUser =
-                                      message.senderId == currentUser.uid;
-                                  final showDateSeparator = index == 0 ||
-                                      _isDifferentDay(
-                                          allMessages[index - 1].createdAt,
-                                          message.createdAt);
-
-                                  return Column(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      if (showDateSeparator)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                          child: Text(
-                                            _formatDate(message.createdAt),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: colorScheme.onSurface
-                                                  .withValues(alpha: 0.5),
+                                      IconButton(
+                                        icon: const Icon(Icons.arrow_back),
+                                        onPressed: () => context.pop(),
+                                      ),
+                                      CircleAvatar(
+                                        radius: isMobile ? 18 : 20,
+                                        backgroundImage: otherUser?.photoURL != null &&
+                                                UserImageUtils.getUserImageUrl(otherUser?.photoURL) != null
+                                            ? NetworkImage(
+                                                UserImageUtils.getUserImageUrl(otherUser?.photoURL)!)
+                                            : null,
+                                        child: otherUser?.photoURL == null ||
+                                                UserImageUtils.getUserImageUrl(otherUser?.photoURL) == null
+                                            ? Text(
+                                                (otherUser?.displayName ?? 'U')
+                                                    .substring(0, 1)
+                                                    .toUpperCase(),
+                                                style: TextStyle(fontSize: isMobile ? 14 : 16),
+                                              )
+                                            : null,
+                                      ),
+                                      SizedBox(width: isMobile ? 10 : 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              otherUser?.displayName ?? 'Unknown User',
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 16 : 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorScheme.onSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                        ),
-                                      Align(
-                                        alignment: isCurrentUser
-                                            ? Alignment.centerRight
-                                            : Alignment.centerLeft,
-                                        child: ConstrainedBox(
-                                          constraints: BoxConstraints(
-                                            maxWidth:
-                                                MediaQuery.of(context).size.width * 0.7,
-                                          ),
-                                          child: isCurrentUser
-                                              ? Dismissible(
-                                                  key: Key(message.id),
-                                                  direction: DismissDirection.endToStart,
-                                                  background: Container(
-                                                    alignment: Alignment.centerRight,
-                                                    padding: const EdgeInsets.only(right: 20),
-                                                    margin: const EdgeInsets.only(bottom: 8),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.red,
-                                                      borderRadius: BorderRadius.circular(16),
-                                                    ),
-                                                    child: const Icon(
-                                                      Icons.delete,
-                                                      color: Colors.white,
-                                                      size: 28,
-                                                    ),
-                                                  ),
-                                                  confirmDismiss: (direction) async {
-                                                    // Onay diyaloğu göster
-                                                    final confirmed = await showDialog<bool>(
-                                                      context: context,
-                                                      builder: (context) => AlertDialog(
-                                                        title: const Text('Delete Message'),
-                                                        content: const Text(
-                                                            'Are you sure you want to delete this message? This action cannot be undone.'),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(context, false),
-                                                            child: const Text('Cancel'),
-                                                          ),
-                                                          TextButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(context, true),
-                                                            style: TextButton.styleFrom(
-                                                                foregroundColor: Colors.red),
-                                                            child: const Text('Delete'),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                    
-                                                    if (confirmed == true) {
-                                                      // Silme işlemini başlat (await etmeden devam et)
-                                                      _deleteMessageDirectly(message.id).then((_) {
-                                                        // Provider'lar zaten _deleteMessageDirectly içinde invalidate ediliyor
-                                                      }).catchError((error) {
-                                                        // Hata durumunda kullanıcıya bildir
-                                                        if (mounted) {
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text('Failed to delete message: ${getUserFriendlyError(error)}'),
-                                                              backgroundColor: Colors.red,
-                                                            ),
-                                                          );
-                                                        }
-                                                      });
-                                                      return true; // Widget'ı listeden kaldır
-                                                    }
-                                                    return false; // İptal edildi, widget'ı kaldırma
-                                                  },
-                                                  onDismissed: (direction) {
-                                                    // Widget zaten listeden kaldırıldı
-                                                    // Provider'lar _deleteMessage içinde invalidate ediliyor
-                                                  },
-                                                  child: _buildMessageBubble(
-                                                    message: message,
-                                                    isCurrentUser: isCurrentUser,
-                                                    colorScheme: colorScheme,
-                                                    onTap: () {
-                                                      _showMessageMenu(context, message);
-                                                    },
-                                                  ),
-                                                )
-                                              : _buildMessageBubble(
-                                                  message: message,
-                                                  isCurrentUser: isCurrentUser,
-                                                  colorScheme: colorScheme,
-                                                  onTap: null,
+                                            if (otherUser?.email != null)
+                                              Text(
+                                                otherUser?.email ?? '',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                                                 ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                                },
-                                loading: () =>
-                                    const Center(child: CircularProgressIndicator()),
-                                error: (error, stack) => Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'Error loading received messages',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        getUserFriendlyError(error),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          ref.invalidate(messagesProvider(receivedMessagesParams));
-                                        },
-                                        child: const Text('Retry'),
                                       ),
                                     ],
                                   ),
                                 ),
-                              );
-                            },
-                            loading: () =>
-                                const Center(child: CircularProgressIndicator()),
-                            error: (error, stack) => Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Error loading sent messages',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    getUserFriendlyError(error),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      ref.invalidate(messagesProvider(sentMessagesParams));
-                                      ref.invalidate(messagesProvider(receivedMessagesParams));
-                                    },
-                                    child: const Text('Retry'),
-                                  ),
-                                ],
                               ),
                             ),
-                          ),
-                        ),
-                        // Message input
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, -2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _messageController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Type a message...',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    filled: true,
-                                    fillColor: colorScheme.surfaceContainerHighest,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 12,
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(maxWidth: maxContentWidth),
+                                  child: sentMessagesAsync.when(
+                                    data: (sentMessages) {
+                                      return receivedMessagesAsync.when(
+                                        data: (receivedMessages) {
+                                          final allMessages = [...sentMessages, ...receivedMessages];
+                                          allMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+                                          if (allMessages.isEmpty) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.chat_bubble_outline,
+                                                    size: 64,
+                                                    color: colorScheme.onSurface.withValues(alpha: 0.3),
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  Text(
+                                                    'No messages yet',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'Start the conversation!',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+
+                                          return ListView.builder(
+                                            controller: _scrollController,
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 12 : 16,
+                                              vertical: isMobile ? 12 : 16,
+                                            ),
+                                            itemCount: allMessages.length,
+                                            itemBuilder: (context, index) {
+                                              final message = allMessages[index];
+                                              final isCurrentUser = message.senderId == currentUser.uid;
+                                              final showDateSeparator = index == 0 ||
+                                                  _isDifferentDay(
+                                                    allMessages[index - 1].createdAt,
+                                                    message.createdAt,
+                                                  );
+
+                                              return Column(
+                                                children: [
+                                                  if (showDateSeparator)
+                                                    Padding(
+                                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                                      child: Text(
+                                                        _formatDate(message.createdAt),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  Align(
+                                                    alignment: isCurrentUser
+                                                        ? Alignment.centerRight
+                                                        : Alignment.centerLeft,
+                                                    child: ConstrainedBox(
+                                                      constraints: BoxConstraints(
+                                                        maxWidth: (MediaQuery.of(context).size.width *
+                                                            (isMobile ? 0.85 : 0.7)),
+                                                      ),
+                                                      child: isCurrentUser
+                                                          ? Dismissible(
+                                                              key: Key(message.id),
+                                                              direction: DismissDirection.endToStart,
+                                                              background: Container(
+                                                                alignment: Alignment.centerRight,
+                                                                padding: const EdgeInsets.only(right: 20),
+                                                                margin: const EdgeInsets.only(bottom: 8),
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors.red,
+                                                                  borderRadius: BorderRadius.circular(16),
+                                                                ),
+                                                                child: const Icon(
+                                                                  Icons.delete,
+                                                                  color: Colors.white,
+                                                                  size: 28,
+                                                                ),
+                                                              ),
+                                                              confirmDismiss: (direction) async {
+                                                                final confirmed = await showDialog<bool>(
+                                                                  context: context,
+                                                                  builder: (context) => AlertDialog(
+                                                                    title: const Text('Delete Message'),
+                                                                    content: const Text(
+                                                                        'Are you sure you want to delete this message? This action cannot be undone.'),
+                                                                    actions: [
+                                                                      TextButton(
+                                                                        onPressed: () =>
+                                                                            Navigator.pop(context, false),
+                                                                        child: const Text('Cancel'),
+                                                                      ),
+                                                                      TextButton(
+                                                                        onPressed: () =>
+                                                                            Navigator.pop(context, true),
+                                                                        style: TextButton.styleFrom(
+                                                                            foregroundColor: Colors.red),
+                                                                        child: const Text('Delete'),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                );
+
+                                                                if (confirmed == true) {
+                                                                  _deleteMessageDirectly(message.id).then((_) {}).catchError(
+                                                                      (error) {
+                                                                    if (mounted) {
+                                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                                        SnackBar(
+                                                                          content: Text(
+                                                                              'Failed to delete message: ${getUserFriendlyError(error)}'),
+                                                                          backgroundColor: Colors.red,
+                                                                        ),
+                                                                      );
+                                                                    }
+                                                                  });
+                                                                  return true;
+                                                                }
+                                                                return false;
+                                                              },
+                                                              onDismissed: (direction) {},
+                                                              child: _buildMessageBubble(
+                                                                message: message,
+                                                                isCurrentUser: isCurrentUser,
+                                                                colorScheme: colorScheme,
+                                                                onTap: () {
+                                                                  _showMessageMenu(context, message);
+                                                                },
+                                                              ),
+                                                            )
+                                                          : _buildMessageBubble(
+                                                              message: message,
+                                                              isCurrentUser: isCurrentUser,
+                                                              colorScheme: colorScheme,
+                                                              onTap: null,
+                                                            ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                        loading: () => const Center(child: CircularProgressIndicator()),
+                                        error: (error, stack) => Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                'Error loading received messages',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  color: colorScheme.onSurface,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                getUserFriendlyError(error),
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 24),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  ref.invalidate(messagesProvider(receivedMessagesParams));
+                                                },
+                                                child: const Text('Retry'),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    loading: () => const Center(child: CircularProgressIndicator()),
+                                    error: (error, stack) => Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Error loading sent messages',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            getUserFriendlyError(error),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 24),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              ref.invalidate(messagesProvider(sentMessagesParams));
+                                              ref.invalidate(messagesProvider(receivedMessagesParams));
+                                            },
+                                            child: const Text('Retry'),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  maxLines: null,
-                                  textInputAction: TextInputAction.send,
-                                  onSubmitted: (_) => _sendMessage(),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                onPressed: _isSending ? null : _sendMessage,
-                                icon: _isSending
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : Icon(
-                                        Icons.send,
-                                        color: colorScheme.primary,
+                            ),
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMobile ? 12 : 16,
+                                    vertical: isMobile ? 10 : 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, -2),
                                       ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: colorScheme.primaryContainer,
-                                  padding: const EdgeInsets.all(12),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _messageController,
+                                          decoration: InputDecoration(
+                                            hintText: 'Type a message...',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(isMobile ? 16 : 24),
+                                            ),
+                                            filled: true,
+                                            fillColor: colorScheme.surfaceContainerHighest,
+                                            contentPadding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 14 : 20,
+                                              vertical: isMobile ? 10 : 12,
+                                            ),
+                                          ),
+                                          minLines: 1,
+                                          maxLines: isMobile ? 4 : null,
+                                          textInputAction: TextInputAction.send,
+                                          onSubmitted: (_) => _sendMessage(),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      IconButton(
+                                        onPressed: _isSending ? null : _sendMessage,
+                                        icon: _isSending
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              )
+                                            : Icon(
+                                                Icons.send,
+                                                color: colorScheme.primary,
+                                              ),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: colorScheme.primaryContainer,
+                                          padding: EdgeInsets.all(isMobile ? 10 : 12),
+                                          minimumSize: Size(isMobile ? 40 : 44, isMobile ? 40 : 44),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(
+                        child: Text(getUserFriendlyError(error)),
+                      ),
                     );
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(
                     child: Text(getUserFriendlyError(error)),
                   ),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text(getUserFriendlyError(error)),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -718,6 +763,16 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
 
   String _formatMessageTime(DateTime dateTime) {
     return DateFormat('HH:mm').format(dateTime);
+  }
+
+  bool _isImageUrl(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) return false;
+    const exts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'];
+    final lowerPath = uri.path.toLowerCase();
+    return exts.any((ext) => lowerPath.endsWith(ext));
   }
 
   /// Shows the message menu (Edit/Delete options)
@@ -761,6 +816,8 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
     required ColorScheme colorScheme,
     required VoidCallback? onTap,
   }) {
+    final isImageMessage = _isImageUrl(message.content);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -780,6 +837,28 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isImageMessage) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      message.content,
+                      width: 240,
+                      height: 170,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 240,
+                          height: 170,
+                          color: isCurrentUser
+                              ? colorScheme.onPrimary.withValues(alpha: 0.1)
+                              : colorScheme.surfaceVariant,
+                          child: const Icon(Icons.broken_image),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                ],
                 Text(
                   message.content,
                   style: TextStyle(
@@ -800,6 +879,28 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
                             ? colorScheme.onPrimary.withValues(alpha: 0.7)
                             : colorScheme.onSurface.withValues(alpha: 0.5),
                         fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      iconSize: 16,
+                      tooltip: isImageMessage ? 'Copy image link' : 'Copy',
+                      onPressed: message.content.trim().isEmpty
+                          ? null
+                          : () => isImageMessage
+                              ? _copyImageUrlToClipboard(message.content)
+                              : _copyToClipboard(message.content),
+                      icon: Icon(
+                        Icons.copy,
+                        size: 16,
+                        color: isCurrentUser
+                            ? colorScheme.onPrimary.withValues(alpha: 0.8)
+                            : colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     if (isCurrentUser && onTap != null) ...[
