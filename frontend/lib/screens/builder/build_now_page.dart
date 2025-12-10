@@ -25,14 +25,28 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/services/cookie_storage_service.dart';
+import 'package:frontend/models/component_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Manages the state of the PC build, which is a list of component slots.
 ///
 /// This notifier handles adding, updating, and removing components from the current build.
 /// It holds the central "source of truth" for the user's in-progress PC.
 class BuildNotifier extends StateNotifier<List<PcComponent>> {
+  final CookieStorageService? _cookieStorage;
+  final bool _isUserLoggedIn;
+  
   /// Initializes the build with a default set of empty component slots.
-  BuildNotifier() : super(_initialState);
+  /// Optionally loads saved build state from cookies if user is logged in.
+  BuildNotifier({CookieStorageService? cookieStorage, bool isUserLoggedIn = false}) 
+      : _cookieStorage = cookieStorage,
+        _isUserLoggedIn = isUserLoggedIn,
+        super(_initialState) {
+    // Note: We don't load build state here because it's async.
+    // Instead, restoreBuildStateFromCookies() will be called from the UI
+    // after the notifier is created and ComponentService is available.
+  }
 
   /// Defines the default template for a new PC build, listing all necessary component types.
   static final List<PcComponent> _initialState = [
@@ -60,6 +74,8 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     if (componentIndex != -1) {
       currentState[componentIndex].selectedProduct = newProduct;
       state = currentState;
+      // Save build state to cookies when component is added (fire and forget)
+      _saveBuildStateToCookies();
     }
   }
 
@@ -73,12 +89,16 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     if (componentIndex != -1) {
       currentState[componentIndex].selectedProduct = null;
       state = currentState;
+      // Save build state to cookies when component is removed
+      _saveBuildStateToCookies();
     }
   }
 
   /// Resets the build to its initial empty state.
   void clearBuild() {
     state = _initialState.map((c) => PcComponent(name: c.name, type: c.type)).toList();
+    // Clear saved build state from cookies
+    _cookieStorage?.clearBuildState();
   }
 
   /// Prefills the builder with the provided [components], typically sourced from
@@ -137,6 +157,142 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
         return 'Case';
       case ComponentType.monitor:
         return 'Monitor';
+    }
+  }
+
+  /// Saves the current build state to cookies.
+  Future<void> _saveBuildStateToCookies() async {
+    final cookieStorage = _cookieStorage;
+    if (cookieStorage == null || !_isUserLoggedIn) {
+      debugPrint('⚠️ Build state NOT saved: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn');
+      return;
+    }
+
+    try {
+      final components = state
+          .where((pcComponent) => pcComponent.selectedProduct != null)
+          .map((pcComponent) {
+            final component = pcComponent.selectedProduct!;
+            return {
+              'id': component.id,
+              'name': component.name,
+              'manufacturer': component.manufacturer,
+              'type': component.type.name,
+              'imageUrl': component.imageUrl,
+            };
+          })
+          .toList();
+
+      await cookieStorage.saveBuildState(components);
+      debugPrint('✅ Build state saved to cookies: ${components.length} components');
+      if (components.isNotEmpty) {
+        debugPrint('   Components: ${components.map((c) => c['name']).join(', ')}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error saving build state to cookies: $e');
+    }
+  }
+
+  /// Loads the saved build state from cookies.
+  /// This method fetches full component data from the API and restores the build state.
+  Future<void> _loadBuildStateFromCookies() async {
+    final cookieStorage = _cookieStorage;
+    if (cookieStorage == null || !_isUserLoggedIn) {
+      debugPrint('⚠️ Build state NOT loaded: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn');
+      return;
+    }
+
+    try {
+      final savedComponents = await cookieStorage.getBuildState();
+      if (savedComponents == null || savedComponents.isEmpty) {
+        debugPrint('ℹ️ No saved build state found in cookies');
+        return;
+      }
+
+      debugPrint('✅ Found saved build state: ${savedComponents.length} components');
+      
+      // We need to fetch component data from API, but we don't have direct access to ComponentService here
+      // So we'll store the component IDs and let the UI handle restoration
+      // For now, we'll create a method that can be called with ComponentService
+      _savedComponentIds = savedComponents
+          .map((c) => {
+                'id': c['id'] as String? ?? '',
+                'type': c['type'] as String? ?? '',
+                'name': c['name'] as String? ?? '',
+              })
+          .where((c) => c['id']!.isNotEmpty)
+          .toList();
+      
+      debugPrint('📦 Saved component IDs for restoration: ${_savedComponentIds.length}');
+      for (final comp in _savedComponentIds) {
+        debugPrint('   - ${comp['name']} (${comp['type']}, ID: ${comp['id']})');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading build state from cookies: $e');
+    }
+  }
+
+  /// List of saved component IDs that need to be restored
+  List<Map<String, dynamic>> _savedComponentIds = [];
+
+  /// Restores build state from saved component IDs.
+  /// This should be called with ComponentService to fetch full component data.
+  /// First loads saved component IDs from cookies, then fetches full component data and restores.
+  Future<void> restoreBuildStateFromCookies(ComponentService componentService) async {
+    // First, load saved component IDs from cookies if not already loaded
+    if (_savedComponentIds.isEmpty) {
+      await _loadBuildStateFromCookies();
+    }
+    
+    if (_savedComponentIds.isEmpty) {
+      return;
+    }
+
+    try {
+      debugPrint('🔄 Restoring build state from ${_savedComponentIds.length} saved components...');
+      final updatedState = List<PcComponent>.from(_initialState);
+      int restoredCount = 0;
+
+      for (final savedComp in _savedComponentIds) {
+        final componentId = (savedComp['id'] as String?) ?? '';
+        final componentTypeStr = (savedComp['type'] as String?) ?? '';
+        
+        if (componentId.isEmpty || componentTypeStr.isEmpty) {
+          continue;
+        }
+
+        try {
+          // Fetch full component data from API
+          final component = await componentService.getComponentById(componentId);
+          
+          // Find the matching slot
+          final componentType = ComponentType.values.firstWhere(
+            (type) => type.name == componentTypeStr,
+            orElse: () => ComponentType.cpu,
+          );
+          
+          final componentIndex = updatedState.indexWhere((c) => c.type == componentType);
+          if (componentIndex != -1) {
+            updatedState[componentIndex].selectedProduct = component;
+            restoredCount++;
+            debugPrint('✅ Restored: ${component.name}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to restore component ${savedComp['name']} (ID: $componentId): $e');
+          // Continue with other components
+        }
+      }
+
+      if (restoredCount > 0) {
+        state = updatedState;
+        debugPrint('✅ Build state restored: $restoredCount/${_savedComponentIds.length} components');
+        // Clear saved IDs after successful restoration
+        _savedComponentIds = [];
+      } else {
+        debugPrint('⚠️ No components were restored');
+      }
+    } catch (e) {
+      debugPrint('❌ Error restoring build state: $e');
     }
   }
 
@@ -232,7 +388,17 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 final buildProvider = StateNotifierProvider<BuildNotifier, List<PcComponent>>((
   ref,
 ) {
-  return BuildNotifier();
+  // Watch auth state to react to login/logout changes
+  final authState = ref.watch(authProvider);
+  final isUserLoggedIn = authState.valueOrNull != null;
+  
+  // Create cookie storage service
+  final cookieStorage = CookieStorageService();
+  
+  return BuildNotifier(
+    cookieStorage: cookieStorage,
+    isUserLoggedIn: isUserLoggedIn,
+  );
 });
 
 /// Represents a single slot in the PC build list (e.g., CPU, GPU).
@@ -269,7 +435,50 @@ class BuildNowPage extends ConsumerStatefulWidget {
 class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  final String buildLink = 'https://kazabuild.com/b/somerandom123';
+  String? _buildLink; // Build link will be generated after saving a build
+  bool _hasRestoredBuildState = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore build state after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreBuildStateIfNeeded();
+    });
+  }
+
+  /// Restores build state from cookies if user is logged in and state hasn't been restored yet
+  Future<void> _restoreBuildStateIfNeeded() async {
+    if (_hasRestoredBuildState) return;
+    
+    final authState = ref.read(authProvider);
+    final isUserLoggedIn = authState.valueOrNull != null;
+    
+    if (!isUserLoggedIn) {
+      return;
+    }
+
+    try {
+      final buildNotifier = ref.read(buildProvider.notifier);
+      final componentService = ref.read(componentServiceProvider);
+      await buildNotifier.restoreBuildStateFromCookies(componentService);
+      _hasRestoredBuildState = true;
+    } catch (e) {
+      debugPrint('Error restoring build state: $e');
+    }
+  }
+
+  /// Generates a build sharing link from the build ID
+  String _generateBuildLink(String buildId) {
+    if (kIsWeb) {
+      // For web, use the current origin or a fixed domain
+      // You can replace 'kazabuild.com' with your actual domain
+      return 'https://kazabuild.com/build/$buildId';
+    } else {
+      // For mobile, use relative path
+      return '/build/$buildId';
+    }
+  }
 
   bool _isBuildEmpty(List<PcComponent> components) {
     return components.every((component) => component.selectedProduct == null);
@@ -423,6 +632,13 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
             .read(buildProvider.notifier)
             .saveBuild(ref, nameController.text, descriptionController.text, tagIds: selectedTagIds.toList());
 
+        // Generate and store the build link
+        if (mounted) {
+          setState(() {
+            _buildLink = _generateBuildLink(newBuildId);
+          });
+        }
+
         _showSnackBar(
           message: 'Build successfully saved to your profile',
           backgroundColor: Colors.green,
@@ -508,7 +724,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                     const SizedBox(height: 40),
                     _TopBar(
                       theme: theme,
-                      buildLink: buildLink,
+                      buildLink: _buildLink,
                       components: components,
                       currencyData: currencyData,
                       estimatedWattage: estimatedWattage,
@@ -528,9 +744,65 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       totalPrice: totalPrice,
                       currencyData: currencyData,
                       onSave: _showSaveBuildDialog,
+                      onShareToExplore: _publishBuild,
                       isMobile: isMobile,
                     ),
                     const SizedBox(height: 32),
+                    // Clear All Button Section
+                    if (!_isBuildEmpty(components))
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () async {
+                              final bool? shouldClear = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Clear All Components'),
+                                  content: const Text('Are you sure you want to remove all selected components from your build?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Theme.of(context).colorScheme.error,
+                                      ),
+                                      child: const Text('Clear All'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (shouldClear == true && mounted) {
+                                ref.read(buildProvider.notifier).clearBuild();
+                                _showSnackBar(
+                                  message: 'All components cleared',
+                                  backgroundColor: Colors.green,
+                                );
+                              }
+                            },
+                            icon: Icon(
+                              Icons.clear_all_rounded,
+                              size: 18,
+                              color: theme.colorScheme.error,
+                            ),
+                            label: Text(
+                              'Clear All',
+                              style: TextStyle(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (!_isBuildEmpty(components)) const SizedBox(height: 16),
                     _ComponentTable(
                       theme: theme,
                       components: components,
@@ -851,6 +1123,11 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         return null;
       }
 
+      // Generate and store the build link
+      setState(() {
+        _buildLink = _generateBuildLink(newBuildId);
+      });
+
       // 2. Upload image if one was selected
       if (imageFile != null) {
         try {
@@ -998,7 +1275,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
 /// The top bar of the builder page, containing the build link and action buttons.
 class _TopBar extends StatelessWidget {
   final ThemeData theme;
-  final String buildLink;
+  final String? buildLink; // Nullable - will be null until build is saved
   final List<PcComponent> components;
   final CurrencyData currencyData;
   final int estimatedWattage;
@@ -1009,7 +1286,7 @@ class _TopBar extends StatelessWidget {
 
   const _TopBar({
     required this.theme,
-    required this.buildLink,
+    this.buildLink, // Nullable
     required this.components,
     required this.currencyData,
     required this.estimatedWattage,
@@ -1072,16 +1349,57 @@ class _TopBar extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.link_rounded, size: 20, color: isDark ? Colors.grey.shade400 : theme.colorScheme.primary),
+                      Icon(
+                        Icons.link_rounded, 
+                        size: 20, 
+                        color: buildLink != null
+                          ? (isDark ? Colors.grey.shade400 : theme.colorScheme.primary)
+                          : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          buildLink,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                            fontSize: 14,
-                            fontFamily: 'RobotoMono', // Monospace for link looks techy
+                        child: GestureDetector(
+                          onTap: buildLink != null ? () {
+                            // Extract build ID from link and navigate to build detail page
+                            final link = buildLink!;
+                            String? buildId;
+                            
+                            // Handle both full URL and relative path formats
+                            if (link.contains('/build/')) {
+                              final parts = link.split('/build/');
+                              if (parts.length > 1) {
+                                buildId = parts[1].split('?').first; // Remove query params if any
+                              }
+                            } else if (link.startsWith('/build/')) {
+                              buildId = link.replaceFirst('/build/', '').split('?').first;
+                            }
+                            
+                            if (buildId != null && buildId.isNotEmpty) {
+                              // Navigate to build detail page
+                              context.go('/build/$buildId');
+                            } else {
+                              // Fallback: try to use the link as-is
+                              onShowSnackBar(message: 'Invalid build link');
+                            }
+                          } : null,
+                          child: MouseRegion(
+                            cursor: buildLink != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                            child: Text(
+                              buildLink ?? 'Save build to generate link',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: buildLink != null
+                                  ? (isDark ? AppColorsDark.buttonBlue : theme.colorScheme.primary)
+                                  : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                                fontSize: 14,
+                                fontFamily: 'RobotoMono', // Monospace for link looks techy
+                                fontStyle: buildLink == null ? FontStyle.italic : FontStyle.normal,
+                                decoration: buildLink != null ? TextDecoration.underline : null,
+                                decorationColor: buildLink != null
+                                  ? (isDark ? AppColorsDark.buttonBlue : theme.colorScheme.primary)
+                                  : null,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -1090,13 +1408,19 @@ class _TopBar extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
-                          onTap: () {
-                             Clipboard.setData(ClipboardData(text: buildLink));
-                             onShowSnackBar(message: 'Build link copied!');
-                          },
+                          onTap: buildLink != null ? () {
+                            Clipboard.setData(ClipboardData(text: buildLink!));
+                            onShowSnackBar(message: 'Build link copied!');
+                          } : null, // Disable if no link
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Icon(Icons.copy_rounded, size: 18, color: isDark ? Colors.grey.shade400 : theme.colorScheme.primary),
+                            child: Icon(
+                              Icons.copy_rounded, 
+                              size: 18, 
+                              color: buildLink != null
+                                ? (isDark ? Colors.grey.shade400 : theme.colorScheme.primary)
+                                : Colors.grey.shade500, // Disabled color
+                            ),
                           ),
                         ),
                       ),
@@ -1273,6 +1597,7 @@ class _PriceAndSaveBar extends ConsumerWidget {
   final double totalPrice;
   final CurrencyData currencyData;
   final VoidCallback onSave;
+  final VoidCallback onShareToExplore;
   final bool isMobile;
 
   const _PriceAndSaveBar({
@@ -1280,6 +1605,7 @@ class _PriceAndSaveBar extends ConsumerWidget {
     required this.totalPrice,
     required this.currencyData,
     required this.onSave,
+    required this.onShareToExplore,
     required this.isMobile,
   });
 
@@ -1294,66 +1620,189 @@ class _PriceAndSaveBar extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
       ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'TOTAL PRICE',
-                style: TextStyle(
-                  color: Colors.grey.shade500,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Price Section
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL PRICE',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          totalPrice.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          currencyData.symbol,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    totalPrice.toStringAsFixed(2),
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.0,
+                const SizedBox(height: 16),
+                // Buttons Section (Mobile - Stacked)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onSave,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D2B40),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        child: const Text('Save List'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onShareToExplore,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColorsDark.buttonGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.share_rounded, size: 18),
+                            SizedBox(width: 6),
+                            Text('Share'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL PRICE',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          totalPrice.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          currencyData.symbol,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                // Save List Button (DRAFT)
+                ElevatedButton(
+                  onPressed: onSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2D2B40), // Softer dark button
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    currencyData.symbol,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade500,
+                  child: const Text('Save List'),
+                ),
+                const SizedBox(width: 12),
+                // Share to Explore Button (PUBLISHED)
+                ElevatedButton(
+                  onPressed: onShareToExplore,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColorsDark.buttonGreen, // Green for share/publish
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: onSave,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2D2B40), // Softer dark button
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                letterSpacing: 0.5,
-              ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.share_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text('Share to Explore'),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Save List'),
-          ),
-        ],
-      ),
     );
   }
 }

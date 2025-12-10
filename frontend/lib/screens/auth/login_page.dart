@@ -92,22 +92,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
-    // Listen to the authProvider for state changes (e.g., errors, success).
-    // This is used for side effects like showing SnackBars or navigating.
-    ref.listen<AsyncValue<AppUser?>>(authProvider, (previous, next) {
-      if (next is AsyncError) {
-        // If an error occurs, show a SnackBar with the error message.
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(getUserFriendlyError(next.error)),
-            backgroundColor: theme.colorScheme.error,
-          ),
-        );
-      }
-      // Success navigation is now handled automatically by GoRouter's redirect logic
-      // when the auth state changes. No need for manual navigation here.
-    });
 
     return Scaffold(
       key: _scaffoldKey,
@@ -578,6 +562,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // Error message display
+            if (authState is AsyncError)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: theme.colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        getUserFriendlyError(authState.error),
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Sign in button
             _SignInButton(
