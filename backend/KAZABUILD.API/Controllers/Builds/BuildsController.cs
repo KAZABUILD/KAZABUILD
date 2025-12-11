@@ -1011,9 +1011,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.CPU)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)cpuMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)cpuMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)cpuMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)cpuMinPrice
                     )
                     .OrderBy(r => Guid.NewGuid())
                         .ThenByIf(filterForExtraCores, c => c.CoreTotal)
@@ -1031,9 +1031,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.MOTHERBOARD)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)motherboardMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)motherboardMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)motherboardMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)motherboardMinPrice
                     )
                     .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id))
                     .OrderBy(r => Guid.NewGuid())
@@ -1052,9 +1052,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.COOLER)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)coolerMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)coolerMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)coolerMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)coolerMinPrice
                     )
                     .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
@@ -1073,9 +1073,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.MEMORY)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)memoryMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)memoryMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)memoryMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)memoryMinPrice
                     )
                     .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                     .OrderBy(r => Guid.NewGuid())
@@ -1093,9 +1093,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.STORAGE)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)storageMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)storageMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)storageMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)storageMinPrice
                     )
                     .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                     .OrderBy(r => Guid.NewGuid())
@@ -1114,9 +1114,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.GPU)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)gpuMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)gpuMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)gpuMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)gpuMinPrice
                     )
                     .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                     .OrderBy(r => Guid.NewGuid())
@@ -1135,9 +1135,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.CompatibleComponents)
                     .Where(c => c.Type == ComponentType.POWER_SUPPLY)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)powerSupplyMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)powerSupplyMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)powerSupplyMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)powerSupplyMinPrice
                     )
                     .Where(c => (new[] { (BaseComponent)gpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower) //Adjust for GPU, CPU + 100 extra + if any extra needed
@@ -1156,9 +1156,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.CASE)
                      .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)caseMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)caseMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)caseMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)caseMinPrice
                     )
                     .Where(c => (new[] { (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent, (BaseComponent)gpuComponent })
                                     .All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
@@ -1177,9 +1177,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.CASE_FAN)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)caseFanMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)caseFanMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)caseFanMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)caseFanMinPrice
                     )
                     .Where(c => (new[] { (BaseComponent)caseComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
                     .OrderBy(r => Guid.NewGuid())
@@ -1198,9 +1198,9 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.MONITOR)
                     .Where(c =>
-                        c.Prices.FirstOrDefault() != null &&
-                        c.Prices.Min(p => p.Price) < (decimal)monitorMaxPrice &&
-                        c.Prices.Min(p => p.Price) > (decimal)monitorMinPrice
+                        c.Prices.Any() &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)monitorMaxPrice &&
+                        c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)monitorMinPrice
                     )
                     .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id))
                     .OrderBy(r => Guid.NewGuid())
@@ -1227,7 +1227,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 }
 
                 //Add a description to the build
-                var price = components.Select(c => c.Prices.Min(p => p.Price)).Sum();
+                var price = components.Select(c => c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault()).Sum();
                 build.Description = $"A Build generated just for you for the lowest possible price of {price}. Remember to verify the prices on your own as they can differ from vendor to vendor!";
             }
 
