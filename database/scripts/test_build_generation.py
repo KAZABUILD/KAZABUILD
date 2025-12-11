@@ -37,30 +37,50 @@ MANDATORY_QUESTIONS = [
 # ========================================================================== #
 
 class DatabaseConnection:
-    def __init__(self, connection_string: str):
+    """Manages database connection and queries."""
+    def __init__(self, connection_string: str, odbc_driver: str = "ODBC Driver 17 for SQL Server"):
         self.connection_string = connection_string
+        self.odbc_driver = odbc_driver
         self.conn = None
         self.cursor = None
 
     def connect(self):
+        """Establish database connection."""
         try:
-            self.conn = pyodbc.connect(self.connection_string)
-            self.cursor = self.conn.cursor()
+            # Add ODBC driver to connection string if not present
+            conn_str = self.connection_string
+            if "Driver=" not in conn_str:
+                conn_str = f"Driver={{{self.odbc_driver}}};{conn_str}"
+            
+            self.connection = pyodbc.connect(conn_str)
+            self.cursor = self.connection.cursor()
         except pyodbc.Error as e:
-            logger.error(f"Database connection failed: {e}")
-            sys.exit(1)
+            logger.error(f"Failed to connect to database: {e}")
+            raise
 
     def disconnect(self):
+        """Close database connection."""
+        if self.cursor:
+            self.cursor.close()
         if self.conn:
             self.conn.close()
 
     def execute(self, query: str, params: tuple = ()):
-        return self.cursor.execute(query, params)
+        """Execute a query."""
+        if params:
+            return self.cursor.execute(query, params)
+        return self.cursor.execute(query)
+
+    def executemany(self, query: str, params_list: List[tuple]):
+        """Execute a query for multiple sets of parameters."""
+        return self.cursor.executemany(query, params_list)
 
     def fetchall(self):
+        """Fetch all results from the last query."""
         return self.cursor.fetchall()
 
     def commit(self):
+        """Commit the current transaction."""
         self.conn.commit()
 
 # ========================================================================== #
@@ -110,7 +130,7 @@ class BuildGenerationTester:
         # Delete UserAnswers
         self.db.execute("DELETE FROM UserAnswers WHERE UserId = ?", (self.user_id,))
         
-        # Delete Builds (Cascade should handle BuildComponents, but we can be explicit if needed)
+        # Delete Builds (Cascade should handle BuildComponents, but can be explicit if needed)
         self.db.execute("DELETE FROM Builds WHERE UserId = ? AND (Status = 'GENERATED')", (self.user_id,))
         self.db.commit()
 
@@ -121,8 +141,8 @@ class BuildGenerationTester:
 
         values = []
         for a_id in answer_ids:
-            # We need the UserPreferenceId for the answer
-            # Find it in our metadata
+            # UserPreferenceId is required for the answer
+            # Find it in the metadata
             q_id = None
             for q_data in self.questions.values():
                 for ans in q_data["answers"]:
@@ -294,16 +314,40 @@ class BuildGenerationTester:
 
 def main():
     parser = argparse.ArgumentParser(description="Test Build Generation Logic")
-    parser.add_argument("--connection-string", required=True, help="ODBC Connection String")
-    parser.add_argument("--api-url", required=True, help="Base URL of the API (e.g., http://localhost:7249)")
-    parser.add_argument("--auth-token", required=True, help="Bearer token for a valid user")
-    parser.add_argument("--user-id", required=True, help="UUID of the user the token belongs to")
-    parser.add_argument("--iterations", type=int, default=1000, help="Number of test iterations")
-    parser.add_argument("--output", default="build_generation_test_results.csv", help="Output CSV file")
+    parser.add_argument(
+        "--connection-string",
+        required=True,
+        help="SQL Server connection string (without Driver=)")
+    parser.add_argument(
+        "--odbc-driver",
+        default="ODBC Driver 17 for SQL Server",
+        help="ODBC driver name (default: 'ODBC Driver 17 for SQL Server')"
+    )
+    parser.add_argument(
+        "--api-url",
+        required=True,
+        help="Base URL of the API (e.g., http://localhost:7249)")
+    parser.add_argument(
+        "--auth-token",
+        required=True,
+        help="Bearer token for a valid user")
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="UUID of the user the token belongs to")
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=1000,
+        help="Number of test iterations")
+    parser.add_argument(
+        "--output",
+        default="build_generation_test_results.csv",
+        help="Output CSV file")
     
     args = parser.parse_args()
 
-    db = DatabaseConnection(args.connection_string)
+    db = DatabaseConnection(args.connection_string, args.odbc_driver)
     db.connect()
 
     tester = BuildGenerationTester(db, args.api_url, args.auth_token, args.user_id)
