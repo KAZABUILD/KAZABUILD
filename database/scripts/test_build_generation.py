@@ -10,6 +10,9 @@ try:
     import pyodbc
     import requests
     from tqdm import tqdm
+    import urllib3
+    # Disable warnings for self-signed certificates
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 except ImportError:
     print("Missing dependencies. Please install: pip install pyodbc requests tqdm", file=sys.stderr)
     sys.exit(1)
@@ -256,7 +259,7 @@ class BuildGenerationTester:
     def trigger_generation(self) -> bool:
         """Call the API to generate builds."""
         try:
-            response = requests.post(f"{self.api_url}/Builds/generate", headers=self.headers)
+            response = requests.post(f"{self.api_url}/Builds/generate", headers=self.headers, verify=False)
             if response.status_code == 200:
                 return True
             else:
