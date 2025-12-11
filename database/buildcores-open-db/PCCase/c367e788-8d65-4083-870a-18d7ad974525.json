@@ -1,0 +1,31 @@
+{
+  "opendb_id": "c367e788-8d65-4083-870a-18d7ad974525",
+  "metadata": {
+    "name": "Lian Li O11 Air Mini ATX Mid Tower Black with Tempered Glass Side Panel and USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A",
+    "manufacturer": "Lian Li",
+    "part_numbers": [
+      "O11AMX                                                    O11AMX-MINI                                                    O11 AIR MINI BLACK                                                    PC-O11 AMX                                                    G99.O11AMX.00"
+    ],
+    "series": "O11",
+    "variant": ""
+  },
+  "form_factor": "ATX Mid Tower",
+  "color": [
+    "BLACK"
+  ],
+  "power_supply": "None",
+  "supported_power_supply_form_factors": [],
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "front_usb_ports": [],
+  "max_video_card_length": 362,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 4,
+  "internal_2_5_bays": 2,
+  "expansion_slots": 7,
+  "dimensions": "400 x 288 x 384",
+  "volume": 44.237,
+  "weight": null,
+  "general_product_information": {}
+}

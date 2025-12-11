@@ -1,0 +1,50 @@
+{
+  "opendb_id": "33ee481e-b414-4b2b-87e6-b15f17caf3e4",
+  "power_connectors": {
+    "pcie_6_pin": 0,
+    "pcie_8_pin": 0,
+    "pcie_12VHPWR": 0,
+    "pcie_12V_2x6": 0
+  },
+  "metadata": {
+    "name": "Zotac GeForce RTX 5070 Ti GAMING SOLID OC Black / Copper 16GB GDDR7",
+    "manufacturer": "Zotac",
+    "part_numbers": [
+      "ZT-B50710J-10P"
+    ],
+    "series": "GeForce RTX 5070 Ti",
+    "variant": "Zotac"
+  },
+  "chipset_manufacturer": "GeForce",
+  "chipset": "GeForce RTX 5070 Ti",
+  "memory": 16,
+  "memory_type": "GDDR7",
+  "core_base_clock": 2300,
+  "core_boost_clock": 2482,
+  "effective_memory_clock": 0,
+  "memory_bus": 256,
+  "interface": "PCIe x16",
+  "color": [
+    "BLACK",
+    "GOLD"
+  ],
+  "length": 330,
+  "tdp": 300,
+  "total_slot_width": 4,
+  "cooling": "3 Fans",
+  "video_outputs": {
+    "hdmi_2_1": 1,
+    "hdmi_2_0": 0,
+    "displayport_2_1": 3,
+    "displayport_2_1a": 0,
+    "displayport_1_4a": 0,
+    "dvi_d": 0,
+    "vga": 0,
+    "_id": "67f9c5cb865ad0c3553e9e10"
+  },
+  "core_count": 8960,
+  "general_product_information": {
+    "amazon_sku": "B0DXWKQNCH",
+    "newegg_sku": "N82E16814500601"
+  }
+}

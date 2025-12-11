@@ -1,0 +1,40 @@
+{
+  "opendb_id": "47653668-8b43-4d32-9b5b-8873745a018d",
+  "metadata": {
+    "name": "MSI MAG CORELIQUID A13 Water 240mm 62.6 CFM White",
+    "manufacturer": "MSI",
+    "part_numbers": [
+      "MAG CORELIQUID A13 240 WHITE",
+      "MAG Coreliquid A13 360",
+      "306-7ZWCA21-L80",
+      "306-7ZWCA21-L80"
+    ],
+    "series": "MAG",
+    "variant": "White",
+    "releaseYear": null
+  },
+  "min_fan_rpm": null,
+  "max_fan_rpm": null,
+  "min_noise_level": null,
+  "max_noise_level": null,
+  "color": [
+    "WHITE"
+  ],
+  "height": 57,
+  "cpu_sockets": [
+    "AM4",
+    "AM5",
+    "LGA1700",
+    "LGA1851"
+  ],
+  "water_cooled": true,
+  "radiator_size": 240,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {
+    "amazon_sku": "B0DLNZY23J",
+    "newegg_sku": "N82E16835846069",
+    "walmart_sku": 14233309873
+  }
+}

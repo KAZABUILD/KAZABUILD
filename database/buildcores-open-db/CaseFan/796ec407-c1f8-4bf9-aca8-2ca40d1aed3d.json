@@ -1,0 +1,18 @@
+{
+  "opendb_id": "796ec407-c1f8-4bf9-aca8-2ca40d1aed3d",
+  "metadata": {
+    "name": "TRYX OEM ARGB 140 Black",
+    "manufacturer": "TRYX",
+    "part_numbers": [],
+    "series": "OEM",
+    "variant": "140mm Black"
+  },
+  "size": 140,
+  "color": [
+    "BLACK"
+  ],
+  "quantity": 1,
+  "led": "Addressable RGB",
+  "flow_direction": "Standard",
+  "general_product_information": {}
+}

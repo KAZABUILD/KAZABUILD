@@ -1,0 +1,32 @@
+{
+  "opendb_id": "d36ce6ee-b801-429a-a2b9-1d4cde54c27c",
+  "metadata": {
+    "name": "HYTE Mori Calliope Y40 ATX Mid Tower Black / Red with Tempered Glass Side Panel and USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A",
+    "manufacturer": "HYTE",
+    "part_numbers": [
+      "CS-HYTE-Y40-MORI"
+    ],
+    "series": "Mori",
+    "variant": ""
+  },
+  "form_factor": "ATX Mid Tower",
+  "color": [
+    "BLACK",
+    "RED"
+  ],
+  "power_supply": "None",
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "max_video_card_length": 422,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 1,
+  "internal_2_5_bays": 0,
+  "expansion_slots": 6,
+  "dimensions": "472 x 240 x 439",
+  "volume": 49.73,
+  "weight": null,
+  "supported_power_supply_form_factors": [],
+  "front_usb_ports": [],
+  "general_product_information": {}
+}

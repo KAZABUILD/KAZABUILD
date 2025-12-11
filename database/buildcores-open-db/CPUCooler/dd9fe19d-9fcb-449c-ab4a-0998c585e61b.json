@@ -1,0 +1,38 @@
+{
+  "opendb_id": "dd9fe19d-9fcb-449c-ab4a-0998c585e61b",
+  "metadata": {
+    "name": "Corsair iCUE LINK TITAN RX Water 360mm RGB White",
+    "manufacturer": "Corsair",
+    "part_numbers": [
+      "CW-9061021-WW"
+    ],
+    "series": "iCUE",
+    "variant": "White",
+    "releaseYear": null
+  },
+  "min_fan_rpm": 300,
+  "max_fan_rpm": 2100,
+  "min_noise_level": null,
+  "max_noise_level": null,
+  "color": [
+    "WHITE"
+  ],
+  "height": null,
+  "cpu_sockets": [
+    "AM4",
+    "AM5",
+    "LGA1700",
+    "LGA1851"
+  ],
+  "water_cooled": true,
+  "radiator_size": 360,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {
+    "amazon_sku": "B0D6BCSFNC",
+    "newegg_sku": "0EZ-00MD-00004",
+    "bestbuy_sku": 6587621,
+    "walmart_sku": 12612915879
+  }
+}
