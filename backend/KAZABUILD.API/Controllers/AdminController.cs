@@ -495,10 +495,8 @@ namespace KAZABUILD.API.Controllers
         [Authorize(Policy = "SuperAdmins")]
         public async Task<IActionResult> FetchComponentPrices()
         {
-            //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                      ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -508,7 +506,11 @@ namespace KAZABUILD.API.Controllers
                 return Ok(new { message = "No components found to fetch prices for." });
             }
 
-            // If external API fails, continue to next component without crashing the job
+            int total = components.Count;
+            int successful = 0;
+            int failed = 0;
+            int processed = 0;
+
             await _logger.LogAsync(
                 currentUserId,
                 "POST",
@@ -516,15 +518,18 @@ namespace KAZABUILD.API.Controllers
                 ip,
                 Guid.Empty,
                 PrivacyLevel.WARNING,
-                "Starting bulk fetch of component prices."
+                $"Starting bulk fetch of component prices. Total components: {total}"
             );
 
             foreach (BaseComponent comp in components)
             {
+                processed++;
+
                 var response = await _pricesApiService.GetPartPrice(comp);
+
                 if (response == null)
                 {
-                    // If external API fails, continue to next component without crashing the job
+                    failed++;
                     await _logger.LogAsync(
                         currentUserId,
                         "POST",
@@ -532,10 +537,12 @@ namespace KAZABUILD.API.Controllers
                         ip,
                         comp.Id,
                         PrivacyLevel.WARNING,
-                        "Price fetch failed for component during bulk fetch"
+                        $"Price fetch FAILED for component {processed}/{total}"
                     );
                     continue;
                 }
+
+                successful++;
 
                 var tempComponentPrice = new ComponentPrice
                 {
@@ -549,13 +556,32 @@ namespace KAZABUILD.API.Controllers
                     LastEditedAt = DateTime.UtcNow,
                     Note = "First price pull"
                 };
+
                 _db.ComponentPrices.Add(tempComponentPrice);
+
+                // Log progress after each success
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Admin",
+                    ip,
+                    comp.Id,
+                    PrivacyLevel.INFORMATION,
+                    $"Price fetched for component {processed}/{total}"
+                );
             }
 
             await _db.SaveChangesAsync();
 
-            //Return success response
-            return Ok(new { message = $"Part prices have been successfully fetched." });
+            // Final summary
+            return Ok(new
+            {
+                message = "Bulk price fetch complete.",
+                totalComponents = total,
+                successfulFetches = successful,
+                failedFetches = failed,
+                progress = $"{successful} successful out of {total}"
+            });
         }
     }
 }
