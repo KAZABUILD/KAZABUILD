@@ -52,8 +52,8 @@ class DatabaseConnection:
             if "Driver=" not in conn_str:
                 conn_str = f"Driver={{{self.odbc_driver}}};{conn_str}"
             
-            self.connection = pyodbc.connect(conn_str)
-            self.cursor = self.connection.cursor()
+            self.conn = pyodbc.connect(conn_str)
+            self.cursor = self.conn.cursor()
         except pyodbc.Error as e:
             logger.error(f"Failed to connect to database: {e}")
             raise
@@ -98,6 +98,8 @@ class BuildGenerationTester:
         self.user_id = user_id
         self.questions: Dict[str, Dict] = {} # Map Question Text -> {Id, Answers: []}
         self.all_answer_ids: List[str] = []
+        self.generated_question_ids: List[str] = []
+        self.generated_answer_ids: List[str] = []
 
     def load_metadata(self):
         """Load questions and answers from the database."""
@@ -124,6 +126,95 @@ class BuildGenerationTester:
                     break
         
         logger.info(f"Loaded {len(self.questions)} questions and {len(self.all_answer_ids)} answers.")
+
+        # Ensure mandatory data exists
+        if not all(q in self.questions.keys() for q in MANDATORY_QUESTIONS) or \
+            not all(any(a["text"] for a in self.questions[q]["answers"]) for q in MANDATORY_QUESTIONS):
+                self.ensure_questionnaire_data()
+
+    def ensure_questionnaire_data(self):
+        """Ensures that questions and answers are generated if mandatory questions do not exist in the database."""
+        # Define expected data based on the build generation requirements
+        expected_data = {
+            "What do you plan to use your PC for?": [
+                "General Everyday Use", "Gaming", "Work", "School", "Video Editing", "3D Art", 
+                "Graphic Design", "Livestreaming", "Multi-cast Streaming", "Music Production", 
+                "Video Recording", "Software Development", "Game Development", "Data Science", 
+                "3D Printing", "Computer-Aided Design", "Social Media", "Server Hosting", 
+                "AI Training", "Data Management"
+            ],
+            "What do you do for work?": [
+                "Still In School", "Office Work", "Art", "Engineering", "Cybersecurity", 
+                "Software Development", "Data Science", "Game Development", "Music Production", 
+                "AI Research", "Real Estate", "Architecture", "IT", "Telecommunication", 
+                "Content Creation", "Livestreaming", "Healthcare", "Scientific Research", 
+                "Business", "Personal Use"
+            ],
+            "What's your budget?": [
+                "$400-$600 (Entry Level)",
+                "$600-$900 (Balanced Value)",
+                "$900-$1200 (Upper Mid Range)",
+                "$1200-$1800 (Performance Tier)",
+                "$1800+ (Enthusiast / Future-proof)"
+            ],
+            "What do you enjoy doing the most in your free time?": [
+                "Gaming", "Video Editing", "3D Modeling", "Graphic Design", "Livestreaming",
+                "Music production", "Video Recording", "Coding", "Drawing", "3D printing",
+                "Social Media Activities", "Sports", "Sim Racing", "Watching Movies & Shows",
+                "Browsing The Internet"
+            ],
+            "What do you prioritize the most in your PC?": [
+                "Reliability", "Quiet Operation", "Strong Graphics", "Fast Multitasking", "Looks"]
+        }
+        
+        # Check and insert
+        for q_text, answers in expected_data.items():
+            # Check if question exists
+            q_id = None
+            
+            # Try to match existing question
+            if q_text in self.questions:
+                q_id = self.questions[q_text]["id"]
+            
+            # Create question if missing
+            if not q_id:
+                logger.info(f"Creating missing question: {q_text}")
+                q_id = str(uuid.uuid4())
+                self.db.execute("INSERT INTO UserPreferences (Id, Question, DatabaseEntryAt, LastEditedAt) VALUES (?, ?, GETUTCDATE(), GETUTCDATE())", (q_id, q_text))
+                self.generated_question_ids.append(q_id)
+                self.questions[q_text] = {"id": q_id, "answers": []}
+            
+            # Create answers if missing
+            current_answers = [a["text"] for a in self.questions[q_text]["answers"]]
+            for ans_text in answers:
+                if ans_text not in current_answers:
+                    a_id = str(uuid.uuid4())
+                    self.db.execute("INSERT INTO UserPreferenceAnswers (Id, UserPreferenceId, Answer, DatabaseEntryAt, LastEditedAt) VALUES (?, ?, ?, GETUTCDATE(), GETUTCDATE())", (a_id, q_id, ans_text))
+                    self.generated_answer_ids.append(a_id)
+                    self.questions[q_text]["answers"].append({"id": a_id, "text": ans_text})
+                    self.all_answer_ids.append(a_id)
+        
+        if self.generated_question_ids or self.generated_answer_ids:
+            self.db.commit()
+            logger.info(f"Generated {len(self.generated_question_ids)} questions and {len(self.generated_answer_ids)} answers.")
+
+    def cleanup_generated_data(self):
+        """Remove data generated during the test."""
+        if self.generated_answer_ids:
+            logger.info(f"Cleaning up {len(self.generated_answer_ids)} generated answers...")
+            # SQL Server limit for parameters is 2100, so we batch deletes
+            batch_size = 1000
+            for i in range(0, len(self.generated_answer_ids), batch_size):
+                batch = self.generated_answer_ids[i:i+batch_size]
+                placeholders = ','.join(['?'] * len(batch))
+                self.db.execute(f"DELETE FROM UserPreferenceAnswers WHERE Id IN ({placeholders})", tuple(batch))
+        
+        if self.generated_question_ids:
+            logger.info(f"Cleaning up {len(self.generated_question_ids)} generated questions...")
+            placeholders = ','.join(['?'] * len(self.generated_question_ids))
+            self.db.execute(f"DELETE FROM UserPreferences WHERE Id IN ({placeholders})", tuple(self.generated_question_ids))
+        
+        self.db.commit()
 
     def clear_user_data(self):
         """Clear answers and builds for the test user."""
@@ -418,6 +509,7 @@ def main():
 
     # Final Cleanup
     tester.clear_user_data()
+    tester.cleanup_generated_data()
     db.disconnect()
     logger.info(f"Test completed. See output CSV for details - {args.output}.")
 
