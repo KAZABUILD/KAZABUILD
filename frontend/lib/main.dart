@@ -34,7 +34,7 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Initialize auth (auto-login) when the app starts
     ref.watch(authInitializationProvider);
-    
+
     // Watches the `themeProvider` for changes. When the theme mode changes
     // (e.g., from light to dark), this widget will rebuild to apply the new theme.
     final router = ref.watch(routerProvider);

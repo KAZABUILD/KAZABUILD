@@ -4,7 +4,8 @@
 // Fixes all hash issues (#/messages, #/guides), email confirmation links,
 // admin guards, and works perfectly on web + mobile.
 
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
+
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -83,24 +84,24 @@ String? _handleEmailLinkRedirect() {
 
   try {
     final href = html.window.location.href;
-    
+
     // Check both main URL and hash for confirm paths
     final mainPart = href.split('#').first;
     final hashPart = href.contains('#') ? href.split('#').last : '';
-    
+
     final mainUri = Uri.parse(mainPart);
-    final isMainConfirm = mainUri.path.contains('/auth/confirm-register') || 
+    final isMainConfirm = mainUri.path.contains('/auth/confirm-register') ||
                           mainUri.path.contains('/auth/confirm-reset-password');
-    
-    final isHashConfirm = hashPart.contains('/auth/confirm-register') || 
+
+    final isHashConfirm = hashPart.contains('/auth/confirm-register') ||
                           hashPart.contains('/auth/confirm-reset-password');
-    
+
     if (!isMainConfirm && !isHashConfirm) return null;
 
     // Extract path and query params
     String cleanPath;
     String query = '';
-    
+
     if (isMainConfirm) {
       // Token is in main URL
       cleanPath = mainUri.path;
@@ -115,7 +116,7 @@ String? _handleEmailLinkRedirect() {
     // Build clean URL without hash
     final cleanUrl = '${html.window.location.origin}$cleanPath${query.isNotEmpty ? '?$query' : ''}';
     html.window.history.replaceState(null, '', cleanUrl);
-    
+
     return '$cleanPath${query.isNotEmpty ? '?$query' : ''}';
   } catch (_) {
     return null;
@@ -200,10 +201,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path.startsWith('/admin') && path != '/admin/debug') {
         if (loading) return null;
         if (user == null) return '/login';
-        
+
         // Check if user has staff privileges (moderator or higher)
         if (!user.userRole.isModeratorOrHigher) return '/home';
-        
+
         // Admin-only routes (component management) - require administrator role
         final adminOnlyRoutes = [
           '/admin/tags',
@@ -211,12 +212,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           '/admin/settings',
           '/admin/notifications',
         ];
-        
+
         final isAdminOnlyRoute = adminOnlyRoutes.any(path.startsWith);
         if (isAdminOnlyRoute && !user.userRole.isAdministrator) {
           return '/home'; // Redirect moderators away from admin-only routes
         }
-        
+
         return null;
       }
 

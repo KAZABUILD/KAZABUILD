@@ -1659,6 +1659,10 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                     );
                                   }
                                 });
+                                // Invalidate comment images provider to refresh images immediately
+                                // Wait a bit for backend to process the images
+                                await Future.delayed(const Duration(milliseconds: 500));
+                                ref.invalidate(commentImagesProvider(commentId));
                               }
                               
                               _controller.clear();

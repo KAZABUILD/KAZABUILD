@@ -10,7 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/screens/auth/auth_widgets.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
+
 import 'dart:async';
 import 'package:frontend/utils/error_utils.dart';
 
@@ -42,29 +43,29 @@ class _ConfirmResetPasswordPageState
   @override
   void initState() {
     super.initState();
-    
+
     // CRITICAL: Save token and userId from URL BEFORE cleaning it
     // Email URL format: ?token=xxx&userId=yyy
     _savedToken = widget.token;
     _savedUserId = widget.userId;
     debugPrint('🔑 Token from widget: $_savedToken');
     debugPrint('🔑 UserId from widget: $_savedUserId');
-    
+
     if (_savedToken == null || _savedToken!.isEmpty) {
       try {
         // Get token from current URL (before cleaning)
         final currentHref = html.window.location.href;
-        
+
         // Check main URL first (before hash)
         final mainPart = currentHref.split('#').first;
-        
+
         // Use Uri.parse but get raw query string to preserve token encoding
         try {
           final uri = Uri.parse(mainPart);
           // Get token from query parameters (Uri automatically decodes, but we need raw)
           _savedToken = uri.queryParameters['token'];
           _savedUserId = uri.queryParameters['userId'];
-          
+
           // If token has spaces, it means + was decoded to space - restore it
           if (_savedToken != null && _savedToken!.contains(' ')) {
             _savedToken = _savedToken!.replaceAll(' ', '+');
@@ -77,7 +78,7 @@ class _ConfirmResetPasswordPageState
             if (tokenEnd == -1) tokenEnd = mainPart.length;
             _savedToken = mainPart.substring(tokenStart, tokenEnd);
           }
-          
+
           if (mainPart.contains('userId=')) {
             final userIdStart = mainPart.indexOf('userId=') + 7;
             var userIdEnd = mainPart.indexOf('&', userIdStart);
@@ -85,16 +86,16 @@ class _ConfirmResetPasswordPageState
             _savedUserId = mainPart.substring(userIdStart, userIdEnd);
           }
         }
-        
+
         // If not found in main URL, check hash fragment
         if ((_savedToken == null || _savedToken!.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;
-          
+
           try {
             final hashUri = Uri.parse('https://example.com?$hashPart');
             _savedToken = hashUri.queryParameters['token'];
             _savedUserId = hashUri.queryParameters['userId'];
-            
+
             if (_savedToken != null && _savedToken!.contains(' ')) {
               _savedToken = _savedToken!.replaceAll(' ', '+');
             }
@@ -106,7 +107,7 @@ class _ConfirmResetPasswordPageState
               if (tokenEnd == -1) tokenEnd = hashPart.length;
               _savedToken = hashPart.substring(tokenStart, tokenEnd);
             }
-            
+
             if (hashPart.contains('userId=')) {
               final userIdStart = hashPart.indexOf('userId=') + 7;
               var userIdEnd = hashPart.indexOf('&', userIdStart);
@@ -128,7 +129,7 @@ class _ConfirmResetPasswordPageState
         }
       }
     }
-    
+
     // ----------------------------------------------------------------------
     // CRITICAL FIX: Restore encoded '+' characters in token
     // URL decoding turns '+' into space ' '. We must revert this for the backend.
@@ -140,30 +141,30 @@ class _ConfirmResetPasswordPageState
       }
     }
     // ----------------------------------------------------------------------
-    
+
     debugPrint('🔑 Final saved token: $_savedToken');
     debugPrint('🔑 Final saved userId: $_savedUserId');
-    
+
     // Wait a bit before cleaning URL to ensure token is saved
     Future.microtask(() async {
       // Small delay to let router settle
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // Clean URL hash
       _cleanAndRebuildUrlImmediately();
     });
-    
+
     // Small delay to ensure router has finished redirecting
     Future.microtask(() {
       // Clean again after router finishes
       _cleanAndRebuildUrlImmediately();
     });
-    
+
     // Also clean after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cleanAndRebuildUrlImmediately();
     });
-    
+
     // CRITICAL: Continuously monitor and clean hash fragment
     // This prevents GoRouter or browser from re-adding hash
     _startHashMonitoring();
@@ -202,17 +203,17 @@ class _ConfirmResetPasswordPageState
     try {
       // Get current URL and remove hash immediately
       var currentHref = html.window.location.href;
-      
+
       // CRITICAL: Check if hash exists and remove it
       if (currentHref.contains('#')) {
         // Remove hash fragment completely from URL
         currentHref = currentHref.split('#').first;
-        
+
         // Parse URL to get userId and token (from cleaned URL without hash)
         final uri = Uri.parse(currentHref);
         final userId = uri.queryParameters['userId'] ?? _savedUserId;
         final token = uri.queryParameters['token'] ?? _savedToken;
-        
+
         // Update saved values if found in URL
         if (token != null && token.isNotEmpty) {
           _savedToken = token;
@@ -220,7 +221,7 @@ class _ConfirmResetPasswordPageState
         if (userId != null && userId.isNotEmpty) {
           _savedUserId = userId;
         }
-        
+
         // Build new URL with userId and token (keep both, remove hash)
         String newUrl;
         if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
@@ -236,7 +237,7 @@ class _ConfirmResetPasswordPageState
           // Just remove hash, keep existing query params
           newUrl = currentHref;
         }
-        
+
         // Update browser URL without hash
         html.window.history.replaceState(null, '', newUrl);
         debugPrint('🧹 Cleaned URL: $newUrl');
@@ -379,24 +380,24 @@ class _ConfirmResetPasswordPageState
 
     // Check if we have a valid token - try to get it from current URL as fallback
     String? token = _savedToken;
-    
+
     if (token == null || token.isEmpty) {
       // Try to get from widget
       token = widget.token;
     }
-    
+
     if (token == null || token.isEmpty) {
       // Final fallback: try to get from current URL
       try {
         final currentHref = html.window.location.href;
         debugPrint('🔑 Trying to get token from current URL: $currentHref');
-        
+
         // Try main URL first
         final mainPart = currentHref.split('#').first;
         final mainUri = Uri.parse(mainPart);
         token = mainUri.queryParameters['token'];
         debugPrint('🔑 Token from current main URL: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
-        
+
         // If still not found, try hash fragment
         if ((token == null || token.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;

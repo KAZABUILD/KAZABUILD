@@ -79,6 +79,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
         return Scaffold(
           key: _scaffoldKey,
+          drawer: CustomDrawer(
+            showProfileArea: true,
+          ),
           body: Column(
             children: [
               CustomNavigationBar(

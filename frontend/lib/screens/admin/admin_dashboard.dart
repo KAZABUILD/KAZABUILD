@@ -125,32 +125,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           ),
         ),
         drawer: Drawer(child: _buildMobileSidebar(isDark, colors)),
-        body: Column(
-          children: [
-            // Mobile App Bar Content
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Dashboard Overview',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? AppColorsDark.textWhite
-                          : AppColorsLight.textBlack,
-                    ),
-                  ),
-                  _buildUserProfile(isDark),
-                ],
-              ),
-            ),
-            // Dashboard Content
-            Expanded(child: _buildDashboardContent(isDark, colors)),
-          ],
-        ),
+        body: _buildDashboardContent(isDark, colors, isMobile),
       );
     }
 
@@ -169,7 +144,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 // Top App Bar
                 _buildAppBar(isDark, colors),
                 // Dashboard Content
-                Expanded(child: _buildDashboardContent(isDark, colors)),
+                Expanded(child: _buildDashboardContent(isDark, colors, isMobile)),
               ],
             ),
           ),
@@ -444,9 +419,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           child: InkWell(
             onTap: () {
               final navigationItems = _getNavigationItems();
+              final screenWidth = MediaQuery.of(context).size.width;
+              final isMobile = screenWidth < 768;
               setState(() {
                 _selectedIndex = navigationItems.indexOf(item);
               });
+              if (isMobile) {
+                Navigator.pop(context); // Close drawer on mobile
+              }
+              context.go(item.route);
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -497,9 +478,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         ),
         onTap: () {
           final navigationItems = _getNavigationItems();
+          final screenWidth = MediaQuery.of(context).size.width;
+          final isMobile = screenWidth < 768;
           setState(() {
             _selectedIndex = navigationItems.indexOf(item);
           });
+          if (isMobile) {
+            Navigator.pop(context); // Close drawer on mobile
+          }
           // Navigate to route
           context.go(item.route);
         },
@@ -542,7 +528,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
   }
 
-  Widget _buildDashboardContent(bool isDark, dynamic colors) {
+  Widget _buildDashboardContent(bool isDark, dynamic colors, bool isMobile) {
     // Use cached params to prevent unnecessary rebuilds
     final usersAsync = ref.watch(adminUsersProvider(_usersParams));
     final buildsAsync = ref.watch(adminBuildsProvider(_buildsParams));
@@ -613,28 +599,28 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome Section
-            _buildWelcomeSection(isDark, colors),
-            const SizedBox(height: 32),
+            _buildWelcomeSection(isDark, colors, isMobile),
+            SizedBox(height: isMobile ? 20 : 32),
             // Quick Actions
-            _buildQuickActions(isDark, colors),
-            const SizedBox(height: 32),
+            _buildQuickActions(isDark, colors, isMobile),
+            SizedBox(height: isMobile ? 20 : 32),
             // Recent Activity Section
-            _buildRecentActivity(isDark, colors, usersAsync, buildsAsync, forumPostsAsync),
+            _buildRecentActivity(isDark, colors, usersAsync, buildsAsync, forumPostsAsync, isMobile),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWelcomeSection(bool isDark, dynamic colors) {
+  Widget _buildWelcomeSection(bool isDark, dynamic colors, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 20 : 32),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -656,16 +642,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               : Colors.black.withValues(alpha: 0.1),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: isMobile
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Welcome to Admin Dashboard',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: isDark
                         ? AppColorsDark.textWhite
@@ -676,13 +660,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 Text(
                   'Manage your platform, review content, and monitor activity from one central location.',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: isDark
                         ? AppColorsDark.textWhite.withValues(alpha: 0.8)
                         : AppColorsLight.textBlack.withValues(alpha: 0.8),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Builder(
                   builder: (context) {
                     final authState = ref.read(authProvider);
@@ -723,36 +707,111 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     }
 
                     return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: chips,
                     );
                   },
                 ),
               ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome to Admin Dashboard',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Manage your platform, review content, and monitor activity from one central location.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.8)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Builder(
+                        builder: (context) {
+                          final authState = ref.read(authProvider);
+                          final user = authState.valueOrNull;
+                          final isAdmin = user?.userRole.isAdministrator ?? false;
+
+                          final chips = [
+                            _buildInfoChip(
+                              Icons.people,
+                              'Users',
+                              '/admin/users',
+                              isDark,
+                            ),
+                            _buildInfoChip(
+                              Icons.computer,
+                              'Builds',
+                              '/admin/builds',
+                              isDark,
+                            ),
+                            _buildInfoChip(
+                              Icons.forum,
+                              'Forums',
+                              '/admin/forums',
+                              isDark,
+                            ),
+                          ];
+
+                          // Admin-only chips
+                          if (isAdmin) {
+                            chips.add(
+                              _buildInfoChip(
+                                Icons.shopping_cart,
+                                'Parts',
+                                '/admin/parts',
+                                isDark,
+                              ),
+                            );
+                          }
+
+                          return Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: chips,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 24),
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColorsDark.buttonBlue,
+                        AppColorsDark.buttonPurple,
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.admin_panel_settings,
+                    color: Colors.white,
+                    size: 60,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 24),
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColorsDark.buttonBlue,
-                  AppColorsDark.buttonPurple,
-                ],
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.admin_panel_settings,
-              color: Colors.white,
-              size: 60,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -811,6 +870,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     AsyncValue<List<AdminUser>> usersAsync,
     AsyncValue<List<AdminBuild>> buildsAsync,
     AsyncValue<List<AdminForumPost>> forumPostsAsync,
+    bool isMobile,
   ) {
     // Collect recent activities from all data sources
     final activities = <ActivityItem>[];
@@ -874,7 +934,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final recentActivities = activities.take(5).toList();
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -892,14 +952,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           Text(
             'Recent Activity',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: isMobile ? 18 : 20,
               fontWeight: FontWeight.bold,
               color: isDark
                   ? AppColorsDark.textWhite
                   : AppColorsLight.textBlack,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isMobile ? 16 : 20),
           if (usersAsync.isLoading || buildsAsync.isLoading || forumPostsAsync.isLoading)
             const Center(
               child: Padding(
@@ -927,6 +987,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               activity.icon,
               isDark,
               colors,
+              isMobile,
             )),
         ],
       ),
@@ -954,9 +1015,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     IconData icon,
     bool isDark,
     dynamic colors,
+    bool isMobile,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       child: Row(
         children: [
           Container(
@@ -1010,7 +1072,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
   }
 
-  Widget _buildQuickActions(bool isDark, dynamic colors) {
+  Widget _buildQuickActions(bool isDark, dynamic colors, bool isMobile) {
     final authState = ref.read(authProvider);
     final user = authState.valueOrNull;
     final isAdmin = user?.userRole.isAdministrator ?? false;
@@ -1054,19 +1116,28 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         Text(
           'Quick Actions',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: isMobile ? 18 : 20,
             fontWeight: FontWeight.bold,
             color: isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack,
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: actions.map((action) {
-            return _buildQuickActionCard(action, isDark, colors);
-          }).toList(),
-        ),
+        SizedBox(height: isMobile ? 12 : 16),
+        isMobile
+            ? Column(
+                children: actions.map((action) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildQuickActionCard(action, isDark, colors, isMobile),
+                  );
+                }).toList(),
+              )
+            : Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: actions.map((action) {
+                  return _buildQuickActionCard(action, isDark, colors, isMobile);
+                }).toList(),
+              ),
       ],
     );
   }
@@ -1075,18 +1146,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     QuickAction action,
     bool isDark,
     dynamic colors,
+    bool isMobile,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth > 600 ? 200.0 : double.infinity;
-
     return InkWell(
       onTap: () {
         context.go(action.route);
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: cardWidth,
-        padding: const EdgeInsets.all(20),
+        width: isMobile ? double.infinity : 200,
+        padding: EdgeInsets.all(isMobile ? 16 : 20),
         decoration: BoxDecoration(
           color: isDark
               ? AppColorsDark.backgroundSecondary

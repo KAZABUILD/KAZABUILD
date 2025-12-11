@@ -105,6 +105,8 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: isDark
@@ -112,16 +114,16 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
           : AppColorsLight.backgroundPrimary,
       body: Column(
         children: [
-          _buildHeader(isDark),
-          Expanded(child: _buildContent(isDark)),
+          _buildHeader(isDark, isMobile),
+          Expanded(child: _buildContent(isDark, isMobile)),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -137,41 +139,78 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Guides Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack,
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Guides Management',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : () => _showGuideFormDialog(),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Create Guide'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? AppColorsDark.buttonGreen
+                              : AppColorsLight.buttonGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Guides Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : () => _showGuideFormDialog(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Guide'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColorsDark.buttonGreen
+                            : AppColorsLight.buttonGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : () => _showGuideFormDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('Create Guide'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? AppColorsDark.buttonGreen
-                      : AppColorsLight.buttonGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+          SizedBox(height: isMobile ? 16 : 24),
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search guides by title, author, or category...',
+              hintText: isMobile
+                  ? 'Search guides...'
+                  : 'Search guides by title, author, or category...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -190,10 +229,14 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 16,
+                vertical: isMobile ? 12 : 16,
+              ),
             ),
             onChanged: (value) => _applyFilters(),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: isMobile ? 12 : 16),
           // Category filter chips
           Wrap(
             spacing: 8,
@@ -235,14 +278,16 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
     );
   }
 
-  Widget _buildContent(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          _buildStatsRow(isDark),
-          const SizedBox(height: 24),
-          Expanded(
+  Widget _buildContent(bool isDark, bool isMobile) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 8 : 24),
+          child: _buildStatsRow(isDark, isMobile),
+        ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage != null
@@ -252,13 +297,12 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                 : RefreshIndicator(
                     onRefresh: _loadGuides,
                     child: GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 20,
-                            mainAxisSpacing: 20,
-                            childAspectRatio: 0.7,
-                          ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isMobile ? 1 : 3,
+                        crossAxisSpacing: isMobile ? 0 : 20,
+                        mainAxisSpacing: isMobile ? 12 : 20,
+                        childAspectRatio: isMobile ? 0.9 : 0.7,
+                      ),
                       itemCount: _filteredGuides.length,
                       itemBuilder: (context, index) {
                         return _buildGuideCard(_filteredGuides[index], isDark);
@@ -266,8 +310,8 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                     ),
                   ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -337,7 +381,7 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark) {
+  Widget _buildStatsRow(bool isDark, bool isMobile) {
     final totalGuides = _allGuides.length;
     final publishedGuides =
         _allGuides.length; // All guides are considered published in frontend
@@ -370,11 +414,92 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
       },
     ];
 
+    if (isMobile) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: stats.length,
+        itemBuilder: (context, index) {
+          final stat = stats[index];
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    stat['icon'] as IconData,
+                    color: stat['color'] as Color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        stat['value'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        stat['label'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Row(
-      children: stats.map((stat) {
+      children: stats.asMap().entries.map((entry) {
+        final index = entry.key;
+        final stat = entry.value;
         return Expanded(
           child: Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: index < stats.length - 1 ? 16 : 0),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark
@@ -454,7 +579,7 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
         children: [
           // Guide image
           Container(
-            height: 180,
+            height: 140,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
@@ -517,112 +642,118 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                     ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  guide.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    guide.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        guide.category,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColorsDark.buttonBlue,
-                          fontWeight: FontWeight.w600,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            guide.category,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColorsDark.buttonBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      guide.readTime,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark
-                            ? AppColorsDark.textWhite.withValues(alpha: 0.5)
-                            : AppColorsLight.textBlack.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'By ${guide.author}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
-                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _formatDate(guide.publishedDate),
+                      const SizedBox(width: 8),
+                      Text(
+                        guide.readTime,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: isDark
                               ? AppColorsDark.textWhite.withValues(alpha: 0.5)
                               : AppColorsLight.textBlack.withValues(alpha: 0.5),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'By ${guide.author}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            _showEditGuideDialog(context, guide);
-                          },
-                          tooltip: 'Edit',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _formatDate(guide.publishedDate),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.5)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.5),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            _showDeleteGuideConfirmation(context, guide);
-                          },
-                          tooltip: 'Delete',
-                          color: AppColorsDark.error,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              _showEditGuideDialog(context, guide);
+                            },
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              _showDeleteGuideConfirmation(context, guide);
+                            },
+                            tooltip: 'Delete',
+                            color: AppColorsDark.error,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],

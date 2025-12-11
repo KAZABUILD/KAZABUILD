@@ -26,6 +26,8 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
     final asyncData = ref.watch(adminQuizDataProvider);
 
     return Scaffold(
@@ -48,19 +50,20 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
             children: [
               Column(
                 children: [
-                  _buildHeader(isDark, answers),
-                  const SizedBox(height: 16),
+                  _buildHeader(isDark, answers, isMobile),
+                  SizedBox(height: isMobile ? 12 : 16),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
                       child: _buildQuestionList(
                         questions,
                         answersByQuestion,
                         isDark,
+                        isMobile,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isMobile ? 16 : 24),
                 ],
               ),
               if (_isProcessing)
@@ -102,10 +105,10 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
     super.dispose();
   }
 
-  Widget _buildHeader(bool isDark, List<AdminQuizAnswer> allAnswers) {
+  Widget _buildHeader(bool isDark, List<AdminQuizAnswer> allAnswers, bool isMobile) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -118,36 +121,75 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Quiz Management',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: isDark
-                  ? AppColorsDark.textWhite
-                  : AppColorsLight.textBlack,
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: _isProcessing
-                ? null
-                : () => _showQuestionDialog(
-                      allAnswers: allAnswers,
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Quiz Management',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _showQuestionDialog(
+                              allAnswers: allAnswers,
+                            ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Question'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColorsDark.buttonGreen
+                          : AppColorsLight.buttonGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Question'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDark
-                  ? AppColorsDark.buttonGreen
-                  : AppColorsLight.buttonGreen,
-              foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Quiz Management',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _showQuestionDialog(
+                            allAnswers: allAnswers,
+                          ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Question'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark
+                        ? AppColorsDark.buttonGreen
+                        : AppColorsLight.buttonGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -155,6 +197,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
     List<AdminQuizQuestion> questions,
     Map<String, List<AdminQuizAnswer>> answersByQuestion,
     bool isDark,
+    bool isMobile,
   ) {
     if (questions.isEmpty) {
       return Container(
@@ -182,8 +225,9 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
         return _buildQuestionCard(
           question: question,
           answers: answers,
-           allAnswers: allAnswers,
+          allAnswers: allAnswers,
           isDark: isDark,
+          isMobile: isMobile,
         );
       },
     );
@@ -194,6 +238,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
     required List<AdminQuizAnswer> answers,
     required List<AdminQuizAnswer> allAnswers,
     required bool isDark,
+    required bool isMobile,
   }) {
     final controller = _answerControllers.putIfAbsent(
       question.id,
@@ -204,7 +249,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 16 : 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
