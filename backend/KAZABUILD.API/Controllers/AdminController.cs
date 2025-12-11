@@ -510,6 +510,7 @@ namespace KAZABUILD.API.Controllers
             int successful = 0;
             int failed = 0;
             int processed = 0;
+            int skipped = 0;
 
             await _logger.LogAsync(
                 currentUserId,
@@ -524,6 +525,22 @@ namespace KAZABUILD.API.Controllers
             {
                 foreach (BaseComponent comp in components)
                 {
+
+                    if (await _db.ComponentPrices.AnyAsync(p => p.ComponentId == comp.Id))
+                    {
+                        skipped++;
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Admin",
+                            ip,
+                            comp.Id,
+                            PrivacyLevel.INFORMATION,
+                            $"Price fetch SKIPPED for component {processed}/{total} (already has prices)"
+                        );
+                        continue;
+                    }
+                    
                     processed++;
 
                     var response = await _pricesApiService.GetPartPrice(comp);
