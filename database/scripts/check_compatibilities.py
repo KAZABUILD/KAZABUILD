@@ -24,8 +24,16 @@ import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import List, Optional, Set, Tuple
-from tqdm import tqdm
+import csv
+import tempfile
+import os
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Dummy tqdm if not installed
+    def tqdm(iterable, *args, **kwargs):
+        return iterable
 try:
     import pyodbc  # type: ignore
 except ModuleNotFoundError as exc:
@@ -328,6 +336,348 @@ class DatabaseConnection:
         """Fetch one result from the last query."""
         return self.cursor.fetchone()
 
+
+def insert_always_compatible_pairs_sql(db: DatabaseConnection) -> int:
+    """
+    Insert all "always compatible" pairs using SQL CROSS JOIN.
+    This avoids loading billions of rows into Python memory.
+    Returns the estimated number of rows inserted.
+    """
+    total_inserted = 0
+    now = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Define the always-compatible pairings: (type1, type2)
+    always_compatible_pairs = [
+        ("COOLER", "MOTHERBOARD"),
+        ("GPU", "MOTHERBOARD"),
+        ("POWER_SUPPLY", "MOTHERBOARD"),
+        ("CASE_FAN", "CASE"),
+        ("MONITOR", "GPU"),
+    ]
+    
+    for type1, type2 in always_compatible_pairs:
+        logger.info(f"  Inserting {type1} <-> {type2} (always compatible)...")
+        
+        # Insert type1 -> type2
+        insert_sql_forward = f"""
+            INSERT INTO ComponentCompatibilities (Id, ComponentId, CompatibleComponentId, DatabaseEntryAt, LastEditedAt, Note)
+            SELECT 
+                NEWID(),
+                c1.Id,
+                c2.Id,
+                '{now}',
+                '{now}',
+                NULL
+            FROM Components c1
+            CROSS JOIN Components c2
+            WHERE c1.Type = '{type1}' AND c2.Type = '{type2}'
+        """
+        
+        try:
+            db.execute(insert_sql_forward)
+            forward_count = db.cursor.rowcount
+            db.commit()
+            
+            # Insert type2 -> type1 (reverse direction)
+            insert_sql_reverse = f"""
+                INSERT INTO ComponentCompatibilities (Id, ComponentId, CompatibleComponentId, DatabaseEntryAt, LastEditedAt, Note)
+                SELECT 
+                    NEWID(),
+                    c2.Id,
+                    c1.Id,
+                    '{now}',
+                    '{now}',
+                    NULL
+                FROM Components c1
+                CROSS JOIN Components c2
+                WHERE c1.Type = '{type1}' AND c2.Type = '{type2}'
+            """
+            db.execute(insert_sql_reverse)
+            reverse_count = db.cursor.rowcount
+            db.commit()
+            
+            pair_total = forward_count + reverse_count
+            total_inserted += pair_total
+            logger.info(f"    {type1} <-> {type2}: {pair_total} pairs inserted")
+            
+        except pyodbc.Error as e:
+            logger.error(f"Failed to insert {type1} <-> {type2}: {e}")
+            raise
+    
+    return total_inserted
+
+
+# ========================================================================== #
+# INDEX AND RECOVERY MODEL MANAGEMENT                                        #
+# ========================================================================== #
+
+def get_nonclustered_indexes(db: DatabaseConnection, table_name: str = "ComponentCompatibilities") -> List[dict]:
+    """Get all non-clustered indexes on the specified table."""
+    query = """
+        SELECT 
+            i.name AS index_name,
+            i.is_unique,
+            STRING_AGG(c.name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) AS columns
+        FROM sys.indexes i
+        INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+        INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+        WHERE i.object_id = OBJECT_ID(?)
+          AND i.type = 2  -- Non-clustered
+          AND i.is_primary_key = 0
+        GROUP BY i.name, i.is_unique
+    """
+    db.execute(query, (table_name,))
+    rows = db.fetchall()
+    
+    indexes = []
+    for row in rows:
+        indexes.append({
+            "name": row[0],
+            "is_unique": row[1],
+            "columns": row[2].split(",") if row[2] else []
+        })
+    
+    logger.info(f"Found {len(indexes)} non-clustered indexes on {table_name}")
+    return indexes
+
+
+def drop_indexes(db: DatabaseConnection, indexes: List[dict], table_name: str = "ComponentCompatibilities") -> None:
+    """Drop the specified indexes."""
+    for idx in indexes:
+        try:
+            query = f"DROP INDEX [{idx['name']}] ON [{table_name}]"
+            db.execute(query)
+            db.commit()
+            logger.info(f"Dropped index: {idx['name']}")
+        except pyodbc.Error as e:
+            logger.warning(f"Failed to drop index {idx['name']}: {e}")
+
+
+def recreate_indexes(db: DatabaseConnection, indexes: List[dict], table_name: str = "ComponentCompatibilities") -> None:
+    """Recreate the specified indexes."""
+    for idx in indexes:
+        try:
+            unique = "UNIQUE " if idx["is_unique"] else ""
+            columns = ", ".join([f"[{col}]" for col in idx["columns"]])
+            query = f"CREATE {unique}NONCLUSTERED INDEX [{idx['name']}] ON [{table_name}] ({columns})"
+            db.execute(query)
+            db.commit()
+            logger.info(f"Recreated index: {idx['name']}")
+        except pyodbc.Error as e:
+            logger.warning(f"Failed to recreate index {idx['name']}: {e}")
+
+
+def set_recovery_model_simple(db: DatabaseConnection) -> Optional[str]:
+    """
+    Set database recovery model to SIMPLE for faster bulk operations.
+    Returns the original recovery model name, or None if change failed.
+    """
+    try:
+        # Get current recovery model
+        db.execute("SELECT name, recovery_model_desc FROM sys.databases WHERE database_id = DB_ID()")
+        row = db.fetchone()
+        if not row:
+            return None
+        
+        db_name = row[0]
+        original_model = row[1]
+        
+        if original_model == "SIMPLE":
+            logger.info("Recovery model is already SIMPLE")
+            return None
+        
+        # Try to set to SIMPLE
+        db.execute(f"ALTER DATABASE [{db_name}] SET RECOVERY SIMPLE")
+        db.commit()
+        logger.info(f"Changed recovery model from {original_model} to SIMPLE")
+        return original_model
+    except pyodbc.Error as e:
+        logger.warning(f"Could not change recovery model (may require elevated permissions): {e}")
+        return None
+
+
+def restore_recovery_model(db: DatabaseConnection, original_model: str) -> None:
+    """Restore the database recovery model to its original setting."""
+    if not original_model:
+        return
+    
+    try:
+        db.execute("SELECT name FROM sys.databases WHERE database_id = DB_ID()")
+        row = db.fetchone()
+        if row:
+            db_name = row[0]
+            db.execute(f"ALTER DATABASE [{db_name}] SET RECOVERY {original_model}")
+            db.commit()
+            logger.info(f"Restored recovery model to {original_model}")
+    except pyodbc.Error as e:
+        logger.warning(f"Could not restore recovery model: {e}")
+
+
+# ========================================================================== #
+# CSV FILE OPERATIONS                                                        #
+# ========================================================================== #
+
+class CSVCompatibilityWriter:
+    """Writes compatibility results directly to a CSV file to avoid memory issues."""
+    
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self.file = None
+        self.writer = None
+        self.count = 0
+    
+    def __enter__(self):
+        self.file = open(self.filepath, 'w', newline='', encoding='utf-8')
+        self.writer = csv.writer(self.file)
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file:
+            self.file.close()
+        return False
+    
+    def write_pair(self, component_id: str, compatible_component_id: str) -> None:
+        """Write a compatibility pair to the CSV file (both directions)."""
+        now = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        
+        # Write both directions
+        self.writer.writerow([
+            str(uuid.uuid4()),
+            component_id,
+            compatible_component_id,
+            now,
+            now,
+            ""  # Note (empty)
+        ])
+        self.writer.writerow([
+            str(uuid.uuid4()),
+            compatible_component_id,
+            component_id,
+            now,
+            now,
+            ""  # Note (empty)
+        ])
+        self.count += 2
+    
+    def get_count(self) -> int:
+        return self.count
+    
+
+def _client_side_insert(db: DatabaseConnection, csv_filepath: str) -> int:
+    """
+    Helper function to perform client-side insertion using fast_executemany.
+    Used as a fallback when server-side BULK INSERT fails.
+    """
+    total_inserted = 0
+    batch_size = 10000  # Larger batch size for fast_executemany
+    
+    insert_sql = """
+        INSERT INTO ComponentCompatibilities 
+        (Id, ComponentId, CompatibleComponentId, DatabaseEntryAt, LastEditedAt, Note)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """
+    
+    # Enable fast_executemany for performance
+    original_fast_setting = getattr(db.cursor, 'fast_executemany', False)
+    try:
+        if hasattr(db.cursor, 'fast_executemany'):
+            db.cursor.fast_executemany = True
+    except Exception as e:
+        logger.warning(f"Could not set fast_executemany: {e}")
+
+    try:
+        # Count lines first for progress bar
+        total_lines = 0
+        try:
+            with open(csv_filepath, 'r', encoding='utf-8') as f:
+                for _ in f:
+                    total_lines += 1
+        except Exception:
+            total_lines = None  # Tqdm handles None total gracefully
+
+        logger.info(f"Reading from {csv_filepath} for client-side insertion...")
+        
+        batch = []
+        with open(csv_filepath, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            
+            with tqdm(total=total_lines, desc="Inserting records", unit="row") as pbar:
+                for row in reader:
+                    batch.append(tuple(row))
+                    
+                    if len(batch) >= batch_size:
+                        db.executemany(insert_sql, batch)
+                        db.commit()
+                        count = len(batch)
+                        total_inserted += len(batch)
+                        pbar.update(count)
+                        batch = []
+                
+                # Insert remaining
+                if batch:
+                    db.executemany(insert_sql, batch)
+                    db.commit()
+                    count = len(batch)
+                    total_inserted += count
+                    pbar.update(count)
+        
+        return total_inserted
+        
+    except Exception as e:
+        logger.error(f"Client-side insertion failed: {e}")
+        raise
+    finally:
+        # Restore original setting just in case
+        if hasattr(db.cursor, 'fast_executemany'):
+            db.cursor.fast_executemany = original_fast_setting
+            
+
+def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str) -> int:
+    """
+    Use SQL BULK INSERT to load compatibility records from CSV file.
+    Returns the number of inserted records.
+    """
+    # BULK INSERT requires an absolute path accessible by SQL Server
+    abs_path = os.path.abspath(csv_filepath)
+    
+    # Use BULK INSERT command
+    bulk_insert_sql = f"""
+        BULK INSERT ComponentCompatibilities
+        FROM '{abs_path}'
+        WITH (
+            FIELDTERMINATOR = ',',
+            ROWTERMINATOR = '\\n',
+            TABLOCK,
+            BATCHSIZE = 100000
+        )
+    """
+    
+    try:
+        logger.info(f"Running BULK INSERT from {abs_path}...")
+        db.execute(bulk_insert_sql)
+        db.commit()
+        
+        # Get the count of inserted rows
+        db.execute("SELECT @@ROWCOUNT")
+        row = db.fetchone()
+        count = row[0] if row else 0
+        
+        logger.info(f"BULK INSERT completed: {count} records inserted")
+        return count
+    except pyodbc.Error as e:
+        error_msg = str(e)
+        logger.warning(f"Server-side BULK INSERT failed. This is common if SQL Server is remote or containerized.")
+        logger.warning(f"SQL Error: {error_msg}")
+        
+        # Rollback any partial transaction from the failed attempt
+        try:
+            db.connection.rollback()
+        except:
+            pass
+        
+        logger.info("Falling back to optimized client-side insertion (fast_executemany)...")
+        return _client_side_insert(db, csv_filepath)
+    
 
 # ========================================================================== #
 # COMPONENT LOADING FUNCTIONS                                                #
@@ -860,8 +1210,24 @@ def check_case_motherboard_form_factor(case: CaseComponent, motherboard: Motherb
                     return True
     
     # Fallback: check if MB form factor is mentioned in case form factor
-    if mb_ff and mb_ff.lower() in case_ff.lower():
-        return True
+    # Use tokenization to avoid partial matches (e.g. "ATX" in "MicroATX")
+    if mb_ff:
+        # Split case form factor into tokens (words)
+        # Replace common separators with spaces
+        cleaned_case_ff = case_ff.lower().replace('/', ' ').replace(',', ' ').replace('-', '')
+        tokens = cleaned_case_ff.split()
+        
+        # Normalize mb_ff for comparison (remove dashes/spaces)
+        clean_mb_ff = mb_ff.replace('-', '').replace(' ', '')
+        
+        # Check if the cleaned mb form factor exists as a distinct token
+        for token in tokens:
+            # Simple normalization of token
+            if token == clean_mb_ff:
+                return True
+            # Handle "matx" -> "microatx" etc
+            if normalize_form_factor(token) == mb_ff:
+                return True
     
     # More permissive: larger cases generally support smaller boards
     size_order = ["mini-itx", "micro-atx", "atx", "e-atx"]
@@ -1083,7 +1449,6 @@ def check_gpu_case_compatibility(gpu: GPUComponent, case: CaseComponent) -> Tupl
     # Check if case has dimensions declared
     has_dimensions = (case.dimensions_depth is not None or 
                       case.dimensions_height is not None or 
-                      case.dimensions_width is not None or
                       case.max_video_card_length is not None)
     
     # Check GPU length
@@ -1170,7 +1535,6 @@ def check_cooler_case_compatibility(cooler: CoolerComponent, case: CaseComponent
     # Check if case has dimensions declared
     has_dimensions = (case.dimensions_depth is not None or 
                       case.dimensions_height is not None or 
-                      case.dimensions_width is not None or
                       case.max_cpu_cooler_height is not None)
     
     # Check if it's a water cooler
@@ -1290,7 +1654,9 @@ def check_psu_gpu_compatibility(psu: PowerSupplyComponent, gpu: GPUComponent) ->
         return False, "PSU PCIe power connector count is null"
     
     if psu_available < gpu_required:
-        return False, f"PSU has {psu_available} PCIe connectors, GPU needs {gpu_required}"
+        if psu.power_output is not None and psu.power_output >= Decimal("750"):
+             return True, f"Compatible (Wattage sufficient despite connector count {psu_available} < {gpu_required})"
+        return False, f"PSU has {psu_available} PCIe connectors, GPU requires {gpu_required}"
     
     return True, "Compatible"
 
@@ -1363,16 +1729,8 @@ def check_psu_cpu_compatibility(psu: PowerSupplyComponent, cpu: CPUComponent) ->
 # COMPATIBILITY GENERATION ENGINE                                            #
 # ========================================================================== #
 
-@dataclass
-class CompatibilityResult:
-    """Result of a compatibility check."""
-    component_id: str
-    compatible_component_id: str
-    is_compatible: bool
-    reason: str
-
-
-def generate_all_compatibilities(
+def generate_complex_compatibilities_to_csv(
+    csv_writer: CSVCompatibilityWriter,
     cpus: List[CPUComponent],
     motherboards: List[MotherboardComponent],
     cases: List[CaseComponent],
@@ -1382,312 +1740,160 @@ def generate_all_compatibilities(
     psus: List[PowerSupplyComponent],
     coolers: List[CoolerComponent],
     case_fans: List[CaseFanComponent],
-    monitors: List[MonitorComponent],
-) -> List[CompatibilityResult]:
+) -> int:
     """
-    Generate all compatibility pairs between components.
-    Returns a list of CompatibilityResult for compatible pairs only.
+    Generate compatibility pairs that require Python logic and write directly to CSV.
+    Returns the number of compatible pairs written.
     """
-    compatible_pairs: List[CompatibilityResult] = []
-    
-    total_checks = 0
     compatible_count = 0
     
     # CPU <-> Motherboard
     cpu_mb_pairs = [(cpu, mb) for cpu in cpus for mb in motherboards]
     for cpu, mb in tqdm(cpu_mb_pairs, desc="CPU <-> Motherboard", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_cpu_motherboard_compatibility(cpu, mb)
+        is_compat, _ = check_cpu_motherboard_compatibility(cpu, mb)
         if is_compat:
+            csv_writer.write_pair(cpu.id, mb.id)
             compatible_count += 1
-            compatible_pairs.append(CompatibilityResult(cpu.id, mb.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(mb.id, cpu.id, True, reason))
     logger.info(f"  CPU <-> Motherboard: {compatible_count} compatible pairs found")
     
     # Motherboard <-> Case
-    mb_case_pairs = [(mb, case) for mb in motherboards for case in cases]
     mb_case_count = 0
-    for mb, case in tqdm(mb_case_pairs, desc="Motherboard <-> Case", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_motherboard_case_compatibility(mb, case)
-        if is_compat:
-            mb_case_count += 1
-            compatible_pairs.append(CompatibilityResult(mb.id, case.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(case.id, mb.id, True, reason))
+    for mb in tqdm(motherboards, desc="Motherboard <-> Case", unit="mb", leave=False):
+        for case in cases:
+            is_compat, _ = check_motherboard_case_compatibility(mb, case)
+            if is_compat:
+                csv_writer.write_pair(mb.id, case.id)
+                mb_case_count += 1
     compatible_count += mb_case_count
     logger.info(f"  Motherboard <-> Case: {mb_case_count} compatible pairs found")
     
     # Memory <-> Motherboard
-    mem_mb_pairs = [(memory, mb) for memory in memories for mb in motherboards]
     mem_mb_count = 0
-    for memory, mb in tqdm(mem_mb_pairs, desc="Memory <-> Motherboard", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_memory_motherboard_compatibility(memory, mb)
-        if is_compat:
-            mem_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(memory.id, mb.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(mb.id, memory.id, True, reason))
+    for memory in tqdm(memories, desc="Memory <-> Motherboard", unit="mem", leave=False):
+        for mb in motherboards:
+            is_compat, _ = check_memory_motherboard_compatibility(memory, mb)
+            if is_compat:
+                csv_writer.write_pair(memory.id, mb.id)
+                mem_mb_count += 1
     compatible_count += mem_mb_count
     logger.info(f"  Memory <-> Motherboard: {mem_mb_count} compatible pairs found")
     
     # GPU <-> Case
-    gpu_case_pairs = [(gpu, case) for gpu in gpus for case in cases]
     gpu_case_count = 0
-    for gpu, case in tqdm(gpu_case_pairs, desc="GPU <-> Case", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_gpu_case_compatibility(gpu, case)
-        if is_compat:
-            gpu_case_count += 1
-            compatible_pairs.append(CompatibilityResult(gpu.id, case.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(case.id, gpu.id, True, reason))
+    for gpu in tqdm(gpus, desc="GPU <-> Case", unit="gpu", leave=False):
+        for case in cases:
+            is_compat, _ = check_gpu_case_compatibility(gpu, case)
+            if is_compat:
+                csv_writer.write_pair(gpu.id, case.id)
+                gpu_case_count += 1
     compatible_count += gpu_case_count
     logger.info(f"  GPU <-> Case: {gpu_case_count} compatible pairs found")
     
     # Cooler <-> CPU
-    cooler_cpu_pairs = [(cooler, cpu) for cooler in coolers for cpu in cpus]
     cooler_cpu_count = 0
-    for cooler, cpu in tqdm(cooler_cpu_pairs, desc="Cooler <-> CPU", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_cooler_cpu_compatibility(cooler, cpu)
-        if is_compat:
-            cooler_cpu_count += 1
-            compatible_pairs.append(CompatibilityResult(cooler.id, cpu.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(cpu.id, cooler.id, True, reason))
+    for cooler in tqdm(coolers, desc="Cooler <-> CPU", unit="cooler", leave=False):
+        for cpu in cpus:
+            is_compat, _ = check_cooler_cpu_compatibility(cooler, cpu)
+            if is_compat:
+                csv_writer.write_pair(cooler.id, cpu.id)
+                cooler_cpu_count += 1
     compatible_count += cooler_cpu_count
     logger.info(f"  Cooler <-> CPU: {cooler_cpu_count} compatible pairs found")
     
     # Cooler <-> Case
-    cooler_case_pairs = [(cooler, case) for cooler in coolers for case in cases]
     cooler_case_count = 0
-    for cooler, case in tqdm(cooler_case_pairs, desc="Cooler <-> Case", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_cooler_case_compatibility(cooler, case)
-        if is_compat:
-            cooler_case_count += 1
-            compatible_pairs.append(CompatibilityResult(cooler.id, case.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(case.id, cooler.id, True, reason))
+    for cooler in tqdm(coolers, desc="Cooler <-> Case", unit="cooler", leave=False):
+        for case in cases:
+            is_compat, _ = check_cooler_case_compatibility(cooler, case)
+            if is_compat:
+                csv_writer.write_pair(cooler.id, case.id)
+                cooler_case_count += 1
     compatible_count += cooler_case_count
     logger.info(f"  Cooler <-> Case: {cooler_case_count} compatible pairs found")
     
     # Storage <-> Motherboard
-    storage_mb_pairs = [(storage, mb) for storage in storages for mb in motherboards]
     storage_mb_count = 0
-    for storage, mb in tqdm(storage_mb_pairs, desc="Storage <-> Motherboard", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_storage_motherboard_compatibility(storage, mb)
-        if is_compat:
-            storage_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(storage.id, mb.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(mb.id, storage.id, True, reason))
+    for storage in tqdm(storages, desc="Storage <-> Motherboard", unit="storage", leave=False):
+        for mb in motherboards:
+            is_compat, _ = check_storage_motherboard_compatibility(storage, mb)
+            if is_compat:
+                csv_writer.write_pair(storage.id, mb.id)
+                storage_mb_count += 1
     compatible_count += storage_mb_count
     logger.info(f"  Storage <-> Motherboard: {storage_mb_count} compatible pairs found")
     
     # PSU <-> Case
-    psu_case_pairs = [(psu, case) for psu in psus for case in cases]
     psu_case_count = 0
-    for psu, case in tqdm(psu_case_pairs, desc="PSU <-> Case", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_psu_case_compatibility(psu, case)
-        if is_compat:
-            psu_case_count += 1
-            compatible_pairs.append(CompatibilityResult(psu.id, case.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(case.id, psu.id, True, reason))
+    for psu in tqdm(psus, desc="PSU <-> Case", unit="psu", leave=False):
+        for case in cases:
+            is_compat, _ = check_psu_case_compatibility(psu, case)
+            if is_compat:
+                csv_writer.write_pair(psu.id, case.id)
+                psu_case_count += 1
     compatible_count += psu_case_count
     logger.info(f"  PSU <-> Case: {psu_case_count} compatible pairs found")
     
     # PSU <-> GPU
-    psu_gpu_pairs = [(psu, gpu) for psu in psus for gpu in gpus]
     psu_gpu_count = 0
-    for psu, gpu in tqdm(psu_gpu_pairs, desc="PSU <-> GPU", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_psu_gpu_compatibility(psu, gpu)
-        if is_compat:
-            psu_gpu_count += 1
-            compatible_pairs.append(CompatibilityResult(psu.id, gpu.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(gpu.id, psu.id, True, reason))
+    for psu in tqdm(psus, desc="PSU <-> GPU", unit="psu", leave=False):
+        for gpu in gpus:
+            is_compat, _ = check_psu_gpu_compatibility(psu, gpu)
+            if is_compat:
+                csv_writer.write_pair(psu.id, gpu.id)
+                psu_gpu_count += 1
     compatible_count += psu_gpu_count
     logger.info(f"  PSU <-> GPU: {psu_gpu_count} compatible pairs found")
     
     # PSU <-> CPU
-    psu_cpu_pairs = [(psu, cpu) for psu in psus for cpu in cpus]
     psu_cpu_count = 0
-    for psu, cpu in tqdm(psu_cpu_pairs, desc="PSU <-> CPU", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_psu_cpu_compatibility(psu, cpu)
-        if is_compat:
-            psu_cpu_count += 1
-            compatible_pairs.append(CompatibilityResult(psu.id, cpu.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(cpu.id, psu.id, True, reason))
+    for psu in tqdm(psus, desc="PSU <-> CPU", unit="psu", leave=False):
+        for cpu in cpus:
+            is_compat, _ = check_psu_cpu_compatibility(psu, cpu)
+            if is_compat:
+                csv_writer.write_pair(psu.id, cpu.id)
+                psu_cpu_count += 1
     compatible_count += psu_cpu_count
     logger.info(f"  PSU <-> CPU: {psu_cpu_count} compatible pairs found")
     
-    # Case Fan <-> Motherboard (with check)
-    fan_mb_pairs = [(fan, mb) for fan in case_fans for mb in motherboards]
+    # Case Fan <-> Motherboard
     fan_mb_count = 0
-    for fan, mb in tqdm(fan_mb_pairs, desc="Case Fan <-> MB", unit="pair", leave=False):
-        total_checks += 1
-        is_compat, reason = check_case_fan_motherboard_compatibility(fan, mb)
-        if is_compat:
-            fan_mb_count += 1
-            compatible_pairs.append(CompatibilityResult(fan.id, mb.id, True, reason))
-            compatible_pairs.append(CompatibilityResult(mb.id, fan.id, True, reason))
+    for fan in tqdm(case_fans, desc="Case Fan <-> MB", unit="fan", leave=False):
+        for mb in motherboards:
+            is_compat, _ = check_case_fan_motherboard_compatibility(fan, mb)
+            if is_compat:
+                csv_writer.write_pair(fan.id, mb.id)
+                fan_mb_count += 1
     compatible_count += fan_mb_count
     logger.info(f"  Case Fan <-> Motherboard: {fan_mb_count} compatible pairs found")
     
-    # ========================================================================== #
-    # ALWAYS COMPATIBLE PAIRINGS (no checks required)                            #
-    # ========================================================================== #
-    
-    # Cooler <-> Motherboard (always compatible)
-    cooler_mb_pairs = [(cooler, mb) for cooler in coolers for mb in motherboards]
-    cooler_mb_count = 0
-    for cooler, mb in tqdm(cooler_mb_pairs, desc="Cooler <-> MB (auto)", unit="pair", leave=False):
-        cooler_mb_count += 1
-        compatible_pairs.append(CompatibilityResult(cooler.id, mb.id, True, "Always compatible"))
-        compatible_pairs.append(CompatibilityResult(mb.id, cooler.id, True, "Always compatible"))
-    compatible_count += cooler_mb_count
-    logger.info(f"  Cooler <-> Motherboard: {cooler_mb_count} compatible pairs added")
-    
-    # GPU <-> Motherboard (always compatible)
-    gpu_mb_pairs = [(gpu, mb) for gpu in gpus for mb in motherboards]
-    gpu_mb_count = 0
-    for gpu, mb in tqdm(gpu_mb_pairs, desc="GPU <-> MB (auto)", unit="pair", leave=False):
-        gpu_mb_count += 1
-        compatible_pairs.append(CompatibilityResult(gpu.id, mb.id, True, "Always compatible"))
-        compatible_pairs.append(CompatibilityResult(mb.id, gpu.id, True, "Always compatible"))
-    compatible_count += gpu_mb_count
-    logger.info(f"  GPU <-> Motherboard: {gpu_mb_count} compatible pairs added")
-    
-    # PSU <-> Motherboard (always compatible)
-    psu_mb_pairs = [(psu, mb) for psu in psus for mb in motherboards]
-    psu_mb_count = 0
-    for psu, mb in tqdm(psu_mb_pairs, desc="PSU <-> MB (auto)", unit="pair", leave=False):
-        psu_mb_count += 1
-        compatible_pairs.append(CompatibilityResult(psu.id, mb.id, True, "Always compatible"))
-        compatible_pairs.append(CompatibilityResult(mb.id, psu.id, True, "Always compatible"))
-    compatible_count += psu_mb_count
-    logger.info(f"  PSU <-> Motherboard: {psu_mb_count} compatible pairs added")
-    
-    # Case Fan <-> Case (always compatible)
-    fan_case_pairs = [(fan, case) for fan in case_fans for case in cases]
-    fan_case_count = 0
-    for fan, case in tqdm(fan_case_pairs, desc="Fan <-> Case (auto)", unit="pair", leave=False):
-        fan_case_count += 1
-        compatible_pairs.append(CompatibilityResult(fan.id, case.id, True, "Always compatible"))
-        compatible_pairs.append(CompatibilityResult(case.id, fan.id, True, "Always compatible"))
-    compatible_count += fan_case_count
-    logger.info(f"  Case Fan <-> Case: {fan_case_count} compatible pairs added")
-    
-    # Monitor <-> GPU (always compatible)
-    monitor_gpu_pairs = [(monitor, gpu) for monitor in monitors for gpu in gpus]
-    monitor_gpu_count = 0
-    for monitor, gpu in tqdm(monitor_gpu_pairs, desc="Monitor <-> GPU (auto)", unit="pair", leave=False):
-        monitor_gpu_count += 1
-        compatible_pairs.append(CompatibilityResult(monitor.id, gpu.id, True, "Always compatible"))
-        compatible_pairs.append(CompatibilityResult(gpu.id, monitor.id, True, "Always compatible"))
-    compatible_count += monitor_gpu_count
-    logger.info(f"  Monitor <-> GPU: {monitor_gpu_count} compatible pairs added")
-    
-    return compatible_pairs
+    return compatible_count
 
 
 # ========================================================================== #
 # DATABASE OPERATIONS                                                        #
 # ========================================================================== #
 
-def delete_existing_compatibilities(db: DatabaseConnection, component_ids: Set[str]) -> int:
+def delete_all_compatibilities(db: DatabaseConnection) -> int:
     """
-    Delete existing compatibilities for the given component IDs.
-    Returns the number of deleted records.
+    Delete ALL compatibility records using TRUNCATE for speed.
+    Returns 0 (TRUNCATE doesn't report row count).
     """
-    if not component_ids:
+    try:
+        # TRUNCATE is much faster than DELETE for large tables
+        logger.info("Truncating ComponentCompatibilities table...")
+        db.execute("TRUNCATE TABLE ComponentCompatibilities")
+        db.commit()
+        logger.info("Table truncated successfully")
         return 0
-    
-    # Delete in batches to avoid parameter limits
-    deleted_count = 0
-    component_list = list(component_ids)
-    batch_size = 500
-    
-    total_batches = (len(component_list) + batch_size - 1) // batch_size
-    
-    with tqdm(total=total_batches, desc="Deleting old compatibilities", unit="batch") as pbar:
-        for i in range(0, len(component_list), batch_size):
-            batch = component_list[i:i + batch_size]
-            placeholders = ",".join(["?" for _ in batch])
-            
-            # Delete where ComponentId is in batch
-            query = f"""
-                DELETE FROM ComponentCompatibilities 
-                WHERE ComponentId IN ({placeholders}) OR CompatibleComponentId IN ({placeholders})
-            """
-            db.execute(query, tuple(batch + batch))
-            deleted_count += db.cursor.rowcount
-            pbar.update(1)
-    
-    db.commit()
-    logger.info(f"Deleted {deleted_count} existing compatibility records")
-    return deleted_count
-
-
-def insert_compatibilities(
-    db: DatabaseConnection,
-    compatible_pairs: List[CompatibilityResult],
-    batch_size: int = 1000
-) -> int:
-    """
-    Insert compatibility records into the database.
-    Returns the number of inserted records.
-    """
-    if not compatible_pairs:
-        return 0
-    
-    now = dt.datetime.utcnow()
-    inserted_count = 0
-    
-    insert_sql = """
-        INSERT INTO ComponentCompatibilities 
-        (Id, ComponentId, CompatibleComponentId, DatabaseEntryAt, LastEditedAt, Note)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """
-    
-    # Process in batches with progress bar
-    with tqdm(total=len(compatible_pairs), desc="Inserting compatibilities", unit="record") as pbar:
-        for i in range(0, len(compatible_pairs), batch_size):
-            batch = compatible_pairs[i:i + batch_size]
-            params_list = []
-            
-            for result in batch:
-                params = (
-                    str(uuid.uuid4()),
-                    result.component_id,
-                    result.compatible_component_id,
-                    now,
-                    now,
-                    None,  # Note
-                )
-                params_list.append(params)
-            
-            try:
-                db.cursor.fast_executemany = True
-                db.executemany(insert_sql, params_list)
-                db.commit()
-                inserted_count += len(batch)
-                pbar.update(len(batch))
-            except pyodbc.Error as e:
-                logger.error(f"Error inserting batch: {e}")
-                # Try inserting one by one to identify problematic records
-                for params in params_list:
-                    try:
-                        db.execute(insert_sql, params)
-                        db.commit()
-                        inserted_count += 1
-                        pbar.update(1)
-                    except pyodbc.Error as inner_e:
-                        logger.warning(f"Failed to insert compatibility {params[1]} <-> {params[2]}: {inner_e}")
-                        pbar.update(1)
-    
-    logger.info(f"Total inserted: {inserted_count} compatibility records")
-    return inserted_count
+    except pyodbc.Error as e:
+        # TRUNCATE may fail if there are foreign key constraints
+        # Fall back to DELETE
+        logger.warning(f"TRUNCATE failed ({e}), falling back to DELETE...")
+        db.execute("DELETE FROM ComponentCompatibilities")
+        count = db.cursor.rowcount
+        db.commit()
+        logger.info(f"Deleted {count} records using DELETE")
+        return count
 
 
 def get_all_component_ids(
@@ -1769,6 +1975,11 @@ def main() -> int:
     # Connect to database
     db = DatabaseConnection(args.connection_string, args.odbc_driver)
     
+    # Track resources for cleanup
+    csv_filepath = None
+    original_recovery_model = None
+    saved_indexes = []
+    
     try:
         db.connect()
         
@@ -1796,31 +2007,121 @@ def main() -> int:
             logger.warning("No components found in database. Exiting.")
             return 0
         
-        # Generate compatibility pairs
-        logger.info("Generating compatibility pairs...")
-        compatible_pairs = generate_all_compatibilities(
-            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans, monitors
-        )
-        
         if args.dry_run:
-            logger.info("Dry run mode - no database changes will be made")
-            logger.info(f"Would insert {len(compatible_pairs)} compatibility records")
+            logger.info("Dry run mode - calculating estimated pairs...")
+            # Estimate counts without generating
+            complex_estimate = (
+                len(cpus) * len(motherboards) +
+                len(motherboards) * len(cases) +
+                len(memories) * len(motherboards) +
+                len(gpus) * len(cases) +
+                len(coolers) * len(cpus) +
+                len(coolers) * len(cases) +
+                len(storages) * len(motherboards) +
+                len(psus) * len(cases) +
+                len(psus) * len(gpus) +
+                len(psus) * len(cpus) +
+                len(case_fans) * len(motherboards)
+            )
+            always_compat_estimate = (
+                len(coolers) * len(motherboards) +
+                len(gpus) * len(motherboards) +
+                len(psus) * len(motherboards) +
+                len(case_fans) * len(cases) +
+                len(monitors) * len(gpus)
+            ) * 2  # Both directions
+            
+            logger.info(f"Estimated complex compatibility pairs: ~{complex_estimate * 2}")
+            logger.info(f"Estimated always-compatible pairs: ~{always_compat_estimate}")
+            logger.info(f"Total estimated: ~{complex_estimate * 2 + always_compat_estimate}")
             return 0
         
-        # Get all component IDs for deletion
-        all_component_ids = get_all_component_ids(
-            cpus, motherboards, cases, gpus, memories, storages, psus, coolers, case_fans, monitors
-        )
+        # ================================================================== #
+        # PHASE 1: Prepare database for bulk operations                      #
+        # ================================================================== #
+        logger.info("=" * 70)
+        logger.info("PHASE 1: Preparing database for bulk operations")
+        logger.info("=" * 70)
+        
+        # Save and drop non-clustered indexes
+        saved_indexes = get_nonclustered_indexes(db)
+        if saved_indexes:
+            drop_indexes(db, saved_indexes)
+        
+        # Try to set recovery model to SIMPLE
+        original_recovery_model = set_recovery_model_simple(db)
         
         # Delete existing compatibilities
         logger.info("Deleting existing compatibility records...")
-        deleted_count = delete_existing_compatibilities(db, all_component_ids)
+        delete_all_compatibilities(db)
         
-        # Insert new compatibilities
-        logger.info("Inserting new compatibility records...")
-        inserted_count = insert_compatibilities(db, compatible_pairs, args.batch_size)
+        # ================================================================== #
+        # PHASE 2: Generate complex compatibilities to CSV                   #
+        # ================================================================== #
+        logger.info("=" * 70)
+        logger.info("PHASE 2: Generating complex compatibility pairs to CSV")
+        logger.info("=" * 70)
         
-        # Summary
+        # Create temp CSV file
+        csv_filepath = os.path.join(tempfile.gettempdir(), f"kazabuild_compat_{uuid.uuid4().hex}.csv")
+        logger.info(f"Writing to temporary CSV: {csv_filepath}")
+        
+        complex_count = 0
+        with CSVCompatibilityWriter(csv_filepath) as csv_writer:
+            complex_count = generate_complex_compatibilities_to_csv(
+                csv_writer,
+                cpus, motherboards, cases, gpus, memories, 
+                storages, psus, coolers, case_fans
+            )
+        
+        csv_records = complex_count * 2  # Both directions were written
+        logger.info(f"CSV file created with {csv_records} records")
+        
+        # ================================================================== #
+        # PHASE 3: BULK INSERT from CSV                                      #
+        # ================================================================== #
+        logger.info("=" * 70)
+        logger.info("PHASE 3: BULK INSERT from CSV")
+        logger.info("=" * 70)
+        
+        bulk_inserted = bulk_insert_from_csv(db, csv_filepath)
+        
+        # ================================================================== #
+        # PHASE 4: Insert always-compatible pairs via SQL                    #
+        # ================================================================== #
+        logger.info("=" * 70)
+        logger.info("PHASE 4: Inserting always-compatible pairs via SQL")
+        logger.info("=" * 70)
+        
+        always_compat_count = insert_always_compatible_pairs_sql(db)
+        
+        # ================================================================== #
+        # PHASE 5: Restore database settings                                 #
+        # ================================================================== #
+        logger.info("=" * 70)
+        logger.info("PHASE 5: Restoring database settings")
+        logger.info("=" * 70)
+        
+        # Recreate indexes
+        if saved_indexes:
+            logger.info("Recreating indexes...")
+            recreate_indexes(db, saved_indexes)
+        
+        # Restore recovery model
+        if original_recovery_model:
+            restore_recovery_model(db, original_recovery_model)
+        
+        # Cleanup CSV file
+        if csv_filepath and os.path.exists(csv_filepath):
+            os.remove(csv_filepath)
+            logger.info(f"Removed temporary CSV file: {csv_filepath}")
+            csv_filepath = None
+        
+        # ================================================================== #
+        # Summary                                                            #
+        # ================================================================== #
+        total_inserted = bulk_inserted + always_compat_count
+        
         logger.info("=" * 70)
         logger.info("SUMMARY")
         logger.info("=" * 70)
@@ -1835,8 +2136,9 @@ def main() -> int:
         logger.info(f"  - Coolers: {len(coolers)}")
         logger.info(f"  - Case Fans: {len(case_fans)}")
         logger.info(f"  - Monitors: {len(monitors)}")
-        logger.info(f"Compatibility records deleted: {deleted_count}")
-        logger.info(f"Compatibility records inserted: {inserted_count}")
+        logger.info(f"Complex compatibility records (via BULK INSERT): {bulk_inserted}")
+        logger.info(f"Always-compatible records (via SQL): {always_compat_count}")
+        logger.info(f"Total compatibility records inserted: {total_inserted}")
         logger.info("=" * 70)
         
         return 0
@@ -1848,6 +2150,28 @@ def main() -> int:
         logger.exception(f"Unexpected error: {e}")
         return 1
     finally:
+        # Cleanup on error
+        if csv_filepath and os.path.exists(csv_filepath):
+            try:
+                os.remove(csv_filepath)
+                logger.info(f"Cleaned up temporary CSV file: {csv_filepath}")
+            except:
+                pass
+        
+        # Try to restore indexes if they were dropped
+        if saved_indexes:
+            try:
+                recreate_indexes(db, saved_indexes)
+            except:
+                logger.warning("Could not restore indexes in cleanup")
+        
+        # Try to restore recovery model
+        if original_recovery_model:
+            try:
+                restore_recovery_model(db, original_recovery_model)
+            except:
+                logger.warning("Could not restore recovery model in cleanup")
+        
         db.disconnect()
 
 
