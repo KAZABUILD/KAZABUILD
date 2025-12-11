@@ -7,7 +7,6 @@ library;
 
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +17,6 @@ import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/models/api_constants.dart';
-import 'package:universal_html/html.dart' as html;
 
 
 /// A page for creating a new forum post or editing an existing one.
@@ -257,11 +255,11 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
           ),
         );
 
-        // Navigate to the post detail page
+        // Navigate back to profile page (where user came from)
         if (mounted) {
           await Future.delayed(const Duration(milliseconds: 100));
           if (!mounted) return;
-          context.go('/forums/$postId');
+          context.go('/profile');
         }
         return;
       }
@@ -327,25 +325,9 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
 
         if (!mounted) return;
 
-        // Navigate to home page - use window.location.href for web to avoid hash issues
-        if (kIsWeb) {
-          try {
-            // Directly set the full URL to home - this bypasses all router logic
-            final origin = html.window.location.origin;
-            final targetUrl = '$origin/home';
-
-            // Use window.location.href to completely replace the URL
-            // This ensures no hash is added
-            html.window.location.href = targetUrl;
-          } catch (e) {
-            debugPrint('Error navigating on web: $e');
-            // Fallback: try router
-            context.go('/home');
-          }
-        } else {
-          // Non-web: just navigate normally
-          context.go('/home');
-        }
+        // Use GoRouter's context.go() for proper navigation
+        // This works correctly with both hash and path-based routing
+        context.go('/home');
       }
     } catch (e) {
       // STOP LOADING ON ERROR TOO
@@ -563,8 +545,9 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                           ),
                           const SizedBox(height: 20),
 
-                          // Image Upload Section
-                          Container(
+                          // Image Upload Section (only show when creating new post, not editing)
+                          if (widget.postId == null) ...[
+                            Container(
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surface,
                             borderRadius: BorderRadius.circular(16),
@@ -690,6 +673,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                             ],
                           ),
                           ),
+                          ],
                           const SizedBox(height: 32),
 
                           // Action Buttons

@@ -578,6 +578,16 @@ class BuildService {
     }
   }
 
+  /// Deletes a build from the backend.
+  /// Users can only delete their own builds, admins can delete any build.
+  Future<void> deleteBuild(String buildId) async {
+    try {
+      await _dio.delete('$apiBaseUrl/Builds/$buildId');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Adds a component to an existing build.
   Future<void> addComponentToBuild(String buildId, String componentId, int quantity) async {
     try {
