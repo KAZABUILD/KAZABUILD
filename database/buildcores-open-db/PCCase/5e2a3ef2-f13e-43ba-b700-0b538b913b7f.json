@@ -1,0 +1,35 @@
+{
+  "opendb_id": "5e2a3ef2-f13e-43ba-b700-0b538b913b7f",
+  "metadata": {
+    "name": "Asus ROG Strix Helios Gundam Edition ATX Full Tower Silver / Multicolor with Tempered Glass Side Panel and USB 3.2 Gen 2 Type-C / USB 3.2 Gen 1 Type-A",
+    "manufacturer": "ASUS",
+    "part_numbers": [
+      "GX601 ROG STRIX HELIOS GUNDAM EDITION                                                    90DC0023-B30010"
+    ],
+    "series": "ROG",
+    "variant": ""
+  },
+  "form_factor": "ATX Full Tower",
+  "color": [
+    "GREY",
+    "RGB"
+  ],
+  "power_supply": "None",
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "max_video_card_length": 450,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 2,
+  "internal_2_5_bays": 4,
+  "expansion_slots": 8,
+  "dimensions": "565 x 250 x 591",
+  "volume": 83.479,
+  "weight": null,
+  "supported_power_supply_form_factors": [],
+  "front_usb_ports": [],
+  "general_product_information": {
+    "amazon_sku": "B097TT7FZ2",
+    "walmart_sku": 982878134
+  }
+}

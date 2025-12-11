@@ -1,0 +1,48 @@
+{
+  "opendb_id": "b94d4ef4-94e3-4e1f-aa94-18ee9d51fafe",
+  "power_connectors": {
+    "pcie_8_pin": 2
+  },
+  "metadata": {
+    "name": "MSI GeForce RTX™ 5080 16G EXPERT OC",
+    "manufacturer": "MSI",
+    "part_numbers": [
+      "G5080-16EC",
+      "RTX 5080 16G EXPERT OC",
+      "RTX 5080 16G EXPERT OC"
+    ],
+    "series": "GeForce RTX 5080",
+    "variant": "EXPERT OC"
+  },
+  "chipset_manufacturer": "GeForce",
+  "chipset": "GeForce RTX 5080",
+  "core_count": 10752,
+  "memory": 16,
+  "memory_type": "GDDR7",
+  "core_boost_clock": 2730,
+  "memory_bus": 256,
+  "interface": "PCIe 5.0 x16",
+  "color": [
+    "GOLD",
+    "BLACK"
+  ],
+  "length": 319,
+  "tdp": 360,
+  "total_slot_width": 3,
+  "cooling": "Blower",
+  "video_outputs": {
+    "hdmi_2_1": 1,
+    "displayport_2_1": null,
+    "displayport_2_1_b": 3,
+    "_id": "68b281f64ae2c7d623cb7027"
+  },
+  "core_base_clock": 2295,
+  "frame_sync": "G-Sync",
+  "general_product_information": {
+    "amazon_sku": "B0FLSWN28H",
+    "newegg_sku": "N82E16814137989",
+    "bestbuy_sku": 6645319,
+    "walmart_sku": 17571317058,
+    "manufacturer_url": "https://www.msi.com/Graphics-Card/GeForce-RTX-5080-16G-EXPERT-OC/"
+  }
+}

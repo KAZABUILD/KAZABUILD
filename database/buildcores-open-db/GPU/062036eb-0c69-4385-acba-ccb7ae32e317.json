@@ -1,0 +1,52 @@
+{
+  "opendb_id": "062036eb-0c69-4385-acba-ccb7ae32e317",
+  "power_connectors": {
+    "pcie_6_pin": 0,
+    "pcie_8_pin": 0,
+    "pcie_12VHPWR": 0,
+    "pcie_12V_2x6": 0
+  },
+  "metadata": {
+    "name": "Gigabyte GAMING OC Radeon RX 9060 XT 8GB GDDR6 Black",
+    "manufacturer": "Gigabyte",
+    "part_numbers": [
+      "GV-R9060XTGAMING OC-8GD",
+      "GV-R9070GAMING-16GD"
+    ],
+    "series": "Radeon RX 9060 XT",
+    "variant": "Gigabyte"
+  },
+  "chipset_manufacturer": "Radeon",
+  "chipset": "Radeon RX 9060 XT 8 GB",
+  "memory": 8,
+  "memory_type": "GDDR6",
+  "core_base_clock": 2220,
+  "core_boost_clock": 2220,
+  "effective_memory_clock": 0,
+  "memory_bus": 128,
+  "interface": "PCIe x16",
+  "color": [
+    "BLACK"
+  ],
+  "length": 281,
+  "tdp": 160,
+  "total_slot_width": 2,
+  "cooling": "3 Fans",
+  "video_outputs": {
+    "hdmi_2_1": 1,
+    "hdmi_2_0": 0,
+    "displayport_2_1": 0,
+    "displayport_2_1a": 2,
+    "displayport_1_4a": 0,
+    "dvi_d": 0,
+    "vga": 0,
+    "_id": "685215c80c9749f19a4efada"
+  },
+  "core_count": 2048,
+  "general_product_information": {
+    "amazon_sku": "B0F91K2KBX",
+    "newegg_sku": "N82E16814932807",
+    "bestbuy_sku": 6633167,
+    "walmart_sku": 16991960584
+  }
+}

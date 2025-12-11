@@ -1,0 +1,18 @@
+{
+  "opendb_id": "61d7baf3-605b-497c-9c42-8bb0911ff37d",
+  "metadata": {
+    "name": "Montech White ARGB PWM 120mm Reversed OEM",
+    "manufacturer": "Montech",
+    "part_numbers": []
+  },
+  "size": 120,
+  "color": [
+    "White"
+  ],
+  "quantity": 1,
+  "pwm": true,
+  "led": "None",
+  "controller": "None",
+  "flow_direction": "Reverse",
+  "general_product_information": {}
+}

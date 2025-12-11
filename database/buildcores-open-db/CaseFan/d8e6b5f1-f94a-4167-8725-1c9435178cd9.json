@@ -1,0 +1,32 @@
+{
+  "opendb_id": "d8e6b5f1-f94a-4167-8725-1c9435178cd9",
+  "metadata": {
+    "name": "Silverstone VISTA 120mm Black PWM 66 CFM 1-Pack",
+    "manufacturer": "SilverStone",
+    "part_numbers": [
+      "SST-VS120B",
+      "SST-VS120B"
+    ],
+    "series": "VISTA",
+    "variant": "120mm Black"
+  },
+  "size": 120,
+  "color": [
+    "BLACK"
+  ],
+  "quantity": 1,
+  "min_airflow": 0,
+  "max_airflow": 66,
+  "min_noise_level": 0,
+  "max_noise_level": 30.6,
+  "pwm": true,
+  "led": "None",
+  "connector": "4-pin PWM",
+  "controller": "None",
+  "static_pressure": 2.22,
+  "flow_direction": "Standard",
+  "general_product_information": {
+    "amazon_sku": "B0C36BLNFL",
+    "walmart_sku": 1403981861
+  }
+}

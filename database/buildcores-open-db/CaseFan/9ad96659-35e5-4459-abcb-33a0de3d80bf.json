@@ -1,0 +1,31 @@
+{
+  "opendb_id": "9ad96659-35e5-4459-abcb-33a0de3d80bf",
+  "metadata": {
+    "name": "Thermalright TL-9015 92mm White PWM 42.58 CFM 1-Pack",
+    "manufacturer": "Thermalright",
+    "series": "TL-9015",
+    "variant": "92mm White",
+    "part_numbers": [
+      "TL-9015W D6",
+      "TL-9015W D6"
+    ]
+  },
+  "size": 92,
+  "color": [
+    "WHITE"
+  ],
+  "quantity": 1,
+  "min_airflow": 42.58,
+  "max_airflow": null,
+  "min_noise_level": 22.4,
+  "max_noise_level": null,
+  "pwm": true,
+  "led": "None",
+  "connector": "4-pin PWM",
+  "controller": "None",
+  "static_pressure": 1.33,
+  "flow_direction": "Standard",
+  "general_product_information": {
+    "amazon_sku": "B0BY8KXD5Q"
+  }
+}

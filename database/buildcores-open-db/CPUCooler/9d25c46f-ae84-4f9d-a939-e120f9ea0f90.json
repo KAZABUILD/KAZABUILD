@@ -1,0 +1,43 @@
+{
+  "opendb_id": "9d25c46f-ae84-4f9d-a939-e120f9ea0f90",
+  "metadata": {
+    "name": "iBuypower AW4 Water 360mm 65 CFM Black",
+    "manufacturer": "iBuypower",
+    "part_numbers": [
+      "FAN-IBP-006-B-R"
+    ],
+    "series": "AW4",
+    "variant": "Black",
+    "releaseYear": null
+  },
+  "min_fan_rpm": 700,
+  "max_fan_rpm": 2000,
+  "min_noise_level": 38,
+  "max_noise_level": null,
+  "color": [
+    "BLACK"
+  ],
+  "height": null,
+  "cpu_sockets": [
+    "AM4",
+    "AM5",
+    "LGA1150",
+    "LGA1151",
+    "LGA1155",
+    "LGA1156",
+    "LGA1200",
+    "LGA1700",
+    "LGA1851"
+  ],
+  "water_cooled": true,
+  "radiator_size": 360,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {
+    "amazon_sku": "B0D2KJSCZ4",
+    "bestbuy_sku": 6578777,
+    "walmart_sku": 5680114277,
+    "ibuypower_sku": "28447"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "opendb_id": "8e1d0b12-e825-4750-b44a-107af5c68d86",
+  "metadata": {
+    "name": "HYTE Y70 Touch ATX Mid Tower Black / Red Tempered Glass Side Panel",
+    "manufacturer": "HYTE",
+    "part_numbers": [
+      "CS-HYTE-Y70-BR-L"
+    ],
+    "series": "Y70",
+    "variant": ""
+  },
+  "form_factor": "ATX Mid Tower",
+  "color": [
+    "BLACK",
+    "RED"
+  ],
+  "power_supply": "None",
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "max_video_card_length": 390,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 2,
+  "internal_2_5_bays": 0,
+  "expansion_slots": 7,
+  "dimensions": "470 x 320 x 470",
+  "volume": 70.688,
+  "weight": null,
+  "supported_power_supply_form_factors": [],
+  "front_usb_ports": [],
+  "general_product_information": {}
+}

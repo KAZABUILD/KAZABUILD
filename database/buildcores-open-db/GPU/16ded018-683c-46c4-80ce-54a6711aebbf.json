@@ -1,0 +1,38 @@
+{
+  "opendb_id": "16ded018-683c-46c4-80ce-54a6711aebbf",
+  "power_connectors": {
+    "pcie_8_pin": null
+  },
+  "metadata": {
+    "name": "MSI GeForce RTX 5070 Ti 16G GAMING TRIO PLUS",
+    "manufacturer": "MSI",
+    "part_numbers": [
+      "G507T-16GTCP"
+    ],
+    "series": "RTX 5070",
+    "variant": "5070 Ti 16G GAMING TRIO OC PLUS",
+    "releaseYear": 2025
+  },
+  "chipset_manufacturer": "NVIDIA",
+  "chipset": "GeForce RTX 5070 Ti",
+  "core_count": 8960,
+  "memory": 16,
+  "memory_type": "GDDR7",
+  "core_base_clock": 2295,
+  "core_boost_clock": 2580,
+  "memory_bus": 256,
+  "interface": "PCIe 5.0 x16",
+  "frame_sync": "G-Sync",
+  "length": 338,
+  "tdp": 300,
+  "cooling": "3 Fans",
+  "video_outputs": {
+    "hdmi_2_1": 1,
+    "displayport_2_1_b": 3,
+    "_id": "68acdd19bb899d6a149fec9a"
+  },
+  "color": [],
+  "general_product_information": {
+    "amazon_sku": "B0DV9GMDLR"
+  }
+}

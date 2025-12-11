@@ -1,0 +1,42 @@
+{
+  "opendb_id": "325da1a7-a956-4515-b621-28b5c6d5cc1d",
+  "metadata": {
+    "name": "Thermalright Frozen Warframe ARGB 88.7 CFM Water 420mm Black",
+    "manufacturer": "Thermalright",
+    "part_numbers": [
+      "Frozen Warframe 420 BLACK ARGB"
+    ],
+    "series": "Frozen",
+    "variant": "Black",
+    "releaseYear": null
+  },
+  "min_fan_rpm": 1750,
+  "max_fan_rpm": null,
+  "min_noise_level": 29.8,
+  "max_noise_level": null,
+  "color": [
+    "BLACK"
+  ],
+  "height": null,
+  "cpu_sockets": [
+    "AM4",
+    "AM5",
+    "LGA1150",
+    "LGA1151",
+    "LGA1155",
+    "LGA1156",
+    "LGA1200",
+    "LGA1700",
+    "LGA1851",
+    "LGA2011",
+    "LGA2011",
+    "3",
+    "LGA2066"
+  ],
+  "water_cooled": true,
+  "radiator_size": 420,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {}
+}
