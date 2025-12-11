@@ -23,6 +23,8 @@ namespace KAZABUILD.API.Controllers.Components
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
+    /// <param name="pricesService"></param>
+    /// <param name="pricesApiSettings"></param>
     [ApiController]
     [Route("[controller]")]
     public class ComponentPricesController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IPricesApiService pricesService, IOptions<PricesApiSettings> pricesApiSettings) : ControllerBase
