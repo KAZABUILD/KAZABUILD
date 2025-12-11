@@ -389,7 +389,7 @@ class _SeamlessAnimatedGradientTextState
     _controller = AnimationController(
       vsync: this,
       duration: widget.animationDuration,
-    )..repeat(); // Use repeat() to ensure continuous looping
+    )..repeat();
   }
 
   @override
@@ -403,47 +403,40 @@ class _SeamlessAnimatedGradientTextState
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Create a repeating gradient pattern that wraps seamlessly
-        // The gradient width is 2x the text width to allow smooth scrolling
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            // Create a seamless looping gradient by duplicating the color pattern
-            // and ensuring the first and last colors match for perfect wrapping
+        
+        return LayoutBuilder(
+          builder: (context, constraints) {
             final extendedColors = [...widget.colors, ...widget.colors];
-
-            // Calculate scroll position - this will loop seamlessly
-            // because we're using repeat() on the controller and duplicated colors
             final scrollProgress = _controller.value;
-            final gradientWidth = bounds.width;
-
-            // Expand bounds slightly to prevent edge artifacts and white specks
-            // This ensures the shader fully covers all text pixels including edges
-            final expandedBounds = Rect.fromLTWH(
-              -gradientWidth - 2,
-              -2,
-              gradientWidth * 4 + 4,
-              bounds.height + 4,
-            );
-
-            // Create a gradient that spans 2 full cycles
-            // The offset moves the gradient, and when it completes one cycle,
-            // the duplicated pattern ensures it looks identical to the start
-            return LinearGradient(
+            
+            
+            final width = constraints.maxWidth > 2000 ? 2000.0 : constraints.maxWidth;
+            
+           
+            final shader = LinearGradient(
               begin: Alignment(-1.0 - scrollProgress * 2, 0),
               end: Alignment(1.0 - scrollProgress * 2, 0),
               colors: extendedColors,
               stops: _generateStops(extendedColors.length),
               tileMode: TileMode.clamp,
-            ).createShader(expandedBounds);
+            ).createShader(Rect.fromLTWH(0, 0, width, 100)); 
+
+            
+            return Text(
+              widget.text,
+              style: (widget.textStyle ?? const TextStyle()).copyWith(
+                color: null, 
+                foreground: Paint()..shader = shader, 
+                
+                height: 1.2, 
+              ),
+            );
           },
-          blendMode: BlendMode.srcIn,
-          child: Text(widget.text, style: widget.textStyle),
         );
       },
     );
   }
 
-  /// Generates evenly spaced stops for the gradient
   List<double> _generateStops(int colorCount) {
     return List.generate(colorCount, (index) => index / (colorCount - 1));
   }

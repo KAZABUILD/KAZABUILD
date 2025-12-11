@@ -13,6 +13,8 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
+import 'package:frontend/models/forum_provider.dart';
+import 'package:frontend/models/forum_model.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/l10n/app_localization.dart';
@@ -132,6 +134,9 @@ class ProfilePage extends ConsumerWidget {
                             // Builds Section
                             _buildBuildsSection(context, ref, currentUser.uid, theme, isDark, isOwnProfile: true),
                             const SizedBox(height: 40),
+                            // Forum Posts Section
+                            _buildForumPostsSection(context, ref, currentUser.uid, theme, isDark, isOwnProfile: true),
+                            const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -206,6 +211,9 @@ class ProfilePage extends ConsumerWidget {
                           const SizedBox(height: 32),
                           // Builds Section
                           _buildBuildsSection(context, ref, profileUser.uid, theme, isDark, isOwnProfile: isOwnProfile),
+                          const SizedBox(height: 40),
+                          // Forum Posts Section
+                          _buildForumPostsSection(context, ref, profileUser.uid, theme, isDark, isOwnProfile: isOwnProfile),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -624,6 +632,195 @@ class ProfilePage extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Builds the forum posts section with header and list
+  Widget _buildForumPostsSection(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    ThemeData theme,
+    bool isDark, {
+    bool isOwnProfile = false,
+  }) {
+    final forumPostsAsyncValue = ref.watch(userForumPostsProvider(userId));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: forumPostsAsyncValue.when(
+        data: (forumPosts) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Section Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.forum_rounded,
+                      color: theme.colorScheme.onPrimaryContainer,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isOwnProfile
+                              ? 'My Forum Posts'
+                              : 'Forum Posts',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${forumPosts.length} ${forumPosts.length == 1 ? 'post' : 'posts'}',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Forum Posts List or Empty State
+              if (forumPosts.isEmpty)
+                _buildForumPostsEmptyState(context, theme, isOwnProfile: isOwnProfile)
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: forumPosts.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    return _ForumPostCard(
+                      post: forumPosts[index],
+                      isOwnProfile: isOwnProfile,
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(48.0),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        error: (err, stack) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(48.0),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load forum posts',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  err.toString(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the empty state when no forum posts exist
+  Widget _buildForumPostsEmptyState(BuildContext context, ThemeData theme, {bool isOwnProfile = false}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.forum_outlined,
+              size: 64,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No forum posts yet',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isOwnProfile
+                ? 'Start a discussion in the forum!'
+                : 'This user hasn\'t posted in the forum yet.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (isOwnProfile) ...[
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: () {
+                context.push('/forums');
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Go to Forum'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1102,7 +1299,7 @@ class _BuildCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          // Edit Button (only for own profile)
+                          // Edit and Delete Buttons (only for own profile)
                           if (isOwnProfile) ...[
                             const SizedBox(width: 8),
                             IconButton(
@@ -1111,6 +1308,66 @@ class _BuildCard extends ConsumerWidget {
                               },
                               icon: const Icon(Icons.edit_outlined, size: 18),
                               tooltip: 'Edit Build',
+                              style: IconButton.styleFrom(
+                                padding: const EdgeInsets.all(6),
+                                minimumSize: const Size(32, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () async {
+                                // Show confirmation dialog
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Build'),
+                                    content: const Text('Are you sure you want to delete this build? This action cannot be undone.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: theme.colorScheme.error,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                
+                                if (confirmed == true && context.mounted) {
+                                  try {
+                                    final buildService = ref.read(buildServiceProvider);
+                                    await buildService.deleteBuild(buildData.id);
+                                    
+                                    // Invalidate the provider to refresh the list
+                                    ref.invalidate(userBuildsProvider(buildData.userId));
+                                    
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Build deleted successfully'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error deleting build: ${e.toString()}'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: Icon(Icons.delete_outline, size: 18, color: theme.colorScheme.error),
+                              tooltip: 'Delete Build',
                               style: IconButton.styleFrom(
                                 padding: const EdgeInsets.all(6),
                                 minimumSize: const Size(32, 32),
@@ -1163,6 +1420,224 @@ class _BuildCard extends ConsumerWidget {
         return Colors.orange;
       default:
         return theme.colorScheme.primary;
+    }
+  }
+}
+
+/// A card widget that displays a summary of a single forum post.
+class _ForumPostCard extends ConsumerWidget {
+  final ForumPost post;
+  final bool isOwnProfile;
+
+  const _ForumPostCard({
+    required this.post,
+    this.isOwnProfile = false,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          context.go('/forums/${post.id}');
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title and Delete Button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      post.title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isOwnProfile) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        context.go('/forums/${post.id}/edit');
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit Forum Post',
+                      style: IconButton.styleFrom(
+                        padding: const EdgeInsets.all(6),
+                        minimumSize: const Size(32, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete Forum Post'),
+                            content: const Text('Are you sure you want to delete this forum post? This action cannot be undone.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: theme.colorScheme.error,
+                                ),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirmed == true && context.mounted) {
+                          try {
+                            final forumService = ref.read(forumServiceProvider);
+                            await forumService.deleteForumPost(post.id);
+                            
+                            // Invalidate the provider to refresh the list
+                            ref.invalidate(userForumPostsProvider(post.creatorId));
+                            
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Forum post deleted successfully'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error deleting forum post: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      icon: Icon(Icons.delete_outline, size: 18, color: theme.colorScheme.error),
+                      tooltip: 'Delete Forum Post',
+                      style: IconButton.styleFrom(
+                        padding: const EdgeInsets.all(6),
+                        minimumSize: const Size(32, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              // Content Preview
+              Text(
+                post.content,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              
+              // Topic and Replies
+              Row(
+                children: [
+                  // Topic Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      post.topic,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Replies Count
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.comment_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${post.replyCount} ${post.replyCount == 1 ? 'reply' : 'replies'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Date
+                  Text(
+                    _formatDate(post.createdAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'Just now';
+        }
+        return '${difference.inMinutes}m ago';
+      }
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
     }
   }
 }

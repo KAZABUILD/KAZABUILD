@@ -1,7 +1,9 @@
-/// Ultra Premium Professional Forums Page - WOW Design
+/// Ultra Premium Professional Forums Page - Screenshot Match Edition
 ///
-/// A stunning, premium forum page with glassmorphism, advanced animations, and breathtaking visuals.
+/// This file combines the "WOW" header effects with the specific 
+/// minimalist list-style card design requested from the screenshot.
 library;
+
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -12,10 +14,13 @@ import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import '../../core/constants/app_color.dart';
 import 'dart:math' as math;
+
+// -----------------------------------------------------------------------------
+// PROVIDERS
+// -----------------------------------------------------------------------------
 
 /// A provider to fetch the author's details based on their ID.
 final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
@@ -42,7 +47,10 @@ final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async
   }
 });
 
-/// The main widget for the forums page.
+// -----------------------------------------------------------------------------
+// MAIN PAGE WIDGET
+// -----------------------------------------------------------------------------
+
 class ForumsPage extends ConsumerStatefulWidget {
   const ForumsPage({super.key});
 
@@ -93,7 +101,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
             _searchQuery = _searchController.text.trim();
             _currentPage = 1;
             _hasMorePages = false;
-            // Clear last successful params when search changes
             _lastSuccessfulParams = null;
           });
         }
@@ -108,7 +115,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
       _currentPage = page;
     });
     
-    // Scroll to top smoothly
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -138,7 +144,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
     return [l10n.newest, l10n.oldest];
   }
 
-
   Widget _buildPostsList(bool isDarkMode, ThemeData theme) {
     final allText = AppLocalizations.of(context)!.all;
     final selectedCat = _selectedCategory ?? allText;
@@ -156,11 +161,8 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
 
     return postsAsync.when(
       data: (posts) {
-        // Mark these params as successful
         _lastSuccessfulParams = params;
         
-        // Update hasMorePages based on the number of posts received
-        // If we got a full page, there might be more pages
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
@@ -184,7 +186,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                   position: index,
                   duration: const Duration(milliseconds: 500),
                   child: SlideAnimation(
-                    verticalOffset: 80.0,
+                    verticalOffset: 50.0,
                     child: FadeInAnimation(
                       child: _WOWPremiumPostCard(
                         post: posts[index],
@@ -200,9 +202,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
         );
       },
       loading: () {
-        // If we have previous successful data, show it while loading instead of spinner
         if (_lastSuccessfulParams != null && _lastSuccessfulParams == params) {
-          // This shouldn't happen as params changed, but handle it gracefully
           return const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),
           );
@@ -212,19 +212,12 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
         );
       },
       error: (error, stack) {
-        // Only show error if it's for the current params
-        // This prevents showing errors from previous category switches
         if (params != _lastSuccessfulParams) {
-          // If we have previous successful data, show loading instead of error
-          // This handles the case where switching categories causes a brief error
-          // but the new request is still loading
           return const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),
           );
         }
         
-        // Show error only if it's for params that previously succeeded
-        // or if we have no previous successful params
         return SliverFillRemaining(
           child: Center(
             child: Column(
@@ -235,14 +228,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                 Text(
                   'Error loading posts',
                   style: theme.textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Unable to load forums. Please try again.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -260,7 +245,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   }
 
   Widget _buildPaginationControls(bool isDarkMode, ThemeData theme) {
-    // Show pagination if we're on page > 1 or if there are more pages
     final shouldShowPagination = _currentPage > 1 || _hasMorePages;
     
     if (!shouldShowPagination) {
@@ -273,27 +257,20 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Previous button
             _PaginationButton(
               icon: Icons.chevron_left,
               onTap: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
               isDarkMode: isDarkMode,
               theme: theme,
             ),
-            
             const SizedBox(width: 16),
-            
-            // Current page indicator
             Text(
               'Page $_currentPage',
               style: theme.textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            
             const SizedBox(width: 16),
-            
-            // Next button
             _PaginationButton(
               icon: Icons.chevron_right,
               onTap: _hasMorePages ? () => _goToPage(_currentPage + 1) : null,
@@ -314,13 +291,18 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
     final selectedCat = _selectedCategory ?? allText;
     final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
 
+    // Use a deep dark background color matching the screenshot
+    final backgroundColor = isDarkMode 
+        ? const Color(0xFF0B0B0F) 
+        : AppColorsLight.backgroundPrimary;
+
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
-      backgroundColor: isDarkMode ? AppColorsDark.backgroundPrimary : AppColorsLight.backgroundPrimary,
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // Animated Background
+          // Animated Background (Subtle)
           AnimatedBuilder(
             animation: _backgroundAnimationController,
             builder: (context, child) {
@@ -357,8 +339,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                             _selectedCategory = category;
                             _currentPage = 1;
                             _hasMorePages = false;
-                            // Clear last successful params when switching categories
-                            // to prevent showing errors from previous category
                             _lastSuccessfulParams = null;
                           });
                         },
@@ -369,7 +349,6 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                             _selectedSortOption = option;
                             _currentPage = 1;
                             _hasMorePages = false;
-                            // Clear last successful params when changing sort
                             _lastSuccessfulParams = null;
                           });
                         },
@@ -377,10 +356,7 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
                         theme: theme,
                       ),
                     ),
-                    // Posts list using provider
                     _buildPostsList(isDarkMode, theme),
-                    
-                    // Pagination controls
                     _buildPaginationControls(isDarkMode, theme),
                   ],
                 ),
@@ -393,7 +369,216 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
   }
 }
 
-/// Animated Background Painter
+// -----------------------------------------------------------------------------
+// POST CARD WIDGET 
+// -----------------------------------------------------------------------------
+
+
+/// 
+/// This widget has been completely redesigned to match the minimalist list-view style.
+class _WOWPremiumPostCard extends ConsumerStatefulWidget {
+  final ForumPost post;
+  final bool isDarkMode;
+
+  const _WOWPremiumPostCard({
+    required this.post,
+    required this.isDarkMode,
+  });
+
+  @override
+  ConsumerState<_WOWPremiumPostCard> createState() => _WOWPremiumPostCardState();
+}
+
+class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final authorAsync = ref.watch(userProvider(widget.post.creatorId));
+    
+    // Exact background color from screenshot vibe (Deep Dark Blue/Black)
+    final cardBackgroundColor = widget.isDarkMode 
+        ? const Color(0xFF13131F) 
+        : Colors.white;
+
+    final borderColor = widget.isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12), // Spacing between list items
+        decoration: BoxDecoration(
+          color: cardBackgroundColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered 
+                ? (widget.isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon).withValues(alpha: 0.3)
+                : borderColor,
+            width: 1,
+          ),
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push('/forums/${widget.post.id}'),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- LEFT SIDE CONTENT ---
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Category Pill Badge
+                        _buildCategoryBadge(widget.post.topic, widget.isDarkMode),
+                        
+                        const SizedBox(height: 10),
+                        
+                        // 2. Title
+                        Text(
+                          widget.post.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            height: 1.3,
+                            color: widget.isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // 3. Metadata (@user • time)
+                        authorAsync.when(
+                          data: (author) {
+                            final username = author?.username ?? 'User';
+                            final handle = '@$username';
+                            // Real time formatting
+                            final timeStr = _formatTimeAgo(widget.post.createdAt); 
+                            
+                            return Text(
+                              '$handle  •  $timeStr',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: widget.isDarkMode 
+                                    ? Colors.white.withValues(alpha: 0.4)
+                                    : Colors.black.withValues(alpha: 0.5),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          },
+                          loading: () => Container(
+                            width: 100, height: 14, 
+                            color: Colors.grey.withValues(alpha: 0.1)
+                          ),
+                          error: (_, __) => const SizedBox(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // --- RIGHT SIDE CONTENT ---
+                  // Arrow Icon
+                  Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 20,
+                    color: widget.isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.black26,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper to format time ago
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  /// Helper to build the specific category badge style
+  Widget _buildCategoryBadge(String topic, bool isDarkMode) {
+    Color textColor;
+    Color borderColor;
+
+    // Matching screenshot colors
+    if (topic.contains('Support') || topic.contains('Troubleshooting')) {
+      textColor = const Color(0xFFE2E8F0); // Light Grey/White
+      borderColor = const Color(0xFFE2E8F0);
+    } else if (topic.contains('News') || topic.contains('Discussion')) {
+      textColor = const Color(0xFFA855F7); // Purple
+      borderColor = const Color(0xFFA855F7);
+    } else if (topic.contains('Build') || topic.contains('Showcase')) {
+      textColor = const Color(0xFF4ADE80); // Green
+      borderColor = const Color(0xFF4ADE80);
+    } else {
+      textColor = AppColorsDark.buttonBlue;
+      borderColor = AppColorsDark.buttonBlue;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        color: borderColor.withValues(alpha: 0.05),
+      ),
+      child: Text(
+        topic,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// BACKGROUND PAINTER
+// -----------------------------------------------------------------------------
+
 class _AnimatedBackgroundPainter extends CustomPainter {
   final double progress;
   final bool isDarkMode;
@@ -405,25 +590,25 @@ class _AnimatedBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Keep it extremely subtle for the clean screenshot look
     final paint = Paint()
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
 
-    // Animated gradient circles
-    for (int i = 0; i < 3; i++) {
-      final offset = progress + (i * 0.33);
+    for (int i = 0; i < 2; i++) {
+      final offset = progress + (i * 0.5);
       final x = size.width * (0.3 + 0.4 * math.sin(offset * 2 * math.pi));
       final y = size.height * (0.2 + 0.3 * math.cos(offset * 2 * math.pi));
       
       paint.shader = RadialGradient(
         colors: [
           (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
-              .withValues(alpha: 0.15),
+              .withValues(alpha: 0.05), // Extremely low opacity
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 300));
+      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 400));
       
-      canvas.drawCircle(Offset(x, y), 300, paint);
+      canvas.drawCircle(Offset(x, y), 400, paint);
     }
   }
 
@@ -431,7 +616,10 @@ class _AnimatedBackgroundPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-/// WOW Premium Header
+// -----------------------------------------------------------------------------
+// HEADER WIDGETS
+// -----------------------------------------------------------------------------
+
 class _WOWPremiumHeader extends StatelessWidget {
   final Animation<double> animation;
   final bool isDarkMode;
@@ -454,23 +642,20 @@ class _WOWPremiumHeader extends StatelessWidget {
         child: Container(
           constraints: BoxConstraints(minHeight: isMobile ? 240 : 280),
           decoration: BoxDecoration(
+            // Minimalist dark gradient/solid color to match screenshot
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
               colors: isDarkMode
                   ? [
-                      AppColorsDark.backgroundSecondary,
-                      AppColorsDark.backgroundPrimary,
-                      AppColorsDark.backgroundSecondary.withValues(alpha: 0.7),
+                      const Color(0xFF0F0F13),
+                      const Color(0xFF0B0B0F),
                     ]
                   : [
                       AppColorsLight.backgroundSecondary.withValues(alpha: 0.5),
                       AppColorsLight.backgroundPrimary,
-                      AppColorsLight.backgroundSecondary.withValues(alpha: 0.4),
                     ],
-              stops: const [0.0, 0.5, 1.0],
             ),
-            borderRadius: BorderRadius.zero,
           ),
           child: SafeArea(
             child: Padding(
@@ -482,106 +667,59 @@ class _WOWPremiumHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Premium Badge with Glow
+                  // Minimal Badge
                   Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: isMobile ? 12 : 16,
                       vertical: isMobile ? 6 : 8,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDarkMode
-                            ? [
-                                AppColorsDark.textNeon.withValues(alpha: 0.3),
-                                AppColorsDark.textPurple.withValues(alpha: 0.3),
-                              ]
-                            : [
-                                AppColorsLight.textNeon.withValues(alpha: 0.3),
-                                AppColorsLight.textPurple.withValues(alpha: 0.3),
-                              ],
-                      ),
+                      color: isDarkMode 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                            .withValues(alpha: 0.5),
-                        width: 2,
+                        color: (isDarkMode ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.1),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                              .withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.forum_rounded,
-                          size: isMobile ? 14 : 16,
-                          color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-                        ),
-                        SizedBox(width: isMobile ? 6 : 8),
-                        Text(
-                          'COMMUNITY FORUM',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-                            letterSpacing: 2,
-                            fontSize: isMobile ? 10 : 11,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'COMMUNITY FORUM',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                        letterSpacing: 2,
+                        fontSize: isMobile ? 10 : 11,
+                      ),
                     ),
                   ),
                   SizedBox(height: isMobile ? 16 : 24),
                   
-                  // Main Title with Gradient
-                  ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: isDarkMode
-                          ? [
-                              AppColorsDark.textNeon,
-                              AppColorsDark.textPurple,
-                              AppColorsDark.textNeon,
-                            ]
-                          : [
-                              AppColorsLight.textNeon,
-                              AppColorsLight.textPurple,
-                              AppColorsLight.textNeon,
-                            ],
-                    ).createShader(bounds),
-                    child: Text(
-                      'Community Hub',
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontSize: isMobile ? 32 : 42,
-                        letterSpacing: -1,
-                        color: Colors.white,
-                        height: 1.1,
-                      ),
+                  // Main Title
+                  Text(
+                    'Community Hub',
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontSize: isMobile ? 32 : 42,
+                      letterSpacing: -1,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      height: 1.1,
                     ),
                   ),
                   SizedBox(height: isMobile ? 8 : 12),
                   
-                  // Subtitle
                   Text(
                     'Connect, share, and learn from fellow PC building enthusiasts',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: isMobile ? 14 : 16,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       height: 1.4,
                       fontWeight: FontWeight.w400,
-                      letterSpacing: 0.3,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: isMobile ? 20 : 32),
                   
-                  // WOW Premium CTA Button
+                  // Primary Button
                   _WOWPremiumStartButton(
                     isDarkMode: isDarkMode,
                     theme: theme,
@@ -596,8 +734,7 @@ class _WOWPremiumHeader extends StatelessWidget {
   }
 }
 
-/// WOW Premium Start Button
-class _WOWPremiumStartButton extends StatefulWidget {
+class _WOWPremiumStartButton extends StatelessWidget {
   final bool isDarkMode;
   final ThemeData theme;
 
@@ -607,152 +744,42 @@ class _WOWPremiumStartButton extends StatefulWidget {
   });
 
   @override
-  State<_WOWPremiumStartButton> createState() => _WOWPremiumStartButtonState();
-}
-
-class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
-    with TickerProviderStateMixin {
-  bool _isHovered = false;
-  late AnimationController _scaleController;
-  late AnimationController _glowController;
-  late AnimationController _shimmerController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _glowAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutCubic),
-    );
-    
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    )..repeat(reverse: true);
-    _glowAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
-    
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    _glowController.dispose();
-    _shimmerController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _scaleController.forward();
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        _scaleController.reverse();
-      },
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_glowAnimation, _shimmerController]),
-          builder: (context, child) {
-            return GestureDetector(
-              onTap: () => context.go('/forums/new'),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  vertical: isMobile ? 12 : 16,
-                  horizontal: isMobile ? 16 : 32,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: widget.isDarkMode
-                        ? [
-                            AppColorsDark.buttonPurple,
-                            AppColorsDark.buttonBlue,
-                            AppColorsDark.buttonPurple,
-                          ]
-                        : [
-                            AppColorsLight.buttonPurple,
-                            AppColorsLight.buttonBlue,
-                            AppColorsLight.buttonPurple,
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (widget.isDarkMode
-                              ? AppColorsDark.buttonPurple
-                              : AppColorsLight.buttonPurple)
-                          .withValues(alpha: _glowAnimation.value * (_isHovered ? 0.8 : 0.5)),
-                      blurRadius: _isHovered ? 30 : 20,
-                      spreadRadius: _isHovered ? 4 : 2,
-                      offset: Offset(0, _isHovered ? 8 : 4),
-                    ),
-                    BoxShadow(
-                      color: (widget.isDarkMode
-                              ? AppColorsDark.buttonBlue
-                              : AppColorsLight.buttonBlue)
-                          .withValues(alpha: _glowAnimation.value * 0.4),
-                      blurRadius: _isHovered ? 50 : 30,
-                      spreadRadius: _isHovered ? 8 : 4,
-                      offset: Offset(0, _isHovered ? 12 : 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_circle_rounded,
-                      color: Colors.white,
-                      size: isMobile ? 18 : 20,
-                    ),
-                    SizedBox(width: isMobile ? 8 : 10),
-                    Flexible(
-                      child: Text(
-                        AppLocalizations.of(context)!.startDiscussion,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isMobile ? 14 : 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+    return GestureDetector(
+      onTap: () => context.go('/forums/new'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFA8FF5F), // Accent color from the brand
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFA8FF5F).withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 5),
+            )
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add, color: Colors.black, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              AppLocalizations.of(context)!.startDiscussion,
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// WOW Premium Actions Header
 class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
   final TextEditingController searchController;
   final List<String> categories;
@@ -778,160 +805,105 @@ class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    
+    final headerColor = isDarkMode
+          ? const Color(0xFF0B0B0F).withValues(alpha: 0.95)
+          : AppColorsLight.backgroundPrimary.withValues(alpha: 0.95);
+
     return Container(
+      height: maxExtent, 
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? AppColorsDark.backgroundSecondary.withValues(alpha: 0.98)
-            : AppColorsLight.backgroundPrimary.withValues(alpha: 0.98),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 30,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: headerColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          )
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 10), 
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Glassmorphism Search Bar
-          Container(
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.surface.withValues(alpha: 0.9),
-                  theme.colorScheme.surface.withValues(alpha: 0.7),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                    .withValues(alpha: 0.4),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                ),
-                BoxShadow(
-                  color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                      .withValues(alpha: 0.1),
-                  blurRadius: 15,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
+          
+          SizedBox(
+            height: 46,
             child: TextField(
               controller: searchController,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+              style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(
-                hintText: 'Search discussions...',
+                filled: true,
+                fillColor: isDarkMode 
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.withValues(alpha: 0.1),
+                hintText: 'Search for topics...',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  fontSize: 15,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 14,
                 ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-                  size: 22,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 20,
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           
-          // Premium Filter Chips
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: categories.map((category) {
-                      final isSelected = category == selectedCategory;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12.0),
-                        child: _WOWPremiumFilterChip(
-                          label: category,
-                          isSelected: isSelected,
-                          onTap: () => onCategorySelected(category),
-                          isDarkMode: isDarkMode,
-                          theme: theme,
-                        ),
-                      );
-                    }).toList(),
+         
+          SizedBox(
+            height: 40, 
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: categories.map((category) {
+                final isSelected = category == selectedCategory;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: _WOWPremiumFilterChip(
+                    label: category,
+                    isSelected: isSelected,
+                    onTap: () => onCategorySelected(category),
+                    isDarkMode: isDarkMode,
+                    theme: theme,
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              
-              // Premium Sort Dropdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.surface.withValues(alpha: 0.9),
-                      theme.colorScheme.surface.withValues(alpha: 0.7),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                        .withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: DropdownButton<String>(
-                  value: selectedSortOption,
-                  onChanged: onSortOptionSelected,
-                  underline: const SizedBox(),
-                  isDense: true,
-                  icon: Icon(
-                    Icons.sort_rounded,
-                    color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
-                    size: 16,
-                  ),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                  items: sortOptions.map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value, style: const TextStyle(fontSize: 12)),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+                );
+              }).toList(),
+            ),
           ),
         ],
       ),
     );
   }
 
+  
   @override
-  double get maxExtent => 170;
+  double get maxExtent => 180; 
 
   @override
-  double get minExtent => 170;
+  double get minExtent => 180;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
 }
 
-/// WOW Premium Filter Chip
-class _WOWPremiumFilterChip extends StatefulWidget {
+class _WOWPremiumFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
@@ -947,95 +919,31 @@ class _WOWPremiumFilterChip extends StatefulWidget {
   });
 
   @override
-  State<_WOWPremiumFilterChip> createState() => _WOWPremiumFilterChipState();
-}
-
-class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => _controller.forward(),
-      onExit: (_) => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: widget.isSelected
-                  ? LinearGradient(
-                      colors: widget.isDarkMode
-                          ? [
-                              AppColorsDark.buttonPurple,
-                              AppColorsDark.buttonBlue,
-                            ]
-                          : [
-                              AppColorsLight.buttonPurple,
-                              AppColorsLight.buttonBlue,
-                            ],
-                    )
-                  : null,
-              color: widget.isSelected
-                  ? null
-                  : widget.theme.colorScheme.surface.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: widget.isSelected
-                    ? Colors.transparent
-                    : (widget.isDarkMode
-                            ? AppColorsDark.textNeon
-                            : AppColorsLight.textNeon)
-                        .withValues(alpha: 0.5),
-                width: 2,
-              ),
-              boxShadow: widget.isSelected
-                  ? [
-                      BoxShadow(
-                        color: (widget.isDarkMode
-                                ? AppColorsDark.buttonPurple
-                                : AppColorsLight.buttonPurple)
-                            .withValues(alpha: 0.5),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Text(
-              widget.label,
-              style: widget.theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: widget.isSelected
-                    ? Colors.white
-                    : widget.theme.colorScheme.onSurface,
-                letterSpacing: 0.5,
-                fontSize: 14,
-              ),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDarkMode ? AppColorsDark.buttonPurple : AppColorsLight.buttonPurple)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected 
+                ? Colors.white 
+                : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -1043,7 +951,6 @@ class _WOWPremiumFilterChipState extends State<_WOWPremiumFilterChip>
   }
 }
 
-/// WOW Empty State
 class _WOWEmptyState extends StatelessWidget {
   final bool isDarkMode;
   final ThemeData theme;
@@ -1059,47 +966,24 @@ class _WOWEmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(48),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.surface.withValues(alpha: 0.5),
-                  theme.colorScheme.surface.withValues(alpha: 0.3),
-                ],
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                      .withValues(alpha: 0.2),
-                  blurRadius: 40,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.forum_outlined,
-              size: 100,
-              color: (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                  .withValues(alpha: 0.7),
-            ),
+          Icon(
+            Icons.forum_outlined,
+            size: 80,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 24),
           Text(
             AppLocalizations.of(context)!.noPostsFound,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
-              fontSize: 36,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
           Text(
-            'Try adjusting your filters or search query',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 20,
+            'Try adjusting your filters',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -1108,511 +992,6 @@ class _WOWEmptyState extends StatelessWidget {
   }
 }
 
-/// WOW Premium Post Card
-class _WOWPremiumPostCard extends ConsumerStatefulWidget {
-  final ForumPost post;
-  final bool isDarkMode;
-
-  const _WOWPremiumPostCard({
-    required this.post,
-    required this.isDarkMode,
-  });
-
-  @override
-  ConsumerState<_WOWPremiumPostCard> createState() => _WOWPremiumPostCardState();
-}
-
-class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
-    with SingleTickerProviderStateMixin {
-  bool _isHovered = false;
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _glowAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final authorAsync = ref.watch(userProvider(widget.post.creatorId));
-    
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _controller.forward();
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        _controller.reverse();
-      },
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedBuilder(
-          animation: _glowAnimation,
-          builder: (context, child) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.surface.withValues(alpha: 0.98),
-                    theme.colorScheme.surface.withValues(alpha: 0.95),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: _isHovered
-                      ? (widget.isDarkMode
-                              ? AppColorsDark.textNeon
-                              : AppColorsLight.textNeon)
-                          .withValues(alpha: 0.6)
-                      : Colors.transparent,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _isHovered
-                        ? (widget.isDarkMode
-                                ? AppColorsDark.textPurple
-                                : AppColorsLight.textPurple)
-                            .withValues(alpha: 0.4 * _glowAnimation.value)
-                        : Colors.black.withValues(alpha: 0.15),
-                    blurRadius: _isHovered ? 30 * _glowAnimation.value : 20,
-                    spreadRadius: _isHovered ? 5 * _glowAnimation.value : 0,
-                    offset: Offset(0, _isHovered ? 10 * _glowAnimation.value : 5),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.push('/forums/${widget.post.id}'),
-                  borderRadius: BorderRadius.circular(24),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // WOW Premium Avatar
-                        authorAsync.when(
-                          data: (author) {
-                            final displayName = author?.displayName.isNotEmpty == true
-                                ? author!.displayName
-                                : author?.username ?? 'User';
-                            final initial = displayName.isNotEmpty
-                                ? displayName[0].toUpperCase()
-                                : 'U';
-                            return Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: widget.isDarkMode
-                                      ? [
-                                          AppColorsDark.buttonPurple,
-                                          AppColorsDark.buttonBlue,
-                                        ]
-                                      : [
-                                          AppColorsLight.buttonPurple,
-                                          AppColorsLight.buttonBlue,
-                                        ],
-                                ),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (widget.isDarkMode
-                                            ? AppColorsDark.buttonPurple
-                                            : AppColorsLight.buttonPurple)
-                                        .withValues(alpha: 0.5),
-                                    blurRadius: 15,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  initial,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 20,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                          loading: () => Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.colorScheme.surfaceVariant,
-                            ),
-                            child: const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2.5),
-                              ),
-                            ),
-                          ),
-                          error: (_, __) => Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: widget.isDarkMode
-                                    ? [
-                                        AppColorsDark.buttonPurple,
-                                        AppColorsDark.buttonBlue,
-                                      ]
-                                    : [
-                                        AppColorsLight.buttonPurple,
-                                        AppColorsLight.buttonBlue,
-                                      ],
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'U',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Title and Category
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      widget.post.title,
-                                      style: theme.textTheme.titleLarge?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 20,
-                                        height: 1.3,
-                                        letterSpacing: -0.5,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: _getCategoryGradient(
-                                          widget.post.topic,
-                                          widget.isDarkMode,
-                                        ),
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _getCategoryColor(
-                                            widget.post.topic,
-                                            widget.isDarkMode,
-                                          ).withValues(alpha: 0.5),
-                                          blurRadius: 12,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      widget.post.topic,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              
-                              // Content Preview
-                              if (widget.post.content.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
-                                        theme.colorScheme.surfaceVariant.withValues(alpha: 0.2),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Text(
-                                    widget.post.content,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
-                                      height: 1.6,
-                                      fontSize: 15,
-                                    ),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              const SizedBox(height: 16),
-                              
-                              // Footer with Author and Stats
-                              Builder(
-                                builder: (context) {
-                                  final screenWidth = MediaQuery.of(context).size.width;
-                                  final isMobile = screenWidth < 600;
-                                  
-                                  return Row(
-                                    children: [
-                                      Expanded(
-                                        child: authorAsync.when(
-                                          data: (author) {
-                                            final displayName = author?.displayName.isNotEmpty == true
-                                                ? author!.displayName
-                                                : author?.username ?? 'User';
-                                            return Row(
-                                              children: [
-                                                Container(
-                                                  width: isMobile ? 28 : 32,
-                                                  height: isMobile ? 28 : 32,
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: widget.isDarkMode
-                                                          ? [
-                                                              AppColorsDark.buttonPurple.withValues(alpha: 0.4),
-                                                              AppColorsDark.buttonBlue.withValues(alpha: 0.4),
-                                                            ]
-                                                          : [
-                                                              AppColorsLight.buttonPurple.withValues(alpha: 0.4),
-                                                              AppColorsLight.buttonBlue.withValues(alpha: 0.4),
-                                                            ],
-                                                    ),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      displayName.isNotEmpty
-                                                          ? displayName[0].toUpperCase()
-                                                          : 'U',
-                                                      style: TextStyle(
-                                                        color: widget.isDarkMode
-                                                            ? AppColorsDark.textNeon
-                                                            : AppColorsLight.textNeon,
-                                                        fontSize: isMobile ? 12 : 14,
-                                                        fontWeight: FontWeight.w800,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: isMobile ? 8 : 10),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Text(
-                                                        displayName,
-                                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                                          fontWeight: FontWeight.w700,
-                                                          fontSize: isMobile ? 12 : 14,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 1,
-                                                      ),
-                                                      Text(
-                                                        DateFormat('MMM dd, yyyy').format(widget.post.createdAt),
-                                                        style: theme.textTheme.bodySmall?.copyWith(
-                                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                                                          fontSize: isMobile ? 10 : 12,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 1,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                          loading: () => const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          ),
-                                          error: (_, __) => const SizedBox.shrink(),
-                                        ),
-                                      ),
-                                      SizedBox(width: isMobile ? 8 : 12),
-                                      
-                                      // Premium Stats
-                                      isMobile
-                                          ? Flexible(
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 6,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-                                                      theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                                                    ],
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(14),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.comment_rounded,
-                                                      size: 16,
-                                                      color: widget.isDarkMode
-                                                          ? AppColorsDark.textNeon
-                                                          : AppColorsLight.textNeon,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Flexible(
-                                                      child: Text(
-                                                        'Replies',
-                                                        style: theme.textTheme.bodySmall?.copyWith(
-                                                          fontWeight: FontWeight.w700,
-                                                          color: widget.isDarkMode
-                                                              ? AppColorsDark.textNeon
-                                                              : AppColorsLight.textNeon,
-                                                          fontSize: 11,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 1,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            )
-                                          : Container(
-                                              constraints: const BoxConstraints(maxWidth: 100),
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 6,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-                                                    theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                                                  ],
-                                                ),
-                                                borderRadius: BorderRadius.circular(14),
-                                              ),
-                                              alignment: Alignment.centerRight,
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                mainAxisAlignment: MainAxisAlignment.end,
-                                                children: [
-                                                  Icon(
-                                                    Icons.comment_rounded,
-                                                    size: 14,
-                                                    color: widget.isDarkMode
-                                                        ? AppColorsDark.textNeon
-                                                        : AppColorsLight.textNeon,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    'Replies',
-                                                    style: theme.textTheme.bodySmall?.copyWith(
-                                                      fontWeight: FontWeight.w700,
-                                                      color: widget.isDarkMode
-                                                          ? AppColorsDark.textNeon
-                                                          : AppColorsLight.textNeon,
-                                                      fontSize: 11,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  List<Color> _getCategoryGradient(String category, bool isDarkMode) {
-    final color = _getCategoryColor(category, isDarkMode);
-    return [color, color.withValues(alpha: 0.8)];
-  }
-
-  Color _getCategoryColor(String category, bool isDarkMode) {
-    switch (category) {
-      case 'Troubleshooting':
-        return isDarkMode ? AppColorsDark.error : AppColorsLight.error;
-      case 'Build Advice':
-        return isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple;
-      case 'Show Off Your Build':
-        // Use a darker, more readable color instead of bright neon
-        return isDarkMode 
-            ? const Color(0xFF10B981) // Green color for dark mode
-            : const Color(0xFF059669); // Darker green for light mode
-      default:
-        return isDarkMode ? AppColorsDark.buttonBlue : AppColorsLight.buttonBlue;
-    }
-  }
-}
-
-/// Pagination Button (Previous/Next)
 class _PaginationButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
@@ -1630,153 +1009,28 @@ class _PaginationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEnabled = onTap != null;
     
-    return MouseRegion(
-      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          gradient: isEnabled
-              ? LinearGradient(
-                  colors: isDarkMode
-                      ? [
-                          AppColorsDark.buttonPurple,
-                          AppColorsDark.buttonBlue,
-                        ]
-                      : [
-                          AppColorsLight.buttonPurple,
-                          AppColorsLight.buttonBlue,
-                        ],
-                )
-              : null,
-          color: !isEnabled
-              ? theme.colorScheme.surfaceVariant.withValues(alpha: 0.5)
-              : null,
+          color: isEnabled
+              ? (isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05))
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isEnabled
-                ? (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                    .withValues(alpha: 0.5)
-                : theme.colorScheme.onSurface.withValues(alpha: 0.2),
-            width: 1.5,
+                ? Colors.transparent
+                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
           ),
-          boxShadow: isEnabled
-              ? [
-                  BoxShadow(
-                    color: (isDarkMode
-                            ? AppColorsDark.buttonPurple
-                            : AppColorsLight.buttonPurple)
-                        .withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : null,
         ),
         child: Icon(
           icon,
           color: isEnabled
-              ? Colors.white
-              : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.onSurface.withValues(alpha: 0.2),
           size: 20,
-        ),
-      ),
-      ),
-    );
-  }
-}
-
-/// Pagination Number Button
-class _PaginationNumberButton extends StatefulWidget {
-  final int page;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final bool isDarkMode;
-  final ThemeData theme;
-
-  const _PaginationNumberButton({
-    required this.page,
-    required this.isSelected,
-    required this.onTap,
-    required this.isDarkMode,
-    required this.theme,
-  });
-
-  @override
-  State<_PaginationNumberButton> createState() => _PaginationNumberButtonState();
-}
-
-class _PaginationNumberButtonState extends State<_PaginationNumberButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSelected = widget.isSelected;
-    final isDarkMode = widget.isDarkMode;
-    final theme = widget.theme;
-    
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: isSelected || _isHovered
-                ? LinearGradient(
-                    colors: isDarkMode
-                        ? [
-                            AppColorsDark.buttonPurple,
-                            AppColorsDark.buttonBlue,
-                          ]
-                        : [
-                            AppColorsLight.buttonPurple,
-                            AppColorsLight.buttonBlue,
-                          ],
-                  )
-                : null,
-            color: !isSelected && !_isHovered
-                ? theme.colorScheme.surface.withValues(alpha: 0.8)
-                : null,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected || _isHovered
-                  ? Colors.transparent
-                  : (isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon)
-                      .withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-            boxShadow: (isSelected || _isHovered)
-                ? [
-                    BoxShadow(
-                      color: (isDarkMode
-                              ? AppColorsDark.buttonPurple
-                              : AppColorsLight.buttonPurple)
-                          .withValues(alpha: _isHovered && !isSelected ? 0.3 : 0.4),
-                      blurRadius: _isHovered && !isSelected ? 8 : 12,
-                      spreadRadius: _isHovered && !isSelected ? 1 : 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              '${widget.page}',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: isSelected || _isHovered
-                    ? Colors.white
-                    : theme.colorScheme.onSurface,
-              ),
-            ),
-          ),
         ),
       ),
     );

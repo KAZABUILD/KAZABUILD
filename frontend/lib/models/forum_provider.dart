@@ -32,22 +32,10 @@ class ForumService {
       final List<dynamic> postsJson = response.data as List<dynamic>? ?? [];
       debugPrint('Forum posts count in response: ${postsJson.length}');
       
+      // Parse posts directly - ForumPost.fromJson will handle replyCount from backend if available
       final posts = postsJson.map((json) => ForumPost.fromJson(json)).toList();
       
-      // Return posts without fetching comment counts (to avoid loading all comments)
-      return posts.map((post) => ForumPost(
-        id: post.id,
-        title: post.title,
-        creatorId: post.creatorId,
-        topic: post.topic,
-        content: post.content,
-        createdAt: post.createdAt,
-        replies: post.replies,
-        replyCount: 0, // Not fetching count to avoid loading all comments
-        acceptedReplyId: post.acceptedReplyId,
-        tags: post.tags,
-        build: post.build,
-      )).toList();
+      return posts;
     } catch (e) {
       // In case of an error, rethrow it to be handled by the provider.
       debugPrint('Error fetching forum posts: $e');
@@ -117,6 +105,58 @@ class ForumService {
       // Backend endpoint for adding comments/replies is /UserComments/add
       // It expects a CommentTargetType and the target ID.
       return await _dio.post('$apiBaseUrl/UserComments/add', data: replyData);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Deletes all comments for a forum post (and their images).
+  /// This is called before deleting the forum post to avoid foreign key constraint errors.
+  Future<void> _deleteForumPostComments(String postId) async {
+    try {
+      // Get all comments for this forum post
+      final response = await _dio.post(
+        '$apiBaseUrl/UserComments/get',
+        data: {
+          'ForumPostId': [postId],
+          'CommentTargetType': ['FORUM'],
+          'Paging': false,
+        },
+      );
+      
+      final List<dynamic> comments = response.data as List<dynamic>? ?? [];
+      if (comments.isEmpty) return;
+
+      // Delete each comment (backend will handle deleting associated images)
+      for (var comment in comments) {
+        if (comment is Map<String, dynamic>) {
+          final commentId = comment['id']?.toString() ?? comment['Id']?.toString();
+          if (commentId != null && commentId.isNotEmpty) {
+            try {
+              await _dio.delete('$apiBaseUrl/UserComments/$commentId');
+            } catch (e) {
+              debugPrint('Error deleting comment $commentId: $e');
+              // Continue with other comments even if one fails
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting forum post comments for deletion: $e');
+      // Don't rethrow - we'll still try to delete the forum post
+    }
+  }
+
+  /// Deletes a forum post from the backend.
+  /// Users can only delete their own posts, staff can delete any post.
+  /// This method first deletes all comments and their images, then deletes the forum post.
+  Future<void> deleteForumPost(String postId) async {
+    try {
+      // First, delete all comments and their images
+      await _deleteForumPostComments(postId);
+      
+      // Then delete the forum post
+      await _dio.delete('$apiBaseUrl/ForumPosts/$postId');
     } catch (e) {
       rethrow;
     }
@@ -228,6 +268,17 @@ final allForumPostsProvider = FutureProvider<List<ForumPost>>((ref) async {
   return forumService.getPosts({'paging': true, 'page': 1, 'pageLength': 10});
 });
 
+/// A provider that fetches forum posts for a specific user.
+/// It uses `FutureProvider.family` to pass the `userId` as a parameter.
+final userForumPostsProvider = FutureProvider.family<List<ForumPost>, String>((ref, userId) async {
+  final forumService = ref.watch(forumServiceProvider);
+  // Fetch all forum posts for the user, disable paging to get all of them.
+  return forumService.getPosts({
+    'CreatorId': [userId],
+    'Paging': false,
+  });
+});
+
 /// Manages the state for creating a new forum post.
 class ForumNotifier extends StateNotifier<AsyncValue<void>> {
   final ForumService _forumService;
@@ -277,11 +328,29 @@ class ForumNotifier extends StateNotifier<AsyncValue<void>> {
   Future<Map<String, dynamic>> updateForumPost(String postId, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     try {
+      // Get the post first to get creatorId for invalidating userForumPostsProvider
+      ForumPost? post;
+      try {
+        post = await _forumService.getPostById(postId);
+      } catch (e) {
+        // If we can't get the post, continue anyway
+        debugPrint('Could not fetch post for invalidation: $e');
+      }
+      
       final response = await _forumService.updatePost(postId, data);
       state = const AsyncValue.data(null);
+      
       // Invalidate all forum posts providers to refetch the list.
       _ref.invalidate(allForumPostsProvider);
       _ref.invalidate(forumPostsProvider);
+      
+      // Invalidate user forum posts provider if we have the creatorId
+      if (post != null) {
+        _ref.invalidate(userForumPostsProvider(post.creatorId));
+      } else {
+        // If we don't have the post, invalidate all userForumPostsProvider instances
+        _ref.invalidate(userForumPostsProvider);
+      }
       
       // Extract message from response
       final responseData = response.data;
