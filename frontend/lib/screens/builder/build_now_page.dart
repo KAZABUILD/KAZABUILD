@@ -551,6 +551,31 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     }
   }
 
+  Color _getComponentIconColor(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return const Color(0xFFFF6B6B); // Vibrant Red
+      case ComponentType.gpu:
+        return const Color(0xFF4ECDC4); // Vibrant Cyan/Turquoise
+      case ComponentType.motherboard:
+        return const Color(0xFFFFD93D); // Vibrant Yellow
+      case ComponentType.ram:
+        return const Color(0xFF95E1D3); // Vibrant Mint Green
+      case ComponentType.storage:
+        return const Color(0xFFFF8B94); // Vibrant Pink
+      case ComponentType.psu:
+        return const Color(0xFFFFA07A); // Vibrant Coral
+      case ComponentType.cooler:
+        return const Color(0xFF87CEEB); // Vibrant Sky Blue
+      case ComponentType.caseFan:
+        return const Color(0xFFBA55D3); // Vibrant Medium Orchid
+      case ComponentType.pcCase:
+        return const Color(0xFF20B2AA); // Vibrant Light Sea Green
+      case ComponentType.monitor:
+        return const Color(0xFFFF69B4); // Vibrant Hot Pink
+    }
+  }
+
   void _showSnackBar({
     required String message,
     Color? backgroundColor,
@@ -826,6 +851,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       },
                       isMobile: isMobile,
                       getIcon: _getComponentIcon,
+                      getIconColor: _getComponentIconColor,
                     ),
                   ],
                 ),
@@ -1816,6 +1842,7 @@ class _ComponentTable extends StatelessWidget {
   final Function(int) onAdd;
   final bool isMobile;
   final IconData Function(ComponentType) getIcon;
+  final Color Function(ComponentType) getIconColor;
 
   const _ComponentTable({
     required this.theme,
@@ -1824,6 +1851,7 @@ class _ComponentTable extends StatelessWidget {
     required this.onAdd,
     required this.isMobile,
     required this.getIcon,
+    required this.getIconColor,
   });
 
   @override
@@ -1869,7 +1897,7 @@ class _ComponentTable extends StatelessWidget {
                         child: Center(
                           child: Icon(
                             getIcon(component.type),
-                            color: isSelected ? const Color(0xFFBB86FC) : Colors.grey.shade700,
+                            color: getIconColor(component.type),
                             size: 20,
                           ),
                         ),
@@ -2085,7 +2113,7 @@ class _ComponentTable extends StatelessWidget {
                         child: Center(
                           child: Icon(
                             getIcon(component.type),
-                            color: isSelected ? const Color(0xFFBB86FC) : Colors.grey.shade700,
+                            color: getIconColor(component.type),
                             size: 20,
                           ),
                         ),

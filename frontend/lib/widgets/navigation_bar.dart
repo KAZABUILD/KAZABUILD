@@ -87,6 +87,7 @@ class CustomNavigationBar extends ConsumerWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 22,
+                    fontFamily: 'Quantico',
                   ),
                 ),
               ],
@@ -219,6 +220,7 @@ class _MobileAppBar extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                             color: Color.fromRGBO(143, 104, 255, 1),
+                            fontFamily: 'Quantico',
                           ),
                         ),
                       ],
