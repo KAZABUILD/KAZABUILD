@@ -54,10 +54,17 @@ namespace KAZABUILD.Infrastructure.Services
             
             try
             {
+                // Map domain type name to external API expected type (strip "Component" suffix)
+                var typeName = component.GetType().Name;
+                if (typeName.EndsWith("Component", StringComparison.OrdinalIgnoreCase))
+                {
+                    typeName = typeName[..^"Component".Length];
+                }
+
                 var requestDto = new PricesApiPriceDto
                 {
                     Name = component.Name,
-                    Type = component.GetType().Name,
+                    Type = typeName,
                     Currency = "PLN"
                 };
 

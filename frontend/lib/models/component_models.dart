@@ -480,6 +480,9 @@ abstract class BaseComponent {
   /// A URL to an image of the component.
   final String imageUrl;
 
+  /// Overrides the computed lowest price when supplied separately.
+  final double? lowestPriceOverride;
+
   /// A list of `ComponentPrice` objects from various vendors.
   final List<ComponentPrice> prices;
 
@@ -502,6 +505,7 @@ abstract class BaseComponent {
     required this.imageUrl,
     this.release,
     this.note,
+    this.lowestPriceOverride,
     this.prices = const [],
     this.variants = const [],
     this.reviews = const [],
@@ -510,6 +514,7 @@ abstract class BaseComponent {
 
   /// Calculates the lowest price from the list of available prices.
   double? get lowestPrice {
+    if (lowestPriceOverride != null) return lowestPriceOverride;
     if (prices.isEmpty) return null;
     return prices.map((p) => p.price).reduce(min);
   }
@@ -608,6 +613,7 @@ class CaseComponent extends BaseComponent {
     required this.supportsRearConnectingMotherboard,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -615,7 +621,10 @@ class CaseComponent extends BaseComponent {
   }) : super(type: ComponentType.pcCase);
 
   /// Creates a `CaseComponent` instance from a JSON map.
-  factory CaseComponent.fromJson(Map<String, dynamic> json) {
+  factory CaseComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -656,6 +665,7 @@ class CaseComponent extends BaseComponent {
       supportsRearConnectingMotherboard: json['supportsRearConnectingMotherboard'] ?? json['SupportsRearConnectingMotherboard'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -721,6 +731,7 @@ class CaseFanComponent extends BaseComponent {
     required this.flowDirection,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -728,7 +739,10 @@ class CaseFanComponent extends BaseComponent {
   }) : super(type: ComponentType.caseFan);
 
   /// Creates a `CaseFanComponent` instance from a JSON map.
-  factory CaseFanComponent.fromJson(Map<String, dynamic> json) {
+  factory CaseFanComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -763,6 +777,7 @@ class CaseFanComponent extends BaseComponent {
       flowDirection: json['flowDirection']?.toString() ?? json['FlowDirection']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -820,6 +835,7 @@ class CoolerComponent extends BaseComponent {
     required this.fanQuantity,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -827,7 +843,10 @@ class CoolerComponent extends BaseComponent {
   }) : super(type: ComponentType.cooler);
 
   /// Creates a `CoolerComponent` instance from a JSON map.
-  factory CoolerComponent.fromJson(Map<String, dynamic> json) {
+  factory CoolerComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -860,6 +879,7 @@ class CoolerComponent extends BaseComponent {
       fanQuantity: ((json['fanQuantity'] ?? json['FanQuantity'] ?? 0) as num).toInt(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -966,6 +986,7 @@ class CPUComponent extends BaseComponent {
     this.l4,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -973,7 +994,10 @@ class CPUComponent extends BaseComponent {
   }) : super(type: ComponentType.cpu);
 
   /// Creates a `CPUComponent` instance from a JSON map.
-  factory CPUComponent.fromJson(Map<String, dynamic> json) {
+  factory CPUComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     // Helper to safely parse DateTime from string.
     DateTime? parseDate(String? dateStr) {
       return dateStr != null ? DateTime.tryParse(dateStr) : null;
@@ -1021,6 +1045,7 @@ class CPUComponent extends BaseComponent {
       l4: (json['l4'] ?? json['L4'] as num?)?.toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       // Helper to parse prices from JSON
       prices: () {
         final pricesJson = json['prices'] ?? json['Prices'];
@@ -1106,6 +1131,7 @@ class GPUComponent extends BaseComponent {
     required this.coolingType,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1113,7 +1139,10 @@ class GPUComponent extends BaseComponent {
   }) : super(type: ComponentType.gpu);
 
   /// Creates a `GPUComponent` instance from a JSON map.
-  factory GPUComponent.fromJson(Map<String, dynamic> json) {
+  factory GPUComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -1151,6 +1180,7 @@ class GPUComponent extends BaseComponent {
       coolingType: json['coolingType']?.toString() ?? json['CoolingType']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -1224,6 +1254,7 @@ class MemoryComponent extends BaseComponent {
     required this.voltage,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1231,7 +1262,10 @@ class MemoryComponent extends BaseComponent {
   }) : super(type: ComponentType.ram);
 
   /// Creates a `MemoryComponent` instance from a JSON map.
-  factory MemoryComponent.fromJson(Map<String, dynamic> json) {
+  factory MemoryComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -1268,6 +1302,7 @@ class MemoryComponent extends BaseComponent {
       voltage: ((json['voltage'] ?? json['Voltage'] ?? 0) as num).toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -1329,6 +1364,7 @@ class MonitorComponent extends BaseComponent {
     required this.adaptiveSyncType,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1336,7 +1372,10 @@ class MonitorComponent extends BaseComponent {
   }) : super(type: ComponentType.monitor);
 
   /// Creates a `MonitorComponent` instance from a JSON map.
-  factory MonitorComponent.fromJson(Map<String, dynamic> json) {
+  factory MonitorComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -1370,6 +1409,7 @@ class MonitorComponent extends BaseComponent {
       adaptiveSyncType: json['adaptiveSyncType']?.toString() ?? json['AdaptiveSyncType']?.toString() ?? '',
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -1507,6 +1547,7 @@ class MotherboardComponent extends BaseComponent {
     required this.maxAudioChannels,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1514,7 +1555,10 @@ class MotherboardComponent extends BaseComponent {
   }) : super(type: ComponentType.motherboard);
 
   /// Creates a `MotherboardComponent` instance from a JSON map.
-  factory MotherboardComponent.fromJson(Map<String, dynamic> json) {
+  factory MotherboardComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
     
@@ -1574,6 +1618,7 @@ class MotherboardComponent extends BaseComponent {
       maxAudioChannels: ((json['maxAudioChannels'] ?? json['MaxAudioChannels'] ?? 0) as num).toDouble(),
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -1615,6 +1660,7 @@ class PowerSupplyComponent extends BaseComponent {
     required this.isFanless,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1622,7 +1668,10 @@ class PowerSupplyComponent extends BaseComponent {
   }) : super(type: ComponentType.psu);
 
   /// Creates a `PowerSupplyComponent` instance from a JSON map.
-  factory PowerSupplyComponent.fromJson(Map<String, dynamic> json) {
+  factory PowerSupplyComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -1651,6 +1700,7 @@ class PowerSupplyComponent extends BaseComponent {
       isFanless: json['isFanless'] ?? json['IsFanless'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }
@@ -1692,6 +1742,7 @@ class StorageComponent extends BaseComponent {
     required this.hasNVMe,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
@@ -1699,7 +1750,10 @@ class StorageComponent extends BaseComponent {
   }) : super(type: ComponentType.storage);
 
   /// Creates a `StorageComponent` instance from a JSON map.
-  factory StorageComponent.fromJson(Map<String, dynamic> json) {
+  factory StorageComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
     DateTime? parseDate(String? dateStr) =>
         dateStr != null ? DateTime.tryParse(dateStr) : null;
 
@@ -1728,6 +1782,7 @@ class StorageComponent extends BaseComponent {
       hasNVMe: json['hasNVMe'] ?? json['HasNVMe'] ?? false,
       release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
       note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
       prices: parsePrices(json['prices'] ?? json['Prices']),
     );
   }

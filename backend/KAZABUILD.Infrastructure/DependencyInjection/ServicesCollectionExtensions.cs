@@ -37,6 +37,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             services.AddScoped<ILoggerService, LoggerService>();
 
             //Add prices api service
+            services.AddHttpClient<IPricesApiService, PricesApiService>();
             services.AddScoped<PricesApiSettings>();
 
             //Add logs and token cleanup service

@@ -326,13 +326,33 @@ class ComponentService {
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> data = response.data;
 
+        Map<String, double?> priceOverrides = {};
+        try {
+          final ids = data
+              .map((item) =>
+                  item is Map ? (item['id'] ?? item['Id'])?.toString() : null)
+              .whereType<String>()
+              .toList();
+          if (ids.isNotEmpty) {
+            priceOverrides = await getLowestPricesForComponents(ids);
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error fetching lowest prices for $componentType: $e');
+          }
+        }
+
         if (kDebugMode) {
           print(
             'Received ${data.length} components for type: $componentType (page $page)',
           );
         }
 
-        final parsedComponents = _parseComponents(data, componentType);
+        final parsedComponents = _parseComponents(
+          data,
+          componentType,
+          priceOverrides: priceOverrides,
+        );
 
         if (kDebugMode) {
           print(
@@ -517,11 +537,14 @@ class ComponentService {
 
   List<BaseComponent> _parseComponents(
     List<dynamic> data,
-    ComponentType componentType,
-  ) {
+    ComponentType componentType, {
+    Map<String, double?> priceOverrides = const {},
+  }) {
     return data
         .map((json) {
           try {
+            final componentId =
+                (json['id'] ?? json['Id'])?.toString();
             final typeString = (json['type'] ?? json['Type'])
                 ?.toString()
                 .toUpperCase();
@@ -532,30 +555,60 @@ class ComponentService {
             }
             switch (typeString) {
               case 'CPU':
-                return CPUComponent.fromJson(json);
+                return CPUComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'GPU':
-                return GPUComponent.fromJson(json);
+                return GPUComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'MOTHERBOARD':
-                return MotherboardComponent.fromJson(json);
+                return MotherboardComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'MEMORY':
               case 'RAM':
-                return MemoryComponent.fromJson(json);
+                return MemoryComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'STORAGE':
-                return StorageComponent.fromJson(json);
+                return StorageComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'POWERSUPPLY':
               case 'PSU':
               case 'POWER_SUPPLY':
-                return PowerSupplyComponent.fromJson(json);
+                return PowerSupplyComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'CASE':
               case 'PCCASE':
-                return CaseComponent.fromJson(json);
+                return CaseComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'COOLER':
-                return CoolerComponent.fromJson(json);
+                return CoolerComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'CASEFAN':
               case 'CASE_FAN':
-                return CaseFanComponent.fromJson(json);
+                return CaseFanComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               case 'MONITOR':
-                return MonitorComponent.fromJson(json);
+                return MonitorComponent.fromJson(
+                  json,
+                  priceOverride: priceOverrides[componentId],
+                );
               default:
                 if (kDebugMode) {
                   print(

@@ -502,35 +502,31 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                      ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            var testComponent = new BaseComponent {Name = "Test Component TESTTEST"};
-            var testCall = _pricesApiService.GetPartPrice(testComponent);
-
-            if (testCall.Status.ToString() != "404")
+            var components = await _db.Components.ToListAsync();
+            if (!components.Any())
             {
-                //Log lack of connection to external api
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "Admin",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.CRITICAL,
-                    $"External api connection failed."
-                );
-
-                return StatusCode(503, "External api unavailable.");
-            };
-
-            var components = _db.Components.ToListAsync().Result;
-
-            PricesApiPriceResponseDto response;
-            ComponentPrice tempComponentPrice;
+                return Ok(new { message = "No components found to fetch prices for." });
+            }
 
             foreach (BaseComponent comp in components)
             {
-                response = await _pricesApiService.GetPartPrice(comp);
+                var response = await _pricesApiService.GetPartPrice(comp);
+                if (response == null)
+                {
+                    // If external API fails, continue to next component without crashing the job
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Admin",
+                        ip,
+                        comp.Id,
+                        PrivacyLevel.WARNING,
+                        "Price fetch failed for component during bulk fetch"
+                    );
+                    continue;
+                }
 
-                tempComponentPrice = new ComponentPrice
+                var tempComponentPrice = new ComponentPrice
                 {
                     ComponentId = comp.Id,
                     SourceUrl = _pricesApiSettings.Url,
@@ -544,6 +540,8 @@ namespace KAZABUILD.API.Controllers
                 };
                 _db.ComponentPrices.Add(tempComponentPrice);
             }
+
+            await _db.SaveChangesAsync();
 
             //Return success response
             return Ok(new { message = $"Part prices have been successfully fetched." });

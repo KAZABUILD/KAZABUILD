@@ -986,6 +986,7 @@ class _ProductList extends ConsumerWidget {
           showCompare: showCompare,
           onOpenFilters: onOpenFilters,
         ),
+        _DataSourceWatermark(isMobile: !showCompare),
         const SizedBox(height: 24),
         if (isRefreshing || isLoading)
           const LinearProgressIndicator(minHeight: 2),
@@ -1245,6 +1246,41 @@ class _PaginationControls extends StatelessWidget {
           label: const Text('Next'),
         ),
       ],
+    );
+  }
+}
+
+/// A small watermark indicating the data source for the parts list.
+class _DataSourceWatermark extends StatelessWidget {
+  final bool isMobile;
+  const _DataSourceWatermark({this.isMobile = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Colors.grey.shade500,
+        );
+
+    return Padding(
+      padding: EdgeInsets.only(top: isMobile ? 12 : 8),
+      child: Row(
+        mainAxisAlignment:
+            isMobile ? MainAxisAlignment.start : MainAxisAlignment.end,
+        children: [
+          Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Component data is sourced from buildcores open db '
+              '(e.g., CPUCooler schema at '
+              'https://github.com/buildcores/buildcores-open-db/).',
+              style: textStyle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
