@@ -86,6 +86,7 @@ class ProfilePage extends ConsumerWidget {
 
     return Scaffold(
       key: scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.surface,
       body: currentUserAsync.when(
         data: (currentUser) {
@@ -376,27 +377,67 @@ class ProfilePage extends ConsumerWidget {
               // Action Buttons - Different for own profile vs other users
               if (isOwnProfile) ...[
                 // Own profile: Show Settings and Sign Out
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _ActionButton(
-                      icon: Icons.settings_rounded,
-                      label: 'Settings',
-                      onPressed: () => context.push('/settings'),
-                      isPrimary: true,
-                      theme: theme,
-                    ),
-                    const SizedBox(width: 16),
-                    _ActionButton(
-                      icon: Icons.logout_rounded,
-                      label: 'Sign Out',
-                      onPressed: () async {
-                        await ref.read(authProvider.notifier).signOut();
-                      },
-                      isPrimary: false,
-                      theme: theme,
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    // For mobile, stack buttons vertically if needed
+                    if (constraints.maxWidth < 400) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: _ActionButton(
+                              icon: Icons.settings_rounded,
+                              label: 'Settings',
+                              onPressed: () => context.push('/settings'),
+                              isPrimary: true,
+                              theme: theme,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: _ActionButton(
+                              icon: Icons.logout_rounded,
+                              label: 'Sign Out',
+                              onPressed: () async {
+                                await ref.read(authProvider.notifier).signOut();
+                              },
+                              isPrimary: false,
+                              theme: theme,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    // For larger screens, show buttons side by side
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: _ActionButton(
+                            icon: Icons.settings_rounded,
+                            label: 'Settings',
+                            onPressed: () => context.push('/settings'),
+                            isPrimary: true,
+                            theme: theme,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Flexible(
+                          child: _ActionButton(
+                            icon: Icons.logout_rounded,
+                            label: 'Sign Out',
+                            onPressed: () async {
+                              await ref.read(authProvider.notifier).signOut();
+                            },
+                            isPrimary: false,
+                            theme: theme,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ] else if (currentUser != null) ...[
                 // Other user's profile: Show Follow/Unfollow button and Edit button if admin

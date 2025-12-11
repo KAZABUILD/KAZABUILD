@@ -79,6 +79,8 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: isDark
@@ -86,18 +88,18 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
           : AppColorsLight.backgroundPrimary,
       body: Column(
         children: [
-          _buildHeader(isDark),
+          _buildHeader(isDark, isMobile),
           Expanded(
-            child: _buildContent(isDark),
+            child: _buildContent(isDark, isMobile),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -113,43 +115,82 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Tags Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack,
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tags Management',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          _showAddTagDialog(context, isDark);
+                        },
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Tag'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? AppColorsDark.buttonGreen
+                              : AppColorsLight.buttonGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tags Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _showAddTagDialog(context, isDark);
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Tag'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColorsDark.buttonGreen
+                            : AppColorsLight.buttonGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _showAddTagDialog(context, isDark);
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Tag'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? AppColorsDark.buttonGreen
-                      : AppColorsLight.buttonGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+          SizedBox(height: isMobile ? 16 : 24),
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search tags by name or description...',
+              hintText: isMobile
+                  ? 'Search tags...'
+                  : 'Search tags by name or description...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -170,8 +211,12 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 16,
+                vertical: isMobile ? 12 : 16,
+              ),
             ),
-              onChanged: (value) {
+            onChanged: (value) {
               setState(() {
                 _currentPage = 1; // Reset to first page on search
                 _cachedQueryParams = null; // Invalidate cache
@@ -183,25 +228,27 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
     );
   }
 
-  Widget _buildContent(bool isDark) {
+  Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final tagsAsync = ref.watch(adminTagsProvider(queryParams));
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          tagsAsync.when(
-            data: (tags) => _buildStatsRow(isDark, tags),
-            loading: () => _buildStatsRow(isDark, []),
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: tagsAsync.when(
+            data: (tags) => _buildStatsRow(isDark, tags, isMobile),
+            loading: () => _buildStatsRow(isDark, [], isMobile),
             error: (error, stack) {
               debugPrint('Error loading tags: $error');
               debugPrint('Stack: $stack');
-              return _buildStatsRow(isDark, []);
+              return _buildStatsRow(isDark, [], isMobile);
             },
           ),
-          const SizedBox(height: 24),
-          Expanded(
+        ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -211,7 +258,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
               ),
               child: Column(
                 children: [
-                  _buildTableHeader(isDark),
+                  if (!isMobile) _buildTableHeader(isDark),
                   Expanded(
                     child: tagsAsync.when(
                       data: (tags) {
@@ -249,7 +296,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                           itemBuilder: (context, index) {
                             final tag = tags[index];
                             debugPrint('AdminTagsPage: Building row for tag: ${tag.name}');
-                            return _buildTagRow(tag, isDark);
+                            return _buildTagRow(tag, isDark, isMobile);
                           },
                         );
                       },
@@ -296,17 +343,81 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<Tag> tags) {
+  Widget _buildStatsRow(bool isDark, List<Tag> tags, bool isMobile) {
     final totalTags = tags.length;
     
     final stats = [
       {'label': 'Total Tags', 'value': totalTags.toString(), 'icon': Icons.label, 'color': AppColorsDark.buttonBlue},
     ];
+
+    if (isMobile) {
+      return Column(
+        children: stats.map((stat) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    stat['icon'] as IconData,
+                    color: stat['color'] as Color,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stat['value'] as String,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                      ),
+                      Text(
+                        stat['label'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    }
 
     return Row(
       children: stats.map((stat) {
@@ -409,7 +520,114 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
     );
   }
 
-  Widget _buildTagRow(Tag tag, bool isDark) {
+  Widget _buildTagCard(Tag tag, bool isDark) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: isDark
+          ? AppColorsDark.backgroundSecondary
+          : AppColorsLight.backgroundTertiary,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.label),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    tag.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark
+                          ? AppColorsDark.textWhite
+                          : AppColorsLight.textBlack,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (tag.description.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                tag.description,
+                style: TextStyle(
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (tag.databaseEntryAt != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Created: ${_formatDate(tag.databaseEntryAt!)}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () {
+                    _showEditTagDialog(context, tag, isDark);
+                  },
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 20),
+                  onPressed: () {
+                    _showDeleteConfirmation(context, tag, isDark);
+                  },
+                  tooltip: 'Delete',
+                  color: AppColorsDark.error,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagRow(Tag tag, bool isDark, bool isMobile) {
+    if (isMobile) {
+      return _buildTagCard(tag, isDark);
+    }
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -515,12 +733,17 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   }
 
   Widget _buildPagination(bool isDark, AsyncValue<List<Tag>> tagsAsync) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+
     return tagsAsync.when(
       data: (tags) {
         final hasMore = tags.length == _pageSize;
+        final start = tags.isNotEmpty ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final end = tags.isNotEmpty ? start + tags.length - 1 : 0;
         
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
@@ -530,53 +753,124 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
               ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Showing ${(_currentPage - 1) * _pageSize + 1}-${(_currentPage - 1) * _pageSize + tags.length} tags (Page $_currentPage${hasMore ? '+' : ''})',
-                style: TextStyle(
-                  color: isDark
-                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
-                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
-                ),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: _currentPage > 1
-                        ? () {
-                            setState(() {
-                              _currentPage--;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
-                            });
-                          }
-                        : null,
-                  ),
-                  Text(
-                    'Page $_currentPage',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColorsDark.textWhite
-                          : AppColorsLight.textBlack,
+          child: isMobile
+              ? Column(
+                  children: [
+                    Text(
+                      tags.isNotEmpty
+                          ? 'Showing $start-$end tags (Page $_currentPage${hasMore ? '+' : ''})'
+                          : 'No tags',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: hasMore
-                        ? () {
-                            setState(() {
-                              _currentPage++;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
-                            });
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _currentPage > 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'Page $_currentPage',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark
+                                  ? AppColorsDark.textWhite
+                                  : AppColorsLight.textBlack,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: hasMore
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        tags.isNotEmpty
+                            ? 'Showing $start-$end tags (Page $_currentPage${hasMore ? '+' : ''})'
+                            : 'No tags',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _currentPage > 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                        Text(
+                          'Page $_currentPage',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite
+                                : AppColorsLight.textBlack,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: hasMore
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         );
       },
       loading: () => const SizedBox.shrink(),

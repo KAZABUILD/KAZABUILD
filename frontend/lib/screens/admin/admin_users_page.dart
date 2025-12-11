@@ -36,6 +36,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: isDark
@@ -43,18 +45,18 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
           : AppColorsLight.backgroundPrimary,
       body: Column(
         children: [
-          _buildHeader(isDark),
+          _buildHeader(isDark, isMobile),
           Expanded(
-            child: _buildContent(isDark),
+            child: _buildContent(isDark, isMobile),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -70,74 +72,107 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'User Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.person_add),
-                label: const Text('Add User'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? AppColorsDark.buttonGreen
-                      : AppColorsLight.buttonGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search users by name, email, or ID...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: isDark
-                        ? AppColorsDark.backgroundTertiary
-                        : AppColorsLight.backgroundSecondary,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'User Management',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
                     ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _currentPage = 1; // Reset to first page on search
-                      _cachedQueryParams = null; // Invalidate cache
-                    });
-                  },
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.person_add, size: 18),
+                        label: const Text('Add User'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? AppColorsDark.buttonGreen
+                              : AppColorsLight.buttonGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'User Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.person_add),
+                      label: const Text('Add User'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColorsDark.buttonGreen
+                            : AppColorsLight.buttonGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+          SizedBox(height: isMobile ? 16 : 24),
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: isMobile
+                  ? 'Search users...'
+                  : 'Search users by name, email, or ID...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: isDark
+                  ? AppColorsDark.backgroundTertiary
+                  : AppColorsLight.backgroundSecondary,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
-              // Status filter removed - using backend pagination instead
-              // If status filtering is needed, it should be implemented in backend
-            ],
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 16,
+                vertical: isMobile ? 12 : 16,
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _currentPage = 1; // Reset to first page on search
+                _cachedQueryParams = null; // Invalidate cache
+              });
+            },
           ),
         ],
       ),
@@ -171,17 +206,19 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     return _cachedQueryParams!;
   }
 
-  Widget _buildContent(bool isDark) {
+  Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final usersAsync = ref.watch(adminUsersProvider(queryParams));
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          _buildStatsRow(isDark, usersAsync),
-          const SizedBox(height: 24),
-          Expanded(
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 8 : 24),
+          child: _buildStatsRow(isDark, usersAsync, isMobile),
+        ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -236,14 +273,14 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   
                   return Column(
                     children: [
-                      _buildTableHeader(isDark),
+                      if (!isMobile) _buildTableHeader(isDark),
                       Expanded(
                         child: ListView.separated(
                           itemCount: users.length,
                           separatorBuilder: (context, index) => const SizedBox(height: 0),
                           itemBuilder: (context, index) {
                             final user = users[index];
-                            return _buildUserRow(user, isDark);
+                            return _buildUserRow(user, isDark, isMobile);
                           },
                         ),
                       ),
@@ -282,12 +319,12 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatsRow(bool isDark, AsyncValue<List<AdminUser>> usersAsync) {
+  Widget _buildStatsRow(bool isDark, AsyncValue<List<AdminUser>> usersAsync, bool isMobile) {
     return usersAsync.when(
       data: (users) {
         final totalUsers = users.length;
@@ -306,30 +343,111 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
           {'label': 'New This Month', 'value': newThisMonth.toString(), 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
         ];
         
-        return _buildStatsContent(isDark, stats);
+        return _buildStatsContent(isDark, stats, isMobile);
       },
       loading: () => _buildStatsContent(isDark, [
         {'label': 'Total Users', 'value': '...', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
         {'label': 'Active Users', 'value': '...', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
         {'label': 'Banned Users', 'value': '...', 'icon': Icons.block, 'color': AppColorsDark.error},
         {'label': 'New This Month', 'value': '...', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
-      ]),
+      ], isMobile),
       error: (_, __) => _buildStatsContent(isDark, [
         {'label': 'Total Users', 'value': '0', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
         {'label': 'Active Users', 'value': '0', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
         {'label': 'Banned Users', 'value': '0', 'icon': Icons.block, 'color': AppColorsDark.error},
         {'label': 'New This Month', 'value': '0', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
-      ]),
+      ], isMobile),
     );
   }
 
-  Widget _buildStatsContent(bool isDark, List<Map<String, dynamic>> stats) {
+  Widget _buildStatsContent(bool isDark, List<Map<String, dynamic>> stats, bool isMobile) {
+    if (isMobile) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: stats.length,
+        itemBuilder: (context, index) {
+          final stat = stats[index];
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    stat['icon'] as IconData,
+                    color: stat['color'] as Color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        stat['value'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        stat['label'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
 
+    // Desktop: show stats in a row
     return Row(
-      children: stats.map((stat) {
+      children: stats.asMap().entries.map((entry) {
+        final index = entry.key;
+        final stat = entry.value;
         return Expanded(
           child: Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: index < stats.length - 1 ? 16 : 0),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark
@@ -453,7 +571,10 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     );
   }
 
-  Widget _buildUserRow(AdminUser user, bool isDark) {
+  Widget _buildUserRow(AdminUser user, bool isDark, bool isMobile) {
+    if (isMobile) {
+      return _buildUserCard(user, isDark);
+    }
     final statusColor = user.status == 'Active'
         ? AppColorsDark.buttonGreen
         : user.status == 'Banned'
@@ -679,6 +800,164 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserCard(AdminUser user, bool isDark) {
+    final statusColor = user.status == 'Active'
+        ? AppColorsDark.buttonGreen
+        : user.status == 'Banned'
+            ? AppColorsDark.error
+            : Colors.grey;
+
+    final displayName = user.displayName ?? user.login;
+    final email = user.email ?? 'N/A';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: isDark
+          ? AppColorsDark.backgroundSecondary
+          : AppColorsLight.backgroundTertiary,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColorsDark.buttonBlue,
+                  child: Text(
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (user.userRole.isNotEmpty)
+                        Text(
+                          user.userRole,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                                : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    user.status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.email,
+                  size: 16,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    email,
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (user.registeredAt != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Joined: ${_formatDate(user.registeredAt!)}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility, size: 20),
+                  onPressed: () {
+                    context.go('/profile/${user.id}');
+                  },
+                  tooltip: 'View',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () {
+                    context.go('/settings?userId=${user.id}');
+                  },
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 20),
+                  onPressed: () {
+                    _showDeleteConfirmation(context, user, isDark);
+                  },
+                  tooltip: 'Delete',
+                  color: AppColorsDark.error,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

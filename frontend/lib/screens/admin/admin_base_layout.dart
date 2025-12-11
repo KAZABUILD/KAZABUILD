@@ -327,6 +327,9 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
     bool isDark,
     dynamic colors,
   ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
     if (_isSidebarCollapsed) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -344,6 +347,9 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
               setState(() {
                 _selectedIndex = navigationItems.indexOf(item);
               });
+              if (isMobile) {
+                Navigator.pop(context); // Close drawer on mobile
+              }
               context.go(item.route);
             },
             borderRadius: BorderRadius.circular(12),
@@ -374,7 +380,10 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
       ),
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 16,
+          vertical: 4,
+        ),
         leading: Icon(
           item.icon,
           color: isSelected
@@ -388,7 +397,7 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
                 ? Colors.white
                 : (isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14,
+            fontSize: isMobile ? 13 : 14,
           ),
           overflow: TextOverflow.ellipsis,
         ),
@@ -397,6 +406,9 @@ class _AdminBaseLayoutState extends ConsumerState<AdminBaseLayout> {
           setState(() {
             _selectedIndex = navigationItems.indexOf(item);
           });
+          if (isMobile) {
+            Navigator.pop(context); // Close drawer on mobile
+          }
           context.go(item.route);
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

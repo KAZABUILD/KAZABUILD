@@ -18,13 +18,14 @@ import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/models/api_constants.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
+
 
 /// A page for creating a new forum post or editing an existing one.
 class NewPostPage extends ConsumerStatefulWidget {
   /// An optional ID of a PC build to associate with this post.
   final String? buildId;
-  
+
   /// An optional ID of a forum post to edit.
   final String? postId;
 
@@ -66,7 +67,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
     try {
       final forumService = ref.read(forumServiceProvider);
       final post = await forumService.getPostById(widget.postId!);
-      
+
       setState(() {
         _titleController.text = post.title;
         _contentController.text = post.content;
@@ -100,7 +101,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
 
   Future<void> _uploadImages(String postId) async {
     final dio = ref.read(authProvider.notifier).getDioInstance();
-    
+
     for (int i = 0; i < _selectedImages.length; i++) {
       final image = _selectedImages[i];
       try {
@@ -110,7 +111,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
         if (fileName.isEmpty || !fileName.contains('.')) {
           fileName = 'image_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
         }
-        
+
         final formData = FormData.fromMap({
           'File': MultipartFile.fromBytes(
             fileBytes,
@@ -120,7 +121,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
           'LocationType': 'FORUM',
           'Name': 'forum_post_${DateTime.now().millisecondsSinceEpoch}_$i',
         });
-        
+
         final response = await dio.post('$apiBaseUrl/Images/add', data: formData);
         debugPrint('Image ${i + 1} uploaded successfully: ${response.data}');
       } catch (e, stackTrace) {
@@ -139,7 +140,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
         maxWidth: 1920,
         maxHeight: 1920,
       );
-      
+
       if (images.isNotEmpty) {
         setState(() {
           _selectedImages.addAll(images);
@@ -204,7 +205,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
       };
 
       String? postId;
-      
+
       // If editing, update the post
       if (widget.postId != null) {
         final updateData = {
@@ -212,18 +213,18 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
           'content': _contentController.text,
           'topic': _selectedTopic,
         };
-        
+
         await ref.read(forumProvider.notifier).updateForumPost(widget.postId!, updateData);
         postId = widget.postId;
-        
+
         // STOP LOADING FIRST
         if (mounted) {
           setState(() => _isLoading = false);
         }
-        
+
         // SHOW SUCCESS DIALOG
         if (!mounted) return;
-        
+
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -255,7 +256,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
             ],
           ),
         );
-        
+
         // Navigate to the post detail page
         if (mounted) {
           await Future.delayed(const Duration(milliseconds: 100));
@@ -264,26 +265,26 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
         }
         return;
       }
-      
+
       // Create the post
       final response = await ref.read(forumProvider.notifier).createForumPost(postData);
       postId = response['id']?.toString();
-      
+
       // STOP LOADING FIRST
       if (mounted) {
         setState(() => _isLoading = false);
       }
-      
+
       // Upload images in background (don't wait for it)
       if (_selectedImages.isNotEmpty && postId != null) {
         _uploadImages(postId).catchError((e) {
           debugPrint('Image upload error: $e');
         });
       }
-      
+
       // SHOW SUCCESS DIALOG - This ALWAYS works, no matter what
       if (!mounted) return;
-      
+
       // Show dialog and wait for user to click OK
       await showDialog(
         context: context,
@@ -317,22 +318,22 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
           ],
         ),
       );
-      
+
       // AFTER dialog is closed, navigate to HOME directly
       // User wants to go to home page after creating post
       if (mounted) {
         // Wait a tiny bit to ensure dialog is fully closed
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         if (!mounted) return;
-        
+
         // Navigate to home page - use window.location.href for web to avoid hash issues
         if (kIsWeb) {
           try {
             // Directly set the full URL to home - this bypasses all router logic
             final origin = html.window.location.origin;
             final targetUrl = '$origin/home';
-            
+
             // Use window.location.href to completely replace the URL
             // This ensures no hash is added
             html.window.location.href = targetUrl;
@@ -351,7 +352,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-      
+
       // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -426,7 +427,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      widget.postId != null 
+                                      widget.postId != null
                                           ? 'Update your post content'
                                           : 'Share your thoughts with the community',
                                       style: theme.textTheme.bodyLarge?.copyWith(

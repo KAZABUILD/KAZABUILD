@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
+
 import 'dart:async';
 import 'package:frontend/utils/error_utils.dart';
 
@@ -36,36 +37,36 @@ class _ConfirmRegisterPageState
   @override
   void initState() {
     super.initState();
-    
+
     // CRITICAL: Save token from URL BEFORE cleaning it
     // Email URL format: ?token=xxx&userId=yyy
     _savedToken = widget.token;
     debugPrint('🔑 Token from widget: $_savedToken');
-    
+
     if (_savedToken == null || _savedToken!.isEmpty) {
       try {
         // Get token from current URL (before cleaning)
         final currentHref = html.window.location.href;
         debugPrint('🔑 Current URL: $currentHref');
-        
+
         // Check main URL first (before hash)
         final mainPart = currentHref.split('#').first;
         final mainUri = Uri.parse(mainPart);
         _savedToken = mainUri.queryParameters['token'];
         debugPrint('🔑 Token from main URL: $_savedToken');
-        
+
         // If not found in main URL, check hash fragment
         if ((_savedToken == null || _savedToken!.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;
           debugPrint('🔑 Hash part: $hashPart');
-          
+
           // Check if hash contains query params like #/auth/confirm-register?token=xxx
           if (hashPart.contains('?')) {
             final hashUri = Uri.parse('?${hashPart.split('?').last}');
             _savedToken = hashUri.queryParameters['token'];
             debugPrint('🔑 Token from hash query: $_savedToken');
           }
-          
+
           // Also try parsing the full hash as a path
           if ((_savedToken == null || _savedToken!.isEmpty)) {
             try {
@@ -81,36 +82,36 @@ class _ConfirmRegisterPageState
         debugPrint('❌ Error getting token from URL: $e');
       }
     }
-    
+
     debugPrint('🔑 Final saved token: $_savedToken');
-    
+
     // Wait a bit before cleaning URL to ensure token is saved
     Future.microtask(() async {
       // Small delay to let router settle
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // Clean URL hash
       _cleanAndRebuildUrlImmediately();
-      
+
       // Wait a bit more, then confirm
       await Future.delayed(const Duration(milliseconds: 200));
-      
+
       // Automatically confirm registration when page loads
       if (mounted) {
         _confirmRegistration();
       }
     });
-    
+
     // Also clean after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cleanAndRebuildUrlImmediately();
     });
-    
+
     // CRITICAL: Continuously monitor and clean hash fragment
     // This prevents GoRouter or browser from re-adding hash
     _startHashMonitoring();
   }
-  
+
   /// Continuously monitors and removes hash fragments
   void _startHashMonitoring() {
     // Check every 100ms for the first 3 seconds to catch any hash additions
@@ -144,17 +145,17 @@ class _ConfirmRegisterPageState
     try {
       // Get current URL and remove hash immediately
       var currentHref = html.window.location.href;
-      
+
       // CRITICAL: Check if hash exists and remove it
       if (currentHref.contains('#')) {
         // Remove hash fragment completely from URL
         final mainPart = currentHref.split('#').first;
-        
+
         // Parse URL to get userId and token (from cleaned URL without hash)
         final uri = Uri.parse(mainPart);
         final userId = uri.queryParameters['userId'];
         final token = uri.queryParameters['token'];
-        
+
         // Build new URL with userId and token (keep both, remove hash)
         String newUrl;
         if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
@@ -170,10 +171,10 @@ class _ConfirmRegisterPageState
           // Just remove hash, keep existing query params
           newUrl = mainPart;
         }
-        
+
         // Force update browser URL (this removes hash)
         html.window.history.replaceState(null, '', newUrl);
-        
+
         // Also clear hash directly (double check)
         html.window.location.hash = '';
       } else {
@@ -194,25 +195,25 @@ class _ConfirmRegisterPageState
     // Use saved token from initState (saved before URL was cleaned)
     String? token = _savedToken;
     debugPrint('🔑 Starting confirmation with saved token: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
-    
+
     // Fallback: try widget token
     if (token == null || token.isEmpty) {
       token = widget.token;
       debugPrint('🔑 Using widget token: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
     }
-    
+
     // Final fallback: try to get from current URL (might still be there)
     if (token == null || token.isEmpty) {
       try {
         final currentHref = html.window.location.href;
         debugPrint('🔑 Trying to get token from current URL: $currentHref');
-        
+
         // Try main URL first
         final mainPart = currentHref.split('#').first;
         final mainUri = Uri.parse(mainPart);
         token = mainUri.queryParameters['token'];
         debugPrint('🔑 Token from current main URL: ${token != null ? "***${token.substring(token.length > 10 ? token.length - 10 : 0)}" : "null"}');
-        
+
         // If still not found, try hash fragment
         if ((token == null || token.isEmpty) && currentHref.contains('#')) {
           final hashPart = currentHref.split('#').last;
@@ -226,7 +227,7 @@ class _ConfirmRegisterPageState
         debugPrint('❌ Error getting token from URL: $e');
       }
     }
-    
+
     // If still no token, we can't proceed (backend requires token hash)
     if (token == null || token.isEmpty) {
       debugPrint('❌ No token found! Widget token: ${widget.token}, Saved token: $_savedToken');
@@ -262,10 +263,10 @@ class _ConfirmRegisterPageState
           _isLoading = false;
           _isSuccess = true;
         });
-        
+
         // Small delay to show success message, then navigate
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           // Navigate to login page after successful confirmation
           // Use GoRouter to avoid hash routing issues
@@ -286,7 +287,7 @@ class _ConfirmRegisterPageState
                   ? '/login?userId=${widget.userId}'
                   : '/login';
               final fullUrl = '$baseUrl$targetPath';
-              
+
               debugPrint('🔵 Fallback: Navigating to: $fullUrl');
               html.window.location.href = fullUrl;
             } catch (e2) {

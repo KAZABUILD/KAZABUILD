@@ -445,11 +445,14 @@ class _WOWPremiumHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return SliverToBoxAdapter(
       child: FadeTransition(
         opacity: animation,
         child: Container(
-          height: 280,
+          constraints: BoxConstraints(minHeight: isMobile ? 240 : 280),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -471,13 +474,20 @@ class _WOWPremiumHeader extends StatelessWidget {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 20 : 32,
+                vertical: isMobile ? 20 : 40,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Premium Badge with Glow
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 12 : 16,
+                      vertical: isMobile ? 6 : 8,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDarkMode
@@ -510,23 +520,23 @@ class _WOWPremiumHeader extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.forum_rounded,
-                          size: 16,
+                          size: isMobile ? 14 : 16,
                           color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: isMobile ? 6 : 8),
                         Text(
                           'COMMUNITY FORUM',
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
                             letterSpacing: 2,
-                            fontSize: 11,
+                            fontSize: isMobile ? 10 : 11,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isMobile ? 16 : 24),
                   
                   // Main Title with Gradient
                   ShaderMask(
@@ -547,27 +557,29 @@ class _WOWPremiumHeader extends StatelessWidget {
                       'Community Hub',
                       style: theme.textTheme.displayLarge?.copyWith(
                         fontWeight: FontWeight.w900,
-                        fontSize: 42,
+                        fontSize: isMobile ? 32 : 42,
                         letterSpacing: -1,
                         color: Colors.white,
                         height: 1.1,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: isMobile ? 8 : 12),
                   
                   // Subtitle
                   Text(
                     'Connect, share, and learn from fellow PC building enthusiasts',
                     style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: 16,
+                      fontSize: isMobile ? 14 : 16,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
                       height: 1.4,
                       fontWeight: FontWeight.w400,
                       letterSpacing: 0.3,
                     ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const Spacer(),
+                  SizedBox(height: isMobile ? 20 : 32),
                   
                   // WOW Premium CTA Button
                   _WOWPremiumStartButton(
@@ -642,6 +654,9 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHovered = true);
@@ -660,7 +675,10 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
               onTap: () => context.go('/forums/new'),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                padding: EdgeInsets.symmetric(
+                  vertical: isMobile ? 12 : 16,
+                  horizontal: isMobile ? 16 : 32,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: widget.isDarkMode
@@ -701,20 +719,26 @@ class _WOWPremiumStartButtonState extends State<_WOWPremiumStartButton>
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.add_circle_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: isMobile ? 18 : 20,
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      AppLocalizations.of(context)!.startDiscussion,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                    SizedBox(width: isMobile ? 8 : 10),
+                    Flexible(
+                      child: Text(
+                        AppLocalizations.of(context)!.startDiscussion,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -1370,115 +1394,186 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
                               const SizedBox(height: 16),
                               
                               // Footer with Author and Stats
-                              Row(
-                                children: [
-                                  authorAsync.when(
-                                    data: (author) {
-                                      final displayName = author?.displayName.isNotEmpty == true
-                                          ? author!.displayName
-                                          : author?.username ?? 'User';
-                                      return Row(
-                                        children: [
-                                          Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: widget.isDarkMode
-                                                    ? [
-                                                        AppColorsDark.buttonPurple.withValues(alpha: 0.4),
-                                                        AppColorsDark.buttonBlue.withValues(alpha: 0.4),
-                                                      ]
-                                                    : [
-                                                        AppColorsLight.buttonPurple.withValues(alpha: 0.4),
-                                                        AppColorsLight.buttonBlue.withValues(alpha: 0.4),
-                                                      ],
-                                              ),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                displayName.isNotEmpty
-                                                    ? displayName[0].toUpperCase()
-                                                    : 'U',
-                                                style: TextStyle(
-                                                  color: widget.isDarkMode
-                                                      ? AppColorsDark.textNeon
-                                                      : AppColorsLight.textNeon,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                displayName,
-                                                style: theme.textTheme.bodyMedium?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              Text(
-                                                DateFormat('MMM dd, yyyy').format(widget.post.createdAt),
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                    loading: () => const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    ),
-                                    error: (_, __) => const SizedBox.shrink(),
-                                  ),
-                                  const Spacer(),
+                              Builder(
+                                builder: (context) {
+                                  final screenWidth = MediaQuery.of(context).size.width;
+                                  final isMobile = screenWidth < 600;
                                   
-                                  // Premium Stats
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-                                          theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.comment_rounded,
-                                          size: 18,
-                                          color: widget.isDarkMode
-                                              ? AppColorsDark.textNeon
-                                              : AppColorsLight.textNeon,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Replies',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: widget.isDarkMode
-                                                ? AppColorsDark.textNeon
-                                                : AppColorsLight.textNeon,
-                                            fontSize: 13,
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: authorAsync.when(
+                                          data: (author) {
+                                            final displayName = author?.displayName.isNotEmpty == true
+                                                ? author!.displayName
+                                                : author?.username ?? 'User';
+                                            return Row(
+                                              children: [
+                                                Container(
+                                                  width: isMobile ? 28 : 32,
+                                                  height: isMobile ? 28 : 32,
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: widget.isDarkMode
+                                                          ? [
+                                                              AppColorsDark.buttonPurple.withValues(alpha: 0.4),
+                                                              AppColorsDark.buttonBlue.withValues(alpha: 0.4),
+                                                            ]
+                                                          : [
+                                                              AppColorsLight.buttonPurple.withValues(alpha: 0.4),
+                                                              AppColorsLight.buttonBlue.withValues(alpha: 0.4),
+                                                            ],
+                                                    ),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      displayName.isNotEmpty
+                                                          ? displayName[0].toUpperCase()
+                                                          : 'U',
+                                                      style: TextStyle(
+                                                        color: widget.isDarkMode
+                                                            ? AppColorsDark.textNeon
+                                                            : AppColorsLight.textNeon,
+                                                        fontSize: isMobile ? 12 : 14,
+                                                        fontWeight: FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: isMobile ? 8 : 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        displayName,
+                                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                                          fontWeight: FontWeight.w700,
+                                                          fontSize: isMobile ? 12 : 14,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                      Text(
+                                                        DateFormat('MMM dd, yyyy').format(widget.post.createdAt),
+                                                        style: theme.textTheme.bodySmall?.copyWith(
+                                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                                                          fontSize: isMobile ? 10 : 12,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                          loading: () => const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
                                           ),
+                                          error: (_, __) => const SizedBox.shrink(),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                      SizedBox(width: isMobile ? 8 : 12),
+                                      
+                                      // Premium Stats
+                                      isMobile
+                                          ? Flexible(
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+                                                      theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                                                    ],
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.comment_rounded,
+                                                      size: 16,
+                                                      color: widget.isDarkMode
+                                                          ? AppColorsDark.textNeon
+                                                          : AppColorsLight.textNeon,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'Replies',
+                                                        style: theme.textTheme.bodySmall?.copyWith(
+                                                          fontWeight: FontWeight.w700,
+                                                          color: widget.isDarkMode
+                                                              ? AppColorsDark.textNeon
+                                                              : AppColorsLight.textNeon,
+                                                          fontSize: 11,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                          : Container(
+                                              constraints: const BoxConstraints(maxWidth: 100),
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+                                                    theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                                                  ],
+                                                ),
+                                                borderRadius: BorderRadius.circular(14),
+                                              ),
+                                              alignment: Alignment.centerRight,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                children: [
+                                                  Icon(
+                                                    Icons.comment_rounded,
+                                                    size: 14,
+                                                    color: widget.isDarkMode
+                                                        ? AppColorsDark.textNeon
+                                                        : AppColorsLight.textNeon,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Replies',
+                                                    style: theme.textTheme.bodySmall?.copyWith(
+                                                      fontWeight: FontWeight.w700,
+                                                      color: widget.isDarkMode
+                                                          ? AppColorsDark.textNeon
+                                                          : AppColorsLight.textNeon,
+                                                      fontSize: 11,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           ),

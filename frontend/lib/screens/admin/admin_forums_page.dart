@@ -38,6 +38,8 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: isDark
@@ -45,18 +47,18 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
           : AppColorsLight.backgroundPrimary,
       body: Column(
         children: [
-          _buildHeader(isDark),
+          _buildHeader(isDark, isMobile),
           Expanded(
-            child: _buildContent(isDark),
+            child: _buildContent(isDark, isMobile),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -75,82 +77,157 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
           Text(
             'Forum Moderation',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: isMobile ? 22 : 28,
               fontWeight: FontWeight.bold,
               color: isDark
                   ? AppColorsDark.textWhite
                   : AppColorsLight.textBlack,
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search posts by title, author, or topic...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: isDark
-                        ? AppColorsDark.backgroundTertiary
-                        : AppColorsLight.backgroundSecondary,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+          SizedBox(height: isMobile ? 16 : 24),
+          isMobile
+              ? Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search posts...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark
+                            ? AppColorsDark.backgroundTertiary
+                            : AppColorsLight.backgroundSecondary,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _currentPage = 1;
+                          _cachedQueryParams = null;
+                        });
+                      },
                     ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _currentPage = 1; // Reset to first page on search
-                      _cachedQueryParams = null; // Invalidate cache
-                    });
-                  },
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColorsDark.backgroundTertiary
+                              : AppColorsLight.backgroundSecondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedFilter,
+                          isExpanded: true,
+                          items: _filters.map((filter) {
+                            return DropdownMenuItem(
+                              value: filter,
+                              child: Text(filter),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedFilter = value!;
+                              _currentPage = 1;
+                              _cachedQueryParams = null;
+                            });
+                          },
+                          underline: Container(),
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite
+                                : AppColorsLight.textBlack,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search posts by title, author, or topic...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: isDark
+                              ? AppColorsDark.backgroundTertiary
+                              : AppColorsLight.backgroundSecondary,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _currentPage = 1;
+                            _cachedQueryParams = null;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColorsDark.backgroundTertiary
+                            : AppColorsLight.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedFilter,
+                        items: _filters.map((filter) {
+                          return DropdownMenuItem(
+                            value: filter,
+                            child: Text(filter),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedFilter = value!;
+                            _currentPage = 1;
+                            _cachedQueryParams = null;
+                          });
+                        },
+                        underline: Container(),
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColorsDark.backgroundTertiary
-                      : AppColorsLight.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButton<String>(
-                  value: _selectedFilter,
-                  items: _filters.map((filter) {
-                    return DropdownMenuItem(
-                      value: filter,
-                      child: Text(filter),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedFilter = value!;
-                      _currentPage = 1; // Reset to first page on filter change
-                      _cachedQueryParams = null; // Invalidate cache
-                    });
-                  },
-                  underline: Container(),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -196,21 +273,23 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
     return _cachedQueryParams!;
   }
 
-  Widget _buildContent(bool isDark) {
+  Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final postsAsync = ref.watch(adminForumPostsProvider(queryParams));
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          postsAsync.when(
-            data: (posts) => _buildStatsRow(isDark, posts),
-            loading: () => _buildStatsRow(isDark, []),
-            error: (error, stack) => _buildStatsRow(isDark, []),
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 8 : 24),
+          child: postsAsync.when(
+            data: (posts) => _buildStatsRow(isDark, posts, isMobile),
+            loading: () => _buildStatsRow(isDark, [], isMobile),
+            error: (error, stack) => _buildStatsRow(isDark, [], isMobile),
           ),
-          const SizedBox(height: 24),
-          Expanded(
+        ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -220,7 +299,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
               ),
               child: Column(
                 children: [
-                  _buildTableHeader(isDark),
+                  if (!isMobile) _buildTableHeader(isDark),
                   Expanded(
                     child: postsAsync.when(
                       data: (posts) {
@@ -261,7 +340,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                                 separatorBuilder: (context, index) => const SizedBox(height: 0),
                                 itemBuilder: (context, index) {
                                   final post = posts[index];
-                                  return _buildPostRow(post, isDark);
+                                  return _buildPostRow(post, isDark, isMobile);
                                 },
                               ),
                             ),
@@ -299,12 +378,12 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<AdminForumPost> posts) {
+  Widget _buildStatsRow(bool isDark, List<AdminForumPost> posts, bool isMobile) {
     // Calculate stats from all posts
     final totalPosts = posts.length;
     final today = DateTime.now();
@@ -323,11 +402,92 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
       {'label': 'Filtered', 'value': _selectedFilter, 'icon': Icons.filter_list, 'color': AppColorsDark.warning},
     ];
 
+    if (isMobile) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: stats.length,
+        itemBuilder: (context, index) {
+          final stat = stats[index];
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    stat['icon'] as IconData,
+                    color: stat['color'] as Color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        stat['value'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        stat['label'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Row(
-      children: stats.map((stat) {
+      children: stats.asMap().entries.map((entry) {
+        final index = entry.key;
+        final stat = entry.value;
         return Expanded(
           child: Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: index < stats.length - 1 ? 16 : 0),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark
@@ -450,7 +610,159 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
     );
   }
 
-  Widget _buildPostRow(AdminForumPost post, bool isDark) {
+  Widget _buildPostCard(AdminForumPost post, bool isDark) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: isDark
+          ? AppColorsDark.backgroundSecondary
+          : AppColorsLight.backgroundTertiary,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.title ?? 'Untitled Post',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          post.topic ?? 'General',
+                          style: const TextStyle(
+                            color: AppColorsDark.buttonBlue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (post.content != null && post.content!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                post.content!.length > 100
+                    ? '${post.content!.substring(0, 100)}...'
+                    : post.content!,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.person,
+                  size: 16,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Creator: ${post.creatorId != null ? post.creatorId!.substring(0, 8) : 'Unknown'}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (post.postedAt != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Posted: ${_formatDate(post.postedAt!)}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility, size: 20),
+                  onPressed: () {
+                    context.go('/forums/${post.id}');
+                  },
+                  tooltip: 'View',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () {
+                    context.go('/forums/${post.id}/edit');
+                  },
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 20),
+                  onPressed: () {
+                    _showDeleteConfirmation(context, post, isDark);
+                  },
+                  tooltip: 'Delete',
+                  color: AppColorsDark.error,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostRow(AdminForumPost post, bool isDark, bool isMobile) {
+    if (isMobile) {
+      return _buildPostCard(post, isDark);
+    }
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

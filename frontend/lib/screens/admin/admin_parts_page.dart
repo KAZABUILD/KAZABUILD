@@ -38,6 +38,8 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: isDark
@@ -45,18 +47,18 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
           : AppColorsLight.backgroundPrimary,
       body: Column(
         children: [
-          _buildHeader(isDark),
+          _buildHeader(isDark, isMobile),
           Expanded(
-            child: _buildContent(isDark),
+            child: _buildContent(isDark, isMobile),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: isDark
             ? AppColorsDark.backgroundSecondary
@@ -72,105 +74,215 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Parts Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColorsDark.textWhite
-                      : AppColorsLight.textBlack,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.add),
-                label: const Text('Add Part'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? AppColorsDark.buttonGreen
-                      : AppColorsLight.buttonGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search parts by name, brand, or model...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: isDark
-                        ? AppColorsDark.backgroundTertiary
-                        : AppColorsLight.backgroundSecondary,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Parts Management',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
                     ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _currentPage = 1;
-                      _cachedQueryParams = null; // Invalidate cache
-                    });
-                  },
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Part'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? AppColorsDark.buttonGreen
+                              : AppColorsLight.buttonGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Parts Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark
+                            ? AppColorsDark.textWhite
+                            : AppColorsLight.textBlack,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Part'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColorsDark.buttonGreen
+                            : AppColorsLight.buttonGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColorsDark.backgroundTertiary
-                      : AppColorsLight.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12),
+          SizedBox(height: isMobile ? 16 : 24),
+          isMobile
+              ? Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search parts...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark
+                            ? AppColorsDark.backgroundTertiary
+                            : AppColorsLight.backgroundSecondary,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _currentPage = 1;
+                          _cachedQueryParams = null;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColorsDark.backgroundTertiary
+                              : AppColorsLight.backgroundSecondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedCategory,
+                          isExpanded: true,
+                          items: _categories.map((category) {
+                            return DropdownMenuItem(
+                              value: category,
+                              child: Text(category),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCategory = value!;
+                              _currentPage = 1;
+                              _cachedQueryParams = null;
+                            });
+                          },
+                          underline: Container(),
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite
+                                : AppColorsLight.textBlack,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search parts by name, brand, or model...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: isDark
+                              ? AppColorsDark.backgroundTertiary
+                              : AppColorsLight.backgroundSecondary,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _currentPage = 1;
+                            _cachedQueryParams = null;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColorsDark.backgroundTertiary
+                            : AppColorsLight.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedCategory,
+                        items: _categories.map((category) {
+                          return DropdownMenuItem(
+                            value: category,
+                            child: Text(category),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategory = value!;
+                            _currentPage = 1;
+                            _cachedQueryParams = null;
+                          });
+                        },
+                        underline: Container(),
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: DropdownButton<String>(
-                  value: _selectedCategory,
-                  items: _categories.map((category) {
-                    return DropdownMenuItem(
-                      value: category,
-                      child: Text(category),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCategory = value!;
-                      _currentPage = 1;
-                      _cachedQueryParams = null; // Invalidate cache
-                    });
-                  },
-                  underline: Container(),
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColorsDark.textWhite
-                        : AppColorsLight.textBlack,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -216,21 +328,23 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
     return _cachedQueryParams!;
   }
 
-  Widget _buildContent(bool isDark) {
+  Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final componentsAsync = ref.watch(adminComponentsProvider(queryParams));
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          componentsAsync.when(
-            data: (components) => _buildStatsRow(isDark, components),
-            loading: () => _buildStatsRow(isDark, []),
-            error: (error, stack) => _buildStatsRow(isDark, []),
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 8 : 24),
+          child: componentsAsync.when(
+            data: (components) => _buildStatsRow(isDark, components, isMobile),
+            loading: () => _buildStatsRow(isDark, [], isMobile),
+            error: (error, stack) => _buildStatsRow(isDark, [], isMobile),
           ),
-          const SizedBox(height: 24),
-          Expanded(
+        ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -240,7 +354,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               ),
               child: Column(
                 children: [
-                  _buildTableHeader(isDark),
+                  if (!isMobile) _buildTableHeader(isDark),
                   Expanded(
                     child: componentsAsync.when(
                       data: (components) {
@@ -285,7 +399,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
                                   if (index < 5) {
                                     print('AdminPartsPage: Building row $index for component ${component.name ?? component.id}');
                                   }
-                                  return _buildPartRow(component, isDark);
+                                  return _buildPartRow(component, isDark, isMobile);
                                 },
                               ),
                             ),
@@ -323,12 +437,12 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<AdminComponent> allComponents) {
+  Widget _buildStatsRow(bool isDark, List<AdminComponent> allComponents, bool isMobile) {
     // Calculate stats from all components (not just current page)
     final totalComponents = allComponents.length;
     final uniqueTypes = allComponents.map((c) => c.componentType).toSet().length;
@@ -343,11 +457,92 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
       {'label': 'Page $_currentPage / $totalPages', 'value': '', 'icon': Icons.pages, 'color': AppColorsDark.warning},
     ];
 
+    if (isMobile) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: stats.length,
+        itemBuilder: (context, index) {
+          final stat = stats[index];
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColorsDark.backgroundSecondary
+                  : AppColorsLight.backgroundTertiary,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (stat['color'] as Color).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    stat['icon'] as IconData,
+                    color: stat['color'] as Color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        stat['value'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        stat['label'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Row(
-      children: stats.map((stat) {
+      children: stats.asMap().entries.map((entry) {
+        final index = entry.key;
+        final stat = entry.value;
         return Expanded(
           child: Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: index < stats.length - 1 ? 16 : 0),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark
@@ -463,7 +658,194 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
     );
   }
 
-  Widget _buildPartRow(AdminComponent component, bool isDark) {
+  Widget _buildPartCard(AdminComponent component, bool isDark) {
+    // Map component type to display name
+    String getTypeDisplayName(String type) {
+      final typeMap = {
+        'CASE_FAN': 'Case Fan',
+        'GPU': 'GPU',
+        'CPU': 'CPU',
+        'MEMORY': 'Memory',
+        'MOTHERBOARD': 'Motherboard',
+        'STORAGE': 'Storage',
+        'MONITOR': 'Monitor',
+        'COOLER': 'Cooler',
+        'POWER_SUPPLY': 'PSU',
+        'CASE': 'Case',
+      };
+      return typeMap[type.toUpperCase()] ?? type;
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: isDark
+          ? AppColorsDark.backgroundSecondary
+          : AppColorsLight.backgroundTertiary,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColorsDark.buttonPurple.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.memory),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        component.name ?? 'Unnamed Component',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDark
+                              ? AppColorsDark.textWhite
+                              : AppColorsLight.textBlack,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColorsDark.buttonBlue.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          getTypeDisplayName(component.componentType),
+                          style: const TextStyle(
+                            color: AppColorsDark.buttonBlue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.business,
+                  size: 16,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Manufacturer: ${component.manufacturer ?? 'Unknown'}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (component.release != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Release: ${_formatDate(component.release!)}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (component.numberOfParts != null && component.numberOfParts! > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.inventory_2,
+                    size: 16,
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Parts: ${component.numberOfParts}',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                          : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility, size: 20),
+                  onPressed: () {
+                    // Navigate to component detail page if exists
+                  },
+                  tooltip: 'View',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () {
+                    // Navigate to component edit page if exists
+                  },
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 20),
+                  onPressed: () {
+                    _showDeleteConfirmation(context, component, isDark);
+                  },
+                  tooltip: 'Delete',
+                  color: AppColorsDark.error,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPartRow(AdminComponent component, bool isDark, bool isMobile) {
+    if (isMobile) {
+      return _buildPartCard(component, isDark);
+    }
     // Map component type to display name
     String getTypeDisplayName(String type) {
       final typeMap = {
@@ -637,6 +1019,9 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   }
 
   Widget _buildPagination(bool isDark, AsyncValue<List<AdminComponent>> componentsAsync) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+
     return componentsAsync.when(
       data: (components) {
         final currentPageComponents = components.length;
@@ -648,7 +1033,7 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
         final hasMore = currentPageComponents == _pageSize;
         
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
@@ -658,55 +1043,124 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
               ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                currentPageComponents > 0
-                    ? 'Showing $start-$end components (Page $_currentPage${hasMore ? '+' : ''})'
-                    : 'No components',
-                style: TextStyle(
-                  color: isDark
-                      ? AppColorsDark.textWhite.withValues(alpha: 0.7)
-                      : AppColorsLight.textBlack.withValues(alpha: 0.7),
-                ),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: _currentPage > 1
-                        ? () {
-                            setState(() {
-                              _currentPage--;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
-                            });
-                          }
-                        : null,
-                  ),
-                  Text(
-                    'Page $_currentPage',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColorsDark.textWhite
-                          : AppColorsLight.textBlack,
+          child: isMobile
+              ? Column(
+                  children: [
+                    Text(
+                      currentPageComponents > 0
+                          ? 'Showing $start-$end components (Page $_currentPage${hasMore ? '+' : ''})'
+                          : 'No components',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                            : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: hasMore || currentPageComponents == _pageSize
-                        ? () {
-                            setState(() {
-                              _currentPage++;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
-                            });
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _currentPage > 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'Page $_currentPage',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark
+                                  ? AppColorsDark.textWhite
+                                  : AppColorsLight.textBlack,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: hasMore || currentPageComponents == _pageSize
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        currentPageComponents > 0
+                            ? 'Showing $start-$end components (Page $_currentPage${hasMore ? '+' : ''})'
+                            : 'No components',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                              : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _currentPage > 1
+                              ? () {
+                                  setState(() {
+                                    _currentPage--;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                        Text(
+                          'Page $_currentPage',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColorsDark.textWhite
+                                : AppColorsLight.textBlack,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: hasMore || currentPageComponents == _pageSize
+                              ? () {
+                                  setState(() {
+                                    _currentPage++;
+                                    _cachedQueryParams = null;
+                                  });
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         );
       },
       loading: () => const SizedBox.shrink(),
