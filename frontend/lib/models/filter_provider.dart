@@ -3,36 +3,22 @@ import 'filter_models.dart';
 import 'component_models.dart';
 import 'component_provider.dart';
 
-final availableFiltersProvider = FutureProvider.family<List<FilterDefinition>, ComponentType>((ref, type) async {
-  // Get the template schema
-  final templates = _componentFilterSchemas[type] ?? [];
-  
-  // Fetch all components for this type to extract unique values
-  // This ensures filters only show options that actually exist in the database
+final availableFiltersProvider =
+    FutureProvider.family<List<FilterDefinition>, ComponentType>(
+        (ref, type) async {
   final service = ref.watch(componentServiceProvider);
-  final components = await service.getComponents(type);
-  
-  return templates.map((def) {
-    // Only populate options for select/dropdown filters
-    if (def.type == FilterInputType.select) {
-      final options = _extractUniqueValues(components, def.key);
-      
-      // Sort options alphabetically
-      options.sort((a, b) => a.toString().compareTo(b.toString()));
-      
-      return FilterDefinition(
-        key: def.key,
-        label: def.label,
-        type: def.type,
-        options: options,
-        min: def.min,
-        max: def.max,
-        unit: def.unit,
-        formatValue: def.formatValue,
-      );
+  try {
+    final backendFields = await service.getComponentFiltersRaw(type);
+    final filters = _mapBackendFieldsToDefinitions(backendFields);
+    if (filters.isNotEmpty) {
+      return filters;
     }
-    return def;
-  }).toList();
+  } catch (e) {
+    // Fall back to legacy static filters if backend parsing fails
+  }
+
+  // Fallback to legacy static definitions to keep UI usable
+  return _componentFilterSchemas[type] ?? [];
 });
 
 final activeFiltersProvider = StateNotifierProvider.autoDispose.family<ActiveFiltersNotifier, Map<String, dynamic>, ComponentType>((ref, type) {
@@ -59,108 +45,107 @@ class ActiveFiltersNotifier extends StateNotifier<Map<String, dynamic>> {
   }
 }
 
+List<FilterDefinition> _mapBackendFieldsToDefinitions(
+  Map<String, dynamic> fields,
+) {
+  final List<FilterDefinition> definitions = [];
+
+  fields.forEach((rawKey, rawValue) {
+    if (rawValue is! Map) return;
+    final field = Map<String, dynamic>.from(rawValue);
+
+    final typeValue = field['type'] ?? field['Type'];
+    final typeString = typeValue?.toString().toLowerCase();
+
+    FilterInputType? inputType;
+    if (typeValue is int) {
+      switch (typeValue) {
+        case 0:
+          inputType = FilterInputType.select;
+          break;
+        case 1:
+          inputType = FilterInputType.range;
+          break;
+        case 2:
+          inputType = FilterInputType.range; // Date mapped to year range
+          break;
+        case 3:
+          inputType = FilterInputType.boolean;
+          break;
+      }
+    } else if (typeString != null) {
+      if (typeString.contains('string')) inputType = FilterInputType.select;
+      if (typeString.contains('numeric')) inputType = FilterInputType.range;
+      if (typeString.contains('date')) inputType = FilterInputType.range;
+      if (typeString.contains('bool')) inputType = FilterInputType.boolean;
+    }
+    if (inputType == null) return;
+
+    List<dynamic>? options;
+    double? min;
+    double? max;
+    String Function(dynamic)? formatValue;
+    String? unit;
+
+    if (inputType == FilterInputType.select) {
+      final rawOptions =
+          field['stringValues'] ?? field['StringValues'] ?? <dynamic>[];
+      if (rawOptions is List) {
+        options = rawOptions.where((e) => e != null).map((e) => e.toString()).toSet().toList();
+      }
+    } else if (inputType == FilterInputType.range) {
+      if ((field['minNumeric'] ?? field['MinNumeric']) != null &&
+          (field['maxNumeric'] ?? field['MaxNumeric']) != null) {
+        min = (field['minNumeric'] ?? field['MinNumeric']).toDouble();
+        max = (field['maxNumeric'] ?? field['MaxNumeric']).toDouble();
+      } else if ((field['minDate'] ?? field['MinDate']) != null &&
+          (field['maxDate'] ?? field['MaxDate']) != null) {
+        try {
+          final minDate = DateTime.parse(
+              (field['minDate'] ?? field['MinDate']).toString());
+          final maxDate = DateTime.parse(
+              (field['maxDate'] ?? field['MaxDate']).toString());
+          min = minDate.year.toDouble();
+          max = maxDate.year.toDouble();
+          unit = 'Year';
+          formatValue = (val) => val.toStringAsFixed(0);
+        } catch (_) {}
+      }
+    }
+
+    final label = _humanizeKey(rawKey);
+
+    definitions.add(
+      FilterDefinition(
+        key: rawKey,
+        label: label,
+        type: inputType,
+        options: options,
+        min: min,
+        max: max,
+        unit: unit,
+        formatValue: formatValue,
+      ),
+    );
+  });
+
+  // Keep a stable order by label for UX
+  definitions.sort((a, b) => a.label.compareTo(b.label));
+  return definitions;
+}
+
+String _humanizeKey(String key) {
+  final withSpaces =
+      key.replaceAllMapped(RegExp(r'(?<=[a-z0-9])(?=[A-Z])'), (m) => ' ');
+  return withSpaces.replaceAll('.', ' ').trim();
+}
+
 // Helper function to format MB values to GB
 String _formatMbToGb(dynamic value) {
   if (value is num) {
     return (value / 1024).toStringAsFixed(0);
   }
   return value.toString();
-}
-
-List<dynamic> _extractUniqueValues(List<BaseComponent> components, String key) {
-  final values = <dynamic>{};
-  
-  for (final c in components) {
-    final val = _getPropertyValue(c, key);
-    if (val != null) {
-      if (val is List) {
-        values.addAll(val);
-      } else {
-        values.add(val);
-      }
-    }
-  }
-  
-  return values.toList();
-}
-
-dynamic _getPropertyValue(BaseComponent c, String key) {
-  // Common properties
-  switch (key) {
-    case 'Manufacturer':
-      return c.manufacturer;
-  }
-
-  // Component-specific properties
-  if (c is GPUComponent) {
-    switch (key) {
-      case 'Chipset': return c.chipset;
-      case 'VideoMemoryType': return c.videoMemoryType;
-      case 'FrameSync': return c.frameSync;
-      case 'CoolingType': return c.coolingType;
-    }
-  } else if (c is CPUComponent) {
-    switch (key) {
-      case 'Series': return c.series;
-      case 'SocketType': return c.socketType;
-      case 'Microarchitecture': return c.microarchitecture;
-      case 'CoreFamily': return c.coreFamily;
-      case 'Lithography': return c.lithography;
-      case 'MemoryType': return c.memoryType;
-      case 'PackagingType': return c.packagingType;
-    }
-  } else if (c is MotherboardComponent) {
-    switch (key) {
-      case 'SocketType': return c.socketType;
-      case 'FormFactor': return c.formFactor;
-      case 'ChipsetType': return c.chipsetType;
-      case 'RAMType': return c.ramType;
-      case 'AudioChipset': return c.audioChipset;
-      case 'WirelessNetworkingStandard': return c.wirelessNetworkingStandard;
-      case 'MainPowerType': return c.mainPowerType;
-    }
-  } else if (c is MemoryComponent) {
-    switch (key) {
-      case 'RAMType': return c.ramType;
-      case 'FormFactor': return c.formFactor;
-      case 'Timings': return c.timings;
-      case 'ECC': return c.ecc;
-      case 'RegisteredType': return c.registeredType;
-    }
-  } else if (c is StorageComponent) {
-    switch (key) {
-      case 'Series': return c.series;
-      case 'Type': return c.driveType; // Mapped 'Type' to 'DriveType'
-      case 'FormFactor': return c.formFactor;
-      case 'Interface': return c.interface;
-    }
-  } else if (c is PowerSupplyComponent) {
-    switch (key) {
-      case 'FormFactor': return c.formFactor;
-      case 'EfficiencyRating': return c.efficiencyRating;
-      case 'ModularityType': return c.modularityType;
-    }
-  } else if (c is CaseComponent) {
-    switch (key) {
-      case 'FormFactor': return c.formFactor;
-      case 'SidePanelType': return c.sidePanelType;
-    }
-  } else if (c is CaseFanComponent) {
-    switch (key) {
-      case 'LEDType': return c.ledType;
-      case 'ConnectorType': return c.connectorType;
-      case 'ControllerType': return c.controllerType;
-      case 'FlowDirection': return c.flowDirection;
-    }
-  } else if (c is MonitorComponent) {
-    switch (key) {
-      case 'PanelType': return c.panelType;
-      case 'AdaptiveSyncType': return c.adaptiveSyncType;
-      case 'HighDynamicRangeType': return c.highDynamicRangeType;
-    }
-  }
-  
-  return null;
 }
 
 final Map<ComponentType, List<FilterDefinition>> _componentFilterSchemas = {

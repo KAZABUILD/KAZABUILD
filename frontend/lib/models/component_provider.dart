@@ -84,6 +84,7 @@ class ComponentPageResult {
 /// A service class to handle API requests related to PC components.
 class ComponentService {
   final Dio _dio;
+  final Map<String, double?> _priceCache = {};
 
   ComponentService(this._dio);
 
@@ -260,6 +261,43 @@ class ComponentService {
     }
   }
 
+  /// Fetches lowest prices for the given component IDs from ComponentPrices/get.
+  /// Returns a map of componentId -> lowest price.
+  Future<Map<String, double>> getLowestPrices(List<String> componentIds) async {
+    if (componentIds.isEmpty) return {};
+
+    final url = '$apiBaseUrl/ComponentPrices/get';
+    final body = {
+      'ComponentId': componentIds,
+      'Paging': false,
+    };
+
+    try {
+      final response = await _dio.post(url, data: body);
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> data = response.data;
+        final Map<String, double> prices = {};
+
+        for (final item in data) {
+          if (item is! Map) continue;
+          final id = (item['componentId'] ?? item['ComponentId'])?.toString();
+          final priceVal = item['price'] ?? item['Price'];
+          if (id == null || priceVal == null) continue;
+          final price = (priceVal as num).toDouble();
+          if (!prices.containsKey(id) || price < prices[id]!) {
+            prices[id] = price;
+          }
+        }
+        return prices;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching prices: $e');
+      }
+    }
+    return {};
+  }
+
   /// Fetches a single page of components for the provided [componentType].
   Future<ComponentPageResult> getComponentsPage(
     ComponentType componentType, {
@@ -347,6 +385,39 @@ class ComponentService {
     }
   }
 
+  /// Fetches dynamic filter metadata from the backend FilterBuilder.
+  /// Returns the raw `fields` map so the caller can map it into UI definitions.
+  Future<Map<String, dynamic>> getComponentFiltersRaw(
+    ComponentType componentType, {
+    Map<String, dynamic>? filters,
+  }) async {
+    final url = '$apiBaseUrl/Components/get-filters';
+    final body = _buildRequestBody(
+      componentType,
+      page: 1,
+      pageLength: _bulkFetchPageLength,
+      filters: filters,
+    );
+    // Filters should be computed over the full set, so disable paging
+    body['Paging'] = false;
+
+    try {
+      final response = await _dio.post(url, data: body);
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map;
+        final fields = data['fields'] ?? data['Fields'];
+        if (fields is Map) {
+          return Map<String, dynamic>.from(fields);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching component filters: $e');
+      }
+    }
+    return {};
+  }
+
   Map<String, dynamic> _buildRequestBody(
     ComponentType componentType, {
     required int page,
@@ -378,6 +449,70 @@ class ComponentService {
     }
 
     return baseBody;
+  }
+
+  /// Fetches lowest prices for a list of component IDs via ComponentPrices/get.
+  /// Returns a map of componentId -> lowest price (double).
+  Future<Map<String, double?>> getLowestPricesForComponents(
+      List<String> componentIds) async {
+    final ids = componentIds.where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return {};
+
+    // Return cached values when available
+    final Map<String, double?> result = {};
+    final List<String> missing = [];
+    for (final id in ids) {
+      if (_priceCache.containsKey(id)) {
+        result[id] = _priceCache[id];
+      } else {
+        missing.add(id);
+      }
+    }
+    if (missing.isEmpty) return result;
+
+    final url = '$apiBaseUrl/ComponentPrices/get';
+    final body = {
+      'ComponentId': missing,
+      'Paging': false,
+    };
+
+    try {
+      final response = await _dio.post(url, data: body);
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> data = response.data;
+        final Map<String, List<double>> grouped = {};
+        for (final item in data) {
+          if (item is Map<String, dynamic>) {
+            final compId =
+                item['componentId']?.toString() ?? item['ComponentId']?.toString();
+            final price = item['price'] ?? item['Price'];
+            if (compId != null && compId.isNotEmpty && price != null) {
+              final priceVal = (price as num).toDouble();
+              grouped.putIfAbsent(compId, () => []).add(priceVal);
+            }
+          }
+        }
+        grouped.forEach((compId, prices) {
+          if (prices.isNotEmpty) {
+            final lowest = prices.reduce((a, b) => a < b ? a : b);
+            _priceCache[compId] = lowest;
+            result[compId] = lowest;
+          }
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching component prices: $e');
+      }
+    }
+
+    return result;
+  }
+
+  /// Convenience helper to get a single component's lowest price.
+  Future<double?> getLowestPriceForComponent(String componentId) async {
+    final map = await getLowestPricesForComponents([componentId]);
+    return map[componentId];
   }
 
   List<BaseComponent> _parseComponents(

@@ -89,7 +89,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   // The state is now fully managed by the activeFiltersProvider and DynamicFilterPanel
 
   // Compatibility filter
-  bool _enableCompatibilityFilter = false;
+  bool _enableCompatibilityFilter = true;
   
   // Track if we've shown the component details dialog for the current componentId
   String? _shownComponentId;
@@ -121,11 +121,15 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
         widget.initialPage != oldWidget.initialPage) {
       final nextPage = _sanitizePage(widget.initialPage);
       _currentPage = nextPage;
-      
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Clear filters when component type changes
         if (widget.componentType != oldWidget.componentType) {
           ref.read(activeFiltersProvider(widget.componentType).notifier).clearAll();
+          // Keep compatibility filter enabled by default on type change
+          setState(() {
+            _enableCompatibilityFilter = true;
+          });
         }
         _loadCurrentPage(force: true, targetPage: nextPage);
       });
@@ -688,7 +692,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                           }
                         }
 
-                        Widget buildList({Set<String>? compatibleIds}) {
+                        Widget buildList({
+                          Set<String>? compatibleIds,
+                          Map<String, double>? priceMap,
+                        }) {
                           final filteredProducts = _filterProducts(
                             pagingState.items,
                             compatibleIds: compatibleIds,
@@ -714,6 +721,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             onClearComparison: _clearComparisonSelection,
                             scrollController: _scrollController,
                             showCompare: isLargeScreen,
+                            priceMap: priceMap,
                             onOpenFilters: !isLargeScreen
                                 ? () {
                                     _scaffoldKey.currentState?.openEndDrawer();
@@ -723,8 +731,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                         }
 
                         if (compatibilityFuture != null) {
-                          return FutureBuilder<Set<String>>(
-                            future: compatibilityFuture,
+                          return FutureBuilder<List<Object?>>(
+                            future: Future.wait<Object?>([
+                              compatibilityFuture,
+                            ]),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
@@ -733,13 +743,17 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                 );
                               }
 
-                              final compatibleIds = snapshot.data ?? <String>{};
-                              return buildList(compatibleIds: compatibleIds);
+                              final compatibleIds =
+                                  snapshot.data?[0] as Set<String>?;
+                              return buildList(
+                                compatibleIds: compatibleIds,
+                                priceMap: const {},
+                              );
                             },
                           );
                         }
 
-                        return buildList();
+                        return buildList(priceMap: const {});
                       },
                     ),
                   ),
@@ -928,6 +942,7 @@ class _ProductList extends ConsumerWidget {
   final ScrollController scrollController;
   final bool showCompare;
   final VoidCallback? onOpenFilters;
+  final Map<String, double>? priceMap;
 
   const _ProductList({
     required this.componentType,
@@ -949,6 +964,7 @@ class _ProductList extends ConsumerWidget {
     this.onComponentSelected,
     this.showCompare = true,
     this.onOpenFilters,
+    this.priceMap,
   });
 
   @override
@@ -1008,6 +1024,7 @@ class _ProductList extends ConsumerWidget {
                     hasMore: hasMore,
                     onPageChanged: onPageChanged,
                     showCompare: showCompare,
+                    priceOverrides: priceMap,
                   ),
                 ),
         ),
@@ -1029,6 +1046,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
   final bool hasMore;
   final void Function(int page) onPageChanged;
   final bool showCompare;
+  final Map<String, double>? priceOverrides;
 
   const _ProductListWithCompatibility({
     required this.products,
@@ -1042,6 +1060,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
     required this.onPageChanged,
     this.onComponentSelected,
     this.showCompare = true,
+    this.priceOverrides,
   });
 
   @override
@@ -1063,6 +1082,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
         }
 
         final product = products[index];
+        final overridePrice = priceOverrides?[product.id];
         final onComponentSelected = this.onComponentSelected;
 
         if (!showCompare) {
@@ -1077,6 +1097,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: comparisonSelection.containsKey(product.id),
           onCompareToggle: (selected) => onCompareToggle(product, selected),
+          priceOverride: overridePrice,
         );
         switch (product.type) {
           case ComponentType.cpu:
@@ -1086,6 +1107,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.motherboard:
@@ -1095,6 +1117,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.ram:
@@ -1104,6 +1127,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.storage:
@@ -1113,6 +1137,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.psu:
@@ -1122,6 +1147,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.pcCase:
@@ -1131,6 +1157,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.gpu:
@@ -1140,6 +1167,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.cooler:
@@ -1149,6 +1177,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.caseFan:
@@ -1158,6 +1187,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
           case ComponentType.monitor:
@@ -1167,6 +1197,7 @@ class _ProductListWithCompatibility extends ConsumerWidget {
               isSelectedForCompare: comparisonSelection.containsKey(product.id),
               onCompareToggle: (selected) =>
                   onCompareToggle(product, selected),
+              priceOverride: overridePrice,
             );
             break;
         }
@@ -1496,6 +1527,7 @@ abstract class _ProductRow extends ConsumerWidget {
   final bool isSelectedForCompare;
   final void Function(bool)? onCompareToggle;
   final bool showCompare;
+  final double? priceOverride;
 
   const _ProductRow({
     required this.product,
@@ -1503,6 +1535,7 @@ abstract class _ProductRow extends ConsumerWidget {
     this.isSelectedForCompare = false,
     this.onCompareToggle,
     this.showCompare = true,
+    this.priceOverride,
   });
 
   @override
@@ -1670,14 +1703,20 @@ abstract class _ProductRow extends ConsumerWidget {
 
   /// A reusable widget for the last cell, showing the price and an "Add" button.
   /// When the "Add" button is pressed, it pops the current page and returns the selected `product`.
-  Widget buildPriceCell(BuildContext context, WidgetRef ref, {int flex = 3}) {
+  Widget buildPriceCell(
+    BuildContext context,
+    WidgetRef ref, {
+    int flex = 3,
+    double? priceOverride,
+  }) {
+    final displayPrice = priceOverride ?? product.lowestPrice;
     return Expanded(
       flex: flex,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Text(
-            '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+            '\$${displayPrice?.toStringAsFixed(2) ?? 'N/A -'}',
             style: const TextStyle(
               color: Color(0xFF00E5FF),
               fontWeight: FontWeight.bold,
@@ -1727,12 +1766,14 @@ class _CpuProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1750,7 +1791,7 @@ class _CpuProductRow extends _ProductRow {
       buildTextCell('${p.thermalDesignPower.toInt()}W', flex: 1),
       buildTextCell(p.graphics, flex: 2),
       Expanded(flex: 2, child: _RatingStars(rating: p.averageRating ?? 0)),
-      buildPriceCell(context, ref, flex: 3),
+      buildPriceCell(context, ref, flex: 3, priceOverride: priceOverride),
     ];
   }
 }
@@ -1763,12 +1804,14 @@ class _MotherboardProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1793,12 +1836,14 @@ class _RamProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1826,12 +1871,14 @@ class _StorageProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1856,12 +1903,14 @@ class _PsuProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1886,12 +1935,14 @@ class _CaseProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1916,12 +1967,14 @@ class _GpuProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1951,12 +2004,14 @@ class _CoolerProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -1990,12 +2045,14 @@ class _CaseFanProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -2031,12 +2088,14 @@ class _MonitorProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
@@ -2065,12 +2124,14 @@ class _GenericProductRow extends _ProductRow {
     bool isSelectedForCompare = false,
     void Function(bool)? onCompareToggle,
     bool showCompare = true,
+    double? priceOverride,
   }) : super(
           product: product,
           onComponentSelected: onComponentSelected,
           isSelectedForCompare: isSelectedForCompare,
           onCompareToggle: onCompareToggle,
           showCompare: showCompare,
+          priceOverride: priceOverride,
         );
 
   @override
