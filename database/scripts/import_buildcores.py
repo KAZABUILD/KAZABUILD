@@ -8,11 +8,10 @@ note: clone buildcores opendb dataset from this url https://github.com/buildcore
 Usage example:
 
     py -3.11 import_buildcores.py ^
-         --input-dir C:\Users\user\OneDrive\Documents\BUILD_CORES\buildcores-open-db\open-db ^
+         --input-dir C:\Users\ziyad\OneDrive\Documents\BUILD_CORES\buildcores-open-db\open-db ^
         --connection-string "Server=LAPTOP-94H43BFK;Database=KAZABUILD_DB;Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes" ^
-        --component-types Motherboard ^
-        --odbc-driver "ODBC Driver 17 for SQL Server" ^
-        --batch-size 10000
+        --batch-size 5000 ^
+        --progress-interval 1000
 """
 
 from __future__ import annotations
@@ -2242,6 +2241,7 @@ class BuildCoreImporter:
         connection_string: Optional[str],
         odbc_driver: str,
         dedupe: bool,
+        progress_interval: int,
     ) -> None:
         """
         Initialize the importer with configuration parameters.
@@ -2256,6 +2256,7 @@ class BuildCoreImporter:
             connection_string: SQL Server connection string (or None to use env var).
             odbc_driver: Name of ODBC driver for SQL Server.
             dedupe: If True, skip duplicate records within this import run.
+        progress_interval: Log progress every N processed records (0 disables progress logs).
         """
         self.input_dir = input_dir
         self.component_types = component_types
@@ -2266,8 +2267,12 @@ class BuildCoreImporter:
         self.connection_string = connection_string
         self.odbc_driver = odbc_driver
         self.dedupe = dedupe
+        self.progress_interval = max(progress_interval, 0)
         self.context = ImportContext(now=dt.datetime.utcnow())
         self.stats: List[ComponentStats] = []
+        # Cache subcomponent signatures per type to avoid repeated full-table scans
+        # shape: {subcomponent_type: {signature: uuid.UUID}}
+        self.subcomponent_cache: Dict[str, Dict[str, uuid.UUID]] = {}
 
     def run(self) -> Dict[str, Any]:
         """
@@ -2461,6 +2466,20 @@ class BuildCoreImporter:
             if self.limit and stats.processed > self.limit:
                 logging.info("Reached limit %s for %s", self.limit, adapter.component_type)
                 break
+            if (
+                self.progress_interval
+                and stats.processed % self.progress_interval == 0
+            ):
+                pending_batch = len(batch)
+                logging.info(
+                    "Progress %s: processed=%d transformed=%d inserted=%d skipped=%d pending=%d",
+                    adapter.component_type,
+                    stats.processed,
+                    stats.transformed,
+                    stats.inserted,
+                    stats.skipped,
+                    pending_batch,
+                )
             try:
                 record = adapter.transform(raw, self.context)
                 stats.transformed += 1
@@ -2477,9 +2496,16 @@ class BuildCoreImporter:
             batch.append((record, raw))
             if not self.dry_run and len(batch) >= self.batch_size:
                 try:
+                    current_batch_size = len(batch)
                     records_to_insert = [r for r, _ in batch]
                     inserted = self._flush_batch(conn, records_to_insert, adapter)
                     stats.inserted += inserted
+                    logging.info(
+                        "Inserted batch of %d %s records (total inserted=%d)",
+                        current_batch_size,
+                        adapter.component_type,
+                        stats.inserted,
+                    )
                     for rec, rec_raw in batch:
                         try:
                             self._process_subcomponents(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
@@ -2508,8 +2534,15 @@ class BuildCoreImporter:
                     batch.clear() 
         if not self.dry_run and batch:
             try:
+                current_batch_size = len(batch)
                 records_to_insert = [r for r, _ in batch]
                 stats.inserted += self._flush_batch(conn, records_to_insert, adapter)
+                logging.info(
+                    "Inserted final batch of %d %s records (total inserted=%d)",
+                    current_batch_size,
+                    adapter.component_type,
+                    stats.inserted,
+                )
                 for rec, rec_raw in batch:
                     try:
                         self._process_subcomponents(conn, rec.base["Id"], rec_raw, adapter.component_type, stats)
@@ -2677,6 +2710,59 @@ class BuildCoreImporter:
         }
         return json.dumps(payload, sort_keys=True, default=str)
 
+    def _get_subcomponent_cache(self, conn, subcomponent_type: str) -> Dict[str, uuid.UUID]:
+        """
+        Build or return an in-memory cache of signature -> subcomponent id for a type.
+        This avoids O(N^2) scans during subcomponent processing.
+        """
+        if subcomponent_type in self.subcomponent_cache:
+            return self.subcomponent_cache[subcomponent_type]
+
+        adapter = SUBCOMPONENT_ADAPTERS.get(subcomponent_type)
+        if not adapter:
+            self.subcomponent_cache[subcomponent_type] = {}
+            return self.subcomponent_cache[subcomponent_type]
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT Id, Name, Type, DatabaseEntryAt, LastEditedAt, Note "
+            "FROM SubComponents WHERE Type = ?",
+            subcomponent_type,
+        )
+        base_rows = cursor.fetchall()
+        base_by_id: Dict[str, Dict[str, Any]] = {
+            str(row[0]): {
+                "Id": row[0],
+                "Name": row[1],
+                "Type": row[2],
+                "DatabaseEntryAt": row[3],
+                "LastEditedAt": row[4],
+                "Note": row[5],
+            }
+            for row in base_rows
+        }
+
+        columns = ", ".join(adapter.columns)
+        cursor.execute(f"SELECT {columns} FROM {adapter.table_name}")
+        specific_rows = cursor.fetchall()
+        spec_by_id: Dict[str, Dict[str, Any]] = {}
+        for row in specific_rows:
+            row_dict = dict(zip(adapter.columns, row))
+            spec_by_id[str(row_dict["Id"])] = row_dict
+
+        cache: Dict[str, uuid.UUID] = {}
+        for subcomp_id_str, base_data in base_by_id.items():
+            specific_data = spec_by_id.get(subcomp_id_str)
+            if not specific_data:
+                continue
+            record = SubComponentRecord(base=base_data, specific=specific_data)
+            signature = self._build_subcomponent_signature(record, adapter)
+            cache.setdefault(signature, uuid.UUID(subcomp_id_str))
+
+        self.subcomponent_cache[subcomponent_type] = cache
+        return cache
+
     def _find_existing_subcomponent(self, conn, subcomponent_type: str, signature: str) -> Optional[uuid.UUID]:
         """
         Check if a subcomponent with the given signature already exists in the database.
@@ -2696,34 +2782,8 @@ class BuildCoreImporter:
         Note:
             This method can be slow with many subcomponents.
         """
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT Id FROM SubComponents WHERE Type = ?",
-            subcomponent_type
-        )
-        rows = cursor.fetchall()
-        
-        for row in rows:
-            subcomp_id = row[0]
-            base_data = self._get_subcomponent_base(conn, subcomp_id)
-            specific_data = self._get_subcomponent_specific(conn, subcomponent_type, subcomp_id)
-            
-            if base_data and specific_data:
-                base_payload = {
-                    k: v for k, v in base_data.items()
-                    if k not in {"Id", "DatabaseEntryAt", "LastEditedAt"}
-                }
-                specific_payload = {k: v for k, v in specific_data.items() if k != "Id"}
-                existing_payload = {
-                    "base": base_payload,
-                    "specific": specific_payload,
-                    "type": subcomponent_type
-                }
-                existing_signature = json.dumps(existing_payload, sort_keys=True, default=str)
-                
-                if existing_signature == signature:
-                    return uuid.UUID(str(subcomp_id))
-        return None
+        cache = self._get_subcomponent_cache(conn, subcomponent_type)
+        return cache.get(signature)
 
     def _get_subcomponent_base(self, conn, subcomp_id: uuid.UUID) -> Optional[Dict[str, Any]]:
         """
@@ -3230,6 +3290,15 @@ class BuildCoreImporter:
         
         for subcomp_type, subcomp_raw, amount in subcomponent_data:
             stats.subcomponents_processed += 1
+            if stats.subcomponents_processed % 500 == 0:
+                logging.info(
+                    "Subcomponent progress %s: processed=%d inserted=%d found=%d skipped=%d",
+                    component_type,
+                    stats.subcomponents_processed,
+                    stats.subcomponents_inserted,
+                    stats.subcomponents_found,
+                    stats.subcomponents_skipped,
+                )
             adapter = SUBCOMPONENT_ADAPTERS.get(subcomp_type)
             if not adapter:
                 logging.debug("No adapter found for subcomponent type: %s", subcomp_type)
@@ -3255,6 +3324,9 @@ class BuildCoreImporter:
                         logging.debug("Found existing subcomponent: %s (%s)", subcomp_type, subcomp_id)
                     
                     seen_subcomp_signatures[signature] = subcomp_id
+                    # Update cache so subsequent lookups avoid DB
+                    cache = self._get_subcomponent_cache(conn, subcomp_type)
+                    cache[signature] = subcomp_id
                 
                 component_parts.append((subcomp_id, amount))
                 
@@ -3690,6 +3762,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--connection-string", type=str, help="SQL Server connection string. If omitted, KAZABUILD_CONN_STRING will be used.")
     parser.add_argument("--odbc-driver", type=str, default="ODBC Driver 17 for SQL Server", help="ODBC driver name to use.")
     parser.add_argument("--log-level", type=str, default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR).")
+    parser.add_argument(
+        "--progress-interval",
+        type=int,
+        default=500,
+        help="Log progress every N processed records per component type (0 to disable).",
+    )
     return parser.parse_args(argv)
 
 
@@ -3727,6 +3805,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         connection_string=args.connection_string,
         odbc_driver=args.odbc_driver,
         dedupe=args.dedupe,
+        progress_interval=args.progress_interval,
     )
     try:
         summary = importer.run()
