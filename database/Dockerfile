@@ -26,5 +26,5 @@ CMD python scripts/import_buildcores.py \
     --batch-size 2000 \
     && \
     python scripts/check_compatibilities.py \
-    --connection-string "Server=mssql,1433;Database=kazabuild_db;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=yes;" \
+    --connection-string "Server=mssql,1433;Database=kazabuild_db;UID=sa;PWD=${DB_PASSWORD};TrustServerCertificate=yes;" \
     --batch-size 2000
