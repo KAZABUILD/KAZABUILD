@@ -563,7 +563,7 @@ class CSVCompatibilityWriter:
         return self.count
     
 
-def _client_side_insert(db: DatabaseConnection, csv_filepath: str) -> int:
+def _client_side_insert(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0) -> int:
     """
     Helper function to perform client-side insertion using fast_executemany.
     Used as a fallback when server-side BULK INSERT fails.
@@ -595,11 +595,21 @@ def _client_side_insert(db: DatabaseConnection, csv_filepath: str) -> int:
         except Exception:
             total_lines = None  # Tqdm handles None total gracefully
 
+        if resume_skip_count > 0:
+            logger.info(f"Resuming client-side insert: skipping first {resume_skip_count} rows")
+            if total_lines:
+                total_lines -= resume_skip_count
+
         logger.info(f"Reading from {csv_filepath} for client-side insertion...")
         
         batch = []
         with open(csv_filepath, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
+            
+            # Skip rows if resuming
+            if resume_skip_count > 0:
+                for _ in range(resume_skip_count):
+                    next(reader, None)
             
             with tqdm(total=total_lines, desc="Inserting records", unit="row") as pbar:
                 for row in reader:
@@ -632,13 +642,16 @@ def _client_side_insert(db: DatabaseConnection, csv_filepath: str) -> int:
             db.cursor.fast_executemany = original_fast_setting
             
 
-def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str) -> int:
+def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0) -> int:
     """
     Use SQL BULK INSERT to load compatibility records from CSV file.
     Returns the number of inserted records.
     """
     # BULK INSERT requires an absolute path accessible by SQL Server
     abs_path = os.path.abspath(csv_filepath)
+    
+    # Calculate FIRSTROW (1-based)
+    first_row = resume_skip_count + 1
     
     # Use BULK INSERT command
     bulk_insert_sql = f"""
@@ -648,12 +661,16 @@ def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str) -> int:
             FIELDTERMINATOR = ',',
             ROWTERMINATOR = '\\n',
             TABLOCK,
-            BATCHSIZE = 100000
+            BATCHSIZE = 100000,
+            FIRSTROW = {first_row}
         )
     """
     
     try:
-        logger.info(f"Running BULK INSERT from {abs_path}...")
+        if resume_skip_count > 0:
+            logger.info(f"Resuming BULK INSERT from row {first_row}...")
+        else:
+            logger.info(f"Running BULK INSERT from {abs_path}...")
         db.execute(bulk_insert_sql)
         db.commit()
         
@@ -1958,6 +1975,13 @@ def parse_args() -> argparse.Namespace:
         help="Enable verbose logging"
     )
     
+    parser.add_argument(
+        "--resume-count",
+        type=int,
+        default=0,
+        help="Resume processing after skipping this many compatibility pairs"
+    )
+    
     return parser.parse_args()
 
 
@@ -1976,7 +2000,7 @@ def main() -> int:
     db = DatabaseConnection(args.connection_string, args.odbc_driver)
     
     # Track resources for cleanup
-    csv_filepath = None
+    csv_filepath = os.path.join(tempfile.gettempdir(), "kazabuild_compat_export.csv")
     original_recovery_model = None
     saved_indexes = []
     
@@ -2042,18 +2066,28 @@ def main() -> int:
         logger.info("=" * 70)
         logger.info("PHASE 1: Preparing database for bulk operations")
         logger.info("=" * 70)
+            
+        # Determine if we are resuming
+        is_resuming = args.resume_count > 0
         
-        # Save and drop non-clustered indexes
-        saved_indexes = get_nonclustered_indexes(db)
-        if saved_indexes:
-            drop_indexes(db, saved_indexes)
-        
-        # Try to set recovery model to SIMPLE
-        original_recovery_model = set_recovery_model_simple(db)
-        
-        # Delete existing compatibilities
-        logger.info("Deleting existing compatibility records...")
-        delete_all_compatibilities(db)
+        if is_resuming:
+            logger.info(f"Resume requested - skipping Phase 1 (Cleaning) and first {args.resume_count} pairs")
+            
+            # Try to set recovery model to SIMPLE
+            original_recovery_model = set_recovery_model_simple(db)
+            
+        else:
+            # Save and drop non-clustered indexes
+            saved_indexes = get_nonclustered_indexes(db)
+            if saved_indexes:
+                drop_indexes(db, saved_indexes)
+            
+            # Try to set recovery model to SIMPLE
+            original_recovery_model = set_recovery_model_simple(db)
+            
+            # Delete existing compatibilities
+            logger.info("Deleting existing compatibility records...")
+            delete_all_compatibilities(db)
         
         # ================================================================== #
         # PHASE 2: Generate complex compatibilities to CSV                   #
@@ -2062,20 +2096,28 @@ def main() -> int:
         logger.info("PHASE 2: Generating complex compatibility pairs to CSV")
         logger.info("=" * 70)
         
-        # Create temp CSV file
-        csv_filepath = os.path.join(tempfile.gettempdir(), f"kazabuild_compat_{uuid.uuid4().hex}.csv")
-        logger.info(f"Writing to temporary CSV: {csv_filepath}")
+        # Check if we should reuse the existing CSV
+        reuse_csv = False
+        if args.resume_count > 0:
+            if os.path.exists(csv_filepath) and os.path.getsize(csv_filepath) > 0:
+                logger.info(f"Resume requested and found existing CSV at {csv_filepath}. Reusing it.")
+                reuse_csv = True
+            else:
+                logger.warning(f"Resume requested but no valid CSV found at {csv_filepath}. Regenerating.")
         
-        complex_count = 0
-        with CSVCompatibilityWriter(csv_filepath) as csv_writer:
-            complex_count = generate_complex_compatibilities_to_csv(
-                csv_writer,
-                cpus, motherboards, cases, gpus, memories, 
-                storages, psus, coolers, case_fans
-            )
-        
-        csv_records = complex_count * 2  # Both directions were written
-        logger.info(f"CSV file created with {csv_records} records")
+        if not reuse_csv:
+            logger.info(f"Writing to CSV: {csv_filepath}")
+            
+            complex_count = 0
+            with CSVCompatibilityWriter(csv_filepath) as csv_writer:
+                complex_count = generate_complex_compatibilities_to_csv(
+                    csv_writer,
+                    cpus, motherboards, cases, gpus, memories, 
+                    storages, psus, coolers, case_fans
+                )
+            
+            csv_records = complex_count * 2  # Both directions were written
+            logger.info(f"CSV file created with {csv_records} records")
         
         # ================================================================== #
         # PHASE 3: BULK INSERT from CSV                                      #
@@ -2084,7 +2126,12 @@ def main() -> int:
         logger.info("PHASE 3: BULK INSERT from CSV")
         logger.info("=" * 70)
         
-        bulk_inserted = bulk_insert_from_csv(db, csv_filepath)
+        bulk_inserted = bulk_insert_from_csv(db, csv_filepath, args.resume_count)
+        
+        # Cleanup CSV file
+        if csv_filepath and os.path.exists(csv_filepath):
+            os.remove(csv_filepath)
+            logger.info(f"Removed temporary CSV file: {csv_filepath}")
         
         # ================================================================== #
         # PHASE 4: Insert always-compatible pairs via SQL                    #
@@ -2110,12 +2157,6 @@ def main() -> int:
         # Restore recovery model
         if original_recovery_model:
             restore_recovery_model(db, original_recovery_model)
-        
-        # Cleanup CSV file
-        if csv_filepath and os.path.exists(csv_filepath):
-            os.remove(csv_filepath)
-            logger.info(f"Removed temporary CSV file: {csv_filepath}")
-            csv_filepath = None
         
         # ================================================================== #
         # Summary                                                            #
