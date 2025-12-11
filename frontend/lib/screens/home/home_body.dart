@@ -344,7 +344,7 @@ class _HeroVisual extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: Flutter3DViewer(
-                    src: 'assets/3d_models/pc.glb',
+                    src: 'assets/assets/3d_models/pc.glb',
                     controller: controller,
                     enableTouch: false,
                   ),
