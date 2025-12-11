@@ -522,20 +522,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               ),
               const SizedBox(height: 28),
 
-              // Social login button - Only Google
-              SocialButton(
-                text: 'Continue with Google',
-                iconPath: 'google_icon.svg.webp',
-                onPressed: _isLoading ? null : () {
-                  // Google sign up logic can be added here
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Divider
-              const OrDivider(),
-              const SizedBox(height: 24),
-
               // Essential form fields - Two columns on desktop, single column on mobile
               LayoutBuilder(
                 builder: (context, constraints) {
