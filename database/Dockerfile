@@ -17,4 +17,10 @@ RUN pip install -r requirements.txt
 # Run the script
 # Notice the path is now 'scripts/import_buildcores.py'
 # And input-dir is 'buildcores-open-db' (based on your tree output)
-CMD ["python", "scripts/import_buildcores.py", "--input-dir", "./buildcores-open-db/open-db", "--connection-string", "Server=mssql,1433;Database=kazabuild_db;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=yes;", "--component-types", "CPU", "GPU", "MOTHERBOARD", "MEMORY", "STORAGE", "POWER_SUPPLY", "CASE", "CASE_FAN", "COOLER", "MONITOR", "--truncate", "--dedupe", "--batch-size", "2000"]
+CMD python scripts/import_buildcores.py \
+    --input-dir ./buildcores-open-db/open-db \
+    --connection-string "Server=mssql,1433;Database=kazabuild_db;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=yes;" \
+    --component-types CPU GPU MOTHERBOARD MEMORY STORAGE POWER_SUPPLY CASE CASE_FAN COOLER MONITOR \
+    --truncate \
+    --dedupe \
+    --batch-size 2000
