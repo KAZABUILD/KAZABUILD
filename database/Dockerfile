@@ -23,7 +23,7 @@ CMD python scripts/import_buildcores.py \
     --component-types CPU GPU MOTHERBOARD MEMORY STORAGE POWER_SUPPLY CASE CASE_FAN COOLER MONITOR \
     --truncate \
     --dedupe \
-    --batch-size 2000
+    --batch-size 2000 \
     && \
     python scripts/check_compatibilities.py \
     --connection-string "Server=mssql,1433;Database=kazabuild_db;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=yes;" \
