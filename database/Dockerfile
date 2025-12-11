@@ -19,4 +19,5 @@ RUN pip install -r requirements.txt
 # And input-dir is 'buildcores-open-db' (based on your tree output)
 CMD python scripts/check_compatibilities.py \
     --connection-string "Server=mssql.railway.internal,1433;Database=kazabuild_db;UID=sa;PWD=${DB_PASSWORD};TrustServerCertificate=yes;Encrypt=no;" \
-    --batch-size 2000
+    --batch-size 100000 \
+    --resume-count 11450000
