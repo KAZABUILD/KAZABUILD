@@ -1,3 +1,5 @@
+using KAZABUILD.Domain.Entities.Components.Components;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace KAZABUILD.Application.Helpers
@@ -178,6 +180,48 @@ namespace KAZABUILD.Application.Helpers
         public static IOrderedQueryable<T> ThenByDescendingIf<T, TKey>(this IOrderedQueryable<T> source, bool condition, Expression<Func<T, TKey>> keySelector)
         {
             return condition ? source.ThenByDescending(keySelector) : source;
+        }
+
+        /// <summary>
+        /// Helper method to find a component within a price range, with fallbacks if no component is found.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="baseQuery"></param>
+        /// <param name="minPrice"></param>
+        /// <param name="maxPrice"></param>
+        /// <param name="orderBy"></param>
+        /// <returns></returns>
+        public async static Task<T?> FindComponentAsync<T>(IQueryable<T> baseQuery, double minPrice, double maxPrice, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy) where T : BaseComponent
+        {
+            //Attempt to apply the strict price range for the most correct match
+            var query = baseQuery.Where(c =>
+                c.Prices.Any() &&
+                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
+                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
+            );
+            var result = await orderBy(query).FirstOrDefaultAsync();
+            if (result != null)
+                return result;
+
+            //Attempt to decrease the price constraints if no result found
+            while(minPrice > 0)
+            {
+                minPrice -= minPrice * 0.1;
+                query = baseQuery.Where(c =>
+                    c.Prices.Any() &&
+                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
+                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
+                );
+                result = await orderBy(query).FirstOrDefaultAsync();
+                if (result != null)
+                    return result;
+            }
+
+            //Remove the price constraints altogether as a last resort
+            query = baseQuery.Where(c => c.Prices.Any());
+            result = await orderBy(query).FirstOrDefaultAsync();
+
+            return result;
         }
     }
 }
