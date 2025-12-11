@@ -2,6 +2,6 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: 'dotnet_api'
+  - job_name: 'backend-api'
     static_configs:
       - targets: ['api:5000']
