@@ -1,0 +1,39 @@
+{
+  "opendb_id": "e13a2675-8e27-4c89-94a2-2762319a5217",
+  "power_connectors": {
+    "pcie_8_pin": 2
+  },
+  "metadata": {
+    "name": "Gigabyte GAMING Radeon RX 9070 16GB GDDR6 Black",
+    "manufacturer": "Gigabyte",
+    "part_numbers": [
+      "GV-R9070GAMING-16GD"
+    ],
+    "series": "Radeon RX 9070",
+    "variant": "Gigabyte"
+  },
+  "chipset_manufacturer": "Radeon",
+  "chipset": "Radeon RX 9070",
+  "core_count": 3584,
+  "memory": 16,
+  "memory_type": "GDDR6",
+  "core_base_clock": 2070,
+  "core_boost_clock": 2520,
+  "effective_memory_clock": 20000,
+  "memory_bus": 256,
+  "interface": "PCIe 5.0 x16",
+  "color": [
+    "BLACK"
+  ],
+  "length": 288,
+  "tdp": 220,
+  "total_slot_width": 3,
+  "cooling": "3 Fans",
+  "video_outputs": {
+    "hdmi_2_1": 2,
+    "displayport_2_1": 2,
+    "displayport_2_1a": 2,
+    "_id": "68aff5fa0c95a2a0cb894c7b"
+  },
+  "general_product_information": {}
+}

@@ -1,0 +1,39 @@
+{
+  "opendb_id": "51631db2-43e8-4b31-8b2f-28808549772a",
+  "metadata": {
+    "name": "Intel E97379-001 Air 51mm Silver / Black",
+    "manufacturer": "Intel",
+    "part_numbers": [
+      "E97379-001"
+    ],
+    "series": "E97379-001",
+    "variant": "Silver / Black",
+    "releaseYear": null
+  },
+  "min_fan_rpm": 1200,
+  "max_fan_rpm": 2800,
+  "min_noise_level": 22,
+  "max_noise_level": null,
+  "color": [
+    "GREY",
+    "BLACK"
+  ],
+  "height": 51,
+  "cpu_sockets": [
+    "LGA1150",
+    "LGA1151",
+    "LGA1155",
+    "LGA1156",
+    "LGA1200"
+  ],
+  "water_cooled": false,
+  "radiator_size": null,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {
+    "amazon_sku": "B004XJNC0O",
+    "newegg_sku": "9SIAKRCBC27868",
+    "walmart_sku": 973973194
+  }
+}

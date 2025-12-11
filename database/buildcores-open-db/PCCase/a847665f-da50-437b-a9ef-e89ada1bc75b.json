@@ -1,0 +1,37 @@
+{
+  "opendb_id": "a847665f-da50-437b-a9ef-e89ada1bc75b",
+  "metadata": {
+    "name": "HYTE REVOLT 3 Mini-ITX Tower White Mesh Side Panel, USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A",
+    "manufacturer": "HYTE",
+    "part_numbers": [
+      "CS-HYTE-REVOLT3-W"
+    ],
+    "series": "REVOLT",
+    "variant": ""
+  },
+  "form_factor": "Mini-ITX Tower",
+  "color": [
+    "WHITE"
+  ],
+  "power_supply": "None",
+  "side_panel": "Mesh",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "max_video_card_length": 335,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 1,
+  "internal_2_5_bays": 2,
+  "expansion_slots": 3,
+  "dimensions": "",
+  "volume": null,
+  "weight": null,
+  "supported_power_supply_form_factors": [],
+  "front_usb_ports": [],
+  "general_product_information": {
+    "amazon_sku": "B09HZJHS9C",
+    "newegg_sku": "N82E16811736012",
+    "bestbuy_sku": 6524251,
+    "walmart_sku": 664702823,
+    "hyte_sku": "CS-HYTE-REVOLT3-W"
+  }
+}

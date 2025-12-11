@@ -1,0 +1,46 @@
+{
+  "opendb_id": "406727b7-7d2c-41c7-aca8-a3f9c79a10f6",
+  "metadata": {
+    "name": "ARCTIC Freezer 34 eSports DUO Air 157mm Black / Gray",
+    "manufacturer": "ARCTIC",
+    "part_numbers": [
+      "ACFRE00075A"
+    ],
+    "series": "Freezer",
+    "variant": "Black / Gray",
+    "releaseYear": null
+  },
+  "min_fan_rpm": 200,
+  "max_fan_rpm": 2100,
+  "min_noise_level": 24.4,
+  "max_noise_level": null,
+  "color": [
+    "BLACK",
+    "GREY"
+  ],
+  "height": 157,
+  "cpu_sockets": [
+    "AM4",
+    "AM5",
+    "LGA1150",
+    "LGA1151",
+    "LGA1155",
+    "LGA1156",
+    "LGA1200",
+    "LGA1700",
+    "LGA1851",
+    "LGA2011",
+    "LGA2011",
+    "3",
+    "LGA2066"
+  ],
+  "water_cooled": false,
+  "radiator_size": null,
+  "fanless": false,
+  "fan_size": null,
+  "fan_quantity": null,
+  "general_product_information": {
+    "amazon_sku": "B0846LPTLD",
+    "walmart_sku": 666175596
+  }
+}

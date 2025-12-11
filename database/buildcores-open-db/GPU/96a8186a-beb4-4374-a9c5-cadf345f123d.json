@@ -1,0 +1,51 @@
+{
+  "opendb_id": "96a8186a-beb4-4374-a9c5-cadf345f123d",
+  "power_connectors": {
+    "pcie_6_pin": 0,
+    "pcie_8_pin": 0,
+    "pcie_12VHPWR": 0,
+    "pcie_12V_2x6": 0
+  },
+  "metadata": {
+    "name": "Zotac GeForce RTX 5080 GAMING SOLID OC 16GB GDDR7 Black / Copper",
+    "manufacturer": "Zotac",
+    "part_numbers": [
+      "ZT-B50800J-10P"
+    ],
+    "series": "GeForce RTX 5080",
+    "variant": "Zotac"
+  },
+  "chipset_manufacturer": "GeForce",
+  "chipset": "GeForce RTX 5080",
+  "memory": 16,
+  "memory_type": "GDDR7",
+  "core_base_clock": 2300,
+  "core_boost_clock": 2625,
+  "effective_memory_clock": 0,
+  "memory_bus": 256,
+  "interface": "PCIe x16",
+  "color": [
+    "BLACK",
+    "GOLD"
+  ],
+  "length": 330,
+  "tdp": 360,
+  "total_slot_width": 4,
+  "cooling": "3 Fans",
+  "video_outputs": {
+    "hdmi_2_1": 1,
+    "hdmi_2_0": 0,
+    "displayport_2_1": 0,
+    "displayport_2_1a": 3,
+    "displayport_1_4a": 0,
+    "dvi_d": 0,
+    "vga": 0,
+    "_id": "67f9c670865ad0c3553ea88b"
+  },
+  "core_count": 10752,
+  "general_product_information": {
+    "amazon_sku": "B0DTZ48TCY",
+    "newegg_sku": "N82E16814500594",
+    "walmart_sku": 15178111785
+  }
+}

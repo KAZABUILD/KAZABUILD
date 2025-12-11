@@ -1,0 +1,32 @@
+{
+  "opendb_id": "163c204d-d0bf-4d7b-a4b8-7fb860ed6f63",
+  "metadata": {
+    "name": "HYTE Y60 Ouro Kronii ATX Mid Tower White / Black with Tempered Glass Side Panel and USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A",
+    "manufacturer": "HYTE",
+    "part_numbers": [
+      "CS-HYTE-Y60-KRONII"
+    ],
+    "series": "Y60",
+    "variant": ""
+  },
+  "form_factor": "ATX Mid Tower",
+  "color": [
+    "WHITE",
+    "BLACK"
+  ],
+  "power_supply": "None",
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                                    USB 3.2 Gen 1 Type-A",
+  "max_video_card_length": 375,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 2,
+  "internal_2_5_bays": 0,
+  "expansion_slots": 6,
+  "dimensions": "",
+  "volume": null,
+  "weight": null,
+  "supported_power_supply_form_factors": [],
+  "front_usb_ports": [],
+  "general_product_information": {}
+}

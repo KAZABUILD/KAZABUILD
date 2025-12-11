@@ -1,0 +1,20 @@
+{
+  "opendb_id": "ab11dcbd-0297-4b11-a6c3-cf68bd7a5f9a",
+  "metadata": {
+    "name": "TRYX OEM ARGB 120 Black",
+    "manufacturer": "TRYX",
+    "part_numbers": [],
+    "series": "OEM",
+    "variant": "120mm Black"
+  },
+  "size": 120,
+  "color": [
+    "BLACK"
+  ],
+  "quantity": 1,
+  "pwm": false,
+  "led": "Addressable RGB",
+  "flow_direction": "Standard",
+  "connector": null,
+  "general_product_information": {}
+}

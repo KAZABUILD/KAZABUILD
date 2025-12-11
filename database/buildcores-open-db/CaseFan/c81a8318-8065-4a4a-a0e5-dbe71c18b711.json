@@ -1,0 +1,33 @@
+{
+  "opendb_id": "c81a8318-8065-4a4a-a0e5-dbe71c18b711",
+  "metadata": {
+    "name": "ASUS Prime MR120 ARGB Reverse Fan Black",
+    "manufacturer": "ASUS",
+    "part_numbers": [
+      " MR120 ARGB Reverse Fan Black",
+      "PRIME MR120 FAN ARGB REVERSE BLACK",
+      "PRIME MR120 FAN ARGB REVERSE BLACK"
+    ],
+    "series": "MR",
+    "releaseYear": 2025,
+    "variant": "120 ARGB Reverse Black"
+  },
+  "size": 120,
+  "color": [
+    "BLACK"
+  ],
+  "quantity": 1,
+  "min_airflow": 0,
+  "max_airflow": 58,
+  "min_noise_level": 0,
+  "max_noise_level": 23,
+  "pwm": true,
+  "led": "Addressable RGB",
+  "connector": "4-pin PWM + 3-pin 5V Addressable RGB",
+  "static_pressure": 1.38,
+  "flow_direction": "Reverse",
+  "general_product_information": {
+    "amazon_sku": "B0FNBV1GSG",
+    "manufacturer_url": "https://www.asus.com/motherboards-components/cooling/prime/asus-prime-mr120-argb-reverse-fan-single-pack/techspec/"
+  }
+}

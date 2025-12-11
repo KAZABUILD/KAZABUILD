@@ -1,0 +1,34 @@
+{
+  "opendb_id": "6c22ae17-5c8d-42bd-ab77-07935a29e066",
+  "metadata": {
+    "name": "ARCTIC Xtender ATX Mid Tower White with Tempered Glass Side Panel and USB 3.2 Gen 2 Type-C, USB 3.2 Gen 1 Type-A Front Panel",
+    "manufacturer": "ARCTIC",
+    "part_numbers": [
+      "ACPCC00014A"
+    ],
+    "series": "Xtender",
+    "variant": ""
+  },
+  "form_factor": "ATX Mid Tower",
+  "color": [
+    "WHITE"
+  ],
+  "power_supply": "None",
+  "supported_power_supply_form_factors": [],
+  "side_panel": "Tempered Glass",
+  "has_transparent_side_panel": true,
+  "front_panel_usb": "USB 3.2 Gen 2 Type-C                                            USB 3.2 Gen 1 Type-A",
+  "front_usb_ports": [],
+  "max_video_card_length": 482,
+  "max_cpu_cooler_height": null,
+  "internal_3_5_bays": 1,
+  "internal_2_5_bays": 3,
+  "expansion_slots": 7,
+  "dimensions": "529 x 231 x 529",
+  "volume": 64.643,
+  "weight": null,
+  "general_product_information": {
+    "amazon_sku": "B0DNJRXQXR",
+    "walmart_sku": 17503222526
+  }
+}
