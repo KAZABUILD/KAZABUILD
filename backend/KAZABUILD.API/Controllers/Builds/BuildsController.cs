@@ -765,7 +765,7 @@ namespace KAZABUILD.API.Controllers.Builds
             //Check if the required preferences have been set
             if (!answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you plan to use your PC for?") ||
                 !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you do for work?") ||
-                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What’s your budget?"))
+                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What's your budget?"))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -786,7 +786,7 @@ namespace KAZABUILD.API.Controllers.Builds
             List<Build> generatedBuilds = [];
 
             //Get the answers for the budget question
-            var priceAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What’s your budget?").Select(a => a.UserPreferenceAnswer);
+            var priceAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What's your budget?").Select(a => a.UserPreferenceAnswer);
 
             //Declare initial bounds
             var bounds = new float[4]
