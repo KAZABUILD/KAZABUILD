@@ -4,6 +4,7 @@ using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components.Components;
+using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -762,10 +763,43 @@ namespace KAZABUILD.API.Controllers.Builds
                 .Where(u => u.UserId == currentUserId)
                 .ToListAsync();
 
+            //Question constants for readability
+            const string HobbyQuestion = "What do you enjoy doing the most in your free time?";
+            const string UsageQuestion = "What do you plan to use your PC for?";
+            const string JobQuestion = "What do you do for work?";
+            const string BudgetQuestion = "What's your budget?";
+            const string PriorityQuestion = "What do you prioritize the most in your PC?";
+
+            //Helper for removing unnecessary whitespace and normalizing questions
+            static string NormalizeQuestion(string question) => question.Trim();
+
+            //Dictionary grouping user answers by question
+            var answersByQuestion = answers
+                .Where(a => a.UserPreferenceAnswer?.UserPreference?.Question != null)
+                .GroupBy
+                (
+                    a => NormalizeQuestion(a.UserPreferenceAnswer!.UserPreference!.Question),
+                    StringComparer.OrdinalIgnoreCase
+                )
+                .ToDictionary
+                (
+                    g => g.Key,
+                    g => g.Select(entry => entry.UserPreferenceAnswer!).ToList(),
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+            //Helper for checking if the user has answered a question
+            bool HasAnswers(string question) =>
+                answersByQuestion.ContainsKey(NormalizeQuestion(question));
+
+            //Helper for getting answers for a question or an empty collection as a fallback
+            IEnumerable<UserPreferenceAnswer> GetAnswersOrEmpty(string question) =>
+                answersByQuestion.TryGetValue(NormalizeQuestion(question), out var result)
+                    ? result
+                    : Enumerable.Empty<UserPreferenceAnswer>();
+
             //Check if the required preferences have been set
-            if (!answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you plan to use your PC for?") ||
-                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What do you do for work?") ||
-                !answers.Select(a => a.UserPreferenceAnswer!.UserPreference!.Question).Contains("What's your budget?"))
+            if (!HasAnswers(UsageQuestion) || !HasAnswers(JobQuestion) || !HasAnswers(BudgetQuestion))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -782,11 +816,15 @@ namespace KAZABUILD.API.Controllers.Builds
                 return BadRequest(new { message = "User has not answered the questionnaire!" });
             }
 
+            //Get the answers for each question
+            var hobbyAnswers = GetAnswersOrEmpty(HobbyQuestion);
+            var usageAnswers = GetAnswersOrEmpty(UsageQuestion);
+            var jobAnswers = GetAnswersOrEmpty(JobQuestion);
+            var priorityAnswers = GetAnswersOrEmpty(PriorityQuestion);
+            var priceAnswers = GetAnswersOrEmpty(BudgetQuestion);
+
             //Declare a list for generated builds
             List<Build> generatedBuilds = [];
-
-            //Get the answers for the budget question
-            var priceAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What's your budget?").Select(a => a.UserPreferenceAnswer);
 
             //Declare initial bounds
             var bounds = new float[4]
@@ -840,6 +878,9 @@ namespace KAZABUILD.API.Controllers.Builds
             bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f/3f));
             bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f/3f));
 
+            //Convert the bounds to PLN
+            bounds = [.. bounds.Select(b => b * 3.6f)];
+
             //Check for generation fail
             bool failed = false;
 
@@ -887,14 +928,6 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 //Add the build id to list for rabbitMQ publishing
                 generatedBuilds.Add(build);
-
-                //Go through every answer to every question and adjust the scores accordingly
-
-                //Get the answers to all questions
-                var hobbyAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you enjoy doing the most in your free time?").Select(a => a.UserPreferenceAnswer);
-                var usageAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you plan to use your PC for?").Select(a => a.UserPreferenceAnswer);
-                var jobAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you do for work?").Select(a => a.UserPreferenceAnswer);
-                var priorityAnswers = answers.Where(a => a.UserPreferenceAnswer!.UserPreference!.Question == "What do you prioritize the most in your PC?").Select(a => a.UserPreferenceAnswer);
 
                 //Adjust the scores base on the answers to the questions
                 foreach (var answer in hobbyAnswers)

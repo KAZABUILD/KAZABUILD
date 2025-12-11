@@ -103,6 +103,7 @@ class BuildGenerationTester:
         self.all_answer_ids: List[str] = []
         self.generated_question_ids: List[str] = []
         self.generated_answer_ids: List[str] = []
+        self.answer_map: Dict[str, str] = {}
 
     def load_metadata(self):
         """Load questions and answers from the database."""
@@ -126,6 +127,7 @@ class BuildGenerationTester:
             for q_text, q_data in self.questions.items():
                 if q_data["id"] == q_id:
                     q_data["answers"].append({"id": a_id, "text": a_text})
+                    self.answer_map[a_id] = f"[{q_text}] {a_text}"
                     break
         
         logger.info(f"Loaded {len(self.questions)} questions and {len(self.all_answer_ids)} answers.")
@@ -196,10 +198,15 @@ class BuildGenerationTester:
                     self.generated_answer_ids.append(a_id)
                     self.questions[q_text]["answers"].append({"id": a_id, "text": ans_text})
                     self.all_answer_ids.append(a_id)
+                    self.answer_map[a_id] = f"[{q_text}] {ans_text}"
         
         if self.generated_question_ids or self.generated_answer_ids:
             self.db.commit()
             logger.info(f"Generated {len(self.generated_question_ids)} questions and {len(self.generated_answer_ids)} answers.")
+
+    def get_answer_text(self, answer_id: str) -> str:
+        """Retrieve the text representation of an answer ID."""
+        return self.answer_map.get(answer_id, f"Unknown({answer_id})")
 
     def cleanup_generated_data(self):
         """Remove data generated during the test."""
@@ -303,7 +310,7 @@ class BuildGenerationTester:
             total_price = 0.0
             for c in components:
                 price = float(c.Price) if c.Price else 0.0
-                comp_list.append(f"{c.Name} (${price})")
+                comp_list.append(f"{c.Name} (${price:.2f})")
                 total_price += price
 
             results.append({
@@ -484,6 +491,8 @@ def main():
             results = tester.get_generated_results()
             
             # 5. Log
+            selected_answers_str = "; ".join([tester.get_answer_text(aid) for aid in answer_ids])
+
             if not results:
                 writer.writerow({
                     'ScenarioMode': mode,
@@ -505,7 +514,7 @@ def main():
                         'BuildName': res['BuildName'],
                         'Components': res['Components'],
                         'SelectedAnswerCount': len(answer_ids),
-                        'SelectedAnswers': str(answer_ids)
+                        'SelectedAnswers': selected_answers_str
                     })
             
             csvfile.flush()
