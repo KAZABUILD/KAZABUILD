@@ -520,55 +520,60 @@ namespace KAZABUILD.API.Controllers
                 PrivacyLevel.WARNING,
                 $"Starting bulk fetch of component prices. Total components: {total}"
             );
-
-            foreach (BaseComponent comp in components)
+            try
             {
-                processed++;
-
-                var response = await _pricesApiService.GetPartPrice(comp);
-
-                if (response == null)
+                foreach (BaseComponent comp in components)
                 {
-                    failed++;
+                    processed++;
+
+                    var response = await _pricesApiService.GetPartPrice(comp);
+
+                    if (response == null)
+                    {
+                        failed++;
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Admin",
+                            ip,
+                            comp.Id,
+                            PrivacyLevel.WARNING,
+                            $"Price fetch FAILED for component {processed}/{total}"
+                        );
+                        continue;
+                    }
+
+                    successful++;
+
+                    var tempComponentPrice = new ComponentPrice
+                    {
+                        ComponentId = comp.Id,
+                        SourceUrl = _pricesApiSettings.Url,
+                        VendorName = _pricesApiSettings.VendorName,
+                        FetchedAt = DateTime.UtcNow,
+                        Price = response.Price,
+                        Currency = response.Currency,
+                        DatabaseEntryAt = DateTime.UtcNow,
+                        LastEditedAt = DateTime.UtcNow,
+                        Note = "First price pull"
+                    };
+
+                    _db.ComponentPrices.Add(tempComponentPrice);
+
                     await _logger.LogAsync(
                         currentUserId,
                         "POST",
                         "Admin",
                         ip,
                         comp.Id,
-                        PrivacyLevel.WARNING,
-                        $"Price fetch FAILED for component {processed}/{total}"
+                        PrivacyLevel.INFORMATION,
+                        $"Price fetched for component {processed}/{total}"
                     );
-                    continue;
                 }
-
-                successful++;
-
-                var tempComponentPrice = new ComponentPrice
-                {
-                    ComponentId = comp.Id,
-                    SourceUrl = _pricesApiSettings.Url,
-                    VendorName = _pricesApiSettings.VendorName,
-                    FetchedAt = DateTime.UtcNow,
-                    Price = response.Price,
-                    Currency = response.Currency,
-                    DatabaseEntryAt = DateTime.UtcNow,
-                    LastEditedAt = DateTime.UtcNow,
-                    Note = "First price pull"
-                };
-
-                _db.ComponentPrices.Add(tempComponentPrice);
-
-                // Log progress after each success
-                await _logger.LogAsync(
-                    currentUserId,
-                    "POST",
-                    "Admin",
-                    ip,
-                    comp.Id,
-                    PrivacyLevel.INFORMATION,
-                    $"Price fetched for component {processed}/{total}"
-                );
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, stack = ex.StackTrace });
             }
 
             await _db.SaveChangesAsync();
