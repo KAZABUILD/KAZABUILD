@@ -508,6 +508,17 @@ namespace KAZABUILD.API.Controllers
                 return Ok(new { message = "No components found to fetch prices for." });
             }
 
+            // If external API fails, continue to next component without crashing the job
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Admin",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.WARNING,
+                "Starting bulk fetch of component prices."
+            );
+
             foreach (BaseComponent comp in components)
             {
                 var response = await _pricesApiService.GetPartPrice(comp);
