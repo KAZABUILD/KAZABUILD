@@ -1272,7 +1272,7 @@ class _DataSourceWatermark extends StatelessWidget {
           Flexible(
             child: Text(
               'Component data is sourced from buildcores open db '
-              '(e.g., CPUCooler schema at '
+              '(e.g., component schema at '
               'https://github.com/buildcores/buildcores-open-db/).',
               style: textStyle,
               maxLines: 2,
