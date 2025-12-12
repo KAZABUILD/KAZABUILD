@@ -871,7 +871,11 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
                                     children: [
                                       Expanded(
                                         child: OutlinedButton(
-                                          onPressed: _isLoading ? null : () => context.pop(),
+                                          onPressed: _isLoading ? null : () {
+                                            // Navigate back to forums page
+                                            final returnRoute = widget.returnTo ?? '/forums';
+                                            context.go(returnRoute);
+                                          },
                                           style: OutlinedButton.styleFrom(
                                             padding: const EdgeInsets.symmetric(vertical: 16),
                                             shape: RoundedRectangleBorder(

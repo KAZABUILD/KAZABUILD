@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -13,6 +14,7 @@ import 'package:frontend/models/guide_model.dart';
 import 'package:frontend/models/guide_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/models/image_provider.dart';
 
 class AdminGuidesPage extends ConsumerStatefulWidget {
   const AdminGuidesPage({super.key});
@@ -781,6 +783,7 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
     final formKey = GlobalKey<FormState>();
     String? currentGuideId = guide?.id;
     String? currentImageUrl = guide?.imageUrl;
+    String? currentImageId;
 
     showDialog(
       context: context,
@@ -792,7 +795,67 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             bool isUploadingImage = false;
+            bool isDeletingImage = false;
             bool imageUploaded = false;
+
+            // Load current image ID when dialog opens
+            if (currentGuideId != null && currentImageId == null) {
+              Future.microtask(() async {
+                try {
+                  final imageService = ImageService(ref.read(authProvider.notifier).getDioInstance());
+                  final imageId = await imageService.getGuideImageId(currentGuideId!);
+                  if (mounted) {
+                    setStateDialog(() {
+                      currentImageId = imageId;
+                    });
+                  }
+                } catch (e) {
+                  // Silently fail - image might not exist
+                }
+              });
+            }
+
+            Future<void> deleteGuideImage(String imageId) async {
+              if (imageId.isEmpty) return;
+
+              setStateDialog(() {
+                isDeletingImage = true;
+              });
+
+              try {
+                final dio = ref.read(authProvider.notifier).getDioInstance();
+                await dio.delete('$apiBaseUrl/Images/$imageId');
+                
+                setStateDialog(() {
+                  currentImageUrl = null;
+                  currentImageId = null;
+                  isDeletingImage = false;
+                });
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Image deleted successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  // Reload guides to update the list
+                  _loadGuides();
+                }
+              } catch (e) {
+                setStateDialog(() {
+                  isDeletingImage = false;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete image: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            }
 
             Future<void> uploadGuideImage(String guideId) async {
               final ImagePicker picker = ImagePicker();
@@ -812,6 +875,19 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                 });
 
                 try {
+                  // Delete old image if exists
+                  if (currentImageId != null && currentImageId!.isNotEmpty) {
+                    try {
+                      final dio = ref.read(authProvider.notifier).getDioInstance();
+                      await dio.delete('$apiBaseUrl/Images/$currentImageId');
+                    } catch (e) {
+                      // Continue even if deletion fails
+                      if (kDebugMode) {
+                        print('Failed to delete old image: $e');
+                      }
+                    }
+                  }
+
                   final fileBytes = await image.readAsBytes();
                   var fileName = image.name;
                   if (fileName.isEmpty || !fileName.contains('.')) {
@@ -842,6 +918,7 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                     final imageUrl = '$apiBaseUrl/Images/download/$imageId';
                     setStateDialog(() {
                       currentImageUrl = imageUrl;
+                      currentImageId = imageId.toString();
                       isUploadingImage = false;
                       imageUploaded = true;
                     });
@@ -852,6 +929,8 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                           backgroundColor: Colors.green,
                         ),
                       );
+                      // Reload guides to update the list
+                      _loadGuides();
                     }
                   }
                 } catch (e) {
@@ -1026,31 +1105,73 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                           children: [
                             if (currentImageUrl != null &&
                                 currentImageUrl!.isNotEmpty)
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline
-                                        .withValues(alpha: 0.3),
+                              Stack(
+                                children: [
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Theme.of(context).colorScheme.outline
+                                            .withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        currentImageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.surfaceVariant,
+                                            child: const Icon(Icons.broken_image),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    currentImageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.surfaceVariant,
-                                        child: const Icon(Icons.broken_image),
-                                      );
-                                    },
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: isDeletingImage || isUploadingImage
+                                            ? null
+                                            : () {
+                                                if (currentImageId != null && currentImageId!.isNotEmpty) {
+                                                  deleteGuideImage(currentImageId!);
+                                                }
+                                              },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withValues(alpha: 0.9),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: isDeletingImage
+                                              ? const SizedBox(
+                                                  width: 12,
+                                                  height: 12,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.close,
+                                                  size: 12,
+                                                  color: Colors.white,
+                                                ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             if (currentImageUrl == null ||
                                 currentImageUrl!.isEmpty)
@@ -1075,7 +1196,7 @@ class _AdminGuidesPageState extends ConsumerState<AdminGuidesPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: isUploadingImage
+                                onPressed: isUploadingImage || isDeletingImage
                                     ? null
                                     : () => uploadGuideImage(currentGuideId!),
                                 icon: isUploadingImage
