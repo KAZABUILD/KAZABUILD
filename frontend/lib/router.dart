@@ -369,7 +369,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'new-post',
         pageBuilder: (_, state) => noTransitionPage(
           key: state.pageKey,
-          child: NewPostPage(buildId: state.uri.queryParameters['buildId']),
+          child: NewPostPage(
+            buildId: state.uri.queryParameters['buildId'],
+            returnTo: state.uri.queryParameters['returnTo'],
+          ),
         ),
       ),
       // Edit route must come before detail route (more specific)
@@ -378,7 +381,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'edit-forum-post',
         pageBuilder: (_, state) => noTransitionPage(
           key: state.pageKey,
-          child: NewPostPage(postId: state.pathParameters['id']!),
+          child: NewPostPage(
+            postId: state.pathParameters['id']!,
+            returnTo: state.uri.queryParameters['returnTo'],
+          ),
         ),
       ),
       // Detail route comes last (less specific, matches any ID)
