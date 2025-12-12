@@ -881,6 +881,9 @@ namespace KAZABUILD.API.Controllers.Builds
             //Convert the bounds to PLN
             bounds = [.. bounds.Select(b => b * 3.6f)];
 
+            //Declare failure description for error logging
+            var failureDescription = "";
+
             //Check for generation fail
             bool failed = false;
 
@@ -1054,6 +1057,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (cpuComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"cpu failed to generate in batch {i+1}";
                     break;
                 }
                 components.Add(cpuComponent);
@@ -1075,6 +1079,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (motherboardComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"motherboard failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(motherboardComponent);
@@ -1097,6 +1102,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (coolerComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"cooler failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(coolerComponent);
@@ -1118,6 +1124,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (memoryComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"memory failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(memoryComponent);
@@ -1139,6 +1146,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (storageComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"storage failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(storageComponent);
@@ -1160,6 +1168,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (gpuComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"gpu failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(gpuComponent);
@@ -1183,6 +1192,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (powerSupplyComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"powerSupply failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(powerSupplyComponent);
@@ -1207,6 +1217,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (caseComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"case failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(caseComponent);
@@ -1228,6 +1239,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (caseFanComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"caseFan failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(caseFanComponent);
@@ -1249,6 +1261,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 if (monitorComponent == null)
                 {
                     failed = true;
+                    failureDescription = $"monitor failed to generate in batch {i + 1}";
                     break;
                 }
                 components.Add(monitorComponent);
@@ -1282,7 +1295,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     ip,
                     Guid.Empty,
                     PrivacyLevel.WARNING,
-                    "Operation Failed - No Components Found That Fit The Selected Quiz Answers"
+                    $"Operation Failed - No Components Found That Fit The Selected Quiz Answers - {failureDescription}"
                 );
 
                 //Remove the generated builds from the database
