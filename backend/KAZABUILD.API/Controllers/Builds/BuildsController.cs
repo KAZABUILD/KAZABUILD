@@ -1245,26 +1245,26 @@ namespace KAZABUILD.API.Controllers.Builds
                 components.Add(caseFanComponent);
 
                 //Get the monitor component
-                var monitorBaseQuery = _db.Components
-                    .OfType<MonitorComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.MONITOR)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
-
-                var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
-                    monitorBaseQuery,
-                    monitorMinPrice,
-                    monitorMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
-                );
-
-                if (monitorComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"monitor failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(monitorComponent);
+                //var monitorBaseQuery = _db.Components
+                //    .OfType<MonitorComponent>()
+                //    .Include(c => c.Prices)
+                //    .Where(c => c.Type == ComponentType.MONITOR)
+                //    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
+                //
+                //var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
+                //    monitorBaseQuery,
+                //    monitorMinPrice,
+                //    monitorMaxPrice,
+                //    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
+                //);
+                //
+                //if (monitorComponent == null)
+                //{
+                //    failed = true;
+                //    failureDescription = $"monitor failed to generate in batch {i + 1}";
+                //    break;
+                //}
+                //components.Add(monitorComponent);
 
                 //Add all the components to the build
                 foreach (BaseComponent component in components)
