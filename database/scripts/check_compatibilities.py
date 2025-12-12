@@ -563,13 +563,13 @@ class CSVCompatibilityWriter:
         return self.count
     
 
-def _client_side_insert(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0) -> int:
+def _client_side_insert(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0, batch_size: int = 10000) -> int:
     """
     Helper function to perform client-side insertion using fast_executemany.
     Used as a fallback when server-side BULK INSERT fails.
     """
     total_inserted = 0
-    batch_size = 10000  # Larger batch size for fast_executemany
+    batch_size = batch_size  # Larger batch size for fast_executemany
     
     insert_sql = """
         INSERT INTO ComponentCompatibilities 
@@ -642,7 +642,7 @@ def _client_side_insert(db: DatabaseConnection, csv_filepath: str, resume_skip_c
             db.cursor.fast_executemany = original_fast_setting
             
 
-def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0) -> int:
+def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str, resume_skip_count: int = 0, batch_size: int = 1000) -> int:
     """
     Use SQL BULK INSERT to load compatibility records from CSV file.
     Returns the number of inserted records.
@@ -661,7 +661,7 @@ def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str, resume_skip_
             FIELDTERMINATOR = ',',
             ROWTERMINATOR = '\\n',
             TABLOCK,
-            BATCHSIZE = 100000,
+            BATCHSIZE = {batch_size},
             FIRSTROW = {first_row}
         )
     """
@@ -693,7 +693,7 @@ def bulk_insert_from_csv(db: DatabaseConnection, csv_filepath: str, resume_skip_
             pass
         
         logger.info("Falling back to optimized client-side insertion (fast_executemany)...")
-        return _client_side_insert(db, csv_filepath)
+        return _client_side_insert(db, csv_filepath, resume_skip_count)
     
 
 # ========================================================================== #
@@ -2126,7 +2126,7 @@ def main() -> int:
         logger.info("PHASE 3: BULK INSERT from CSV")
         logger.info("=" * 70)
         
-        bulk_inserted = bulk_insert_from_csv(db, csv_filepath, args.resume_count)
+        bulk_inserted = bulk_insert_from_csv(db, csv_filepath, args.resume_count, args.batch_size)
         
         # Cleanup CSV file
         if csv_filepath and os.path.exists(csv_filepath):
