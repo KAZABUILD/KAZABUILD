@@ -15,7 +15,6 @@ class AdminQuizPage extends ConsumerStatefulWidget {
 }
 
 class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
-  static const int _minAnswerLength = 8;
   bool _isProcessing = false;
   bool _hasInitialized = false;
   List<AdminQuizQuestion> _questions = [];
@@ -456,7 +455,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
               content: TextField(
                 controller: controller,
                 decoration: InputDecoration(
-                  labelText: 'Answer (min $_minAnswerLength chars)',
+                  labelText: 'Answer',
                   errorText: error,
                 ),
               ),
@@ -468,11 +467,8 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
                 FilledButton(
                   onPressed: () {
                     final trimmed = controller.text.trim();
-                    if (trimmed.length < _minAnswerLength) {
-                      setState(
-                        () => error =
-                            'Answer must be at least $_minAnswerLength characters long',
-                      );
+                    if (trimmed.isEmpty) {
+                      setState(() => error = 'Answer cannot be empty');
                       return;
                     }
                     Navigator.of(context).pop(
@@ -716,7 +712,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
                 maxLength: 128,
                 decoration: InputDecoration(
                   counterText: '',
-                  hintText: 'Enter answer with min $_minAnswerLength chars',
+                  hintText: 'Enter answer',
                   errorText: _answerErrors[question.id],
                   filled: true,
                   fillColor: isDark
@@ -757,10 +753,9 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
     TextEditingController controller,
   ) async {
     final value = controller.text.trim();
-    if (value.length < _minAnswerLength) {
+    if (value.isEmpty) {
       setState(() {
-        _answerErrors[question.id] =
-            'Answer must be at least $_minAnswerLength characters.';
+        _answerErrors[question.id] = 'Answer cannot be empty.';
       });
       return;
     }
@@ -803,8 +798,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'Enter one answer per line. '
-                    'Each answer must be at least 8 characters.',
+                    'Enter one answer per line.',
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -830,14 +824,8 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
                         .where((line) => line.isNotEmpty)
                         .toList();
 
-                    final invalid = entries.any((line) => line.length < _minAnswerLength);
                     if (entries.isEmpty) {
                       setState(() => errorText = 'Please enter at least one answer.');
-                      return;
-                    }
-                    if (invalid) {
-                      setState(() => errorText =
-                          'Every answer must be at least $_minAnswerLength characters.');
                       return;
                     }
                     Navigator.of(context).pop(true);
@@ -857,7 +845,7 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
     final entries = controller.text
         .split('\n')
         .map((line) => line.trim())
-        .where((line) => line.length >= _minAnswerLength)
+        .where((line) => line.isNotEmpty)
         .toList();
 
     final adminService = ref.read(adminServiceProvider);
