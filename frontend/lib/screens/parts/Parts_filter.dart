@@ -71,6 +71,7 @@ class DynamicFilterPanel extends ConsumerWidget {
           filter: filter,
           value: currentValue as bool?,
           onChanged: onChanged,
+          context: context,
         );
     }
   }
@@ -95,6 +96,7 @@ class _DynamicTextFilter extends StatelessWidget {
         Text(
           filter.label,
           style: const TextStyle(fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
         TextField(
@@ -189,6 +191,7 @@ class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
       title: Text(
         widget.filter.label,
         style: const TextStyle(fontWeight: FontWeight.bold),
+        overflow: TextOverflow.ellipsis,
       ),
       subtitle: selectedValues.isNotEmpty
           ? Text(
@@ -197,6 +200,7 @@ class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.primary,
               ),
+              overflow: TextOverflow.ellipsis,
             )
           : null,
       tilePadding: EdgeInsets.zero,
@@ -209,7 +213,6 @@ class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -231,7 +234,7 @@ class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
                   style: const TextStyle(fontSize: 13),
                 ),
               ),
-              Expanded(
+              Flexible(
                 child: ListView.builder(
                   shrinkWrap: true,
                   itemCount: filteredOptions.length,
@@ -239,7 +242,12 @@ class _DynamicSelectFilterState extends State<_DynamicSelectFilter> {
                     final option = filteredOptions[index].toString();
                     final isSelected = selectedValues.contains(option);
                     return CheckboxListTile(
-                      title: Text(option, style: const TextStyle(fontSize: 13)),
+                      title: Text(
+                        option,
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
                       value: isSelected,
                       dense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -317,15 +325,23 @@ class _DynamicRangeFilterState extends State<_DynamicRangeFilter> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              widget.filter.label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            Flexible(
+              child: Text(
+                widget.filter.label,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            Text(
-              '${formatValue(_currentRange.start)} - ${formatValue(_currentRange.end)} $unit',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.secondary,
-                fontWeight: FontWeight.w500,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '${formatValue(_currentRange.start)} - ${formatValue(_currentRange.end)} $unit',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.secondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
               ),
             ),
           ],
@@ -357,11 +373,13 @@ class _DynamicBooleanFilter extends StatelessWidget {
   final FilterDefinition filter;
   final bool? value;
   final ValueChanged<bool?> onChanged;
+  final BuildContext context;
 
   const _DynamicBooleanFilter({
     required this.filter,
     required this.value,
     required this.onChanged,
+    required this.context,
   });
 
   @override
@@ -372,24 +390,25 @@ class _DynamicBooleanFilter extends StatelessWidget {
         Text(
           filter.label,
           style: const TextStyle(fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _BooleanChip(
-              label: 'Any',
+              label: AppLocalizations.of(context)!.any,
               isSelected: value == null,
               onSelected: () => onChanged(null),
             ),
-            const SizedBox(width: 8),
             _BooleanChip(
-              label: 'Yes',
+              label: AppLocalizations.of(context)!.yes,
               isSelected: value == true,
               onSelected: () => onChanged(true),
             ),
-            const SizedBox(width: 8),
             _BooleanChip(
-              label: 'No',
+              label: AppLocalizations.of(context)!.no,
               isSelected: value == false,
               onSelected: () => onChanged(false),
             ),

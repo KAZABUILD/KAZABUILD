@@ -123,7 +123,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get adminPanel => 'Panel Administratora';
 
   @override
-  String get signIn => 'Zaloguj';
+  String get signIn => 'Zaloguj się';
 
   @override
   String get welcome => 'Witaj';
@@ -209,6 +209,9 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get all => 'Wszystkie';
+
+  @override
+  String get any => 'Dowolne';
 
   @override
   String get noGuidesFound => 'Nie znaleziono przewodników w tej kategorii';
@@ -943,4 +946,53 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get appName => 'KAZABUILD';
+
+  @override
+  String get unread => 'Nieprzeczytane';
+
+  @override
+  String get notifications => 'Powiadomienia';
+
+  @override
+  String get messages => 'Wiadomości';
+
+  @override
+  String get messagesDescription =>
+      'Połącz się i komunikuj z innymi użytkownikami.';
+
+  @override
+  String get searchNotifications => 'Szukaj powiadomień...';
+
+  @override
+  String get searchMessages => 'Szukaj wiadomości...';
+
+  @override
+  String get noFeaturedBuilds => 'Nie wybrano jeszcze wyróżnionych buildów';
+
+  @override
+  String get featuredBuilds => 'Wyróżnione Buildy';
+
+  @override
+  String get couldNotLoadFeaturedBuilds =>
+      'Nie można załadować wyróżnionych buildów';
+
+  @override
+  String get pcBuilder => 'Konfigurator PC';
+
+  @override
+  String get configurePcBuild =>
+      'Skonfiguruj swój niestandardowy build PC z sprawdzaniem kompatybilności.';
+
+  @override
+  String get buildSuccessfullySaved =>
+      'Build został pomyślnie zapisany w Twoim profilu';
+
+  @override
+  String get replies => 'Odpowiedzi';
+
+  @override
+  String get noRepliesYet => 'Brak odpowiedzi. Bądź pierwszy!';
+
+  @override
+  String get signInToContinue => 'Zaloguj się, aby kontynuować swoją podróż';
 }

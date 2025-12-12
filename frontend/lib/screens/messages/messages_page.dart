@@ -17,6 +17,7 @@ import 'package:frontend/screens/messages/message_detail_page.dart';
 import 'package:frontend/models/admin_provider.dart';
 import 'package:frontend/utils/error_utils.dart';
 import '../../core/constants/app_color.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main widget for the messages page.
 class MessagesPage extends ConsumerStatefulWidget {
@@ -188,7 +189,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                         children: [
                           // Title Section with gradient/glow effect (matching build now page)
                           Text(
-                            'Messages',
+                            AppLocalizations.of(context)!.messages,
                             style: TextStyle(
                               fontSize: 56,
                               fontWeight: FontWeight.w900,
@@ -209,7 +210,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Connect and communicate with other users.',
+                            AppLocalizations.of(context)!.messagesDescription,
                             style: TextStyle(
                               fontSize: 16,
                               color: isDarkMode 
@@ -252,7 +253,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                                                 color: isDarkMode ? Colors.white : Colors.black87,
                                               ),
                                               decoration: InputDecoration(
-                                                hintText: 'Search messages...',
+                                                hintText: AppLocalizations.of(context)!.searchMessages,
                                                 hintStyle: TextStyle(
                                                   color: isDarkMode 
                                                       ? Colors.white.withValues(alpha: 0.4)

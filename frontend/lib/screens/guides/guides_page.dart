@@ -14,6 +14,7 @@ import 'package:frontend/models/guide_provider.dart';
 import 'package:frontend/screens/guides/guide_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the guides page.
 class GuidesPage extends ConsumerStatefulWidget {
@@ -146,7 +147,7 @@ class _GuidesPageState extends ConsumerState<GuidesPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              error.toString(),
+              getUserFriendlyError(error),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),

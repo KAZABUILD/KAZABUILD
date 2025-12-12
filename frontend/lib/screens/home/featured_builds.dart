@@ -13,6 +13,8 @@ import '../../models/explore_build_model.dart';
 import '../../models/component_models.dart';
 import '../../models/build_provider.dart';
 import '../admin/admin_featured_builds_page.dart';
+import '../../l10n/app_localization.dart';
+import '../../utils/error_utils.dart';
 
 /// Provider to fetch featured builds based on selected IDs
 final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) async {
@@ -26,6 +28,7 @@ final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) asy
   final idsToFetch = featuredIds.take(3).toList();
   final buildService = ref.read(buildServiceProvider);
   final builds = <Build>[];
+  final errors = <String>[];
   
   for (final buildId in idsToFetch) {
     try {
@@ -33,7 +36,14 @@ final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) asy
       builds.add(build);
     } catch (e) {
       debugPrint('Failed to load featured build $buildId: $e');
+      errors.add(e.toString());
     }
+  }
+  
+  // If we have featured IDs but couldn't load any builds, throw an error
+  // This distinguishes between "no featured builds selected" and "backend error"
+  if (builds.isEmpty && errors.isNotEmpty) {
+    throw Exception(errors.first);
   }
   
   return builds;
@@ -79,7 +89,7 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
             alignment: Alignment.center,
             padding: const EdgeInsets.all(40),
             child: Text(
-              'No featured builds selected yet',
+              AppLocalizations.of(context)!.noFeaturedBuilds,
               style: theme.textTheme.headlineMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
@@ -104,7 +114,7 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
             children: [
               // Section Title
               Text(
-                'Featured Builds',
+                AppLocalizations.of(context)!.featuredBuilds,
                 style: theme.textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   fontSize: 42,
@@ -213,22 +223,38 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
       error: (err, stack) => SizedBox(
         height: 500,
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: theme.colorScheme.error,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Could not load featured builds',
-                style: theme.textTheme.titleLarge?.copyWith(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
                   color: theme.colorScheme.error,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.couldNotLoadFeaturedBuilds,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  getUserFriendlyError(err),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => ref.refresh(featuredBuildsProvider),
+                  child: Text(AppLocalizations.of(context)!.retry),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -354,23 +380,30 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                   flex: 4,
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: widget.isDarkMode
                           ? const Color(0xFF1a1533)
                           : const Color(0xFFE0E0E0),
                     ),
                     child: widget.buildData.imageUrl != null
-                        ? Image.network(
-                            widget.buildData.imageUrl!,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Center(
-                              child: Icon(
-                                Icons.computer,
-                                size: 100,
-                                color: widget.isDarkMode
-                                    ? Colors.white.withValues(alpha: 0.2)
-                                    : Colors.black.withValues(alpha: 0.2),
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(32),
+                              topRight: Radius.circular(32),
+                            ),
+                            child: Image.network(
+                              widget.buildData.imageUrl!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Icon(
+                                  Icons.computer,
+                                  size: 100,
+                                  color: widget.isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.2)
+                                      : Colors.black.withValues(alpha: 0.2),
+                                ),
                               ),
                             ),
                           )

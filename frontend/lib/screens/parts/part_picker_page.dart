@@ -28,6 +28,8 @@ import 'package:frontend/models/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 part 'Parts_filter.dart';
 
@@ -660,7 +662,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  pagingState.errorMessage!,
+                                  getUserFriendlyError(pagingState.errorMessage),
                                   style: Theme.of(context).textTheme.bodyMedium,
                                   textAlign: TextAlign.center,
                                 ),

@@ -137,7 +137,20 @@ class CustomNavigationBar extends ConsumerWidget {
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  error: (err, stack) => const Icon(Icons.error),
+                  error: (err, stack) {
+                    // On error, show sign in area so users can still access login
+                    // Also provide a way to retry/clear the error
+                    return GestureDetector(
+                      onTap: () {
+                        // Clear error state by invalidating auth provider
+                        ref.invalidate(authProvider);
+                      },
+                      child: Tooltip(
+                        message: 'Click to retry',
+                        child: const _SignInArea(),
+                      ),
+                    );
+                  },
                 ),
               ],
               if (showProfileArea) const SizedBox(width: 20),
@@ -460,7 +473,44 @@ class CustomDrawer extends ConsumerWidget {
                 return const SizedBox.shrink();
               },
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, __) {
+                // On error, still show Sign In/Sign Up options
+                return Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.login),
+                      title: Text(AppLocalizations.of(context)!.signIn),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      minVerticalPadding: 12,
+                      onTap: () {
+                        // Clear error state before navigating
+                        ref.invalidate(authProvider);
+                        Navigator.pop(context);
+                        context.go('/login');
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.person_add),
+                      title: Text(AppLocalizations.of(context)!.signUp),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      minVerticalPadding: 12,
+                      onTap: () {
+                        // Clear error state before navigating
+                        ref.invalidate(authProvider);
+                        Navigator.pop(context);
+                        context.go('/signup');
+                      },
+                    ),
+                    const Divider(),
+                  ],
+                );
+              },
             ),
 
           /// Main navigation links.
@@ -527,7 +577,7 @@ class CustomDrawer extends ConsumerWidget {
                       children: [
                         ListTile(
                           leading: const Icon(Icons.notifications_outlined),
-                          title: const Text('Notifications'),
+                          title: Text(AppLocalizations.of(context)!.notifications),
                           onTap: () {
                             Navigator.pop(context);
                             context.go('/notifications');
@@ -535,7 +585,7 @@ class CustomDrawer extends ConsumerWidget {
                         ),
                         ListTile(
                           leading: const Icon(Icons.message),
-                          title: const Text('Messages'),
+                          title: Text(AppLocalizations.of(context)!.messages),
                           onTap: () {
                             Navigator.pop(context);
                             context.go('/messages');
