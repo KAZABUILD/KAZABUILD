@@ -3105,6 +3105,32 @@ class BuildCoreImporter:
                     }
                     subcomponents.append(("PORT", port_raw, count))
                     
+            power_connectors = raw.get("power_connectors")
+            if isinstance(power_connectors, dict):
+                for key, value in power_connectors.items():
+                    count = to_int(value, default=0, min_value=0, max_value=50)
+                    if count <= 0:
+                        continue
+                    
+                    k = key.lower()
+                    name = key
+                    if "pcie_6_pin" in k:
+                        name = "PCIe 6-pin"
+                    elif "pcie_8_pin" in k:
+                        name = "PCIe 8-pin"
+                    elif "pcie_12vhpwr" in k:
+                        name = "PCIe 12VHPWR"
+                    elif "pcie_12v_2x6" in k:
+                        name = "PCIe 12V-2x6"
+                    
+                    port_raw = {
+                        "port_type": "POWER",
+                        "type": name,
+                        "name": name
+                    }
+                    subcomponents.append(("PORT", port_raw, count))
+
+                    
         elif component_type == "MOTHERBOARD":
             pcie_slots = raw.get("pcie_slots") or raw.get("pcie")
             if isinstance(pcie_slots, list):
