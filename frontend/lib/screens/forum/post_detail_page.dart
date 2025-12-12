@@ -18,6 +18,7 @@ import 'package:frontend/models/image_provider.dart';
 import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 // --- COLORS (Matching ForumsPage) ---
 class ForumThemeColors {
@@ -244,7 +245,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Replies',
+                            AppLocalizations.of(context)!.replies,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -276,17 +277,17 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage>
 
                   // Empty State
                   if (_allComments.isEmpty && !_isLoadingComments)
-                    const SliverToBoxAdapter(
+                    SliverToBoxAdapter(
                       child: Center(
                         child: Padding(
-                          padding: EdgeInsets.all(48.0),
+                          padding: const EdgeInsets.all(48.0),
                           child: Column(
                             children: [
-                              Icon(Icons.forum_outlined, size: 48, color: Colors.grey),
-                              SizedBox(height: 16),
+                              const Icon(Icons.forum_outlined, size: 48, color: Colors.grey),
+                              const SizedBox(height: 16),
                               Text(
-                                "No replies yet. Be the first!",
-                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                                AppLocalizations.of(context)!.noRepliesYet,
+                                style: const TextStyle(fontSize: 16, color: Colors.grey),
                               ),
                             ],
                           ),
@@ -651,14 +652,38 @@ class _PostHeader extends ConsumerWidget {
                           final imageUrl = entry.value;
                           return GestureDetector(
                             onTap: () => _showFullScreenImageDialog(context, imageUrls, index),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                imageUrl,
-                                width: double.infinity,
-                                height: 300,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const SizedBox(),
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDarkMode 
+                                      ? Colors.white.withValues(alpha: 0.1)
+                                      : Colors.black.withValues(alpha: 0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 150,
+                                  height: 150,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 150,
+                                    height: 150,
+                                    color: isDarkMode 
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.05),
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      size: 32,
+                                      color: isDarkMode ? Colors.white54 : Colors.black54,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           );
@@ -765,6 +790,18 @@ class _ReplyCard extends ConsumerWidget {
     required this.isDarkMode,
   });
 
+  /// Shows full screen image viewer dialog
+  void _showFullScreenImageDialog(BuildContext context, List<String> imageUrls, int initialIndex) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => _FullScreenImageViewer(
+        imageUrls: imageUrls,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authorAsync = ref.watch(userProvider(reply.authorId));
@@ -851,10 +888,45 @@ class _ReplyCard extends ConsumerWidget {
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: imageUrls.map((imageUrl) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(imageUrl, width: 100, height: 100, fit: BoxFit.cover),
+                  children: imageUrls.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final imageUrl = entry.value;
+                    return GestureDetector(
+                      onTap: () => _showFullScreenImageDialog(context, imageUrls, index),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDarkMode 
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: 0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            imageUrl,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 100,
+                              height: 100,
+                              color: isDarkMode 
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              child: Icon(
+                                Icons.broken_image,
+                                size: 24,
+                                color: isDarkMode ? Colors.white54 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     );
                   }).toList(),
                 ),

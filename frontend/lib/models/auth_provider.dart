@@ -1165,8 +1165,8 @@ final authServiceProvider = Provider<AuthService>((ref) {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    connectTimeout: const Duration(minutes: 2),
-    receiveTimeout: const Duration(minutes: 2),
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
     followRedirects: true, // Allow redirects but we'll handle 302 manually
     maxRedirects: 5, // Default redirect limit
   ));

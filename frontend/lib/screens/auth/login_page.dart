@@ -22,6 +22,7 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/utils/validators.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main widget for the login page.
 /// It's a `ConsumerStatefulWidget` to interact with Riverpod providers for state management.
@@ -56,6 +57,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void initState() {
     super.initState();
     _loadSavedLoginInfo();
+    // Clear error state when entering the login page
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final authState = ref.read(authProvider);
+      if (authState is AsyncError) {
+        // Reset to null user state (not logged in) instead of error state
+        // Use invalidate to reset the provider state
+        ref.invalidate(authProvider);
+      }
+    });
   }
 
   /// Loads saved login information for auto-fill.
@@ -430,7 +441,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to continue your journey',
+                  AppLocalizations.of(context)!.signInToContinue,
                   style: TextStyle(
                     fontSize: 16,
                     color: isDark
@@ -690,7 +701,7 @@ class _AuthToggleButtons extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'Sign In',
+                  AppLocalizations.of(context)!.signIn,
                   style: TextStyle(
                     fontWeight: isSignIn ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -725,7 +736,7 @@ class _AuthToggleButtons extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'Sign Up',
+                  AppLocalizations.of(context)!.signUp,
                   style: TextStyle(
                     fontWeight: !isSignIn ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -812,9 +823,9 @@ class _SignInButton extends ConsumerWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Sign In',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.signIn,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,

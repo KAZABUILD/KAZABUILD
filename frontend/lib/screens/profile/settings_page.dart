@@ -34,6 +34,8 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   Future<void> _updateProfile(Map<String, dynamic> data) async {
     try {
       final currentUser = ref.read(authProvider).valueOrNull;
@@ -92,7 +94,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scaffoldKey = GlobalKey<ScaffoldState>();
     final isDark = theme.brightness == Brightness.dark;
     
     // If userId is provided, load that user's data, otherwise use current user
@@ -110,7 +111,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       
       // Wait for current user first (needed for admin check)
       return Scaffold(
-        key: scaffoldKey,
+        key: _scaffoldKey,
+        drawer: CustomDrawer(showProfileArea: true),
         backgroundColor: theme.colorScheme.surface,
         body: currentUserAsync.when(
           loading: () {
@@ -195,7 +197,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 }
                 
                 // Use targetUser for editing
-                return _buildSettingsContent(context, theme, isDark, scaffoldKey, targetUser, currentUser);
+                return _buildSettingsContent(context, theme, isDark, _scaffoldKey, targetUser, currentUser);
               },
             );
           },
@@ -206,7 +208,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     // No userId provided, use current user
     final authState = ref.watch(authProvider);
     return Scaffold(
-      key: scaffoldKey,
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.surface,
       body: authState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -216,7 +219,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             return const Center(child: Text('Please log in to access settings'));
           }
           
-          return _buildSettingsContent(context, theme, isDark, scaffoldKey, user, user);
+          return _buildSettingsContent(context, theme, isDark, _scaffoldKey, user, user);
         },
       ),
     );
@@ -822,11 +825,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 size: 24,
               ),
               const SizedBox(width: 12),
-              Text(
-                AppLocalizations.of(context)!.privacySecurity,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
+              Flexible(
+                child: Text(
+                  AppLocalizations.of(context)!.privacySecurity,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

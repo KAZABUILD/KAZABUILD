@@ -24,6 +24,7 @@ import 'package:frontend/core/constants/app_color.dart';
 import 'package:intl/intl.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/utils/validators.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main widget for the sign-up page.
 class SignUpPage extends ConsumerStatefulWidget {
@@ -1103,7 +1104,7 @@ class _SignUpAuthToggleButtons extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'Sign In',
+                  AppLocalizations.of(context)!.signIn,
                   style: TextStyle(
                     fontWeight: !isSignUp ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -1138,7 +1139,7 @@ class _SignUpAuthToggleButtons extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'Sign Up',
+                  AppLocalizations.of(context)!.signUp,
                   style: TextStyle(
                     fontWeight: isSignUp ? FontWeight.bold : FontWeight.normal,
                   ),

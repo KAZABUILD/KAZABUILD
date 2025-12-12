@@ -211,6 +211,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get all => 'Tümü';
 
   @override
+  String get any => 'Herhangi';
+
+  @override
   String get noGuidesFound => 'Bu kategoride kılavuz bulunamadı';
 
   @override
@@ -940,4 +943,51 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get appName => 'KAZABUILD';
+
+  @override
+  String get unread => 'Okunmamış';
+
+  @override
+  String get notifications => 'Bildirimler';
+
+  @override
+  String get messages => 'Mesajlar';
+
+  @override
+  String get messagesDescription =>
+      'Diğer kullanıcılarla bağlantı kurun ve iletişime geçin.';
+
+  @override
+  String get searchNotifications => 'Bildirimleri ara...';
+
+  @override
+  String get searchMessages => 'Mesajları ara...';
+
+  @override
+  String get noFeaturedBuilds => 'Henüz öne çıkan build seçilmedi';
+
+  @override
+  String get featuredBuilds => 'Öne Çıkan Build\'ler';
+
+  @override
+  String get couldNotLoadFeaturedBuilds => 'Öne çıkan build\'ler yüklenemedi';
+
+  @override
+  String get pcBuilder => 'PC Oluşturucu';
+
+  @override
+  String get configurePcBuild =>
+      'Uyumluluk kontrolü ile özel PC build\'inizi yapılandırın.';
+
+  @override
+  String get buildSuccessfullySaved => 'Build profilinize başarıyla kaydedildi';
+
+  @override
+  String get replies => 'Yanıtlar';
+
+  @override
+  String get noRepliesYet => 'Henüz yanıt yok. İlk siz olun!';
+
+  @override
+  String get signInToContinue => 'Yolculuğunuza devam etmek için giriş yapın';
 }

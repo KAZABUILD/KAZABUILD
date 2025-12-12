@@ -16,6 +16,7 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import '../../core/constants/app_color.dart';
+import 'package:frontend/utils/error_utils.dart';
 import 'dart:math' as math;
 
 // -----------------------------------------------------------------------------
@@ -212,31 +213,37 @@ class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStat
         );
       },
       error: (error, stack) {
-        if (params != _lastSuccessfulParams) {
-          return const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        
+        // Always show error, don't show loading spinner for errors
         return SliverFillRemaining(
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
-                const SizedBox(height: 16),
-                Text(
-                  'Error loading posts',
-                  style: theme.textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    ref.invalidate(forumPostsProvider(params));
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading posts',
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    getUserFriendlyError(error),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.invalidate(forumPostsProvider(params));
+                    },
+                    child: Text(AppLocalizations.of(context)!.retry),
+                  ),
+                ],
+              ),
             ),
           ),
         );

@@ -12,6 +12,7 @@ import 'package:frontend/models/notification_provider.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
+import 'package:frontend/l10n/app_localization.dart';
 
 /// The main widget for the notifications page.
 class NotificationsPage extends ConsumerStatefulWidget {
@@ -101,7 +102,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search notifications...',
+                          hintText: AppLocalizations.of(context)!.searchNotifications,
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -120,7 +121,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ),
                     const SizedBox(width: 12),
                     FilterChip(
-                      label: Text(_showRead ? 'All' : 'Unread'),
+                      label: Text(_showRead ? AppLocalizations.of(context)!.all : AppLocalizations.of(context)!.unread),
                       selected: true,
                       onSelected: (selected) {
                         setState(() {
