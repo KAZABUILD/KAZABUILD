@@ -16,6 +16,7 @@ import 'package:frontend/utils/user_image_utils.dart';
 import 'package:frontend/screens/messages/message_detail_page.dart';
 import 'package:frontend/models/admin_provider.dart';
 import 'package:frontend/utils/error_utils.dart';
+import '../../core/constants/app_color.dart';
 
 /// The main widget for the messages page.
 class MessagesPage extends ConsumerStatefulWidget {
@@ -59,45 +60,58 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 700;
+    final maxContentWidth = isMobile ? double.infinity : 1600.0;
+    
+    // Use the same background color as build now page
+    final backgroundColor = isDarkMode 
+        ? const Color(0xFF0F0915) 
+        : AppColorsLight.backgroundPrimary;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 700;
-        final maxContentWidth = isMobile ? double.infinity : 1600.0;
-
-        return Scaffold(
-          key: _scaffoldKey,
-          drawer: CustomDrawer(showProfileArea: true),
-          body: Column(
-            children: [
-              CustomNavigationBar(scaffoldKey: _scaffoldKey),
-              Expanded(
-                child: authState.when(
-                  data: (user) {
-                    if (user == null) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Please log in to view messages',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
+      backgroundColor: backgroundColor,
+      body: Column(
+        children: [
+          CustomNavigationBar(scaffoldKey: _scaffoldKey),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 20 : 32,
+                vertical: isMobile ? 20 : 40,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxContentWidth),
+                  child: authState.when(
+                    data: (user) {
+                      if (user == null) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Please log in to view messages',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: isDarkMode ? Colors.white.withValues(alpha: 0.7) : Colors.black87.withValues(alpha: 0.7),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () => context.go('/login'),
-                              child: const Text('Go to Login'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () => context.go('/login'),
+                                child: const Text('Go to Login'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
                     final sentMessagesParams = MessagesParams(
                       senderId: user.uid,
@@ -169,411 +183,709 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
                               return b.lastMessage!.createdAt.compareTo(a.lastMessage!.createdAt);
                             });
 
-                            return Column(
-                              children: [
-                                Align(
-                                  alignment: Alignment.topCenter,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(maxWidth: maxContentWidth),
-                                    child: Container(
-                                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.surface,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.05),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title Section with gradient/glow effect (matching build now page)
+                          Text(
+                            'Messages',
+                            style: TextStyle(
+                              fontSize: 56,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.5,
+                              height: 1.0,
+                              foreground: Paint()
+                                ..shader = const LinearGradient(
+                                  colors: [
+                                    Color(0xFF00E676), // Bright Green
+                                    Color.fromARGB(255, 17, 105, 62), // Dark Green accent
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(
+                                  const Rect.fromLTWH(0.0, 0.0, 300.0, 70.0),
+                                ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Connect and communicate with other users.',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDarkMode 
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : Colors.black87.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          
+                          // Search and New Message Section
+                          Container(
+                            padding: EdgeInsets.all(isMobile ? 16 : 20),
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDarkMode 
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                              ),
+                              boxShadow: isDarkMode ? [] : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: isMobile
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _searchController,
+                                              style: TextStyle(
+                                                color: isDarkMode ? Colors.white : Colors.black87,
+                                              ),
+                                              decoration: InputDecoration(
+                                                hintText: 'Search messages...',
+                                                hintStyle: TextStyle(
+                                                  color: isDarkMode 
+                                                      ? Colors.white.withValues(alpha: 0.4)
+                                                      : Colors.black87.withValues(alpha: 0.4),
+                                                ),
+                                                prefixIcon: Icon(
+                                                  Icons.search,
+                                                  color: isDarkMode 
+                                                      ? Colors.white.withValues(alpha: 0.4)
+                                                      : Colors.black87.withValues(alpha: 0.4),
+                                                ),
+                                                suffixIcon: _searchQuery.isNotEmpty
+                                                    ? IconButton(
+                                                        icon: Icon(
+                                                          Icons.clear,
+                                                          color: isDarkMode 
+                                                              ? Colors.white.withValues(alpha: 0.6)
+                                                              : Colors.black87.withValues(alpha: 0.6),
+                                                        ),
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            _searchQuery = '';
+                                                            _searchController.clear();
+                                                          });
+                                                        },
+                                                      )
+                                                    : null,
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(
+                                                    color: isDarkMode 
+                                                        ? Colors.white.withValues(alpha: 0.1)
+                                                        : Colors.grey.withValues(alpha: 0.3),
+                                                  ),
+                                                ),
+                                                enabledBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(
+                                                    color: isDarkMode 
+                                                        ? Colors.white.withValues(alpha: 0.1)
+                                                        : Colors.grey.withValues(alpha: 0.3),
+                                                  ),
+                                                ),
+                                                focusedBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(
+                                                    color: isDarkMode 
+                                                        ? AppColorsDark.textNeon
+                                                        : AppColorsLight.textNeon,
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                                filled: true,
+                                                fillColor: isDarkMode 
+                                                    ? const Color(0xFF0F0915)
+                                                    : Colors.grey.shade100,
+                                                contentPadding: const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12,
+                                                ),
+                                              ),
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _searchQuery = value;
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          FilledButton.icon(
+                                            onPressed: () {
+                                              _showNewMessageDialog(context, ref, user.uid);
+                                            },
+                                            icon: const Icon(Icons.add, size: 20),
+                                            label: const Text('New'),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: isDarkMode 
+                                                  ? AppColorsDark.buttonGreen
+                                                  : AppColorsLight.buttonGreen,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 20,
+                                                vertical: 12,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      child: isMobile
-                                          ? Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.message, color: colorScheme.primary),
-                                                    const SizedBox(width: 10),
-                                                    Text(
-                                                      'Messages',
-                                                      style: TextStyle(
-                                                        fontSize: 20,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: colorScheme.onSurface,
-                                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _searchController,
+                                          style: TextStyle(
+                                            color: isDarkMode ? Colors.white : Colors.black87,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: 'Search messages...',
+                                            hintStyle: TextStyle(
+                                              color: isDarkMode 
+                                                  ? Colors.white.withValues(alpha: 0.4)
+                                                  : Colors.black87.withValues(alpha: 0.4),
+                                            ),
+                                            prefixIcon: Icon(
+                                              Icons.search,
+                                              color: isDarkMode 
+                                                  ? Colors.white.withValues(alpha: 0.4)
+                                                  : Colors.black87.withValues(alpha: 0.4),
+                                            ),
+                                            suffixIcon: _searchQuery.isNotEmpty
+                                                ? IconButton(
+                                                    icon: Icon(
+                                                      Icons.clear,
+                                                      color: isDarkMode 
+                                                          ? Colors.white.withValues(alpha: 0.6)
+                                                          : Colors.black87.withValues(alpha: 0.6),
                                                     ),
-                                                    const Spacer(),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.add),
-                                                      tooltip: 'New Message',
-                                                      onPressed: () {
-                                                        _showNewMessageDialog(context, ref, user.uid);
-                                                      },
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _searchQuery = '';
+                                                        _searchController.clear();
+                                                      });
+                                                    },
+                                                  )
+                                                : null,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                color: isDarkMode 
+                                                    ? Colors.white.withValues(alpha: 0.1)
+                                                    : Colors.grey.withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                color: isDarkMode 
+                                                    ? Colors.white.withValues(alpha: 0.1)
+                                                    : Colors.grey.withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                color: isDarkMode 
+                                                    ? AppColorsDark.textNeon
+                                                    : AppColorsLight.textNeon,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            filled: true,
+                                            fillColor: isDarkMode 
+                                                ? const Color(0xFF0F0915)
+                                                : Colors.grey.shade100,
+                                            contentPadding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _searchQuery = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      FilledButton.icon(
+                                        onPressed: () {
+                                          _showNewMessageDialog(context, ref, user.uid);
+                                        },
+                                        icon: const Icon(Icons.add, size: 20),
+                                        label: const Text('New Message'),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: isDarkMode 
+                                              ? AppColorsDark.buttonGreen
+                                              : AppColorsLight.buttonGreen,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Conversations List
+                          conversationList.isEmpty
+                              ? Container(
+                                  padding: const EdgeInsets.all(48),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.grey.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.inbox_outlined,
+                                          size: 64,
+                                          color: isDarkMode 
+                                              ? Colors.white.withValues(alpha: 0.3)
+                                              : Colors.black87.withValues(alpha: 0.3),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No messages yet',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.7)
+                                                : Colors.black87.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Start a conversation by messaging another user',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.5)
+                                                : Colors.black87.withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        FilledButton.icon(
+                                          icon: const Icon(Icons.add, size: 20),
+                                          label: const Text('New Message'),
+                                          onPressed: () {
+                                            _showNewMessageDialog(context, ref, user.uid);
+                                          },
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: isDarkMode 
+                                                ? AppColorsDark.buttonGreen
+                                                : AppColorsLight.buttonGreen,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: conversationList.length,
+                                  itemBuilder: (context, index) {
+                                    final conversation = conversationList[index];
+                                    final lastMessage = conversation.lastMessage;
+
+                                    final otherUserAsync =
+                                        ref.watch(conversationUserProvider(conversation.otherUserId));
+
+                                    return otherUserAsync.when(
+                                      data: (otherUser) {
+                                        final displayUser = otherUser ?? conversation.otherUser;
+
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          decoration: BoxDecoration(
+                                            color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: isDarkMode 
+                                                  ? Colors.white.withValues(alpha: 0.08)
+                                                  : Colors.grey.withValues(alpha: 0.2),
+                                            ),
+                                            boxShadow: isDarkMode ? [] : [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.05),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(16),
+                                              onTap: () {
+                                                context.push(
+                                                  '/messages/${conversation.otherUserId}',
+                                                );
+                                              },
+                                              child: Padding(
+                                                padding: EdgeInsets.all(isMobile ? 16 : 20),
+                                                child: Row(
+                                                  children: [
+                                                    CircleAvatar(
+                                                      radius: isMobile ? 28 : 32,
+                                                      backgroundImage: displayUser?.photoURL != null &&
+                                                              UserImageUtils.getUserImageUrl(
+                                                                      displayUser?.photoURL) !=
+                                                                  null
+                                                          ? NetworkImage(UserImageUtils.getUserImageUrl(
+                                                              displayUser?.photoURL)!)
+                                                          : null,
+                                                      child: displayUser?.photoURL == null ||
+                                                              UserImageUtils.getUserImageUrl(
+                                                                      displayUser?.photoURL) ==
+                                                                  null
+                                                          ? Text(
+                                                              (displayUser?.displayName ?? 'U')
+                                                                  .substring(0, 1)
+                                                                  .toUpperCase(),
+                                                              style: TextStyle(
+                                                                fontSize: isMobile ? 20 : 24,
+                                                                color: isDarkMode ? Colors.white : Colors.black87,
+                                                              ),
+                                                            )
+                                                          : null,
+                                                    ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: Text(
+                                                                  displayUser?.displayName ?? 'Unknown User',
+                                                                  style: TextStyle(
+                                                                    fontWeight: conversation.unreadCount > 0
+                                                                        ? FontWeight.bold
+                                                                        : FontWeight.w600,
+                                                                    fontSize: isMobile ? 16 : 18,
+                                                                    color: isDarkMode ? Colors.white : Colors.black87,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+                                                              ),
+                                                              if (conversation.unreadCount > 0)
+                                                                Container(
+                                                                  padding: const EdgeInsets.symmetric(
+                                                                    horizontal: 10,
+                                                                    vertical: 4,
+                                                                  ),
+                                                                  decoration: BoxDecoration(
+                                                                    color: isDarkMode 
+                                                                        ? AppColorsDark.buttonGreen
+                                                                        : AppColorsLight.buttonGreen,
+                                                                    borderRadius: BorderRadius.circular(12),
+                                                                  ),
+                                                                  child: Text(
+                                                                    '${conversation.unreadCount}',
+                                                                    style: TextStyle(
+                                                                      color: Colors.black,
+                                                                      fontWeight: FontWeight.bold,
+                                                                      fontSize: 12,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                          const SizedBox(height: 6),
+                                                          Text(
+                                                            lastMessage?.content ?? 'No messages',
+                                                            maxLines: 2,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: TextStyle(
+                                                              color: conversation.unreadCount > 0
+                                                                  ? (isDarkMode ? Colors.white : Colors.black87)
+                                                                  : (isDarkMode 
+                                                                      ? Colors.white.withValues(alpha: 0.7)
+                                                                      : Colors.black87.withValues(alpha: 0.7)),
+                                                              fontWeight: conversation.unreadCount > 0
+                                                                  ? FontWeight.w500
+                                                                  : FontWeight.normal,
+                                                              fontSize: isMobile ? 14 : 15,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(height: 4),
+                                                          Text(
+                                                            lastMessage != null
+                                                                ? _formatMessageTime(lastMessage.createdAt)
+                                                                : '',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color: isDarkMode 
+                                                                  ? Colors.white.withValues(alpha: 0.5)
+                                                                  : Colors.black87.withValues(alpha: 0.5),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
-                                                const SizedBox(height: 12),
-                                                TextField(
-                                                  controller: _searchController,
-                                                  decoration: InputDecoration(
-                                                    hintText: 'Search messages...',
-                                                    prefixIcon: const Icon(Icons.search),
-                                                    suffixIcon: _searchQuery.isNotEmpty
-                                                        ? IconButton(
-                                                            icon: const Icon(Icons.clear),
-                                                            onPressed: () {
-                                                              setState(() {
-                                                                _searchQuery = '';
-                                                                _searchController.clear();
-                                                              });
-                                                            },
-                                                          )
-                                                        : null,
-                                                    border: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10),
-                                                    ),
-                                                    filled: true,
-                                                    fillColor: colorScheme.surfaceContainerHighest,
-                                                  ),
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      _searchQuery = value;
-                                                    });
-                                                  },
-                                                ),
-                                              ],
-                                            )
-                                          : Row(
-                                              children: [
-                                                Icon(Icons.message, color: colorScheme.primary),
-                                                const SizedBox(width: 12),
-                                                Text(
-                                                  'Messages',
-                                                  style: TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: colorScheme.onSurface,
-                                                  ),
-                                                ),
-                                                const Spacer(),
-                                                IconButton(
-                                                  icon: const Icon(Icons.add),
-                                                  tooltip: 'New Message',
-                                                  onPressed: () {
-                                                    _showNewMessageDialog(context, ref, user.uid);
-                                                  },
-                                                ),
-                                                const SizedBox(width: 8),
-                                                SizedBox(
-                                                  width: 320,
-                                                  child: TextField(
-                                                    controller: _searchController,
-                                                    decoration: InputDecoration(
-                                                      hintText: 'Search messages...',
-                                                      prefixIcon: const Icon(Icons.search),
-                                                      suffixIcon: _searchQuery.isNotEmpty
-                                                          ? IconButton(
-                                                              icon: const Icon(Icons.clear),
-                                                              onPressed: () {
-                                                                setState(() {
-                                                                  _searchQuery = '';
-                                                                  _searchController.clear();
-                                                                });
-                                                              },
-                                                            )
-                                                          : null,
-                                                      border: OutlineInputBorder(
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                      filled: true,
-                                                      fillColor: colorScheme.surfaceContainerHighest,
-                                                    ),
-                                                    onChanged: (value) {
-                                                      setState(() {
-                                                        _searchQuery = value;
-                                                      });
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(maxWidth: maxContentWidth),
-                                      child: conversationList.isEmpty
-                                          ? Center(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.inbox_outlined,
-                                                    size: 64,
-                                                    color: colorScheme.onSurface.withValues(alpha: 0.3),
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  Text(
-                                                    'No messages yet',
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                    'Start a conversation by messaging another user',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 24),
-                                                  ElevatedButton.icon(
-                                                    icon: const Icon(Icons.add),
-                                                    label: const Text('New Message'),
-                                                    onPressed: () {
-                                                      _showNewMessageDialog(context, ref, user.uid);
-                                                    },
-                                                  ),
-                                                ],
                                               ),
-                                            )
-                                          : ListView.builder(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: isMobile ? 12 : 16,
-                                                vertical: isMobile ? 12 : 16,
-                                              ),
-                                              itemCount: conversationList.length,
-                                              itemBuilder: (context, index) {
-                                                final conversation = conversationList[index];
-                                                final lastMessage = conversation.lastMessage;
-
-                                                final otherUserAsync =
-                                                    ref.watch(conversationUserProvider(conversation.otherUserId));
-
-                                                return otherUserAsync.when(
-                                                  data: (otherUser) {
-                                                    final displayUser = otherUser ?? conversation.otherUser;
-
-                                                    return Card(
-                                                      margin: const EdgeInsets.only(bottom: 12),
-                                                      elevation: 2,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                      child: ListTile(
-                                                        contentPadding:
-                                                            EdgeInsets.all(isMobile ? 12 : 16),
-                                                        leading: CircleAvatar(
-                                                          radius: isMobile ? 22 : 28,
-                                                          backgroundImage: displayUser?.photoURL != null &&
-                                                                  UserImageUtils.getUserImageUrl(
-                                                                          displayUser?.photoURL) !=
-                                                                      null
-                                                              ? NetworkImage(UserImageUtils.getUserImageUrl(
-                                                                  displayUser?.photoURL)!)
-                                                              : null,
-                                                          child: displayUser?.photoURL == null ||
-                                                                  UserImageUtils.getUserImageUrl(
-                                                                          displayUser?.photoURL) ==
-                                                                      null
-                                                              ? Text(
-                                                                  (displayUser?.displayName ?? 'U')
-                                                                      .substring(0, 1)
-                                                                      .toUpperCase(),
-                                                                  style:
-                                                                      TextStyle(fontSize: isMobile ? 18 : 20),
-                                                                )
-                                                              : null,
-                                                        ),
-                                                        title: Row(
-                                                          children: [
-                                                            Expanded(
-                                                              child: Text(
-                                                                displayUser?.displayName ?? 'Unknown User',
-                                                                style: TextStyle(
-                                                                  fontWeight: conversation.unreadCount > 0
-                                                                      ? FontWeight.bold
-                                                                      : FontWeight.normal,
-                                                                  fontSize: isMobile ? 15 : 16,
-                                                                  color: colorScheme.onSurface,
-                                                                ),
-                                                                maxLines: 1,
-                                                                overflow: TextOverflow.ellipsis,
-                                                              ),
-                                                            ),
-                                                            if (conversation.unreadCount > 0)
-                                                              Container(
-                                                                padding: const EdgeInsets.symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 4,
-                                                                ),
-                                                                decoration: BoxDecoration(
-                                                                  color: colorScheme.primary,
-                                                                  borderRadius: BorderRadius.circular(12),
-                                                                ),
-                                                                child: Text(
-                                                                  '${conversation.unreadCount}',
-                                                                  style: TextStyle(
-                                                                    color: colorScheme.onPrimary,
-                                                                    fontWeight: FontWeight.bold,
-                                                                    fontSize: 12,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                          ],
-                                                        ),
-                                                        subtitle: Padding(
-                                                          padding: EdgeInsets.only(top: isMobile ? 6 : 8),
-                                                          child: Column(
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              Text(
-                                                                lastMessage?.content ?? 'No messages',
-                                                                maxLines: 2,
-                                                                overflow: TextOverflow.ellipsis,
-                                                                style: TextStyle(
-                                                                  color: conversation.unreadCount > 0
-                                                                      ? colorScheme.onSurface
-                                                                      : colorScheme.onSurface
-                                                                          .withValues(alpha: 0.7),
-                                                                  fontWeight: conversation.unreadCount > 0
-                                                                      ? FontWeight.w500
-                                                                      : FontWeight.normal,
-                                                                ),
-                                                              ),
-                                                              const SizedBox(height: 4),
-                                                              Text(
-                                                                lastMessage != null
-                                                                    ? _formatMessageTime(lastMessage.createdAt)
-                                                                    : '',
-                                                                style: TextStyle(
-                                                                  fontSize: 12,
-                                                                  color:
-                                                                      colorScheme.onSurface.withValues(alpha: 0.5),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        onTap: () {
-                                                          context.push(
-                                                            '/messages/${conversation.otherUserId}',
-                                                          );
-                                                        },
-                                                      ),
-                                                    );
-                                                  },
-                                                  loading: () => Card(
-                                                    margin: const EdgeInsets.only(bottom: 12),
-                                                    child: ListTile(
-                                                      leading: const CircularProgressIndicator(),
-                                                      title: const Text('Loading user...'),
-                                                    ),
-                                                  ),
-                                                  error: (error, stack) => Card(
-                                                    margin: const EdgeInsets.only(bottom: 12),
-                                                    child: ListTile(
-                                                      leading: const Icon(Icons.error),
-                                                      title: Text(getUserFriendlyError(error)),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
                                             ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (error, stack) => Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Error loading received messages',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  getUserFriendlyError(error),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    ref.invalidate(messagesProvider(sentMessagesParams));
-                                    ref.invalidate(messagesProvider(receivedMessagesParams));
+                                          ),
+                                        );
+                                      },
+                                      loading: () => Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.08)
+                                                : Colors.grey.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            CircularProgressIndicator(),
+                                            SizedBox(width: 16),
+                                            Text('Loading user...'),
+                                          ],
+                                        ),
+                                      ),
+                                      error: (error, stack) => Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.08)
+                                                : Colors.grey.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.error, color: Colors.red),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Text(getUserFriendlyError(error)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
                                   },
-                                  child: const Text('Retry'),
                                 ),
-                              ],
+                        ],
+                      );
+                          },
+                          loading: () => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(48),
+                              child: CircularProgressIndicator(
+                                color: isDarkMode 
+                                    ? AppColorsDark.buttonGreen
+                                    : AppColorsLight.buttonGreen,
+                              ),
+                            ),
+                          ),
+                          error: (error, stack) => Container(
+                            padding: const EdgeInsets.all(48),
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDarkMode 
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Error loading received messages',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: isDarkMode ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    getUserFriendlyError(error),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.7)
+                                          : Colors.black87.withValues(alpha: 0.7),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  FilledButton(
+                                    onPressed: () {
+                                      ref.invalidate(messagesProvider(sentMessagesParams));
+                                      ref.invalidate(messagesProvider(receivedMessagesParams));
+                                    },
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: isDarkMode 
+                                          ? AppColorsDark.buttonGreen
+                                          : AppColorsLight.buttonGreen,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error loading sent messages',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: colorScheme.onSurface,
+                      loading: () => Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(48),
+                          child: CircularProgressIndicator(
+                            color: isDarkMode 
+                                ? AppColorsDark.buttonGreen
+                                : AppColorsLight.buttonGreen,
+                          ),
+                        ),
+                      ),
+                      error: (error, stack) => Container(
+                        padding: const EdgeInsets.all(48),
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? const Color(0xFF13111A) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDarkMode 
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.grey.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error loading sent messages',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              getUserFriendlyError(error),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              const SizedBox(height: 8),
+                              Text(
+                                getUserFriendlyError(error),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDarkMode 
+                                      ? Colors.white.withValues(alpha: 0.7)
+                                      : Colors.black87.withValues(alpha: 0.7),
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () {
-                                ref.invalidate(messagesProvider(sentMessagesParams));
-                                ref.invalidate(messagesProvider(receivedMessagesParams));
-                              },
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                              const SizedBox(height: 24),
+                              FilledButton(
+                                onPressed: () {
+                                  ref.invalidate(messagesProvider(sentMessagesParams));
+                                  ref.invalidate(messagesProvider(receivedMessagesParams));
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: isDarkMode 
+                                      ? AppColorsDark.buttonGreen
+                                      : AppColorsLight.buttonGreen,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(48),
+                      child: CircularProgressIndicator(
+                        color: isDarkMode 
+                            ? AppColorsDark.buttonGreen
+                            : AppColorsLight.buttonGreen,
+                      ),
+                    ),
+                  ),
                   error: (error, stack) => Center(
-                    child: Text(getUserFriendlyError(error)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(48),
+                      child: Text(
+                        getUserFriendlyError(error),
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ],
+    ),
     );
   }
 

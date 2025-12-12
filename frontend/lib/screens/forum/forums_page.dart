@@ -518,18 +518,40 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
 
   /// Helper to format time ago
   String _formatTimeAgo(DateTime dateTime) {
+    // Ensure we're working with local time
+    final localDateTime = dateTime.isUtc ? dateTime.toLocal() : dateTime;
     final now = DateTime.now();
-    final difference = now.difference(dateTime);
+    final difference = now.difference(localDateTime);
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
+    // If less than 1 minute, show "Just now"
+    if (difference.inSeconds < 60) {
       return 'Just now';
     }
+    
+    // If less than 1 hour, show minutes
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    }
+    
+    // If less than 24 hours, show hours
+    if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    }
+    
+    // If less than 30 days, show days
+    if (difference.inDays < 30) {
+      return '${difference.inDays}d ago';
+    }
+    
+    // Otherwise show months
+    final months = (difference.inDays / 30).floor();
+    if (months < 12) {
+      return '${months}mo ago';
+    }
+    
+    // Show years
+    final years = (months / 12).floor();
+    return '${years}y ago';
   }
 
   /// Helper to build the specific category badge style

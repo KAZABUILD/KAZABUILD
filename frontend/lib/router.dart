@@ -141,25 +141,22 @@ Page<T> noTransitionPage<T extends Object?>({
   );
 }
 
-// ─────────────────────── Post Detail Wrapper (unchanged) ─────────────────────
+// ─────────────────────── Post Detail Wrapper ─────────────────────
+/// Wrapper widget that handles loading, error states, and data fetching for forum post details
 class _PostDetailWrapper extends ConsumerWidget {
   final String postId;
   const _PostDetailWrapper({required this.postId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final postAsync = ref.watch(postDetailProvider(postId));
-
-    return postAsync.when(
-      data: (post) => PostDetailPage(post: post),
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (_, __) => Scaffold(
+    // Validate postId
+    if (postId.isEmpty) {
+      return Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Error loading post'),
+              const Text('Invalid post ID'),
               ElevatedButton(
                 onPressed: () => context.go('/forums'),
                 child: const Text('Back to Forums'),
@@ -167,7 +164,76 @@ class _PostDetailWrapper extends ConsumerWidget {
             ],
           ),
         ),
+      );
+    }
+
+    // Watch the post detail provider
+    final postAsync = ref.watch(postDetailProvider(postId));
+
+    return postAsync.when(
+      data: (post) {
+        // Validate that we got a valid post
+        if (post.id.isEmpty) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Post not found'),
+                  ElevatedButton(
+                    onPressed: () => context.go('/forums'),
+                    child: const Text('Back to Forums'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return PostDetailPage(post: post);
+      },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
+      error: (error, stackTrace) {
+        // Log error for debugging
+        debugPrint('Error loading post $postId: $error');
+        debugPrint('Stack trace: $stackTrace');
+        
+        return Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text(
+                  'Error loading post',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error.toString(),
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    // Retry loading
+                    ref.invalidate(postDetailProvider(postId));
+                  },
+                  child: const Text('Retry'),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () => context.go('/forums'),
+                  child: const Text('Back to Forums'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -236,12 +302,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // 5. Forum post detail - allow access but wait for auth to load
-      if (path.startsWith('/forums/') && path.split('/').length > 2) {
-        // This is a forum post detail page (e.g., /forums/123)
-        // Allow access but wait for auth to load
+      // 5. Forum routes - allow public access but wait for auth to load
+      if (path.startsWith('/forums')) {
+        // Forum list, new post, edit post, or post detail
+        // All forum pages are public (no login required)
+        // But wait for auth to finish loading before proceeding
         if (loading) return null;
-        return null;
+        return null; // Allow access
       }
 
       // 5. Logged-in users can't access auth pages
@@ -288,6 +355,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const GuidesPage(),
         ),
       ),
+      // Forum routes - order matters! More specific routes must come first
       GoRoute(
         path: '/forums',
         name: 'forums',
@@ -304,14 +372,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: NewPostPage(buildId: state.uri.queryParameters['buildId']),
         ),
       ),
-      GoRoute(
-        path: '/forums/:id',
-        name: 'forum-post-detail',
-        pageBuilder: (_, state) => noTransitionPage(
-          key: state.pageKey,
-          child: _PostDetailWrapper(postId: state.pathParameters['id']!),
-        ),
-      ),
+      // Edit route must come before detail route (more specific)
       GoRoute(
         path: '/forums/:id/edit',
         name: 'edit-forum-post',
@@ -319,6 +380,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: NewPostPage(postId: state.pathParameters['id']!),
         ),
+      ),
+      // Detail route comes last (less specific, matches any ID)
+      GoRoute(
+        path: '/forums/:id',
+        name: 'forum-post-detail',
+        pageBuilder: (_, state) {
+          final postId = state.pathParameters['id'];
+          if (postId == null || postId.isEmpty) {
+            // Invalid post ID, redirect to forums list
+            return noTransitionPage(
+              key: state.pageKey,
+              child: const ForumsPage(),
+            );
+          }
+          return noTransitionPage(
+            key: state.pageKey,
+            child: _PostDetailWrapper(postId: postId),
+          );
+        },
       ),
       GoRoute(
         path: '/messages',

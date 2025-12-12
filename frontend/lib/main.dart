@@ -14,9 +14,17 @@ import 'package:frontend/models/locale_provider.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:go_router/go_router.dart';
 
 /// The main function that runs when the application starts.
 void main() {
+  // Disable hash-based routing on web (use path-based instead)
+  // This prevents URLs like #/forums/123 and uses /forums/123 instead
+  if (kIsWeb) {
+    GoRouter.optionURLReflectsImperativeAPIs = true;
+  }
+  
   // runApp() inflates the given widget and attaches it to the screen.
   // ProviderScope is the widget that stores the state of all Riverpod providers.
   // All Flutter applications using Riverpod must have a ProviderScope at the

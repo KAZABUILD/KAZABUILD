@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:go_router/go_router.dart';
 
@@ -314,6 +315,15 @@ class _HeroVisual extends StatelessWidget {
 
   const _HeroVisual({required this.controller, required this.isRotating});
 
+  Widget _build3DModel(BuildContext context) {
+    
+    return Flutter3DViewer(
+      src: 'assets/3d_models/pc.glb',
+      controller: controller,
+      enableTouch: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -343,11 +353,7 @@ class _HeroVisual extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: Flutter3DViewer(
-                    src: 'assets/assets/3d_models/pc.glb',
-                    controller: controller,
-                    enableTouch: false,
-                  ),
+                  child: _build3DModel(context),
                 ),
               ),
             ),

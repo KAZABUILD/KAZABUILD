@@ -6,6 +6,7 @@
 library;
 
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ import 'package:frontend/models/forum_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/models/api_constants.dart';
+import '../../core/constants/app_color.dart';
 
 
 /// A page for creating a new forum post or editing an existing one.
@@ -33,7 +35,7 @@ class NewPostPage extends ConsumerStatefulWidget {
   ConsumerState<NewPostPage> createState() => _NewPostPageState();
 }
 
-class _NewPostPageState extends ConsumerState<NewPostPage> {
+class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _titleController = TextEditingController();
@@ -42,6 +44,9 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
   bool _isLoading = false;
   final List<XFile> _selectedImages = [];
   final ImagePicker _imagePicker = ImagePicker();
+  late AnimationController _headerAnimationController;
+  late AnimationController _backgroundAnimationController;
+  late Animation<double> _headerFadeAnimation;
 
   final List<String> _topicOptions = [
     'General Discussion',
@@ -53,6 +58,22 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
   @override
   void initState() {
     super.initState();
+    _headerAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _headerFadeAnimation = CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+    
+    _backgroundAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+    
+    _headerAnimationController.forward();
+    
     if (widget.postId != null) {
       _loadPostForEdit();
     } else if (widget.buildId != null) {
@@ -174,6 +195,8 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _headerAnimationController.dispose();
+    _backgroundAnimationController.dispose();
     super.dispose();
   }
 
@@ -327,7 +350,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
 
         // Use GoRouter's context.go() for proper navigation
         // This works correctly with both hash and path-based routing
-        context.go('/home');
+        context.go('/forums');
       }
     } catch (e) {
       // STOP LOADING ON ERROR TOO
@@ -351,388 +374,616 @@ class _NewPostPageState extends ConsumerState<NewPostPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
+    // Use the same background color as forums page
+    final backgroundColor = isDarkMode 
+        ? const Color(0xFF0B0B0F) 
+        : AppColorsLight.backgroundPrimary;
+    
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              theme.scaffoldBackgroundColor,
-              theme.colorScheme.surface.withValues(alpha: 0.3),
-            ],
+      backgroundColor: backgroundColor,
+      body: Stack(
+        children: [
+          // Animated Background (matching forums page)
+          AnimatedBuilder(
+            animation: _backgroundAnimationController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: _AnimatedBackgroundPainter(
+                  progress: _backgroundAnimationController.value,
+                  isDarkMode: isDarkMode,
+                ),
+                size: Size.infinite,
+              );
+            },
           ),
-        ),
-        child: Column(
-          children: [
-            const CustomNavigationBar(),
-            Expanded(
-              child: Center(
+          Column(
+            children: [
+              const CustomNavigationBar(),
+              Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header Section
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Icon(
-                                  Icons.edit_note,
-                                  size: 32,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.postId != null ? 'Edit Post' : 'Create New Post',
-                                      style: theme.textTheme.headlineLarge?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      widget.postId != null
-                                          ? 'Update your post content'
-                                          : 'Share your thoughts with the community',
-                                      style: theme.textTheme.bodyLarge?.copyWith(
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 32),
-
-                          // Title Field
-                          Container(
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _titleController,
-                            decoration: InputDecoration(
-                              labelText: 'Post Title',
-                              hintText: 'Enter a catchy title for your post...',
-                              prefixIcon: Icon(
-                                Icons.title,
-                                color: theme.colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: theme.colorScheme.surface,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 16,
-                              ),
-                            ),
-                            style: theme.textTheme.titleMedium,
-                            validator: (value) =>
-                                value == null || value.isEmpty ? 'Title cannot be empty' : null,
-                          ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Topic Dropdown
-                          Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedTopic,
-                            decoration: InputDecoration(
-                              labelText: 'Topic',
-                              prefixIcon: Icon(
-                                Icons.category,
-                                color: theme.colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: theme.colorScheme.surface,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 16,
-                              ),
-                            ),
-                            items: _topicOptions
-                                .map((topic) => DropdownMenuItem(
-                                      value: topic,
-                                      child: Text(topic),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() => _selectedTopic = value);
-                              }
-                            },
-                          ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Content Field
-                          Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _contentController,
-                            decoration: InputDecoration(
-                              labelText: 'Content',
-                              hintText: 'Write your post content here...',
-                              alignLabelWithHint: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: theme.colorScheme.surface,
-                              contentPadding: const EdgeInsets.all(20),
-                            ),
-                            maxLines: 12,
-                            validator: (value) => value == null || value.isEmpty
-                                ? 'Content cannot be empty'
-                                : null,
-                          ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Image Upload Section (only show when creating new post, not editing)
-                          if (widget.postId == null) ...[
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 20 : 32,
+                    vertical: isMobile ? 20 : 40,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isMobile ? double.infinity : 800,
+                      ),
+                      child: FadeTransition(
+                        opacity: _headerFadeAnimation,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Premium Header (matching forums page style)
                             Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isMobile ? 20 : 32,
+                                vertical: isMobile ? 20 : 40,
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.image,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Attach Images',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                  // Minimal Badge
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isMobile ? 12 : 16,
+                                      vertical: isMobile ? 6 : 8,
                                     ),
-                                  ),
-                                  const Spacer(),
-                                  if (_selectedImages.length < 5)
-                                    OutlinedButton.icon(
-                                      onPressed: _pickImages,
-                                      icon: const Icon(Icons.add_photo_alternate, size: 18),
-                                      label: const Text('Add Images'),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.black.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: (isDarkMode ? Colors.white : Colors.black)
+                                            .withValues(alpha: 0.1),
                                       ),
                                     ),
+                                    child: Text(
+                                      'COMMUNITY FORUM',
+                                      style: theme.textTheme.labelLarge?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                                        letterSpacing: 2,
+                                        fontSize: isMobile ? 10 : 11,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: isMobile ? 16 : 24),
+                                  
+                                  // Main Title
+                                  Text(
+                                    widget.postId != null ? 'Edit Post' : 'Start Discussion',
+                                    style: theme.textTheme.displayLarge?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: isMobile ? 32 : 42,
+                                      letterSpacing: -1,
+                                      color: isDarkMode ? Colors.white : Colors.black87,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  SizedBox(height: isMobile ? 8 : 12),
+                                  
+                                  Text(
+                                    widget.postId != null
+                                        ? 'Update your post content'
+                                        : 'Share your thoughts with the community',
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontSize: isMobile ? 14 : 16,
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                  SizedBox(height: isMobile ? 20 : 32),
                                 ],
                               ),
-                              if (_selectedImages.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  '${_selectedImages.length} image${_selectedImages.length > 1 ? 's' : ''} selected',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                            
+                            // Form Section
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+
+                                  // Title Field
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.grey.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDarkMode 
+                                            ? Colors.white.withValues(alpha: 0.1)
+                                            : Colors.black.withValues(alpha: 0.05),
+                                      ),
+                                    ),
+                                    child: TextFormField(
+                                      controller: _titleController,
+                                      style: TextStyle(
+                                        color: isDarkMode ? Colors.white : Colors.black87,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Post Title',
+                                        labelStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                        ),
+                                        hintText: 'Enter a catchy title for your post...',
+                                        hintStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                        ),
+                                        helperText: 'Choose a clear and descriptive title that summarizes your post',
+                                        helperStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                          fontSize: 12,
+                                        ),
+                                        helperMaxLines: 2,
+                                        prefixIcon: Icon(
+                                          Icons.title,
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                          size: 20,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.1)
+                                                : Colors.black.withValues(alpha: 0.05),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? AppColorsDark.textNeon
+                                                : AppColorsLight.textNeon,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                      validator: (value) =>
+                                          value == null || value.isEmpty ? 'Title cannot be empty' : null,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  height: 100,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: _selectedImages.length,
-                                    itemBuilder: (context, index) {
-                                      final image = _selectedImages[index];
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 8),
-                                        child: Stack(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: FutureBuilder<Uint8List>(
-                                                future: image.readAsBytes(),
-                                                builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                                    return Container(
-                                                      width: 100,
-                                                      height: 100,
-                                                      color: theme.colorScheme.surfaceVariant,
-                                                      child: const Center(
-                                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                                      ),
-                                                    );
-                                                  }
-                                                  if (snapshot.hasError || !snapshot.hasData) {
-                                                    return Container(
-                                                      width: 100,
-                                                      height: 100,
-                                                      color: theme.colorScheme.surfaceVariant,
-                                                      child: const Icon(Icons.broken_image),
-                                                    );
-                                                  }
-                                                  return Image.memory(
-                                                    snapshot.data!,
-                                                    width: 100,
-                                                    height: 100,
-                                                    fit: BoxFit.cover,
+                                  const SizedBox(height: 20),
+
+                                  // Topic Dropdown
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.grey.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDarkMode 
+                                            ? Colors.white.withValues(alpha: 0.1)
+                                            : Colors.black.withValues(alpha: 0.05),
+                                      ),
+                                    ),
+                                    child: DropdownButtonFormField<String>(
+                                      value: _selectedTopic,
+                                      style: TextStyle(
+                                        color: isDarkMode ? Colors.white : Colors.black87,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Topic',
+                                        labelStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                        ),
+                                        prefixIcon: Icon(
+                                          Icons.category,
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                          size: 20,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.1)
+                                                : Colors.black.withValues(alpha: 0.05),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? AppColorsDark.textNeon
+                                                : AppColorsLight.textNeon,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                      dropdownColor: isDarkMode 
+                                          ? const Color(0xFF0B0B0F)
+                                          : AppColorsLight.backgroundPrimary,
+                                      items: _topicOptions
+                                          .map((topic) => DropdownMenuItem(
+                                                value: topic,
+                                                child: Text(
+                                                  topic,
+                                                  style: TextStyle(
+                                                    color: isDarkMode ? Colors.white : Colors.black87,
+                                                  ),
+                                                ),
+                                              ))
+                                          .toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() => _selectedTopic = value);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // Content Field
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode 
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.grey.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDarkMode 
+                                            ? Colors.white.withValues(alpha: 0.1)
+                                            : Colors.black.withValues(alpha: 0.05),
+                                      ),
+                                    ),
+                                    child: TextFormField(
+                                      controller: _contentController,
+                                      style: TextStyle(
+                                        color: isDarkMode ? Colors.white : Colors.black87,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Content',
+                                        labelStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                        ),
+                                        hintText: 'Write your post content here...',
+                                        hintStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                        ),
+                                        helperText: 'Share your thoughts, questions, or experiences. You can also attach images below.',
+                                        helperStyle: TextStyle(
+                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                          fontSize: 12,
+                                        ),
+                                        helperMaxLines: 2,
+                                        alignLabelWithHint: true,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? Colors.white.withValues(alpha: 0.1)
+                                                : Colors.black.withValues(alpha: 0.05),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: isDarkMode 
+                                                ? AppColorsDark.textNeon
+                                                : AppColorsLight.textNeon,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: const EdgeInsets.all(16),
+                                      ),
+                                      maxLines: 12,
+                                      validator: (value) => value == null || value.isEmpty
+                                          ? 'Content cannot be empty'
+                                          : null,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // Image Upload Section (only show when creating new post, not editing)
+                                  if (widget.postId == null) ...[
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode 
+                                            ? Colors.white.withValues(alpha: 0.05)
+                                            : Colors.grey.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDarkMode 
+                                              ? Colors.white.withValues(alpha: 0.1)
+                                              : Colors.black.withValues(alpha: 0.05),
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.image,
+                                                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Attach Images',
+                                                style: theme.textTheme.titleMedium?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                                ),
+                                              ),
+                                              const Spacer(),
+                                              if (_selectedImages.length < 5)
+                                                OutlinedButton.icon(
+                                                  onPressed: _pickImages,
+                                                  icon: Icon(
+                                                    Icons.add_photo_alternate,
+                                                    size: 18,
+                                                    color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                                                  ),
+                                                  label: Text(
+                                                    'Add Images',
+                                                    style: TextStyle(
+                                                      color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  style: OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
+                                                    side: BorderSide(
+                                                      color: isDarkMode 
+                                                          ? AppColorsDark.textNeon.withValues(alpha: 0.5)
+                                                          : AppColorsLight.textNeon.withValues(alpha: 0.5),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          if (_selectedImages.isNotEmpty) ...[
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              '${_selectedImages.length} image${_selectedImages.length > 1 ? 's' : ''} selected',
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            SizedBox(
+                                              height: 100,
+                                              child: ListView.builder(
+                                                scrollDirection: Axis.horizontal,
+                                                itemCount: _selectedImages.length,
+                                                itemBuilder: (context, index) {
+                                                  final image = _selectedImages[index];
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(right: 8),
+                                                    child: Stack(
+                                                      children: [
+                                                        ClipRRect(
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          child: FutureBuilder<Uint8List>(
+                                                            future: image.readAsBytes(),
+                                                            builder: (context, snapshot) {
+                                                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                                                return Container(
+                                                                  width: 100,
+                                                                  height: 100,
+                                                                  color: theme.colorScheme.surfaceVariant,
+                                                                  child: const Center(
+                                                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                                                  ),
+                                                                );
+                                                              }
+                                                              if (snapshot.hasError || !snapshot.hasData) {
+                                                                return Container(
+                                                                  width: 100,
+                                                                  height: 100,
+                                                                  color: theme.colorScheme.surfaceVariant,
+                                                                  child: const Icon(Icons.broken_image),
+                                                                );
+                                                              }
+                                                              return Image.memory(
+                                                                snapshot.data!,
+                                                                width: 100,
+                                                                height: 100,
+                                                                fit: BoxFit.cover,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ),
+                                                        Positioned(
+                                                          top: 4,
+                                                          right: 4,
+                                                          child: Material(
+                                                            color: Colors.red,
+                                                            borderRadius: BorderRadius.circular(12),
+                                                            child: InkWell(
+                                                              onTap: () => _removeImage(index),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                              child: const Padding(
+                                                                padding: EdgeInsets.all(4),
+                                                                child: Icon(
+                                                                  Icons.close,
+                                                                  size: 16,
+                                                                  color: Colors.white,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   );
                                                 },
                                               ),
                                             ),
-                                            Positioned(
-                                              top: 4,
-                                              right: 4,
-                                              child: Material(
-                                                color: Colors.red,
-                                                borderRadius: BorderRadius.circular(12),
-                                                child: InkWell(
-                                                  onTap: () => _removeImage(index),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: const Padding(
-                                                    padding: EdgeInsets.all(4),
-                                                    child: Icon(
-                                                      Icons.close,
-                                                      size: 16,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
                                           ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          ),
-                          ],
-                          const SizedBox(height: 32),
-
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: _isLoading ? null : () => context.pop(),
-                                  style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  ),
-                                  child: const Text('Cancel'),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 2,
-                                child: FilledButton(
-                                onPressed: _isLoading ? null : _submitPost,
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      )
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(widget.postId != null ? Icons.save : Icons.send, size: 20),
-                                          const SizedBox(width: 8),
-                                          Text(widget.postId != null ? 'Update Post' : 'Submit Post'),
                                         ],
                                       ),
-                                ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 32),
+
+                                  // Action Buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: _isLoading ? null : () => context.pop(),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(vertical: 16),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            side: BorderSide(
+                                              color: isDarkMode 
+                                                  ? Colors.white.withValues(alpha: 0.2)
+                                                  : Colors.black.withValues(alpha: 0.1),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              color: isDarkMode ? Colors.white : Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        flex: 2,
+                                        child: FilledButton(
+                                          onPressed: _isLoading ? null : _submitPost,
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(vertical: 16),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            backgroundColor: isDarkMode 
+                                                ? AppColorsDark.textNeon
+                                                : AppColorsLight.textNeon,
+                                          ),
+                                          child: _isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                                  ),
+                                                )
+                                              : Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      widget.postId != null ? Icons.save : Icons.send,
+                                                      size: 20,
+                                                      color: Colors.black,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      widget.postId != null ? 'Update Post' : 'Submit Post',
+                                                      style: const TextStyle(
+                                                        color: Colors.black,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
+
+// Animated Background Painter (matching forums page)
+class _AnimatedBackgroundPainter extends CustomPainter {
+  final double progress;
+  final bool isDarkMode;
+
+  _AnimatedBackgroundPainter({
+    required this.progress,
+    required this.isDarkMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Keep it extremely subtle for the clean screenshot look
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
+
+    for (int i = 0; i < 2; i++) {
+      final offset = progress + (i * 0.5);
+      final x = size.width * (0.3 + 0.4 * math.sin(offset * 2 * math.pi));
+      final y = size.height * (0.2 + 0.3 * math.cos(offset * 2 * math.pi));
+      
+      paint.shader = RadialGradient(
+        colors: [
+          (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
+              .withValues(alpha: 0.05), // Extremely low opacity
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 400));
+      
+      canvas.drawCircle(Offset(x, y), 400, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
