@@ -210,10 +210,11 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       if (shouldSelect) {
         if (_comparisonComponents.length >= _maxComparisonItems &&
             !_comparisonComponents.containsKey(component.id)) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'You can compare up to $_maxComparisonItems components at once.',
+                l10n.maxComparisonLimit(_maxComparisonItems),
               ),
             ),
           );
@@ -261,9 +262,9 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        const Text(
-                          'Component Comparison',
-                          style: TextStyle(
+                        Text(
+                          AppLocalizations.of(context)!.componentComparison,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -289,7 +290,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                               .withOpacity(0.3),
                         ),
                         columns: [
-                          const DataColumn(label: Text('Spec')),
+                          DataColumn(label: Text(AppLocalizations.of(context)!.spec)),
                           ...components.map(
                             (component) => DataColumn(
                               label: SizedBox(
@@ -357,7 +358,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                       child: TextButton.icon(
                         onPressed: _clearComparisonSelection,
                         icon: const Icon(Icons.delete_sweep_outlined),
-                        label: const Text('Clear Selection'),
+                        label: Text(AppLocalizations.of(context)!.clearSelection),
                       ),
                     ),
                   ),
@@ -825,9 +826,9 @@ class _LeftPanel extends ConsumerWidget {
       children: [
         /// A checkbox to toggle the compatibility filter.
         CheckboxListTile(
-          title: const Text(
-            'Compatibility Filter',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            AppLocalizations.of(context)!.compatibilityFilter,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           value: enableCompatibilityFilter,
           onChanged: (val) {
@@ -1241,7 +1242,7 @@ class _PaginationControls extends StatelessWidget {
     return Row(
       children: [
         Text(
-          'Page $currentPage',
+          '${AppLocalizations.of(context)!.page} $currentPage',
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -1250,13 +1251,13 @@ class _PaginationControls extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: canGoBack ? () => onPageChanged(currentPage - 1) : null,
           icon: const Icon(Icons.chevron_left),
-          label: const Text('Previous'),
+          label: Text(AppLocalizations.of(context)!.previous),
         ),
         const SizedBox(width: 12),
         FilledButton.icon(
           onPressed: canGoForward ? () => onPageChanged(currentPage + 1) : null,
           icon: const Icon(Icons.chevron_right),
-          label: const Text('Next'),
+          label: Text(AppLocalizations.of(context)!.next),
         ),
       ],
     );
@@ -1332,7 +1333,7 @@ class _TopBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Compatible Products ($count)',
+            AppLocalizations.of(context)!.compatibleProductsCount(count),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -1341,7 +1342,7 @@ class _TopBar extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onOpenFilters,
                 icon: const Icon(Icons.filter_list),
-                label: const Text('Filters'),
+                label: Text(AppLocalizations.of(context)!.filters),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF2A2A35),
                   foregroundColor: Colors.white,
@@ -1358,7 +1359,7 @@ class _TopBar extends StatelessWidget {
           TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Search processors...',
+              hintText: AppLocalizations.of(context)!.searchProcessors,
               hintStyle: TextStyle(color: Colors.grey.shade600),
               prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
               filled: true,
@@ -1385,7 +1386,7 @@ class _TopBar extends StatelessWidget {
         Expanded(
           flex: 2,
           child: Text(
-            'Compatible Products ($count) • Page $currentPage',
+            AppLocalizations.of(context)!.compatibleProductsCountPage(count, currentPage),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1396,7 +1397,7 @@ class _TopBar extends StatelessWidget {
           child: TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Search processors...',
+              hintText: AppLocalizations.of(context)!.searchProcessors,
               hintStyle: TextStyle(color: Colors.grey.shade500),
               prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
               filled: true,
@@ -1418,7 +1419,7 @@ class _TopBar extends StatelessWidget {
           onPressed: selectedComparisonCount >= 2 ? onCompare : null,
           icon: const Icon(Icons.compare_arrows),
           label: Text(
-            'Compare ($selectedComparisonCount/$maxComparisonItems)',
+            AppLocalizations.of(context)!.compareCount(selectedComparisonCount, maxComparisonItems),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
@@ -1433,14 +1434,14 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 8),
           TextButton(
             onPressed: onClearComparison,
-            child: const Text('Clear'),
+            child: Text(AppLocalizations.of(context)!.clear),
           ),
         ],
         const SizedBox(width: 16),
         ElevatedButton.icon(
           onPressed: onClearFilters,
           icon: const Icon(Icons.filter_alt_off, size: 20),
-          label: const Text('Clear Filters'),
+          label: Text(AppLocalizations.of(context)!.clearFilters),
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.error,
             foregroundColor: Theme.of(context).colorScheme.onError,
