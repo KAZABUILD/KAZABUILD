@@ -17,7 +17,8 @@ RUN pip install -r requirements.txt
 # Run the script
 # Notice the path is now 'scripts/import_buildcores.py'
 # And input-dir is 'buildcores-open-db' (based on your tree output)
-CMD python scripts/check_compatibilities.py \
-    --connection-string "Server=mssql.railway.internal,1433;Database=kazabuild_db;UID=sa;PWD=${DB_PASSWORD};TrustServerCertificate=yes;Encrypt=no;" \
-    --batch-size 100000 \
-    --resume-count 11450000
+CMD python scripts/import_buildcores.py \
+    --input-dir ./buildcores-open-db \
+    --connection-string "Server=kazabuild.railway.internal,1433;Database=kazabuild_db;UID=sa;PWD=${DB_PASSWORD};TrustServerCertificate=yes;" \
+    --component-types MONITOR \
+    --batch-size 1000
