@@ -8,10 +8,18 @@ namespace KAZABUILD.Application.Helpers
     {
         public static EmailContent GetAccountConfirmationEmailBody(string displayName, string confirmUrl)
         {
+            var basePath = AppContext.BaseDirectory;
             //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "Defaults", "kaza.png");
-
+            var imagePath = Path.Combine(basePath, "wwwroot", "defaults", "kaza.png");
+            
+            if (!File.Exists(imagePath))
+            {
+                // Log strictly to console so you can see it in Railway logs if it fails again
+                Console.WriteLine($"[CRITICAL] Email image not found at: {imagePath}");
+                // Fallback to avoid crashing the whole email flow? 
+                // Or let it throw so you know it's missing.
+            }
+            
             //Try to get the logo from the bin as a safeguard
             if (!File.Exists(imagePath))
                 imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
