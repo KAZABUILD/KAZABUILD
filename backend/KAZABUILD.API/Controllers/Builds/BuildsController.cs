@@ -1084,7 +1084,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     .OfType<CoolerComponent>()
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.COOLER)
-                    .Where(c => (new[] { (BaseComponent)cpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)));
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                 var coolerComponent = await BuildGenerationHelper.FindComponentAsync(
                     coolerBaseQuery,
@@ -1169,7 +1170,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     .Include(c => c.Prices)
                     .Include(c => c.CompatibleComponents)
                     .Where(c => c.Type == ComponentType.POWER_SUPPLY)
-                    .Where(c => (new[] { (BaseComponent)gpuComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)))
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                     .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
 
                 var powerSupplyComponent = await BuildGenerationHelper.FindComponentAsync(
@@ -1191,8 +1193,10 @@ namespace KAZABUILD.API.Controllers.Builds
                     .OfType<CaseComponent>()
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.CASE)
-                    .Where(c => (new[] { (BaseComponent)motherboardComponent, (BaseComponent)coolerComponent, (BaseComponent)powerSupplyComponent, (BaseComponent)gpuComponent })
-                                    .All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)));
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == powerSupplyComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == coolerComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                 var caseComponent = await BuildGenerationHelper.FindComponentAsync(
                     caseBaseQuery,
@@ -1213,7 +1217,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     .OfType<CaseFanComponent>()
                     .Include(c => c.Prices)
                     .Where(c => c.Type == ComponentType.CASE_FAN)
-                    .Where(c => (new[] { (BaseComponent)caseComponent, (BaseComponent)motherboardComponent }).All(com => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == com.Id)));
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == caseComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                 var caseFanComponent = await BuildGenerationHelper.FindComponentAsync(
                     caseFanBaseQuery,
