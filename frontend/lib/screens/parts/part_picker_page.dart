@@ -14,6 +14,8 @@
 
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -78,6 +80,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   /// Controller for the text-based search input.
   final _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _searchDebounce;
   late int _currentPage;
   static const int _maxComparisonItems = 4;
   final Map<String, BaseComponent> _comparisonComponents = {};
@@ -113,6 +116,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _scrollController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -143,17 +147,35 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   }
 
   void _onSearchChanged() {
-    setState(() {}); // Trigger rebuild to apply search filter
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _currentPage = 1;
+      });
+      _loadCurrentPage(force: true, targetPage: 1);
+      _updateUrl(1);
+    });
   }
 
   int _sanitizePage(int page) => page < 1 ? 1 : page;
+
+  Map<String, dynamic> _buildFilters() {
+    final activeFilters =
+        Map<String, dynamic>.from(ref.read(activeFiltersProvider(widget.componentType)));
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      activeFilters['Query'] = query;
+    }
+    return activeFilters;
+  }
 
   void _loadCurrentPage({bool force = false, int? targetPage}) {
     final notifier = ref.read(
       componentPagingProvider(widget.componentType).notifier,
     );
     final desiredPage = targetPage ?? _currentPage;
-    final filters = ref.read(activeFiltersProvider(widget.componentType));
+    final filters = _buildFilters();
     
     if (force) {
       notifier.goToPage(desiredPage, filters: filters);
@@ -474,18 +496,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     Set<String>? compatibleIds,
   }) {
     return products.where((product) {
-      // Search filter - keep client side for immediate responsiveness
-      final searchText = _searchController.text.toLowerCase();
-      if (searchText.isNotEmpty) {
-        if (!product.name.toLowerCase().contains(searchText) &&
-            !product.manufacturer.toLowerCase().contains(searchText)) {
-          return false;
-        }
-      }
-
-      // Note: Other filters are now handled server-side via the API call parameters.
-      // We skip the redundant client-side checks to avoid conflicts.
-
+      // Note: All filters except compatibility are handled server-side.
       // Compatibility filter
       if (_enableCompatibilityFilter && compatibleIds != null) {
         // If compatibility filter is enabled, only show products that are compatible
