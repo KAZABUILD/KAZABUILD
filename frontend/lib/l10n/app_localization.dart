@@ -1965,6 +1965,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in to continue your journey'**
   String get signInToContinue;
+
+  /// No description provided for @compatibleProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible Products'**
+  String get compatibleProducts;
+
+  /// No description provided for @compatibleProductsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible Products ({count})'**
+  String compatibleProductsCount(Object count);
+
+  /// No description provided for @compatibleProductsCountPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible Products ({count}) • Page {page}'**
+  String compatibleProductsCountPage(Object count, Object page);
+
+  /// No description provided for @page.
+  ///
+  /// In en, this message translates to:
+  /// **'Page'**
+  String get page;
+
+  /// No description provided for @compare.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare'**
+  String get compare;
+
+  /// No description provided for @compareCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare ({selected}/{max})'**
+  String compareCount(Object max, Object selected);
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Filters'**
+  String get clearFilters;
+
+  /// No description provided for @compatibilityFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatibility Filter'**
+  String get compatibilityFilter;
+
+  /// No description provided for @componentComparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Component Comparison'**
+  String get componentComparison;
+
+  /// No description provided for @spec.
+  ///
+  /// In en, this message translates to:
+  /// **'Spec'**
+  String get spec;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @searchProcessors.
+  ///
+  /// In en, this message translates to:
+  /// **'Search processors...'**
+  String get searchProcessors;
+
+  /// No description provided for @maxComparisonLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can compare up to {max} components at once.'**
+  String maxComparisonLimit(Object max);
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Selection'**
+  String get clearSelection;
 }
 
 class _AppLocalizationsDelegate

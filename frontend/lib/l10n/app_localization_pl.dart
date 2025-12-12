@@ -995,4 +995,60 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get signInToContinue => 'Zaloguj się, aby kontynuować swoją podróż';
+
+  @override
+  String get compatibleProducts => 'Kompatybilne Produkty';
+
+  @override
+  String compatibleProductsCount(Object count) {
+    return 'Kompatybilne Produkty ($count)';
+  }
+
+  @override
+  String compatibleProductsCountPage(Object count, Object page) {
+    return 'Kompatybilne Produkty ($count) • Strona $page';
+  }
+
+  @override
+  String get page => 'Strona';
+
+  @override
+  String get compare => 'Porównaj';
+
+  @override
+  String compareCount(Object max, Object selected) {
+    return 'Porównaj ($selected/$max)';
+  }
+
+  @override
+  String get clear => 'Wyczyść';
+
+  @override
+  String get clearFilters => 'Wyczyść Filtry';
+
+  @override
+  String get compatibilityFilter => 'Filtr Kompatybilności';
+
+  @override
+  String get componentComparison => 'Porównanie Komponentów';
+
+  @override
+  String get spec => 'Specyfikacja';
+
+  @override
+  String get previous => 'Poprzednia';
+
+  @override
+  String get next => 'Następna';
+
+  @override
+  String get searchProcessors => 'Szukaj procesorów...';
+
+  @override
+  String maxComparisonLimit(Object max) {
+    return 'Możesz porównać maksymalnie $max komponentów jednocześnie.';
+  }
+
+  @override
+  String get clearSelection => 'Wyczyść Wybór';
 }

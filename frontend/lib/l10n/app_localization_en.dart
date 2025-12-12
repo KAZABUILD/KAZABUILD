@@ -986,4 +986,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInToContinue => 'Sign in to continue your journey';
+
+  @override
+  String get compatibleProducts => 'Compatible Products';
+
+  @override
+  String compatibleProductsCount(Object count) {
+    return 'Compatible Products ($count)';
+  }
+
+  @override
+  String compatibleProductsCountPage(Object count, Object page) {
+    return 'Compatible Products ($count) • Page $page';
+  }
+
+  @override
+  String get page => 'Page';
+
+  @override
+  String get compare => 'Compare';
+
+  @override
+  String compareCount(Object max, Object selected) {
+    return 'Compare ($selected/$max)';
+  }
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get clearFilters => 'Clear Filters';
+
+  @override
+  String get compatibilityFilter => 'Compatibility Filter';
+
+  @override
+  String get componentComparison => 'Component Comparison';
+
+  @override
+  String get spec => 'Spec';
+
+  @override
+  String get previous => 'Previous';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get searchProcessors => 'Search processors...';
+
+  @override
+  String maxComparisonLimit(Object max) {
+    return 'You can compare up to $max components at once.';
+  }
+
+  @override
+  String get clearSelection => 'Clear Selection';
 }

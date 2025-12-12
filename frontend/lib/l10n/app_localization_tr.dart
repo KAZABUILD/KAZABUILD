@@ -990,4 +990,60 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get signInToContinue => 'Yolculuğunuza devam etmek için giriş yapın';
+
+  @override
+  String get compatibleProducts => 'Uyumlu Ürünler';
+
+  @override
+  String compatibleProductsCount(Object count) {
+    return 'Uyumlu Ürünler ($count)';
+  }
+
+  @override
+  String compatibleProductsCountPage(Object count, Object page) {
+    return 'Uyumlu Ürünler ($count) • Sayfa $page';
+  }
+
+  @override
+  String get page => 'Sayfa';
+
+  @override
+  String get compare => 'Karşılaştır';
+
+  @override
+  String compareCount(Object max, Object selected) {
+    return 'Karşılaştır ($selected/$max)';
+  }
+
+  @override
+  String get clear => 'Temizle';
+
+  @override
+  String get clearFilters => 'Filtreleri Temizle';
+
+  @override
+  String get compatibilityFilter => 'Uyumluluk Filtresi';
+
+  @override
+  String get componentComparison => 'Bileşen Karşılaştırması';
+
+  @override
+  String get spec => 'Özellik';
+
+  @override
+  String get previous => 'Önceki';
+
+  @override
+  String get next => 'Sonraki';
+
+  @override
+  String get searchProcessors => 'İşlemci ara...';
+
+  @override
+  String maxComparisonLimit(Object max) {
+    return 'Aynı anda en fazla $max bileşeni karşılaştırabilirsiniz.';
+  }
+
+  @override
+  String get clearSelection => 'Seçimi Temizle';
 }
