@@ -203,10 +203,12 @@ namespace KAZABUILD.Application.Helpers
             if (result != null)
                 return result;
 
+            var skipAmount = minPrice * 0.1;
+
             //Attempt to decrease the price constraints if no result found
-            while(minPrice > 0)
+            while (minPrice > 0)
             {
-                minPrice -= minPrice * 0.1;
+                minPrice -= skipAmount;
                 query = baseQuery.Where(c =>
                     c.Prices.Any() &&
                     c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
