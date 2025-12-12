@@ -708,9 +708,19 @@ class AdminQuizAnswer {
   });
 
   factory AdminQuizAnswer.fromJson(Map<String, dynamic> json) {
+    // Some endpoints return the answer ID as `UserPreferenceAnswerId`
+    // instead of the usual `Id`/`id`. Capture all variants so we can
+    // safely edit/delete answers in the same session.
+    final rawId = json['id'] ??
+        json['Id'] ??
+        json['userPreferenceAnswerId'] ??
+        json['UserPreferenceAnswerId'];
+    final rawQuestionId =
+        json['userPreferenceId'] ?? json['UserPreferenceId'] ?? '';
+
     return AdminQuizAnswer(
-      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
-      questionId: json['userPreferenceId']?.toString() ?? json['UserPreferenceId']?.toString() ?? '',
+      id: rawId?.toString() ?? '',
+      questionId: rawQuestionId.toString(),
       answer: json['answer'] ?? json['Answer'] ?? '',
       createdAt: _parseDateTime(json['databaseEntryAt'] ?? json['DatabaseEntryAt']),
       updatedAt: _parseDateTime(json['lastEditedAt'] ?? json['LastEditedAt']),

@@ -570,10 +570,10 @@ class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
     if (topic.contains('Support') || topic.contains('Troubleshooting')) {
       textColor = const Color(0xFFE2E8F0); // Light Grey/White
       borderColor = const Color(0xFFE2E8F0);
-    } else if (topic.contains('News') || topic.contains('Discussion')) {
+    } else if (topic.contains('News') || topic.contains('Build Advice')) {
       textColor = const Color(0xFFA855F7); // Purple
       borderColor = const Color(0xFFA855F7);
-    } else if (topic.contains('Build') || topic.contains('Showcase')) {
+    } else if (topic.contains('Build') || topic.contains('Show Off Your Build')) {
       textColor = const Color(0xFF4ADE80); // Green
       borderColor = const Color(0xFF4ADE80);
     } else {
