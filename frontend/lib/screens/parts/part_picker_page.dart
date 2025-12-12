@@ -479,12 +479,16 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     );
 
     try {
-      for (final componentId in componentIds) {
-        final compatible = await service.getCompatibleComponentIds(componentId);
-        compatibleIds.addAll(compatible);
-        // Also add the component itself as compatible
-        compatibleIds.add(componentId);
+      // Fetch in parallel
+      final futures = componentIds.map((id) => service.getCompatibleComponentIds(id));
+      final results = await Future.wait(futures);
+      
+      for (final list in results) {
+        compatibleIds.addAll(list);
       }
+      
+      // Also add the components themselves as compatible
+      compatibleIds.addAll(componentIds);
     } catch (e) {
       debugPrint('Error fetching compatible components: $e');
     }
