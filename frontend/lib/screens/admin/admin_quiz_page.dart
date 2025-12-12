@@ -496,8 +496,13 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
         );
         _showSnack('Answer created');
       } else {
+        final target = await _ensureAnswerWithId(existing);
+        if (target == null) {
+          _showSnack('Could not edit answer. Please refresh and try again.');
+          return;
+        }
         await adminService.updateQuizAnswer(
-          existing.id,
+          target.id,
           answer: result.answer,
         );
         _showSnack('Answer updated');
@@ -575,10 +580,16 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
 
     if (confirmed != true) return;
 
+    final target = await _ensureAnswerWithId(answer);
+    if (target == null) {
+      _showSnack('Could not find this answer. Please refresh and try again.');
+      return;
+    }
+
     final adminService = ref.read(adminServiceProvider);
     _setProcessing(true);
     try {
-      await adminService.deleteQuizAnswer(answer.id);
+      await adminService.deleteQuizAnswer(target.id);
       _showSnack('Answer deleted');
       await _loadData();
     } catch (e) {
@@ -635,6 +646,40 @@ class _AdminQuizPageState extends ConsumerState<AdminQuizPage> {
       _answerControllers.remove(key)?.dispose();
       _answerErrors.remove(key);
     }
+  }
+
+  /// Ensures we have an answer instance with a real backend ID.
+  /// Newly created answers can briefly lack an ID in local state,
+  /// which prevents edit/delete calls in the same session.
+  Future<AdminQuizAnswer?> _ensureAnswerWithId(AdminQuizAnswer answer) async {
+    if (answer.id.isNotEmpty) return answer;
+
+    // Try to match an answer with the same question + text that has an ID
+    final localMatch = _matchAnswerWithId(answer, _answers);
+    if (localMatch != null) return localMatch;
+
+    // Refresh data to fetch the persisted IDs
+    try {
+      await _loadData();
+    } catch (_) {
+      // _loadData already surfaces its own error message
+    }
+
+    return _matchAnswerWithId(answer, _answers);
+  }
+
+  AdminQuizAnswer? _matchAnswerWithId(
+    AdminQuizAnswer target,
+    List<AdminQuizAnswer> source,
+  ) {
+    for (final candidate in source) {
+      final sameQuestion = candidate.questionId == target.questionId;
+      final sameAnswer = candidate.answer.trim() == target.answer.trim();
+      if (sameQuestion && sameAnswer && candidate.id.isNotEmpty) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   Widget _buildAnswerList({

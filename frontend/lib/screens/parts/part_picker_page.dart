@@ -301,7 +301,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                   case 'Price':
                                     final price = components[index].lowestPrice;
                                     value = price != null
-                                        ? '\$${price.toStringAsFixed(2)}'
+                                        ? 'zł${price.toStringAsFixed(2)}'
                                         : 'N/A';
                                     break;
                                   case 'Type':
@@ -883,7 +883,7 @@ class _BuildSummary extends StatelessWidget {
           const SizedBox(height: 8),
           _SummaryRow(
             label: 'Total Price:',
-            value: '\$${totalPrice.toStringAsFixed(2)}',
+            value: 'zł${totalPrice.toStringAsFixed(2)}',
             valueColor: const Color(0xFF00E5FF),
           ),
           const SizedBox(height: 8),
@@ -1749,13 +1749,16 @@ abstract class _ProductRow extends ConsumerWidget {
     double? priceOverride,
   }) {
     final displayPrice = priceOverride ?? product.lowestPrice;
+    final priceText = displayPrice != null
+        ? 'zł${displayPrice.toStringAsFixed(2)}'
+        : 'N/A -';
     return Expanded(
       flex: flex,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Text(
-            '\$${displayPrice?.toStringAsFixed(2) ?? 'N/A -'}',
+            priceText,
             style: const TextStyle(
               color: Color(0xFF00E5FF),
               fontWeight: FontWeight.bold,
@@ -2446,7 +2449,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (cpu.release != null)
         MapEntry('Release Date', cpu.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2493,7 +2496,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (gpu.release != null)
         MapEntry('Release Date', gpu.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2568,7 +2571,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (mb.release != null)
         MapEntry('Release Date', mb.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2610,7 +2613,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (ram.release != null)
         MapEntry('Release Date', ram.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2634,7 +2637,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (storage.release != null)
         MapEntry('Release Date', storage.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2659,7 +2662,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (psu.release != null)
         MapEntry('Release Date', psu.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2720,7 +2723,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (case_.release != null)
         MapEntry('Release Date', case_.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2775,7 +2778,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (cooler.release != null)
         MapEntry('Release Date', cooler.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2810,7 +2813,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (fan.release != null)
         MapEntry('Release Date', fan.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2856,7 +2859,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (monitor.release != null)
         MapEntry('Release Date', monitor.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -2878,7 +2881,7 @@ class _ComponentSpecsDialog extends ConsumerWidget {
       if (component.release != null)
         MapEntry('Release Date', component.release!.toString().split(' ')[0]),
       if (component.lowestPrice != null)
-        MapEntry('Price', '\$${component.lowestPrice!.toStringAsFixed(2)}'),
+        MapEntry('Price', 'zł${component.lowestPrice!.toStringAsFixed(2)}'),
       if (component.averageRating != null)
         MapEntry(
           'Rating',
@@ -3109,7 +3112,7 @@ class _MobileProductCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '\$${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
+                  'zł${product.lowestPrice?.toStringAsFixed(2) ?? 'N/A'}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

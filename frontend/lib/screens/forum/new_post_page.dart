@@ -55,7 +55,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
     'General Discussion',
     'Build Advice',
     'Troubleshooting',
-    'Showcase',
+    'Show Off Your Build',
   ];
 
   @override
@@ -117,7 +117,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
       _titleController.text = "Check out my new build: ${build.name}";
       _contentController.text =
           "I just finished planning my new PC build and wanted to share it with the community!\n\n**Build Name:** ${build.name}\n**Description:** ${build.description ?? 'N/A'}\n\nLet me know what you think!";
-      _selectedTopic = 'Showcase';
+      _selectedTopic = 'Show Off Your Build';
     });
   }
 
