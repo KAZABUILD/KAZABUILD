@@ -129,10 +129,21 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
     );
   });
 
-  // Keep a stable order by label for UX
-  definitions.sort((a, b) => a.label.compareTo(b.label));
-  return definitions;
-}
+    // Keep a stable order by label for UX
+    definitions.sort((a, b) => a.label.compareTo(b.label));
+
+    // Add Compatibility filter
+    definitions.insert(
+      0,
+      const FilterDefinition(
+        key: 'Compatibility',
+        label: 'Compatibility',
+        type: FilterInputType.boolean,
+      ),
+    );
+
+    return definitions;
+  }
 
 String _humanizeKey(String key) {
   final withSpaces =
