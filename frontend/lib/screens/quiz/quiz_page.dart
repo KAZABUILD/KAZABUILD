@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/quiz_provider.dart';
+import '../../models/auth_provider.dart';
 import '../../widgets/navigation_bar.dart';
+import 'quiz_result_page.dart';
 
 /// Quiz page that displays questions and answers from the backend.
 /// Integrates with quiz_provider for state management.
@@ -15,6 +18,9 @@ class QuizPage extends ConsumerStatefulWidget {
 class _QuizPageState extends ConsumerState<QuizPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Set<String> _selectedAnswerIds = {};
+  bool _generationStarted = false;
+  Future<void>? _generationFuture;
+  String? _generationError;
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +53,23 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 final mainQuestions = questions.where((q) => q.parentAnswerId == null).toList();
                 
                 if (currentStep >= mainQuestions.length) {
-                  return const Center(
-                    child: Text(
-                      'Quiz completed!',
-                      style: TextStyle(color: Colors.white, fontSize: 24),
-                    ),
-                  );
+                  if (_generationError != null) {
+                    return _GenerationError(
+                      message: _generationError!,
+                      onRetry: () {
+                        ref.read(quizProvider.notifier).resetQuiz();
+                        ref.read(quizStepProvider.notifier).state = 0;
+                        setState(() {
+                          _generationStarted = false;
+                          _generationFuture = null;
+                          _generationError = null;
+                          _selectedAnswerIds.clear();
+                        });
+                      },
+                    );
+                  }
+                  _startGeneration(context);
+                  return const _GenerationLoading();
                 }
 
                 final currentQuestion = mainQuestions[currentStep];
@@ -161,6 +178,58 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     );
   }
 
+  Future<void> _startGeneration(BuildContext context) async {
+    if (_generationStarted) return;
+    _generationStarted = true;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final user = ref.read(authProvider).valueOrNull;
+      if (user != null) {
+        final quizState = ref.read(quizProvider);
+        final selections = quizState.selections.values.toList();
+
+        // Persist any selections that are not yet saved for this user
+        final quizService = ref.read(quizServiceProvider);
+        await Future.wait(
+          selections
+              .where((s) => (s.userAnswerId ?? '').isEmpty)
+              .map((s) async {
+                try {
+                  await quizService.submitAnswer(userId: user.uid, answerId: s.answerId);
+                } on DioException catch (e) {
+                  // Ignore duplicates already recorded server-side
+                  if (e.response?.statusCode != 409) rethrow;
+                }
+              }),
+        );
+
+        // Run the generation once for a batch of 3 builds
+        _generationFuture ??= quizService.generateBuilds();
+        await _generationFuture;
+      }
+
+      if (mounted) {
+        setState(() {
+          _generationError = null;
+        });
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const QuizResultsPage()),
+        );
+      }
+    } catch (e) {
+      _generationStarted = false;
+      _generationFuture = null;
+      final errMsg = e.toString().contains('No Components Found')
+          ? 'We could not find components that match your answers. Please retake the quiz.'
+          : 'Failed to generate builds. Please try again.';
+      setState(() {
+        _generationError = errMsg;
+      });
+      messenger.showSnackBar(SnackBar(content: Text(errMsg)));
+    }
+  }
+
   Widget _buildStepIndicator(int totalSteps, int currentStep) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -184,14 +253,27 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   Widget _buildAnswersGrid(QuizQuestion question, bool isMobile) {
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = isMobile
+        ? 1
+        : width > 1200
+            ? 3
+            : 2;
+    final aspectRatio = isMobile
+        ? 4.5
+        : width > 1200
+            ? 3.5
+            : 4.0;
+
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: false,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isMobile ? 1 : 2,
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: isMobile ? 5 : 4,
+        childAspectRatio: aspectRatio,
       ),
       itemCount: question.options.length,
       itemBuilder: (context, index) {
@@ -204,20 +286,19 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           isSelected: isSelected,
           onTap: () {
             setState(() {
+              final selectionKey = '${question.id}_${option.id}';
               if (_selectedAnswerIds.contains(option.id)) {
                 // Deselect if already selected
                 _selectedAnswerIds.remove(option.id);
                 // Remove from quiz provider
-                ref.read(quizProvider.notifier).removeSelection(
-                  '${question.id}_${option.id}',
-                );
+                ref.read(quizProvider.notifier).removeSelection(selectionKey);
               } else {
-                // Add to selection
+                // Multi-select: add without clearing others
                 _selectedAnswerIds.add(option.id);
-                // Save to quiz provider with unique key
+                // Save with unique key per option
                 ref.read(quizProvider.notifier).setSelection(
                   QuizAnswerSelection(
-                    questionId: '${question.id}_${option.id}',
+                    questionId: selectionKey,
                     questionText: question.text,
                     answerId: option.id,
                     answerText: option.text,
@@ -315,24 +396,26 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             const SizedBox(width: 24),
             // Next button - smaller and distinct
             ElevatedButton.icon(
-              onPressed: _selectedAnswerIds.isNotEmpty
-                  ? () async {
-                      final currentStep = ref.read(quizStepProvider);
-                      
-                      // Move to next step
-                      setState(() {
-                        _selectedAnswerIds = {};
-                      });
-                      ref.read(quizStepProvider.notifier).state = currentStep + 1;
-                    }
-                  : null,
+              onPressed: () async {
+                final step = ref.read(quizStepProvider);
+                final nextStep = step + 1;
+                final isLast = nextStep >= totalSteps;
+
+                // Move to next step (or finalize), allow skipping with no selection
+                setState(() {
+                  _selectedAnswerIds = {};
+                });
+                ref.read(quizStepProvider.notifier).state = nextStep;
+
+                if (isLast) {
+                  _startGeneration(context);
+                }
+              },
               icon: const Icon(Icons.arrow_forward, size: 18),
               label: const Text('Next'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B46FF),
-                disabledBackgroundColor: const Color(0xFF2A2838),
                 foregroundColor: Colors.white,
-                disabledForegroundColor: const Color(0xFF6B6B6B),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -343,6 +426,87 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _GenerationLoading extends StatelessWidget {
+  const _GenerationLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            CircularProgressIndicator(color: Color(0xFF6B46FF)),
+            SizedBox(height: 16),
+            Text(
+              'Generating your 3 recommended builds...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'We\'re preparing a batch of 3 builds based on your answers.',
+              style: TextStyle(
+                color: Color(0xFFB0B0B0),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GenerationError extends StatelessWidget {
+  const _GenerationError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.orange, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6B46FF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Retake Quiz'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,7 +5,17 @@ import random
 import sys
 import uuid
 from typing import List, Dict
+r"""
 
+py -3.11 test_build_generation.py ^
+  --connection-string "Server=localhost;Database=KAZABUILD_DB;Trusted_Connection=Yes;Encrypt=Yes;TrustServerCertificate=Yes" ^
+  --api-url "https://localhost:7249/" ^
+  --auth-token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImVtYWlsIjoia2F6YWJ1aWxkYXBwbGljYXRpb24iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTWVNURU0iLCJleHAiOjE3NjU2OTcyNjQsImlzcyI6IktBWkFCVUlMRC5BUEkiLCJhdWQiOiJLQVpBQlVJTEQuQ2xpZW50In0.YzGPll74Zk8_gygVx0az7i1djMCsIIION8i_vwTaqRw" ^
+  --user-id "00000000-0000-0000-0000-000000000001" ^
+  --odbc-driver "ODBC Driver 17 for SQL Server"  ^
+  --iterations 10
+
+"""
 try:
     import pyodbc
     import requests
@@ -296,7 +306,7 @@ class BuildGenerationTester:
             # Get Components for this build
             query_comps = """
                 SELECT c.Id, c.Name, c.Type, 
-                       (SELECT TOP 1 Price FROM ComponentPrice cp 
+                       (SELECT TOP 1 Price FROM ComponentPrices cp 
                         WHERE cp.ComponentId = c.Id 
                         ORDER BY cp.FetchedAt DESC) as Price
                 FROM BuildComponents bc
