@@ -72,6 +72,7 @@ final postCommentsProvider = FutureProvider.family<List<PostReply>, PostComments
 final postDetailProvider = FutureProvider.family<ForumPost, String>((ref, postId) async {
   final forumService = ref.read(forumServiceProvider);
   final post = await forumService.getPostById(postId);
+  // ForumPost.fromJson already converts UTC to local time, so we can use post.createdAt directly
   return ForumPost(
     id: post.id,
     title: post.title,
@@ -504,6 +505,18 @@ class _PostHeader extends ConsumerWidget {
     required this.isDarkMode,
   });
 
+  /// Shows full screen image viewer dialog
+  void _showFullScreenImageDialog(BuildContext context, List<String> imageUrls, int initialIndex) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => _FullScreenImageViewer(
+        imageUrls: imageUrls,
+        initialIndex: initialIndex,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -633,15 +646,20 @@ class _PostHeader extends ConsumerWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: imageUrls.map((imageUrl) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: 300,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const SizedBox(),
+                        children: imageUrls.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final imageUrl = entry.value;
+                          return GestureDetector(
+                            onTap: () => _showFullScreenImageDialog(context, imageUrls, index),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 300,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const SizedBox(),
+                              ),
                             ),
                           );
                         }).toList(),
@@ -1075,10 +1093,15 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
                   child: TextField(
                     controller: _replyController,
                     maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: currentUser.value != null ? (_) => _submitReply() : null,
                     style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black),
                     decoration: InputDecoration(
                       hintText: currentUser.value == null ? 'Log in to reply' : 'Write a reply...',
                       hintStyle: TextStyle(color: widget.isDarkMode ? Colors.white38 : Colors.black38),
+                      helperText: currentUser.value == null ? null : 'Share your thoughts or reply to other comments. You can attach images. Press Enter to submit.',
+                      helperStyle: TextStyle(color: widget.isDarkMode ? Colors.white60 : Colors.black54, fontSize: 12),
+                      helperMaxLines: 2,
                       filled: true,
                       fillColor: widget.isDarkMode ? const Color(0xFF1E1E28) : Colors.grey[100],
                       border: OutlineInputBorder(
@@ -1112,6 +1135,193 @@ class _ReplyInputSectionState extends ConsumerState<_ReplyInputSection> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full screen image viewer widget
+class _FullScreenImageViewer extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _FullScreenImageViewer({
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          // Full screen image viewer
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.network(
+                    widget.imageUrls[index],
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 300,
+                        height: 300,
+                        color: isDarkMode 
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.1),
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 64,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 300,
+                        height: 300,
+                        color: isDarkMode 
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.1),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Close button
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              onPressed: () => Navigator.of(context).pop(),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black54,
+                padding: const EdgeInsets.all(12),
+              ),
+            ),
+          ),
+
+          // Image counter (if multiple images)
+          if (widget.imageUrls.length > 1)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Navigation arrows (if multiple images)
+          if (widget.imageUrls.length > 1) ...[
+            if (_currentIndex > 0)
+              Positioned(
+                left: 20,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_left, color: Colors.white, size: 32),
+                    onPressed: () {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      padding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                ),
+              ),
+            if (_currentIndex < widget.imageUrls.length - 1)
+              Positioned(
+                right: 20,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_right, color: Colors.white, size: 32),
+                    onPressed: () {
+                      _pageController.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      padding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

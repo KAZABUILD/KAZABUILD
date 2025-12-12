@@ -36,13 +36,31 @@ class PostReply {
   /// Creates a `PostReply` instance from a JSON map.
   /// This is used when parsing replies included with a ForumPost.
   factory PostReply.fromJson(Map<String, dynamic> json) {
+    // Parse the date string - backend sends UTC time
+    DateTime parsedDate = DateTime.now();
+    var dateString = json['postedAt']?.toString() ?? json['PostedAt']?.toString();
+    
+    if (dateString != null && dateString.isNotEmpty) {
+      try {
+       
+        if (!dateString.endsWith('Z')) {
+           dateString += 'Z';
+        }
+
+        parsedDate = DateTime.parse(dateString);
+        // Convert to local time so UI displays correct "time ago"
+        parsedDate = parsedDate.toLocal();
+      } catch (e) {
+        // Fallback to current time if parsing fails
+        parsedDate = DateTime.now();
+      }
+    }
+    
     return PostReply(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
       authorId: json['userId']?.toString() ?? json['UserId']?.toString() ?? '',
       content: json['content'] ?? json['Content'] ?? '',
-      createdAt: json['postedAt'] != null || json['PostedAt'] != null
-          ? DateTime.parse(json['postedAt'] ?? json['PostedAt'])
-          : DateTime.now(),
+      createdAt: parsedDate,
       parentCommentId: json['parentCommentId']?.toString() ?? json['ParentCommentId']?.toString(),
     );
   }
@@ -105,13 +123,32 @@ class ForumPost {
 
   /// Creates a `ForumPost` instance from a JSON map returned by the backend.
   factory ForumPost.fromJson(Map<String, dynamic> json) {
+    // Parse the date string - backend sends UTC time
+    var dateString = json['postedAt']?.toString() ?? '';
+    DateTime parsedDate;
+    
+    try {
+      
+      if (dateString.isNotEmpty && !dateString.endsWith('Z')) {
+         dateString += 'Z';
+      }
+
+      parsedDate = DateTime.parse(dateString);
+      
+      // Always convert to local time
+      parsedDate = parsedDate.toLocal();
+    } catch (e) {
+      // Fallback to current time if parsing fails
+      parsedDate = DateTime.now();
+    }
+    
     return ForumPost(
       id: json['id'],
       title: json['title'],
       creatorId: json['creatorId'],
       topic: json['topic'],
       content: json['content'],
-      createdAt: DateTime.parse(json['postedAt']), // Backend uses 'postedAt'
+      createdAt: parsedDate,
       // Handle replies if they are included in the JSON response.
       // Backend's ForumPost has a 'comments' list which maps to 'replies'.
       replies: (json['comments'] as List<dynamic>?)

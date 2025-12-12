@@ -58,24 +58,33 @@ final buildUserProvider = FutureProvider.autoDispose.family<AppUser?, String>((r
 });
 
 /// A page that displays the full details of a specific [CommunityBuild].
-class BuildDetailPage extends ConsumerWidget {
+class BuildDetailPage extends ConsumerStatefulWidget {
   /// The ID of the build to display.
   final String buildId;
   const BuildDetailPage({super.key, required this.buildId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BuildDetailPage> createState() => _BuildDetailPageState();
+}
+
+class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final buildAsyncValue = ref.watch(buildDetailProvider(buildId));
+    final buildAsyncValue = ref.watch(buildDetailProvider(widget.buildId));
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
 
       /// The main layout is a column with the navigation bar at the top
       /// and the scrollable content below.
       body: Column(
         children: <Widget>[
-          const CustomNavigationBar(),
+          CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
             child: buildAsyncValue.when(
               data: (build) => _buildContentView(context, ref, build),
@@ -1494,6 +1503,72 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     });
   }
 
+  Future<void> _submitComment() async {
+    final text = _controller.text.trim();
+    // Allow posting with just images (no text required)
+    if (text.isEmpty && _selectedImages.isEmpty) return;
+    if (_posting) return;
+    
+    setState(() => _posting = true);
+    try {
+      final user = ref.read(authProvider).valueOrNull;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
+        );
+        setState(() => _posting = false);
+        return;
+      }
+      final authorName = user.username;
+      // Use text or placeholder if only images
+      final commentText = text.isEmpty ? '[Image]' : text;
+      final comment = await ref.read(buildCommentsProvider(widget.buildId).notifier).add(
+        authorName, 
+        commentText, 
+        user.uid,
+        parentCommentId: _replyingToCommentId,
+      );
+      
+      if (_selectedImages.isNotEmpty && comment.id.isNotEmpty) {
+        await _uploadImages(comment.id).catchError((e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Comment posted but images failed: ${getUserFriendlyError(e)}'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        });
+        // Invalidate comment images provider to refresh images immediately
+        // Wait a bit for backend to process the images
+        await Future.delayed(const Duration(milliseconds: 500));
+        ref.invalidate(commentImagesProvider(comment.id));
+      }
+      
+      _controller.clear();
+      setState(() {
+        _selectedImages.clear();
+        _replyingToCommentId = null;
+      });
+      FocusScope.of(context).unfocus();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to post comment: ${getUserFriendlyError(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _posting = false);
+      }
+    }
+  }
+
   Future<void> _uploadImages(String commentId) async {
     final dio = ref.read(authProvider.notifier).getDioInstance();
     for (int i = 0; i < _selectedImages.length; i++) {
@@ -1601,8 +1676,12 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                         controller: _controller,
                         minLines: 1,
                         maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _submitComment(),
                         decoration: InputDecoration(
                           hintText: AppLocalizations.of(context)!.writeComment,
+                          helperText: 'Share your thoughts about this build. You can also attach up to 5 images. Press Enter to submit.',
+                          helperMaxLines: 2,
                           border: const OutlineInputBorder(),
                         ),
                       ),
@@ -1616,67 +1695,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       ),
                     const SizedBox(width: 4),
                     ElevatedButton(
-                      onPressed: _posting
-                          ? null
-                          : () async {
-                              final text = _controller.text.trim();
-                              // Allow posting with just images (no text required)
-                              if (text.isEmpty && _selectedImages.isEmpty) return;
-                              setState(() => _posting = true);
-                            try {
-                              final user = userAsync.valueOrNull;
-                              if (user == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
-                                );
-                                return;
-                              }
-                              final authorName = user.username;
-                              // Use text or placeholder if only images
-                              final commentText = text.isEmpty ? '[Image]' : text;
-                              final comment = await ref.read(buildCommentsProvider(widget.buildId).notifier).add(
-                                authorName, 
-                                commentText, 
-                                user.uid,
-                                parentCommentId: _replyingToCommentId,
-                              );
-                              // Clear reply state after posting
-                              setState(() {
-                                _replyingToCommentId = null;
-                              });
-                              final commentId = comment.id;
-                              
-                              // Upload images if any
-                              if (_selectedImages.isNotEmpty && commentId.isNotEmpty) {
-                                await _uploadImages(commentId).catchError((e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Comment posted but images failed: ${getUserFriendlyError(e)}'),
-                                        backgroundColor: Colors.orange,
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  }
-                                });
-                                // Invalidate comment images provider to refresh images immediately
-                                // Wait a bit for backend to process the images
-                                await Future.delayed(const Duration(milliseconds: 500));
-                                ref.invalidate(commentImagesProvider(commentId));
-                              }
-                              
-                              _controller.clear();
-                              setState(() => _selectedImages.clear());
-                            } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(getUserFriendlyError(e))),
-                                  );
-                                }
-                              } finally {
-                                if (mounted) setState(() => _posting = false);
-                              }
-                            },
+                      onPressed: _posting ? null : _submitComment,
                       child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(AppLocalizations.of(context)!.post),
                     ),
                   ],
