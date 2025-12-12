@@ -927,6 +927,77 @@ class ImageService {
     }
   }
 
+  /// Fetches images for a message.
+  /// Returns a list of image URLs.
+  Future<List<String>> getMessageImages(String messageId) async {
+    try {
+      final url = '$apiBaseUrl/Images/get';
+      final body = {
+        'locationType': ['MESSAGE'],
+        'MessageId': [messageId],
+        'paging': false,
+      };
+
+      if (kDebugMode) {
+        print('🔍 Fetching images for message: $messageId');
+        print('📤 Request body: $body');
+      }
+
+      final response = await _dio.post(url, data: body);
+
+      if (kDebugMode) {
+        print('📥 Response status: ${response.statusCode}');
+        print('📥 Response data type: ${response.data.runtimeType}');
+        print('📥 Response data: ${response.data}');
+      }
+
+      if (response.statusCode == 200) {
+        List<dynamic> images = [];
+        
+        if (response.data is List) {
+          images = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          // Sometimes backend returns wrapped in an object
+          final data = response.data as Map<String, dynamic>;
+          if (data.containsKey('data') && data['data'] is List) {
+            images = data['data'] as List<dynamic>;
+          }
+        }
+
+        final List<String> imageUrls = [];
+
+        for (var imgJson in images) {
+          if (imgJson is Map<String, dynamic>) {
+            final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
+            if (imageId.isNotEmpty) {
+              final imageUrl = '$apiBaseUrl/Images/download/$imageId';
+              imageUrls.add(imageUrl);
+              if (kDebugMode) {
+                print('✅ Found image ID: $imageId, URL: $imageUrl');
+              }
+            }
+          }
+        }
+
+        if (kDebugMode) {
+          print('📊 Total images found: ${imageUrls.length} for message $messageId');
+        }
+        return imageUrls;
+      }
+
+      if (kDebugMode) {
+        print('⚠️ Unexpected status code: ${response.statusCode}');
+      }
+      return [];
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('❌ Error fetching message images: $e');
+        print('Stack trace: $stackTrace');
+      }
+      return [];
+    }
+  }
+
   static String getImageUrl(String? imageId) {
     if (imageId == null || imageId.isEmpty) return '';
     return '$apiBaseUrl/Images/download/$imageId';
@@ -974,4 +1045,11 @@ final commentImagesProvider = FutureProvider.autoDispose
     .family<List<String>, String>((ref, commentId) async {
       final imageService = ref.watch(imageServiceProvider);
       return await imageService.getCommentImages(commentId);
+    });
+
+/// Provider for fetching message images
+final messageImagesProvider = FutureProvider.autoDispose
+    .family<List<String>, String>((ref, messageId) async {
+      final imageService = ref.watch(imageServiceProvider);
+      return await imageService.getMessageImages(messageId);
     });
