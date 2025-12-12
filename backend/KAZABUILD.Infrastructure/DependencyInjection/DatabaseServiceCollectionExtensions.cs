@@ -42,7 +42,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                     Console.WriteLine($"Using SQL Server DB for {env.EnvironmentName} environment.");
 
                     //Use the connection string for a real database
-                    options.UseSqlServer(config.GetConnectionString("DefaultConnection"));
+                    options.UseSqlServer(config.GetConnectionString("DefaultConnection"), sqlOptions => sqlOptions.CommandTimeout(300));
                 }
             });
 
