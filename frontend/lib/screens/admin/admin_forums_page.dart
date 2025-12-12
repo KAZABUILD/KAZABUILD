@@ -74,15 +74,42 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Forum Moderation',
-            style: TextStyle(
-              fontSize: isMobile ? 22 : 28,
-              fontWeight: FontWeight.bold,
-              color: isDark
-                  ? AppColorsDark.textWhite
-                  : AppColorsLight.textBlack,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  'Forum Moderation',
+                  style: TextStyle(
+                    fontSize: isMobile ? 22 : 28,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppColorsDark.textWhite
+                        : AppColorsLight.textBlack,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.go('/forums/new?returnTo=/admin/forums');
+                },
+                icon: const Icon(Icons.add, size: 20),
+                label: Text(isMobile ? 'New' : 'New Post'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColorsDark.buttonGreen,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 12 : 20,
+                    vertical: isMobile ? 8 : 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: isMobile ? 16 : 24),
           isMobile
@@ -739,7 +766,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
                   onPressed: () {
-                    context.go('/forums/${post.id}/edit');
+                    context.go('/forums/${post.id}/edit?returnTo=/admin/forums');
                   },
                   tooltip: 'Edit',
                 ),
@@ -901,7 +928,7 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
                     icon: const Icon(Icons.edit, size: 18),
                     onPressed: () {
                       // Navigate to forum post edit page
-                      context.go('/forums/${post.id}/edit');
+                      context.go('/forums/${post.id}/edit?returnTo=/admin/forums');
                     },
                     tooltip: 'Edit',
                   ),

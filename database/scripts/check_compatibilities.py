@@ -1277,9 +1277,15 @@ def get_pcie_power_connector_count(psu: PowerSupplyComponent) -> int:
 def get_gpu_power_connector_requirement(gpu: GPUComponent) -> int:
     """Estimate the number of PCIe power connectors required by a GPU."""
     # Count power subcomponents
+    total_amount = 0
+    found_power_port = False
     for sub in gpu.subcomponents:
         if sub.type == SubComponentType.PORT and sub.port_type == "POWER":
-            return sub.amount
+            total_amount += sub.amount
+            found_power_port = True
+    
+    if found_power_port:
+        return total_amount
     
     # Estimate based on TDP if no subcomponents
     if gpu.thermal_design_power:
@@ -1614,14 +1620,18 @@ def check_psu_case_compatibility(psu: PowerSupplyComponent, case: CaseComponent)
     """
     # Check form factor
     if psu.form_factor is None:
-        return False, "PSU form factor is null"
+        return True, "PSU form factor is null"
     if case.form_factor is None:
-        return False, "Case form factor is null"
+        return True, "Case form factor is null"
     
     psu_ff = psu.form_factor.strip().upper()
     
+    if psu_ff == "UNKNOWN" or case.form_factor.strip().upper() == "UNKNOWN":
+        return True, "Compatible (Form factor unknown)"
+    
     # Check if PSU form factor is compatible with case
-    compatible_cases = PSU_CASE_FORM_FACTOR_COMPAT.get(psu_ff, [])
+    compat_map = {k.upper(): v for k, v in PSU_CASE_FORM_FACTOR_COMPAT.items()}
+    compatible_cases = compat_map.get(psu_ff, [])
     
     case_compatible = False
     for case_type in compatible_cases:
@@ -1629,9 +1639,14 @@ def check_psu_case_compatibility(psu: PowerSupplyComponent, case: CaseComponent)
             case_compatible = True
             break
     
-    # Also check if it's a standard ATX case with ATX PSU
+    # Check if it's a standard ATX case with ATX PSU
     if not case_compatible:
         if "ATX" in psu_ff and ("tower" in case.form_factor.lower() or "atx" in case.form_factor.lower()):
+            case_compatible = True
+            
+    # Check for SFX in Mini-ITX/SFF cases if not explicitly mapped
+    if not case_compatible:
+        if "SFX" in psu_ff and ("mini" in case.form_factor.lower() or "sff" in case.form_factor.lower() or "itx" in case.form_factor.lower()):
             case_compatible = True
     
     if not case_compatible:
@@ -1709,12 +1724,17 @@ def check_case_fan_motherboard_compatibility(case_fan: CaseFanComponent, motherb
     - Case fan quantity must be less or equal to Motherboard fan header amount.
     """
     if case_fan.quantity is None:
-        return False, "Case fan quantity is null"
+        return True, "Case fan quantity is null"
     
     # Get total fan headers (case fan + CPU fan headers can sometimes be used)
     total_headers = 0
     if motherboard.case_fan_header_amount is not None:
         total_headers += motherboard.case_fan_header_amount
+        has_header_info = True
+        
+    if not has_header_info:
+        # If we don't have header info, assume compatible
+        return True, "Compatible (no motherboard fan header info)"
     
     if total_headers == 0:
         return False, "Motherboard fan header amount is null or zero"

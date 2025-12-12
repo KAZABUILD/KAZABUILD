@@ -211,6 +211,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get all => 'All';
 
   @override
+  String get any => 'Any';
+
+  @override
   String get noGuidesFound => 'No guides found in this category';
 
   @override
@@ -936,4 +939,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appName => 'KAZABUILD';
+
+  @override
+  String get unread => 'Unread';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get messages => 'Messages';
+
+  @override
+  String get messagesDescription => 'Connect and communicate with other users.';
+
+  @override
+  String get searchNotifications => 'Search notifications...';
+
+  @override
+  String get searchMessages => 'Search messages...';
+
+  @override
+  String get noFeaturedBuilds => 'No featured builds selected yet';
+
+  @override
+  String get featuredBuilds => 'Featured Builds';
+
+  @override
+  String get couldNotLoadFeaturedBuilds => 'Could not load featured builds';
+
+  @override
+  String get pcBuilder => 'PC Builder';
+
+  @override
+  String get configurePcBuild =>
+      'Configure your custom PC build with compatibility checking.';
+
+  @override
+  String get buildSuccessfullySaved =>
+      'Build successfully saved to your profile';
+
+  @override
+  String get replies => 'Replies';
+
+  @override
+  String get noRepliesYet => 'No replies yet. Be the first!';
+
+  @override
+  String get signInToContinue => 'Sign in to continue your journey';
 }

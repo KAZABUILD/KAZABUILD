@@ -596,6 +596,10 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final selectedTagIds = <String>{};
+    
+    // Use a ValueNotifier to preserve image state outside the dialog
+    final selectedImageNotifier = ValueNotifier<XFile?>(null);
+    final imagePathNotifier = ValueNotifier<String?>(null);
 
     final bool? shouldSave = await showDialog<bool>(
       context: context,
@@ -627,7 +631,137 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                       AppLocalizations.of(context)!.tags,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8), 
+                    const SizedBox(height: 8),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final tagsAsync = ref.watch(tagsProvider);
+                        return tagsAsync.when(
+                          data: (tags) {
+                            if (tags.isEmpty) {
+                              return Text(
+                                AppLocalizations.of(context)!.noTagsAvailable,
+                                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                              );
+                            }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: tags.map((tag) {
+                                final isSelected = selectedTagIds.contains(tag.name);
+                                return FilterChip(
+                                  label: Text(tag.name),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setDialogState(() {
+                                      if (selected) {
+                                        selectedTagIds.add(tag.name);
+                                      } else {
+                                        selectedTagIds.remove(tag.name);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          },
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}'),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Build Image (Optional)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ValueListenableBuilder<XFile?>(
+                      valueListenable: selectedImageNotifier,
+                      builder: (context, selectedImage, _) {
+                        if (selectedImage == null) {
+                          return OutlinedButton.icon(
+                            onPressed: () async {
+                              debugPrint('Select Image button pressed');
+                              final ImagePicker picker = ImagePicker();
+                              final XFile? image = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                maxWidth: 1920,
+                                maxHeight: 1080,
+                                imageQuality: 90,
+                              );
+                              if (image != null) {
+                                debugPrint('Image selected: ${image.path}');
+                                setDialogState(() {
+                                  selectedImageNotifier.value = image;
+                                  imagePathNotifier.value = image.path;
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.image),
+                            label: const Text('Select Image'),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            FutureBuilder<Uint8List>(
+                              future: selectedImage.readAsBytes(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                    child: const Center(child: CircularProgressIndicator()),
+                                  );
+                                }
+                                if (snapshot.hasData) {
+                                  return Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.memory(
+                                        snapshot.data!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Container(
+                                  height: 150,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey),
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  child: const Icon(Icons.image, size: 50),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                debugPrint('Remove Image button pressed');
+                                setDialogState(() {
+                                  selectedImageNotifier.value = null;
+                                  imagePathNotifier.value = null;
+                                });
+                              },
+                              icon: const Icon(Icons.delete),
+                              label: const Text('Remove Image'),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -657,6 +791,56 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
             .read(buildProvider.notifier)
             .saveBuild(ref, nameController.text, descriptionController.text, tagIds: selectedTagIds.toList());
 
+        // Upload image if one was selected
+        final imageFile = selectedImageNotifier.value;
+        final imagePathValue = imagePathNotifier.value;
+        
+        if (imageFile != null) {
+          try {
+            debugPrint('_showSaveBuildDialog: Uploading image...');
+            final dio = ref.read(authProvider.notifier).getDioInstance();
+            
+            // Check if it's a blob URL - if so, read bytes directly
+            MultipartFile filePart;
+            if (imagePathValue != null && imagePathValue.startsWith('blob:')) {
+              // For blob URLs, read the file bytes directly
+              debugPrint('_showSaveBuildDialog: Image is blob URL, reading bytes...');
+              final bytes = await imageFile.readAsBytes();
+              filePart = MultipartFile.fromBytes(
+                bytes,
+                filename: imageFile.name,
+              );
+            } else if (imagePathValue != null && imagePathValue.isNotEmpty) {
+              // For real file paths, use fromFile
+              debugPrint('_showSaveBuildDialog: Image is file path: $imagePathValue');
+              filePart = await MultipartFile.fromFile(imagePathValue, filename: imageFile.name);
+            } else {
+              // Fallback: read bytes from XFile
+              debugPrint('_showSaveBuildDialog: Reading image bytes from XFile...');
+              final bytes = await imageFile.readAsBytes();
+              filePart = MultipartFile.fromBytes(
+                bytes,
+                filename: imageFile.name,
+              );
+            }
+            
+            final formData = FormData.fromMap({
+              'File': filePart,
+              'TargetId': newBuildId,
+              'LocationType': 'BUILD',
+              'Name': 'build_image_${imageFile.name}',
+            });
+
+            debugPrint('_showSaveBuildDialog: Sending image upload request...');
+            await dio.post('$apiBaseUrl/Images/add', data: formData);
+            debugPrint('_showSaveBuildDialog: Image uploaded successfully');
+          } catch (e) {
+            // Log error but continue with saving
+            debugPrint('_showSaveBuildDialog: Error uploading image: $e');
+            // Don't show error to user - image is optional
+          }
+        }
+
         // Generate and store the build link
         if (mounted) {
           setState(() {
@@ -665,7 +849,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         }
 
         _showSnackBar(
-          message: 'Build successfully saved to your profile',
+          message: AppLocalizations.of(context)!.buildSuccessfullySaved,
           backgroundColor: Colors.green,
         );
         return newBuildId;
@@ -726,9 +910,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ).createShader(bounds),
-                            child: const Text(
-                              'PC Builder',
-                              style: TextStyle(
+                            child: Text(
+                              AppLocalizations.of(context)!.pcBuilder,
+                              style: const TextStyle(
                                 fontSize: 56, // Slightly larger
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white, 
@@ -739,7 +923,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                           ),
                     const SizedBox(height: 12),
                     Text(
-                      'Configure your custom PC build with compatibility checking.',
+                      AppLocalizations.of(context)!.configurePcBuild,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white.withValues(alpha: 0.7),

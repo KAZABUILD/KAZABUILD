@@ -29,7 +29,10 @@ class NewPostPage extends ConsumerStatefulWidget {
   /// An optional ID of a forum post to edit.
   final String? postId;
 
-  const NewPostPage({super.key, this.buildId, this.postId});
+  /// An optional route to return to after creating/editing the post.
+  final String? returnTo;
+
+  const NewPostPage({super.key, this.buildId, this.postId, this.returnTo});
 
   @override
   ConsumerState<NewPostPage> createState() => _NewPostPageState();
@@ -278,11 +281,12 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
           ),
         );
 
-        // Navigate back to profile page (where user came from)
+        // Navigate back to returnTo route or default to profile page
         if (mounted) {
           await Future.delayed(const Duration(milliseconds: 100));
           if (!mounted) return;
-          context.go('/profile');
+          final targetRoute = widget.returnTo ?? '/profile';
+          context.go(targetRoute);
         }
         return;
       }
@@ -340,8 +344,7 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
         ),
       );
 
-      // AFTER dialog is closed, navigate to HOME directly
-      // User wants to go to home page after creating post
+      // AFTER dialog is closed, navigate to returnTo route or default to /forums
       if (mounted) {
         // Wait a tiny bit to ensure dialog is fully closed
         await Future.delayed(const Duration(milliseconds: 100));
@@ -349,8 +352,9 @@ class _NewPostPageState extends ConsumerState<NewPostPage> with TickerProviderSt
         if (!mounted) return;
 
         // Use GoRouter's context.go() for proper navigation
-        // This works correctly with both hash and path-based routing
-        context.go('/forums');
+        // If returnTo is provided (e.g., from admin panel), go there; otherwise go to forums
+        final targetRoute = widget.returnTo ?? '/forums';
+        context.go(targetRoute);
       }
     } catch (e) {
       // STOP LOADING ON ERROR TOO

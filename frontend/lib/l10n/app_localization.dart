@@ -484,6 +484,12 @@ abstract class AppLocalizations {
   /// **'All'**
   String get all;
 
+  /// No description provided for @any.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get any;
+
   /// No description provided for @noGuidesFound.
   ///
   /// In en, this message translates to:
@@ -1869,6 +1875,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'KAZABUILD'**
   String get appName;
+
+  /// No description provided for @unread.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get unread;
+
+  /// No description provided for @notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifications;
+
+  /// No description provided for @messages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get messages;
+
+  /// No description provided for @messagesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect and communicate with other users.'**
+  String get messagesDescription;
+
+  /// No description provided for @searchNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Search notifications...'**
+  String get searchNotifications;
+
+  /// No description provided for @searchMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages...'**
+  String get searchMessages;
+
+  /// No description provided for @noFeaturedBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'No featured builds selected yet'**
+  String get noFeaturedBuilds;
+
+  /// No description provided for @featuredBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured Builds'**
+  String get featuredBuilds;
+
+  /// No description provided for @couldNotLoadFeaturedBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load featured builds'**
+  String get couldNotLoadFeaturedBuilds;
+
+  /// No description provided for @pcBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'PC Builder'**
+  String get pcBuilder;
+
+  /// No description provided for @configurePcBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure your custom PC build with compatibility checking.'**
+  String get configurePcBuild;
+
+  /// No description provided for @buildSuccessfullySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Build successfully saved to your profile'**
+  String get buildSuccessfullySaved;
+
+  /// No description provided for @replies.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies'**
+  String get replies;
+
+  /// No description provided for @noRepliesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No replies yet. Be the first!'**
+  String get noRepliesYet;
+
+  /// No description provided for @signInToContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to continue your journey'**
+  String get signInToContinue;
 }
 
 class _AppLocalizationsDelegate

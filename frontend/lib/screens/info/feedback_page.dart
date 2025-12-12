@@ -3,10 +3,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 class FeedbackPage extends ConsumerStatefulWidget {
   const FeedbackPage({super.key});
@@ -496,7 +496,7 @@ ${_messageController.text.trim()}
         errorMessenger.clearSnackBars();
         errorMessenger.showSnackBar(
           SnackBar(
-            content: Text('Hata: ${e.toString()}'), 
+            content: Text(getUserFriendlyError(e)), 
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
