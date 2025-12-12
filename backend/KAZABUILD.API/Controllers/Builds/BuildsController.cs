@@ -1248,8 +1248,8 @@ namespace KAZABUILD.API.Controllers.Builds
                 var monitorBaseQuery = _db.Components
                     .OfType<MonitorComponent>()
                     .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.MONITOR);
-                    //.Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
+                    .Where(c => c.Type == ComponentType.MONITOR)
+                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
 
                 var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
                     monitorBaseQuery,

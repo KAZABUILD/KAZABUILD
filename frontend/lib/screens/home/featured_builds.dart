@@ -12,41 +12,26 @@ import '../../core/constants/app_color.dart';
 import '../../models/explore_build_model.dart';
 import '../../models/component_models.dart';
 import '../../models/build_provider.dart';
-import '../admin/admin_featured_builds_page.dart';
 import '../../l10n/app_localization.dart';
 import '../../utils/error_utils.dart';
 
-/// Provider to fetch featured builds based on selected IDs
+/// Provider to fetch featured builds by querying names containing "featured"
 final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) async {
-  final featuredIds = ref.watch(featuredBuildIdsProvider);
-  
-  if (featuredIds.isEmpty) {
-    return [];
-  }
-  
-  // Take first 3 featured builds
-  final idsToFetch = featuredIds.take(3).toList();
   final buildService = ref.read(buildServiceProvider);
-  final builds = <Build>[];
-  final errors = <String>[];
-  
-  for (final buildId in idsToFetch) {
-    try {
-      final build = await buildService.getBuildById(buildId);
-      builds.add(build);
-    } catch (e) {
-      debugPrint('Failed to load featured build $buildId: $e');
-      errors.add(e.toString());
-    }
-  }
-  
-  // If we have featured IDs but couldn't load any builds, throw an error
-  // This distinguishes between "no featured builds selected" and "backend error"
-  if (builds.isEmpty && errors.isNotEmpty) {
-    throw Exception(errors.first);
-  }
-  
-  return builds;
+
+  // Stable params to avoid refetch loops
+  const filter = {
+    'Query': 'feature', // lenient match
+    'Status': ['PUBLISHED'],
+    'Paging': false,
+    'OrderBy': 'DatabaseEntryAt',
+    'SortDirection': 'desc',
+  };
+
+  final builds = await buildService.getBuilds(filter, skipRatings: true);
+
+  // Keep top 3 most recent
+  return builds.take(3).toList();
 });
 
 /// A stateful widget that displays a carousel of featured PC builds.
