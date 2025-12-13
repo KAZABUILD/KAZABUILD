@@ -1039,13 +1039,16 @@ namespace KAZABUILD.API.Controllers.Builds
                 var (powerSupplyMinPrice, powerSupplyMaxPrice) = BuildGenerationHelper.AllocateBudget(powerSupplyRatio, totalRatio, bounds[i], bounds[i + 1]);
                 var (storageMinPrice, storageMaxPrice) = BuildGenerationHelper.AllocateBudget(storageRatio, totalRatio, bounds[i], bounds[i + 1]);
 
+                //Data cutoff for prices
+                var recentDate = DateTime.UtcNow.AddDays(-7);
+
                 //Get all components that fit the criteria
                 try
                 {
                     //Get the CPU component
                     var cpuBaseQuery = _db.Components
                         .OfType<CPUComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery();
 
                     var cpuComponent = await BuildGenerationHelper.FindComponentAsync(
@@ -1066,7 +1069,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the motherboard component
                     var motherboardBaseQuery = _db.Components
                         .OfType<MotherboardComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id));
 
@@ -1088,7 +1091,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the cooler component
                     var coolerBaseQuery = _db.Components
                         .OfType<CoolerComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id) &&
                             c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
@@ -1111,7 +1114,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the memory component
                     var memoryBaseQuery = _db.Components
                         .OfType<MemoryComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
@@ -1133,7 +1136,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the storage component
                     var storageBaseQuery = _db.Components
                         .OfType<StorageComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
@@ -1155,7 +1158,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the GPU component
                     var gpuBaseQuery = _db.Components
                         .OfType<GPUComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
@@ -1177,7 +1180,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the power supply component adjusting for the power usage in other components
                     var powerSupplyBaseQuery = _db.Components
                         .OfType<PowerSupplyComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                         .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
@@ -1200,7 +1203,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the case component
                     var caseBaseQuery = _db.Components
                         .OfType<CaseComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
 
@@ -1225,7 +1228,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the case fan component
                     var caseFanBaseQuery = _db.Components
                         .OfType<CaseFanComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == caseComponent.Id));
 
@@ -1247,7 +1250,7 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the monitor component
                     var monitorBaseQuery = _db.Components
                         .OfType<MonitorComponent>()
-                        .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
                         .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
 
