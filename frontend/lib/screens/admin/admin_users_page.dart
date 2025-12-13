@@ -86,7 +86,6 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                             : AppColorsLight.textBlack,
                       ),
                     ),
-                    const SizedBox(height: 12),
                   ],
                 )
               : Row(
@@ -101,22 +100,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                             ? AppColorsDark.textWhite
                             : AppColorsLight.textBlack,
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Add User'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark
-                            ? AppColorsDark.buttonGreen
-                            : AppColorsLight.buttonGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
+                    )
                   ],
                 ),
           SizedBox(height: isMobile ? 16 : 24),
