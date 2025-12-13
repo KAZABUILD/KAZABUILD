@@ -662,7 +662,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
           Expanded(
             flex: 1,
             child: Text(
-              '-', // Builds count - would need separate API call
+              user.buildsCount.toString(),
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite
@@ -674,7 +674,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
           Expanded(
             flex: 1,
             child: Text(
-              '-', // Posts count - would need separate API call
+              user.postsCount.toString(),
               style: TextStyle(
                 color: isDark
                     ? AppColorsDark.textWhite
@@ -894,6 +894,46 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 ],
               ),
             ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.computer,
+                  size: 16,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Builds: ${user.buildsCount}',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Icon(
+                  Icons.forum,
+                  size: 16,
+                  color: isDark
+                      ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                      : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Posts: ${user.postsCount}',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColorsDark.textWhite.withValues(alpha: 0.7)
+                        : AppColorsLight.textBlack.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

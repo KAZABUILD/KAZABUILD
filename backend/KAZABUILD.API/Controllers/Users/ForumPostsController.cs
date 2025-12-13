@@ -506,7 +506,7 @@ namespace KAZABUILD.API.Controllers.Users
         /// <returns></returns>
         [HttpPost("get-count")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<int>>> GetForumPostCount([FromBody] GetForumPostDto dto)
+        public async Task<ActionResult<IEnumerable<int>>> GetForumPostsCount([FromBody] GetForumPostDto dto)
         {
             //Get forumPost id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -560,7 +560,7 @@ namespace KAZABUILD.API.Controllers.Users
                     .Take((int)dto.PageLength);
             }
 
-            //Count the amount of activities to return as views
+            //Count the amount of tags to return as views
             var count = await query.CountAsync();
 
             //Log success
@@ -575,13 +575,13 @@ namespace KAZABUILD.API.Controllers.Users
             );
 
             //Publish RabbitMQ event
-            await _publisher.PublishAsync("forumPost.gotForumPosts", new
+            await _publisher.PublishAsync("forumPost.gotCount", new
             {
                 count,
                 gotBy = currentUserId
             });
 
-            //Return the forumPosts
+            //Return the forumPosts count
             return Ok(count);
         }
 

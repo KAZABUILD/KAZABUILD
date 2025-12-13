@@ -802,6 +802,45 @@ class BuildService {
   }
 
   /// Fetches all available tags from the backend database seeds.
+  /// Gets tags count with filtering (without pagination)
+  Future<int> getTagsCount({String? query}) async {
+    try {
+      final data = <String, dynamic>{
+        'Paging': false, // No pagination for count
+        'OrderBy': 'Name',
+        'SortDirection': 'asc',
+      };
+      if (query != null && query.isNotEmpty) {
+        data['Query'] = query;
+      }
+      
+      debugPrint('BuildService.getTagsCount: Request data: $data');
+      final response = await _dio.post('$apiBaseUrl/Tags/get-count', data: data);
+      debugPrint('BuildService.getTagsCount: Response status: ${response.statusCode}');
+      debugPrint('BuildService.getTagsCount: Response data type: ${response.data.runtimeType}');
+      debugPrint('BuildService.getTagsCount: Response data: ${response.data}');
+      
+      final count = response.data;
+      
+      int totalCount = 0;
+      if (count is num) {
+        totalCount = count.toInt();
+      } else if (count is String) {
+        totalCount = int.tryParse(count) ?? 0;
+      } else if (count is List && count.isNotEmpty) {
+        // Backend might return a list
+        totalCount = (count[0] as num).toInt();
+      }
+      
+      debugPrint('BuildService.getTagsCount: Parsed total count: $totalCount');
+      return totalCount;
+    } catch (e, stack) {
+      debugPrint('BuildService.getTagsCount: Error fetching tags count: $e');
+      debugPrint('BuildService.getTagsCount: Stack: $stack');
+      rethrow;
+    }
+  }
+
   /// Returns all tags without filtering, sorted by name.
   Future<List<Tag>> getTags({String? query, int? page, int? pageLength}) async {
     try {

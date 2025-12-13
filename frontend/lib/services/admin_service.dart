@@ -176,6 +176,44 @@ class AdminService {
     }
   }
 
+  /// Gets forum posts count with filtering (without pagination)
+  Future<Response> getForumPostsCount({
+    String? query,
+    List<String>? topics,
+    List<String>? creatorIds,
+    String? orderBy,
+    String sortDirection = 'asc',
+  }) async {
+    final data = <String, dynamic>{
+      'Query': query ?? '',
+      'SortDirection': sortDirection,
+      'Paging': false, // No pagination for count
+    };
+
+    if (orderBy != null && orderBy.isNotEmpty) {
+      data['OrderBy'] = orderBy;
+    }
+
+    if (topics != null && topics.isNotEmpty) {
+      data['Topic'] = topics;
+    }
+
+    if (creatorIds != null && creatorIds.isNotEmpty) {
+      data['CreatorId'] = creatorIds;
+    }
+
+    try {
+      final response = await _dio.post(
+        '$apiBaseUrl/ForumPosts/get-count',
+        data: data,
+      );
+      return response;
+    } catch (e) {
+      print('Error in getForumPostsCount: $e');
+      rethrow;
+    }
+  }
+
   /// Gets all components with pagination and filtering
   /// Note: Backend requires a type discriminator ($type) for polymorphic deserialization
   /// When componentTypes is null or contains multiple types, we use "Case" as a generic discriminator
@@ -400,6 +438,156 @@ class AdminService {
       return response;
     } catch (e) {
       print('Error in getComponents: $e');
+      rethrow;
+    }
+  }
+
+  /// Gets components count with filtering (without pagination)
+  /// Uses the same filtering logic as getComponents but returns only the count
+  Future<Response> getComponentsCount({
+    String? query,
+    List<String>? componentTypes,
+    List<String>? names,
+    List<String>? manufacturers,
+    String? orderBy,
+    String sortDirection = 'asc',
+  }) async {
+    // Determine which type discriminator to use (same logic as getComponents)
+    String? typeDiscriminator;
+    List<String>? typesToFetch;
+
+    if (componentTypes != null && componentTypes.length == 1) {
+      final type = componentTypes[0].toUpperCase();
+      final typeMap = {
+        'CPU': 'CPU',
+        'GPU': 'GPU',
+        'MEMORY': 'Memory',
+        'MOTHERBOARD': 'Motherboard',
+        'STORAGE': 'Storage',
+        'POWER_SUPPLY': 'PowerSupply',
+        'CASE': 'Case',
+        'COOLER': 'Cooler',
+        'CASE_FAN': 'CaseFan',
+        'MONITOR': 'Monitor',
+      };
+      typeDiscriminator = typeMap[type] ?? 'Case';
+    } else if (componentTypes == null || componentTypes.isEmpty) {
+      typesToFetch = [
+        'CPU',
+        'GPU',
+        'Memory',
+        'Motherboard',
+        'Storage',
+        'PowerSupply',
+        'Case',
+        'Cooler',
+        'CaseFan',
+        'Monitor',
+      ];
+      typeDiscriminator = 'Case';
+    } else {
+      final type = componentTypes[0].toUpperCase();
+      final typeMap = {
+        'CPU': 'CPU',
+        'GPU': 'GPU',
+        'MEMORY': 'Memory',
+        'MOTHERBOARD': 'Motherboard',
+        'STORAGE': 'Storage',
+        'POWER_SUPPLY': 'PowerSupply',
+        'CASE': 'Case',
+        'COOLER': 'Cooler',
+        'CASE_FAN': 'CaseFan',
+        'MONITOR': 'Monitor',
+      };
+      typeDiscriminator = typeMap[type] ?? 'Case';
+    }
+
+    // If we need to fetch all types, sum counts from all types
+    if (typesToFetch != null) {
+      int totalCount = 0;
+      for (final type in typesToFetch) {
+        try {
+          final data = <String, dynamic>{
+            r'$type': type,
+            'Query': query ?? '',
+            'SortDirection': sortDirection,
+            'Paging': false, // No pagination for count
+          };
+
+          if (orderBy != null && orderBy.isNotEmpty) {
+            data['OrderBy'] = orderBy;
+          }
+
+          if (names != null && names.isNotEmpty) {
+            data['Name'] = names;
+          }
+
+          if (manufacturers != null && manufacturers.isNotEmpty) {
+            data['Manufacturer'] = manufacturers;
+          }
+
+          final response = await _dio.post(
+            '$apiBaseUrl/Components/get-count',
+            data: data,
+          );
+          if (response.statusCode == 200) {
+            final count = response.data;
+            if (count is num) {
+              totalCount += count.toInt();
+            }
+          }
+        } catch (e) {
+          print('Error fetching $type components count: $e');
+          // Continue with other types
+        }
+      }
+
+      return Response(
+        data: totalCount,
+        statusCode: 200,
+        requestOptions: RequestOptions(
+          path: '$apiBaseUrl/Components/get-count',
+          method: 'POST',
+        ),
+        headers: Headers(),
+        isRedirect: false,
+        redirects: [],
+        statusMessage: 'OK',
+      );
+    }
+
+    // Single type or filtered types
+    final data = <String, dynamic>{
+      r'$type': typeDiscriminator,
+      'Query': query ?? '',
+      'SortDirection': sortDirection,
+      'Paging': false, // No pagination for count
+    };
+
+    if (orderBy != null && orderBy.isNotEmpty) {
+      data['OrderBy'] = orderBy;
+    }
+
+    if (componentTypes != null && componentTypes.isNotEmpty) {
+      data['Type'] = componentTypes;
+    }
+
+    if (names != null && names.isNotEmpty) {
+      data['Name'] = names;
+    }
+
+    if (manufacturers != null && manufacturers.isNotEmpty) {
+      data['Manufacturer'] = manufacturers;
+    }
+
+    try {
+      final response = await _dio.post(
+        '$apiBaseUrl/Components/get-count',
+        data: data,
+      );
+      return response;
+    } catch (e) {
+      print('Error in getComponentsCount: $e');
       rethrow;
     }
   }

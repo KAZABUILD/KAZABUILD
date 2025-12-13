@@ -15,7 +15,6 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/app_bar_actions.dart';
 import 'package:frontend/widgets/authenticated_image.dart';
 import 'package:frontend/l10n/app_localization.dart';
-import 'package:frontend/widgets/theme_provider.dart';
 import 'package:frontend/models/notification_provider.dart';
 
 /// A simple data class to represent a PC part in the dropdown menu.
@@ -155,8 +154,6 @@ class CustomNavigationBar extends ConsumerWidget {
               ],
               if (showProfileArea) const SizedBox(width: 20),
               const LanguageSelector(),
-              const SizedBox(width: 15),
-              const ThemeToggleButton(),
             ],
           ),
         ],
@@ -346,25 +343,6 @@ class _MobileAppBar extends ConsumerWidget {
                   error: (err, stack) => const Icon(Icons.error),
                 ),
               if (showProfileArea) const SizedBox(width: 8),
-              // Theme toggle button - larger touch target
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    ref.read(themeProvider.notifier).toggleTheme();
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Icon(
-                      ref.watch(themeProvider) == ThemeMode.dark
-                          ? Icons.light_mode_outlined
-                          : Icons.dark_mode_outlined,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ],
