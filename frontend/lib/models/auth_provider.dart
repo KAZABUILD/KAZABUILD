@@ -1295,8 +1295,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
       baseUrl: apiBaseUrl,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+        'Accept': 'application/json'
       },
       connectTimeout: const Duration(seconds: 300),
       receiveTimeout: const Duration(seconds: 300),
