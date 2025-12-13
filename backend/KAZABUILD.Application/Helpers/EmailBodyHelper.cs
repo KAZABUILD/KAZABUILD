@@ -6,23 +6,42 @@ namespace KAZABUILD.Application.Helpers
 {
     public static class EmailBodyHelper
     {
+        /// <summary>
+        /// Finds the kaza.png image file by trying multiple common paths.
+        /// This works in both local development and Docker environments.
+        /// </summary>
+        private static string FindImagePath()
+        {
+            var possiblePaths = new[]
+            {
+                // Docker/Railway path - published output
+                Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png"),
+                // Alternative Docker path
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "defaults", "kaza.png"),
+                // Development path - project root
+                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "wwwroot", "defaults", "kaza.png")),
+                // Development path - alternative
+                Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "wwwroot", "defaults", "kaza.png")),
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            // If none found, log all attempted paths and throw
+            var attemptedPaths = string.Join("\n", possiblePaths);
+            var errorMessage = $"kaza.png not found. Attempted paths:\n{attemptedPaths}\nCurrent directory: {Directory.GetCurrentDirectory()}\nBase directory: {AppContext.BaseDirectory}";
+            Console.WriteLine($"[CRITICAL] {errorMessage}");
+            throw new FileNotFoundException(errorMessage);
+        }
+
         public static EmailContent GetAccountConfirmationEmailBody(string displayName, string confirmUrl)
         {
-            var basePath = AppContext.BaseDirectory;
-            //Get the root folder and use it to get the application logo
-            var imagePath = Path.Combine(basePath, "wwwroot", "defaults", "kaza.png");
-            
-            if (!File.Exists(imagePath))
-            {
-                // Log strictly to console so you can see it in Railway logs if it fails again
-                Console.WriteLine($"[CRITICAL] Email image not found at: {imagePath}");
-                // Fallback to avoid crashing the whole email flow? 
-                // Or let it throw so you know it's missing.
-            }
-            
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
@@ -244,13 +263,7 @@ namespace KAZABUILD.Application.Helpers
 
         public static EmailContent GetPasswordResetEmailBody(string displayName, string confirmUrl)
         {
-            //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "defaults", "kaza.png");
-
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
@@ -473,13 +486,7 @@ namespace KAZABUILD.Application.Helpers
 
         public static EmailContent GetTwoFactorEmailBody(string displayName, string code)
         {
-            //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "defaults", "kaza.png");
-
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
