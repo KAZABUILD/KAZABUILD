@@ -1,12 +1,6 @@
 /// This file defines the "Explore Builds" page, where users can browse,
 /// search, and filter community-submitted PC builds. It serves as the main
 /// gallery for showcasing user-created systems.
-///
-/// Key features include:
-/// - A visually appealing header with a decorative wave and gradient background.
-/// - A responsive grid layout that adjusts the number of columns based on screen width.
-/// - Controls for searching, filtering (via tags), and sorting the builds.
-/// - Each build is presented as an interactive card that navigates to the `BuildDetailPage`.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/models/build_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
+import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/l10n/app_localization.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -22,7 +17,6 @@ import 'package:frontend/widgets/navigation_bar.dart';
 import 'package:frontend/utils/error_utils.dart';
 import 'package:frontend/utils/user_image_utils.dart';
 import 'package:intl/intl.dart';
-import 'package:frontend/screens/forum/post_detail_page.dart' show userProvider;
 
 /// The main widget for the "Explore Builds" screen.
 class ExploreBuildsPage extends ConsumerStatefulWidget {
@@ -42,7 +36,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   String _sortBy = 'Latest';
   Set<String> _selectedTags = {};
   Set<String> _selectedStatuses = {};
-  String? _selectedDateRange; // '7days', '30days', '3months', null
+  String? _selectedDateRange;
   Set<String> _selectedUserIds = {};
   bool _showFilters = false;
   int _currentPage = 1;
@@ -51,10 +45,9 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   @override
   void initState() {
     super.initState();
-    // If initialTag is provided via URL parameter, add it to selected tags
     if (widget.initialTag != null && widget.initialTag!.isNotEmpty) {
       _selectedTags = {widget.initialTag!};
-      _showFilters = true; // Show filters if a tag is selected
+      _showFilters = true;
     }
   }
 
@@ -66,7 +59,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   }
 
   void _scrollToTop() {
-    // Use post frame callback to ensure the widget is rebuilt before scrolling
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -81,42 +73,42 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query;
-      _currentPage = 1; // Reset to first page when search changes
+      _currentPage = 1;
     });
   }
 
   void _onSortChanged(String sort) {
     setState(() {
       _sortBy = sort;
-      _currentPage = 1; // Reset to first page when sort changes
+      _currentPage = 1;
     });
   }
 
   void _onTagsChanged(Set<String> tags) {
     setState(() {
       _selectedTags = tags;
-      _currentPage = 1; // Reset to first page when filters change
+      _currentPage = 1;
     });
   }
 
   void _onStatusesChanged(Set<String> statuses) {
     setState(() {
       _selectedStatuses = statuses;
-      _currentPage = 1; // Reset to first page when filters change
+      _currentPage = 1;
     });
   }
 
   void _onDateRangeChanged(String? dateRange) {
     setState(() {
       _selectedDateRange = dateRange;
-      _currentPage = 1; // Reset to first page when filters change
+      _currentPage = 1;
     });
   }
 
   void _onUserIdsChanged(Set<String> userIds) {
     setState(() {
       _selectedUserIds = userIds;
-      _currentPage = 1; // Reset to first page when filters change
+      _currentPage = 1;
     });
   }
 
@@ -132,8 +124,7 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
 
-    /// Calculate the number of columns for the grid based on screen width,
-    /// ensuring it's between 1 and 4 for optimal viewing on different devices.
+    // Calculate columns
     final crossAxisCount = (screenWidth / 350).floor().clamp(1, 4);
 
     return Scaffold(
@@ -197,7 +188,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   }
 
   Widget _buildBuildsContent(int crossAxisCount, ThemeData theme) {
-    // Create params for the provider
     final params = ExploreBuildsParams(
       searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
       selectedTags: _selectedTags.isEmpty ? null : _selectedTags,
@@ -243,8 +233,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
           );
         }
         
-        // Determine if there are more pages
-        // If we got fewer items than requested, we're on the last page
         final hasMorePages = builds.length >= _itemsPerPage;
         
         return _BuildsGridWithPagination(
@@ -262,10 +250,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
         ),
       ),
       error: (err, stack) {
-        if (kDebugMode) {
-          print('Error loading builds: $err');
-          print('Stack trace: $stack');
-        }
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(48.0),
@@ -309,7 +293,6 @@ class _ExploreBuildsPageState extends ConsumerState<ExploreBuildsPage> {
   }
 }
 
-/// The header section of the page, containing search, filter, and sort controls.
 class _Header extends StatelessWidget {
   final TextEditingController searchController;
   final String searchQuery;
@@ -351,7 +334,6 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title Section
         Row(
           children: [
             Container(
@@ -391,8 +373,6 @@ class _Header extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
-        
-        // Search and Filter Row
         Row(
           children: [
             Expanded(
@@ -441,7 +421,6 @@ class _Header extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Filter Button
             Container(
               decoration: BoxDecoration(
                 color: showFilters
@@ -469,7 +448,6 @@ class _Header extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Sort Dropdown
             Container(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
@@ -511,7 +489,6 @@ class _Header extends StatelessWidget {
             ),
           ],
         ),
-        // Filter Panel
         if (showFilters) ...[
           const SizedBox(height: 16),
           _FilterPanel(
@@ -540,7 +517,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Filter panel widget
 class _FilterPanel extends ConsumerWidget {
   final Set<String> selectedTags;
   final Function(Set<String>) onTagsChanged;
@@ -567,8 +543,6 @@ class _FilterPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    // Use paginated provider with a larger page size to get more builds for filter options
-    // But limit to first page only to avoid loading all builds
     final filterParams = ExploreBuildsParams(
       searchQuery: null,
       selectedTags: null,
@@ -577,15 +551,13 @@ class _FilterPanel extends ConsumerWidget {
       selectedUserIds: null,
       sortBy: 'Latest',
       page: 1,
-      pageLength: 50, // Get first 50 builds for filter options
+      pageLength: 50,
     );
     final buildsAsync = ref.watch(exploreBuildsProvider(filterParams));
 
     return buildsAsync.when(
       data: (builds) {
-        // Collect all unique statuses from builds
         final allStatuses = <String>{};
-        // Collect unique authors from builds
         final authorsMap = <String, AppUser>{};
         for (final build in builds) {
           allStatuses.add(build.status);
@@ -623,7 +595,6 @@ class _FilterPanel extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Date Range Filter
               Text(
                 'Date Range',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -662,7 +633,6 @@ class _FilterPanel extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // Author Filter
               if (authors.isNotEmpty) ...[
                 Text(
                   'Author',
@@ -710,7 +680,6 @@ class _FilterPanel extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              // Status Filter
               if (allStatuses.isNotEmpty) ...[
                 Text(
                   AppLocalizations.of(context)!.status,
@@ -740,7 +709,6 @@ class _FilterPanel extends ConsumerWidget {
                   }).toList(),
                 ),
               ],
-              // Clear Filters Button
               if (selectedStatuses.isNotEmpty || 
                   selectedDateRange != null || 
                   selectedUserIds.isNotEmpty) ...[
@@ -765,7 +733,6 @@ class _FilterPanel extends ConsumerWidget {
   }
 }
 
-/// Date range chip widget
 class _DateRangeChip extends StatelessWidget {
   final String label;
   final String value;
@@ -789,13 +756,12 @@ class _DateRangeChip extends StatelessWidget {
   }
 }
 
-/// Widget that displays builds with server-side pagination
 class _BuildsGridWithPagination extends ConsumerStatefulWidget {
   final List<Build> builds;
   final int crossAxisCount;
-  final int currentPage; // 1-based page number
+  final int currentPage;
   final bool hasMorePages;
-  final Function(int) onPageChanged; // Takes 1-based page number
+  final Function(int) onPageChanged;
 
   const _BuildsGridWithPagination({
     required this.builds,
@@ -812,22 +778,11 @@ class _BuildsGridWithPagination extends ConsumerStatefulWidget {
 class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagination> {
   @override
   Widget build(BuildContext context) {
-    // Don't fetch components on explore page to completely avoid 429 errors
-    // Components will be shown only on build detail page
-    // This makes the explore page load instantly without any rate limiting issues
-    return _buildGrid(<String, String?>{}, imagesLoaded: true, componentsByBuildId: {});
-  }
-
-  Widget _buildGrid(Map<String, String?> imageMap, {required bool imagesLoaded, Map<String, List<Map<String, dynamic>>> componentsByBuildId = const {}}) {
     final theme = Theme.of(context);
-    
-    // For server-side pagination, we show a simplified pagination UI
-    // Since we don't know the total number of pages, we show prev/next buttons
     final showPagination = widget.currentPage > 1 || widget.hasMorePages;
     
     return Column(
       children: [
-        // Builds grid - display all builds received (already paginated from server)
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -835,27 +790,23 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
             crossAxisCount: widget.crossAxisCount,
             crossAxisSpacing: 20,
             mainAxisSpacing: 20,
-            childAspectRatio: 0.7,
+            childAspectRatio: 0.7, 
           ),
           itemCount: widget.builds.length,
           itemBuilder: (context, index) {
-            // Components are not fetched on explore page to avoid 429 errors
-            // They will be displayed on the build detail page
             return _BuildCard(
               buildData: widget.builds[index],
-              imageMap: imageMap,
-              imagesLoaded: imagesLoaded,
+              imageMap: const {},
+              imagesLoaded: true,
             );
           },
         ),
         
-        // Pagination controls
         if (showPagination) ...[
           const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Previous button
               IconButton(
                 icon: const Icon(Icons.chevron_left),
                 onPressed: widget.currentPage > 1
@@ -871,12 +822,8 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
                 ),
               ),
               const SizedBox(width: 8),
-              
-              // Page numbers - show current page and nearby pages
               ..._buildPageNumbers(theme),
-              
               const SizedBox(width: 8),
-              // Next button
               IconButton(
                 icon: const Icon(Icons.chevron_right),
                 onPressed: widget.hasMorePages
@@ -910,16 +857,8 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
     final hasMorePages = widget.hasMorePages;
     final List<Widget> pageButtons = [];
     
-    // Only show pages that we know have builds
-    // We know currentPage has builds (otherwise we wouldn't be here)
-    // We can show next page only if hasMorePages is true (meaning next page likely has builds)
-    
-    // Show page 1 if we're not on it and not on page 2 (to avoid duplicate)
     if (currentPage > 2) {
       pageButtons.add(_buildPageButton(theme, 1));
-      
-      // If previous page is not page 2, show ellipsis
-      // (meaning there's a gap between page 1 and previous page)
       if (currentPage - 1 > 2) {
         pageButtons.add(
           Padding(
@@ -929,16 +868,10 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
         );
       }
     }
-    
-    // Show previous page if we're not on page 1
     if (currentPage > 1) {
       pageButtons.add(_buildPageButton(theme, currentPage - 1));
     }
-    
-    // Show current page
     pageButtons.add(_buildPageButton(theme, currentPage));
-    
-    // Show next page only if we know there are more builds
     if (hasMorePages) {
       pageButtons.add(_buildPageButton(theme, currentPage + 1));
     }
@@ -983,10 +916,8 @@ class _BuildsGridWithPaginationState extends ConsumerState<_BuildsGridWithPagina
   }
 }
 
-/// A card widget that displays a summary of a single [CommunityBuild].
-///
-/// Tapping on the card navigates to the [BuildDetailPage] for that build.
-/// Users can rate builds by clicking on the star rating widget.
+/// A card widget that displays a summary of a single build.
+/// Updated to explicitly fetch components if they are missing from the list.
 class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
   final Map<String, String?> imageMap;
@@ -1003,17 +934,60 @@ class _BuildCard extends ConsumerStatefulWidget {
 }
 
 class _BuildCardState extends ConsumerState<_BuildCard> {
+  bool _showAllComponents = false;
+  List<BaseComponent> _components = [];
+  bool _isLoadingComponents = false;
 
-  /// Builds the image widget - shows image if available, otherwise placeholder
-  Widget _buildImage(BuildContext context, ThemeData theme) {
-    // Check if build has an image URL
-    final imageUrl = _getImageUrl();
+  @override
+  void initState() {
+    super.initState();
+    // Initialize components from props
+    _components = widget.buildData.components;
     
+    // If components are empty, try to fetch them
+    // This fixes the "No components" issue on Explore page where API returns empty component list
+    if (_components.isEmpty) {
+      _fetchMissingComponents();
+    }
+  }
+
+  /// Fetches full build details to get the components
+  Future<void> _fetchMissingComponents() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingComponents = true;
+    });
+
+    try {
+      // Access the build service through Riverpod
+      final buildService = ref.read(buildServiceProvider);
+      // Fetch specific build by ID which includes all details
+      // getBuildById returns Build directly, not Response
+      final fullBuild = await buildService.getBuildById(widget.buildData.id);
+      
+      if (mounted && fullBuild.components.isNotEmpty) {
+        setState(() {
+          _components = fullBuild.components;
+        });
+      }
+    } catch (e) {
+      // Silently fail - will show "No components" which is technically true if fetch fails
+      debugPrint('Error fetching components for build ${widget.buildData.id}: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingComponents = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildImage(BuildContext context, ThemeData theme) {
+    final imageUrl = _getImageUrl();
     if (imageUrl == null || imageUrl.isEmpty) {
       return _buildPlaceholderImage(context, theme);
     }
-
-    // Show image with error handling
     return Image.network(
       imageUrl,
       fit: BoxFit.cover,
@@ -1035,61 +1009,21 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
           ),
         );
       },
-      errorBuilder: (context, error, stackTrace) {
-        // On error, show placeholder
-        return _buildPlaceholderImage(context, theme);
-      },
+      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(context, theme),
     );
   }
 
-  /// Gets the image URL for the build
   String? _getImageUrl() {
-    if (widget.buildData.imageUrl == null || widget.buildData.imageUrl!.isEmpty) {
-      return null;
-    }
-
+    if (widget.buildData.imageUrl == null || widget.buildData.imageUrl!.isEmpty) return null;
     final url = widget.buildData.imageUrl!;
-    
-    // Check if it's a GUID (image ID)
     final guidPattern = RegExp(
         r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
-    if (guidPattern.hasMatch(url)) {
-      // It's an image ID, construct download URL
-      return '$apiBaseUrl/Images/download/$url';
-    } else if (url.startsWith('http://') || url.startsWith('https://')) {
-      // Already a full URL
-      return url;
-    } else if (url.startsWith('/')) {
-      // Relative URL
-      return '$apiBaseUrl$url';
-    }
-
+    if (guidPattern.hasMatch(url)) return '$apiBaseUrl/Images/download/$url';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return '$apiBaseUrl$url';
     return null;
   }
 
-  /// Formats the publish date for display
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      final weeks = (difference.inDays / 7).floor();
-      return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
-    } else if (difference.inDays < 365) {
-      final months = (difference.inDays / 30).floor();
-      return months == 1 ? '1 month ago' : '$months months ago';
-    } else {
-      return DateFormat('MMM yyyy').format(date);
-    }
-  }
-
-  /// Builds a placeholder image widget when no image is available
   Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -1099,26 +1033,62 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
       child: Image.network(
         '$apiBaseUrl/defaults/kaza.png',
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          // Fallback to empty container if default image fails
-          return const SizedBox.shrink();
-        },
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    if (difference.inDays == 0) return 'Today';
+    if (difference.inDays == 1) return 'Yesterday';
+    if (difference.inDays < 7) return '${difference.inDays} days ago';
+    if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
+    }
+    if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return months == 1 ? '1 month ago' : '$months months ago';
+    }
+    return DateFormat('MMM yyyy').format(date);
+  }
+
+  String _getComponentTypeShortName(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu: return 'CPU';
+      case ComponentType.gpu: return 'GPU';
+      case ComponentType.motherboard: return 'MB';
+      case ComponentType.ram: return 'RAM';
+      case ComponentType.storage: return 'SSD';
+      case ComponentType.psu: return 'PSU';
+      case ComponentType.cooler: return 'Cooler';
+      case ComponentType.caseFan: return 'Fan';
+      case ComponentType.pcCase: return 'Case';
+      case ComponentType.monitor: return 'Monitor';
+    }
+  }
+
+  IconData _getComponentIcon(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu: return Icons.memory_rounded;
+      case ComponentType.gpu: return Icons.videogame_asset_rounded;
+      case ComponentType.motherboard: return Icons.developer_board_rounded;
+      case ComponentType.ram: return Icons.storage_rounded;
+      case ComponentType.storage: return Icons.save_rounded;
+      case ComponentType.psu: return Icons.power_rounded;
+      case ComponentType.cooler: return Icons.ac_unit_rounded;
+      case ComponentType.caseFan: return Icons.air_rounded;
+      case ComponentType.pcCase: return Icons.computer_rounded;
+      case ComponentType.monitor: return Icons.monitor_rounded;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    if (kDebugMode) {
-      print('_BuildCard: Build ID: ${widget.buildData.id}, Name: ${widget.buildData.name}');
-      print('_BuildCard: Tags: ${widget.buildData.tags} (${widget.buildData.tags.length} tags)');
-      if (widget.buildData.tags.isEmpty) {
-        print('  ⚠️ WARNING: Build "${widget.buildData.name}" has NO TAGS!');
-      }
-    }
-
     return Card(
       elevation: 2,
       clipBehavior: Clip.antiAlias,
@@ -1138,241 +1108,204 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Build Image - show image if available, otherwise placeholder
             AspectRatio(
               aspectRatio: 16 / 9,
               child: _buildImage(context, theme),
             ),
 
-            /// The content section below the image.
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.buildData.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+            // Content Section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.buildData.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  // Author information - fetch if not available
-                  widget.buildData.author != null
-                      ? InkWell(
-                          onTap: () {
-                            context.go('/profile/${widget.buildData.author!.uid}');
-                          },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  backgroundImage: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) != null
-                                      ? NetworkImage(UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL)!)
-                                      : null,
-                                  child: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) == null
-                                      ? Text(
-                                          widget.buildData.author!.username.isNotEmpty
-                                              ? widget.buildData.author!.username.substring(0, 1).toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            color: theme.colorScheme.onPrimary,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    widget.buildData.author!.displayName.isNotEmpty
-                                        ? widget.buildData.author!.displayName
-                                        : widget.buildData.author!.username,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : ref.watch(userProvider(widget.buildData.userId)).when(
-                          data: (author) {
-                            if (author == null) {
-                              return Row(
+                    const SizedBox(height: 8),
+
+                    // Author info
+                    widget.buildData.author != null
+                        ? InkWell(
+                            onTap: () => context.go('/profile/${widget.buildData.author!.uid}'),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 12,
-                                    child: Text(
-                                      '?',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.onPrimary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    backgroundImage: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) != null
+                                        ? NetworkImage(UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL)!)
+                                        : null,
+                                    child: UserImageUtils.getUserImageUrl(widget.buildData.author!.photoURL) == null
+                                        ? Text(
+                                            widget.buildData.author!.username.isNotEmpty ? widget.buildData.author!.username[0].toUpperCase() : '?',
+                                            style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 10, fontWeight: FontWeight.bold),
+                                          )
+                                        : null,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Unknown User',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                      ),
+                                      widget.buildData.author!.displayName.isNotEmpty ? widget.buildData.author!.displayName : widget.buildData.author!.username,
+                                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
-                              );
-                            }
-                            return InkWell(
-                              onTap: () {
-                                context.go('/profile/${author.uid}');
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundImage: UserImageUtils.getUserImageUrl(author.photoURL) != null
-                                          ? NetworkImage(UserImageUtils.getUserImageUrl(author.photoURL)!)
-                                          : null,
-                                      child: UserImageUtils.getUserImageUrl(author.photoURL) == null
-                                          ? Text(
-                                              author.username.isNotEmpty
-                                                  ? author.username.substring(0, 1).toUpperCase()
-                                                  : '?',
-                                              style: TextStyle(
-                                                color: theme.colorScheme.onPrimary,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        author.displayName.isNotEmpty
-                                            ? author.displayName
-                                            : author.username,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                          loading: () => Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 12,
-                                child: SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Loading...',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          error: (_, __) => Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 12,
-                                child: Text(
-                                  '?',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Unknown User',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                  const SizedBox(height: 12),
-                  // Publish date and status
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Publish date
-                      if (widget.buildData.databaseEntryAt != null)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDate(widget.buildData.databaseEntryAt!),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
-                          ],
-                        )
-                      else
-                        const SizedBox.shrink(),
-                      // Status badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.buildData.status,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
+                          )
+                        : const SizedBox.shrink(), // Simplified fallback
+                    
+                    const SizedBox(height: 8),
+
+                    // Components Section
+                    if (_components.isNotEmpty || _isLoadingComponents)
+                      Text(
+                        'Components',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                          fontSize: 12,
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 4),
+
+                    // Scrollable Component List
+                    Expanded(
+                      child: _isLoadingComponents
+                          ? Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 12, height: 12, 
+                                    child: CircularProgressIndicator(strokeWidth: 2)
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Loading components...', 
+                                    style: theme.textTheme.bodySmall
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _components.isEmpty
+                              ? Text(
+                                  'No components',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              : SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Column(
+                                    children: [
+                                      ...(_showAllComponents 
+                                          ? _components 
+                                          : _components.take(5)).map((component) {
+                                        final componentName = component.name.isNotEmpty 
+                                            ? component.name 
+                                            : _getComponentTypeShortName(component.type);
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Row(
+                                            children: [
+                                              Icon(_getComponentIcon(component.type), size: 14, color: theme.colorScheme.primary),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  componentName,
+                                                  style: theme.textTheme.bodySmall?.copyWith(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: theme.colorScheme.onSurface,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                      if (_components.length > 5)
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              _showAllComponents = !_showAllComponents;
+                                            });
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 4),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                _showAllComponents ? 'Show less' : '+ ${_components.length - 5} more',
+                                                style: theme.textTheme.labelSmall?.copyWith(
+                                                  color: theme.colorScheme.primary,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Footer
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (widget.buildData.databaseEntryAt != null)
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(widget.buildData.databaseEntryAt!),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            widget.buildData.status,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

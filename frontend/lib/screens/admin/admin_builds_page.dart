@@ -362,15 +362,53 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
   Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final buildsAsync = ref.watch(adminBuildsProvider(queryParams));
+    
+    // Build params for total count (without pagination) - use get-count endpoint
+    // Extract individual params for stable record-based provider
+    final query = queryParams['query'] as String?;
+    final status = queryParams['status'] as List<String>?;
+    final orderBy = queryParams['orderBy'] as String?;
+    final sortDirection = queryParams['sortDirection'] as String? ?? 'desc';
+    
+    // Use get-count endpoint to get total builds count
+    // Use record-based provider for stable equality comparison
+    final totalCountAsync = ref.watch(adminBuildsTotalCountProvider((
+      query: query,
+      status: status,
+      userIds: null, // Don't filter by userIds for total count
+      orderBy: orderBy,
+      sortDirection: sortDirection,
+    )));
+    
+    // Get total count value - use valueOrNull to get the current value if available
+    // This will return the value once the async operation completes, or null while loading
+    final totalCount = totalCountAsync.valueOrNull;
+    print('AdminBuildsPage: totalCount from async value: $totalCount');
+    print('AdminBuildsPage: totalCountAsync state - isLoading: ${totalCountAsync.isLoading}, hasValue: ${totalCountAsync.hasValue}, hasError: ${totalCountAsync.hasError}');
+    if (totalCountAsync.hasValue) {
+      print('AdminBuildsPage: totalCountAsync hasValue is true, value: ${totalCountAsync.value}');
+    }
+    if (totalCountAsync.hasError) {
+      print('AdminBuildsPage: totalCountAsync hasError: ${totalCountAsync.error}');
+    }
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 8 : 24),
           child: buildsAsync.when(
-            data: (builds) => _buildStatsRow(isDark, builds, isMobile),
-            loading: () => _buildStatsRow(isDark, [], isMobile),
-            error: (error, stack) => _buildStatsRow(isDark, [], isMobile),
+            data: (builds) {
+              print('AdminBuildsPage: Builds loaded (${builds.length}), calling _buildStatsRow with totalBuilds: $totalCount');
+              return _buildStatsRow(isDark, builds, isMobile, totalBuilds: totalCount);
+            },
+            loading: () {
+              print('AdminBuildsPage: Builds loading, calling _buildStatsRow with totalBuilds: $totalCount');
+              return _buildStatsRow(isDark, [], isMobile, totalBuilds: totalCount);
+            },
+            error: (error, stack) {
+              print('AdminBuildsPage: Builds error, calling _buildStatsRow with totalBuilds: $totalCount');
+              return _buildStatsRow(isDark, [], isMobile, totalBuilds: totalCount);
+            },
           ),
         ),
         Expanded(
@@ -454,15 +492,23 @@ class _AdminBuildsPageState extends ConsumerState<AdminBuildsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<AdminBuild> builds, bool isMobile) {
-    // Calculate stats from all builds
-    final totalBuilds = builds.length;
+  Widget _buildStatsRow(bool isDark, List<AdminBuild> builds, bool isMobile, {int? totalBuilds}) {
+    // Use totalBuilds from get-count endpoint - never use builds.length as it's just one page
+    // totalBuilds should come from adminBuildsTotalCountProvider which uses get-count endpoint
+    print('_buildStatsRow: totalBuilds parameter = $totalBuilds');
+    // If totalBuilds is null, it means the async value hasn't loaded yet, show 0 temporarily
+    // Once the provider resolves, the widget will rebuild with the correct value
+    final totalBuildsCount = totalBuilds ?? 0;
+    print('_buildStatsRow: totalBuildsCount (final) = $totalBuildsCount');
+    
+    // Note: Published, Drafts, Official counts are from current page only
+    // To get accurate counts for these, we'd need separate get-count calls with status filters
     final published = builds.where((b) => b.status.toUpperCase() == 'PUBLISHED').length;
     final drafts = builds.where((b) => b.status.toUpperCase() == 'DRAFT').length;
     final official = builds.where((b) => b.status.toUpperCase() == 'OFFICIAL').length;
     
     final stats = [
-      {'label': 'Total Builds', 'value': totalBuilds.toString(), 'icon': Icons.computer, 'color': AppColorsDark.buttonBlue},
+      {'label': 'Total Builds', 'value': totalBuildsCount.toString(), 'icon': Icons.computer, 'color': AppColorsDark.buttonBlue},
       {'label': 'Published', 'value': published.toString(), 'icon': Icons.publish, 'color': AppColorsDark.buttonGreen},
       {'label': 'Drafts', 'value': drafts.toString(), 'icon': Icons.edit, 'color': AppColorsDark.warning},
       {'label': 'Official', 'value': official.toString(), 'icon': Icons.verified, 'color': AppColorsDark.buttonPurple},
