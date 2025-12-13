@@ -306,6 +306,49 @@ class QuizService {
     await _dio.post('$apiBaseUrl/Builds/generate');
   }
 
+  /// Deletes older GENERATED builds for a user, keeping the latest [keepLatest].
+  /// Does not touch non-generated user builds.
+  Future<void> pruneGeneratedBuilds({
+    required String userId,
+    int keepLatest = 3,
+  }) async {
+    if (userId.isEmpty || keepLatest < 0) return;
+
+    try {
+      final response = await _dio.post(
+        '$apiBaseUrl/Builds/get',
+        data: {
+          'UserId': [userId],
+          'Status': ['GENERATED'],
+          'Paging': false,
+          'OrderBy': 'DatabaseEntryAt',
+          'SortDirection': 'desc',
+        },
+      );
+
+      final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
+      if (buildsJson.length <= keepLatest) return;
+
+      final idsToDelete = buildsJson
+          .skip(keepLatest)
+          .whereType<Map<String, dynamic>>()
+          .map((b) => _asString(b['id'] ?? b['Id']))
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      for (final buildId in idsToDelete) {
+        try {
+          await _dio.delete('$apiBaseUrl/Builds/$buildId');
+        } catch (_) {
+          // continue deleting others even if one fails
+        }
+      }
+    } catch (_) {
+      // pruning should not block quiz flow
+    }
+  }
+
   Future<List<build_model.Build>> fetchGeneratedBuilds({required String userId}) async {
     final response = await _dio.post(
       '$apiBaseUrl/Builds/get',

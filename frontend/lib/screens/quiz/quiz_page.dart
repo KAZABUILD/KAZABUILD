@@ -199,24 +199,60 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         final quizState = ref.read(quizProvider);
         final selections = quizState.selections.values.toList();
 
-        // Persist any selections that are not yet saved for this user
         final quizService = ref.read(quizServiceProvider);
+
+        // Rebuild lookups (if questions are loaded) so we can clean stale server answers
+        final questionsAsync = ref.read(quizQuestionsProvider);
+        final questions = questionsAsync.valueOrNull ?? [];
+        final questionLookup = {
+          for (final q in questions) q.id: q,
+        };
+        final answerLookup = <String, QuizAnswerOption>{};
+        for (final q in questions) {
+          for (final opt in q.options) {
+            answerLookup[opt.id] = opt;
+          }
+        }
+
+        // Delete all previously saved answers for this user (generated builds will use fresh answers)
+        if (questions.isNotEmpty) {
+          try {
+            final existingSelections = await quizService.fetchUserSelections(
+              userId: user.uid,
+              questionLookup: questionLookup,
+              answerLookup: answerLookup,
+            );
+            await Future.wait(existingSelections
+                .map((s) => s.userAnswerId)
+                .where((id) => (id ?? '').isNotEmpty)
+                .map((id) => quizService.deleteUserAnswer(id!)));
+          } catch (_) {
+            // best-effort cleanup; continue even if it fails
+          }
+        }
+
+        // Persist current selections (always submit all to ensure latest answers are used)
         await Future.wait(
-          selections
-              .where((s) => (s.userAnswerId ?? '').isEmpty)
-              .map((s) async {
-                try {
-                  await quizService.submitAnswer(userId: user.uid, answerId: s.answerId);
-                } on DioException catch (e) {
-                  // Ignore duplicates already recorded server-side
-                  if (e.response?.statusCode != 409) rethrow;
-                }
-              }),
+          selections.map((s) async {
+            try {
+              await quizService.submitAnswer(userId: user.uid, answerId: s.answerId);
+            } on DioException catch (e) {
+              // Ignore duplicates already recorded server-side
+              if (e.response?.statusCode != 409) rethrow;
+            }
+          }),
         );
 
-        // Run the generation once for a batch of 3 builds
-        _generationFuture ??= quizService.generateBuilds();
+        // Always trigger a fresh generation for a new batch of 3 builds
+        _generationFuture = quizService.generateBuilds();
         await _generationFuture;
+        _generationFuture = null;
+
+        // Delete older GENERATED builds, keep the latest 3
+        await quizService.pruneGeneratedBuilds(userId: user.uid, keepLatest: 3);
+
+        // Ensure recommended builds provider refreshes with the new generation
+        ref.invalidate(quizRecommendedBuildsProvider(user.uid));
       }
 
       if (mounted) {
