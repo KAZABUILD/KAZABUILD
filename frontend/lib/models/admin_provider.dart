@@ -35,6 +35,8 @@ class AdminUser {
   final DateTime? birth;
   final bool? isBlocked;
   final DateTime? bannedUntil;
+  final int buildsCount;
+  final int postsCount;
 
   AdminUser({
     required this.id,
@@ -49,6 +51,8 @@ class AdminUser {
     this.birth,
     this.isBlocked,
     this.bannedUntil,
+    this.buildsCount = 0,
+    this.postsCount = 0,
   });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) {
@@ -108,6 +112,15 @@ class AdminUser {
         return null;
       }
 
+      // Parse counts - try different possible field names
+      int parseCount(dynamic value) {
+        if (value == null) return 0;
+        if (value is int) return value;
+        if (value is num) return value.toInt();
+        if (value is String) return int.tryParse(value) ?? 0;
+        return 0;
+      }
+
       return AdminUser(
         id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
         login: json['login'] ?? json['Login'] ?? '',
@@ -121,6 +134,8 @@ class AdminUser {
         birth: parseDateTime(json['birth'] ?? json['Birth']),
         isBlocked: json['isBlocked'] ?? json['IsBlocked'],
         bannedUntil: parseDateTime(json['bannedUntil'] ?? json['BannedUntil']),
+        buildsCount: parseCount(json['buildsCount'] ?? json['BuildsCount'] ?? json['builds'] ?? json['Builds']),
+        postsCount: parseCount(json['postsCount'] ?? json['PostsCount'] ?? json['posts'] ?? json['Posts']),
       );
     } catch (e, stack) {
       print('Error in AdminUser.fromJson: $e');
@@ -207,16 +222,108 @@ final adminUsersProvider = FutureProvider.autoDispose.family<List<AdminUser>, Ma
       
       // Parse users
       final users = <AdminUser>[];
+      final userIds = <String>[];
+      
       for (var i = 0; i < userList.length; i++) {
         try {
-          final user = AdminUser.fromJson(userList[i] as Map<String, dynamic>);
+          final userJson = userList[i] as Map<String, dynamic>;
+          final user = AdminUser.fromJson(userJson);
           users.add(user);
+          userIds.add(user.id);
         } catch (e, stack) {
           print('Error parsing user at index $i: $e');
           print('User data: ${userList[i]}');
           print('Stack: $stack');
           // Continue with other users instead of failing completely
         }
+      }
+      
+      // Fetch builds and posts counts for all users in parallel
+      final Map<String, int> buildsCounts = {};
+      final Map<String, int> postsCounts = {};
+      
+      try {
+        // Get all builds for these users (without pagination to get accurate count)
+        final buildsResponse = await adminService.getBuilds(
+          userIds: userIds,
+          page: null,
+          pageLength: null,
+        );
+        if (buildsResponse.statusCode == 200) {
+          final buildsData = buildsResponse.data;
+          List<dynamic> buildsList = [];
+          if (buildsData is List) {
+            buildsList = buildsData;
+          } else if (buildsData is Map && buildsData.containsKey('data')) {
+            buildsList = buildsData['data'] as List;
+          }
+          
+          // Count builds per user
+          for (var build in buildsList) {
+            if (build is Map<String, dynamic>) {
+              final userId = (build['userId'] ?? build['UserId'] ?? '').toString();
+              if (userId.isNotEmpty) {
+                buildsCounts[userId] = (buildsCounts[userId] ?? 0) + 1;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching builds counts: $e');
+      }
+      
+      try {
+        // Get all posts for these users (without pagination to get accurate count)
+        final postsResponse = await adminService.getForumPosts(
+          creatorIds: userIds,
+          page: null,
+          pageLength: null,
+        );
+        if (postsResponse.statusCode == 200) {
+          final postsData = postsResponse.data;
+          List<dynamic> postsList = [];
+          if (postsData is List) {
+            postsList = postsData;
+          } else if (postsData is Map && postsData.containsKey('data')) {
+            postsList = postsData['data'] as List;
+          }
+          
+          // Count posts per user
+          for (var post in postsList) {
+            if (post is Map<String, dynamic>) {
+              final creatorId = (post['creatorId'] ?? post['CreatorId'] ?? post['userId'] ?? post['UserId'] ?? '').toString();
+              if (creatorId.isNotEmpty) {
+                postsCounts[creatorId] = (postsCounts[creatorId] ?? 0) + 1;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching posts counts: $e');
+      }
+      
+      // Update users with counts
+      for (var i = 0; i < users.length; i++) {
+        final user = users[i];
+        final buildsCount = buildsCounts[user.id] ?? 0;
+        final postsCount = postsCounts[user.id] ?? 0;
+        
+        users[i] = AdminUser(
+          id: user.id,
+          login: user.login,
+          email: user.email,
+          displayName: user.displayName,
+          phoneNumber: user.phoneNumber,
+          description: user.description,
+          gender: user.gender,
+          userRole: user.userRole,
+          registeredAt: user.registeredAt,
+          birth: user.birth,
+          isBlocked: user.isBlocked,
+          bannedUntil: user.bannedUntil,
+          buildsCount: buildsCount,
+          postsCount: postsCount,
+        );
       }
       
       print('AdminUsersProvider: Successfully parsed ${users.length} users');
@@ -448,6 +555,50 @@ class AdminForumPost {
 
 /// Provider for admin forum posts list
 /// Using autoDispose to prevent memory leaks and ensure proper cleanup
+/// Provider for total forum posts count (uses get-count endpoint)
+final adminForumPostsTotalCountProvider = FutureProvider.autoDispose.family<int, Map<String, dynamic>>((ref, params) async {
+  try {
+    final adminService = ref.watch(adminServiceProvider);
+    
+    print('adminForumPostsTotalCountProvider: Fetching total count with params: $params');
+    
+    final response = await adminService.getForumPostsCount(
+      query: params['query'] as String?,
+      topics: params['topics'] as List<String>?,
+      creatorIds: params['creatorIds'] as List<String>?,
+      orderBy: params['orderBy'] as String?,
+      sortDirection: params['sortDirection'] as String? ?? 'asc',
+    );
+
+    print('adminForumPostsTotalCountProvider: Response status: ${response.statusCode}');
+    print('adminForumPostsTotalCountProvider: Response data: ${response.data}');
+
+    if (response.statusCode == 200) {
+      final count = response.data;
+      int totalCount = 0;
+      
+      if (count is num) {
+        totalCount = count.toInt();
+      } else if (count is String) {
+        totalCount = int.tryParse(count) ?? 0;
+      } else if (count is List && count.isNotEmpty) {
+        // Backend returns IEnumerable<int>, might be a list
+        totalCount = (count[0] as num).toInt();
+      }
+      
+      print('adminForumPostsTotalCountProvider: Returning total count: $totalCount');
+      return totalCount;
+    } else {
+      print('adminForumPostsTotalCountProvider: Response status not 200: ${response.statusCode}');
+      return 0;
+    }
+  } catch (e, stack) {
+    print('Error in adminForumPostsTotalCountProvider: $e');
+    print('Stack: $stack');
+    return 0;
+  }
+});
+
 final adminForumPostsProvider = FutureProvider.autoDispose.family<List<AdminForumPost>, Map<String, dynamic>>((ref, params) async {
   try {
     final adminService = ref.watch(adminServiceProvider);
@@ -594,6 +745,48 @@ class AdminComponent {
 
 /// Provider for admin components list
 /// Using autoDispose to prevent memory leaks and ensure proper cleanup
+/// Provider for total components count (uses get-count endpoint)
+final adminComponentsTotalCountProvider = FutureProvider.autoDispose.family<int, Map<String, dynamic>>((ref, params) async {
+  try {
+    final adminService = ref.watch(adminServiceProvider);
+    
+    print('adminComponentsTotalCountProvider: Fetching total count with params: $params');
+    
+    final response = await adminService.getComponentsCount(
+      query: params['query'] as String?,
+      componentTypes: params['componentTypes'] as List<String>?,
+      names: params['names'] as List<String>?,
+      manufacturers: params['manufacturers'] as List<String>?,
+      orderBy: params['orderBy'] as String?,
+      sortDirection: params['sortDirection'] as String? ?? 'asc',
+    );
+
+    print('adminComponentsTotalCountProvider: Response status: ${response.statusCode}');
+    print('adminComponentsTotalCountProvider: Response data: ${response.data}');
+
+    if (response.statusCode == 200) {
+      final count = response.data;
+      int totalCount = 0;
+      
+      if (count is num) {
+        totalCount = count.toInt();
+      } else if (count is String) {
+        totalCount = int.tryParse(count) ?? 0;
+      }
+      
+      print('adminComponentsTotalCountProvider: Returning total count: $totalCount');
+      return totalCount;
+    } else {
+      print('adminComponentsTotalCountProvider: Response status not 200: ${response.statusCode}');
+      return 0;
+    }
+  } catch (e, stack) {
+    print('Error in adminComponentsTotalCountProvider: $e');
+    print('Stack: $stack');
+    return 0;
+  }
+});
+
 final adminComponentsProvider = FutureProvider.autoDispose.family<List<AdminComponent>, Map<String, dynamic>>((ref, params) async {
   try {
     final adminService = ref.watch(adminServiceProvider);

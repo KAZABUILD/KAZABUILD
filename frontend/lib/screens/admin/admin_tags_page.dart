@@ -11,6 +11,31 @@ import '../../models/build_provider.dart';
 import '../../models/tag_model.dart';
 import '../../utils/error_utils.dart';
 
+/// Provider for total tags count (uses get-count endpoint)
+final adminTagsTotalCountProvider = FutureProvider.autoDispose.family<int, String?>((ref, query) async {
+  try {
+    debugPrint('adminTagsTotalCountProvider: START - Fetching total count with query: $query');
+    final buildService = ref.watch(buildServiceProvider);
+    debugPrint('adminTagsTotalCountProvider: Got buildService, calling getTagsCount');
+    
+    final totalCount = await buildService.getTagsCount(
+      query: query,
+    );
+    
+    debugPrint('adminTagsTotalCountProvider: Successfully fetched total count: $totalCount');
+    if (totalCount == 0) {
+      debugPrint('adminTagsTotalCountProvider: WARNING - Total count is 0, this might be an error!');
+    }
+    return totalCount;
+  } catch (e, stack) {
+    debugPrint('adminTagsTotalCountProvider: ERROR fetching tags count: $e');
+    debugPrint('adminTagsTotalCountProvider: Error type: ${e.runtimeType}');
+    debugPrint('adminTagsTotalCountProvider: Stack: $stack');
+    // Return 0 on error, but log it
+    return 0;
+  }
+});
+
 /// Provider for admin tags with pagination and search
 final adminTagsProvider = FutureProvider.autoDispose.family<List<Tag>, Map<String, dynamic>>((ref, params) async {
   try {
@@ -44,6 +69,9 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
+  
+  // Cache total count to avoid showing wrong value during loading
+  int? _cachedTotalCount;
 
   @override
   void dispose() {
@@ -231,18 +259,60 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
   Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final tagsAsync = ref.watch(adminTagsProvider(queryParams));
+    // Get total count using get-count endpoint (only query matters)
+    // Create stable params to avoid provider recreation
+    final query = queryParams['query'] as String?;
+    
+    // Use query directly instead of map for more stable provider key
+    final queryForCount = query;
+    debugPrint('AdminTagsPage: Using query for totalCount: $queryForCount');
+    debugPrint('AdminTagsPage: About to watch adminTagsTotalCountProvider');
+    final totalCountAsync = ref.watch(adminTagsTotalCountProvider(queryForCount));
+    debugPrint('AdminTagsPage: Watching adminTagsTotalCountProvider');
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: tagsAsync.when(
-            data: (tags) => _buildStatsRow(isDark, tags, isMobile),
-            loading: () => _buildStatsRow(isDark, [], isMobile),
+            data: (tags) => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                debugPrint('AdminTagsPage: Using totalCount from provider: $totalCount');
+                return _buildStatsRow(isDark, tags, totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? tags.length;
+                debugPrint('AdminTagsPage: totalCount loading, using cached: $_cachedTotalCount or fallback: ${tags.length} -> $countToUse');
+                return _buildStatsRow(isDark, tags, countToUse, isMobile);
+              },
+              error: (error, stack) {
+                final countToUse = _cachedTotalCount ?? tags.length;
+                debugPrint('AdminTagsPage: totalCount error: $error, using cached: $_cachedTotalCount or fallback: ${tags.length} -> $countToUse');
+                return _buildStatsRow(isDark, tags, countToUse, isMobile);
+              },
+            ),
+            loading: () => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                debugPrint('AdminTagsPage: tags loading, using totalCount: $totalCount');
+                return _buildStatsRow(isDark, [], totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? 0;
+                debugPrint('AdminTagsPage: both loading, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+              error: (_, __) {
+                final countToUse = _cachedTotalCount ?? 0;
+                debugPrint('AdminTagsPage: tags loading but totalCount error, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+            ),
             error: (error, stack) {
-              debugPrint('Error loading tags: $error');
-              debugPrint('Stack: $stack');
-              return _buildStatsRow(isDark, [], isMobile);
+              final countToUse = _cachedTotalCount ?? 0;
+              debugPrint('AdminTagsPage: tags error, using cached totalCount: $_cachedTotalCount -> $countToUse');
+              return _buildStatsRow(isDark, [], countToUse, isMobile);
             },
           ),
         ),
@@ -348,8 +418,9 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<Tag> tags, bool isMobile) {
-    final totalTags = tags.length;
+  Widget _buildStatsRow(bool isDark, List<Tag> currentPageTags, int totalTags, bool isMobile) {
+    // Debug: Print to verify the value being used
+    debugPrint('_buildStatsRow: totalTags = $totalTags, currentPageTags.length = ${currentPageTags.length}');
     
     final stats = [
       {'label': 'Total Tags', 'value': totalTags.toString(), 'icon': Icons.label, 'color': AppColorsDark.buttonBlue},

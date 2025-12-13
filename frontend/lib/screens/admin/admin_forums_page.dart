@@ -28,6 +28,12 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
+  
+  // Cache total count to avoid showing wrong value during loading
+  int? _cachedTotalCount;
+  
+  // Cache total count params to prevent provider recreation
+  Map<String, dynamic>? _cachedTotalCountParams;
 
   @override
   void dispose() {
@@ -303,15 +309,83 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
   Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final postsAsync = ref.watch(adminForumPostsProvider(queryParams));
+    // Get total count using get-count endpoint (only query and topics matter)
+    // Create stable params to avoid provider recreation
+    final query = queryParams['query'] as String?;
+    final topics = queryParams['topics'] as List<String>?;
+    final sortDirection = queryParams['sortDirection'] as String? ?? 'asc';
+    
+    // Check if params changed
+    final newTotalCountParams = <String, dynamic>{
+      if (query != null) 'query': query,
+      if (topics != null) 'topics': topics,
+      'sortDirection': sortDirection,
+    };
+    
+    // Only update if params actually changed
+    bool totalCountParamsChanged = false;
+    if (_cachedTotalCountParams == null) {
+      totalCountParamsChanged = true;
+    } else {
+      if (_cachedTotalCountParams!['query'] != newTotalCountParams['query'] ||
+          _cachedTotalCountParams!['topics'] != newTotalCountParams['topics'] ||
+          _cachedTotalCountParams!['sortDirection'] != newTotalCountParams['sortDirection']) {
+        totalCountParamsChanged = true;
+      }
+    }
+    
+    if (totalCountParamsChanged) {
+      _cachedTotalCountParams = Map<String, dynamic>.from(newTotalCountParams);
+      // Reset cached count when params change
+      _cachedTotalCount = null;
+    }
+    
+    final totalCountAsync = ref.watch(adminForumPostsTotalCountProvider(_cachedTotalCountParams!));
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 8 : 24),
           child: postsAsync.when(
-            data: (posts) => _buildStatsRow(isDark, posts, isMobile),
-            loading: () => _buildStatsRow(isDark, [], isMobile),
-            error: (error, stack) => _buildStatsRow(isDark, [], isMobile),
+            data: (posts) => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                print('AdminForumsPage: Using totalCount from provider: $totalCount');
+                return _buildStatsRow(isDark, posts, totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? posts.length;
+                print('AdminForumsPage: totalCount loading, using cached: $_cachedTotalCount or fallback: ${posts.length} -> $countToUse');
+                return _buildStatsRow(isDark, posts, countToUse, isMobile);
+              },
+              error: (error, stack) {
+                final countToUse = _cachedTotalCount ?? posts.length;
+                print('AdminForumsPage: totalCount error: $error, using cached: $_cachedTotalCount or fallback: ${posts.length} -> $countToUse');
+                return _buildStatsRow(isDark, posts, countToUse, isMobile);
+              },
+            ),
+            loading: () => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                print('AdminForumsPage: posts loading, using totalCount: $totalCount');
+                return _buildStatsRow(isDark, [], totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? 0;
+                print('AdminForumsPage: both loading, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+              error: (_, __) {
+                final countToUse = _cachedTotalCount ?? 0;
+                print('AdminForumsPage: posts loading but totalCount error, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+            ),
+            error: (error, stack) {
+              final countToUse = _cachedTotalCount ?? 0;
+              print('AdminForumsPage: posts error, using cached totalCount: $_cachedTotalCount -> $countToUse');
+              return _buildStatsRow(isDark, [], countToUse, isMobile);
+            },
           ),
         ),
         Expanded(
@@ -410,17 +484,19 @@ class _AdminForumsPageState extends ConsumerState<AdminForumsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<AdminForumPost> posts, bool isMobile) {
-    // Calculate stats from all posts
-    final totalPosts = posts.length;
+  Widget _buildStatsRow(bool isDark, List<AdminForumPost> currentPagePosts, int totalPosts, bool isMobile) {
+    // Calculate stats from current page posts for today's posts and topics
     final today = DateTime.now();
     final todayStart = DateTime(today.year, today.month, today.day);
-    final todayPosts = posts.where((p) => 
+    final todayPosts = currentPagePosts.where((p) => 
       p.postedAt != null && p.postedAt!.isAfter(todayStart)
     ).length;
     
-    // Get unique topics count
-    final uniqueTopics = posts.map((p) => p.topic).whereType<String>().toSet().length;
+    // Get unique topics count from current page
+    final uniqueTopics = currentPagePosts.map((p) => p.topic).whereType<String>().toSet().length;
+    
+    // Debug: Print to verify the value being used
+    print('_buildStatsRow: totalPosts = $totalPosts, currentPagePosts.length = ${currentPagePosts.length}');
     
     final stats = [
       {'label': 'Total Posts', 'value': totalPosts.toString(), 'icon': Icons.forum, 'color': AppColorsDark.buttonPurple},

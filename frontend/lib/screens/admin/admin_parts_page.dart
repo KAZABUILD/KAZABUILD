@@ -28,6 +28,12 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
+  
+  // Cache total count to avoid showing wrong value during loading
+  int? _cachedTotalCount;
+  
+  // Cache total count params to prevent provider recreation
+  Map<String, dynamic>? _cachedTotalCountParams;
 
   @override
   void dispose() {
@@ -331,15 +337,83 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
   Widget _buildContent(bool isDark, bool isMobile) {
     final queryParams = _buildQueryParams();
     final componentsAsync = ref.watch(adminComponentsProvider(queryParams));
+    // Get total count using get-count endpoint (only query and componentTypes matter)
+    // Create stable params to avoid provider recreation
+    final query = queryParams['query'] as String?;
+    final componentTypes = queryParams['componentTypes'] as List<String>?;
+    final sortDirection = queryParams['sortDirection'] as String? ?? 'asc';
+    
+    // Check if params changed
+    final newTotalCountParams = <String, dynamic>{
+      if (query != null) 'query': query,
+      if (componentTypes != null) 'componentTypes': componentTypes,
+      'sortDirection': sortDirection,
+    };
+    
+    // Only update if params actually changed
+    bool totalCountParamsChanged = false;
+    if (_cachedTotalCountParams == null) {
+      totalCountParamsChanged = true;
+    } else {
+      if (_cachedTotalCountParams!['query'] != newTotalCountParams['query'] ||
+          _cachedTotalCountParams!['componentTypes'] != newTotalCountParams['componentTypes'] ||
+          _cachedTotalCountParams!['sortDirection'] != newTotalCountParams['sortDirection']) {
+        totalCountParamsChanged = true;
+      }
+    }
+    
+    if (totalCountParamsChanged) {
+      _cachedTotalCountParams = Map<String, dynamic>.from(newTotalCountParams);
+      // Reset cached count when params change
+      _cachedTotalCount = null;
+    }
+    
+    final totalCountAsync = ref.watch(adminComponentsTotalCountProvider(_cachedTotalCountParams!));
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 8 : 24),
           child: componentsAsync.when(
-            data: (components) => _buildStatsRow(isDark, components, isMobile),
-            loading: () => _buildStatsRow(isDark, [], isMobile),
-            error: (error, stack) => _buildStatsRow(isDark, [], isMobile),
+            data: (components) => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                print('AdminPartsPage: Using totalCount from provider: $totalCount');
+                return _buildStatsRow(isDark, components, totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? components.length;
+                print('AdminPartsPage: totalCount loading, using cached: $_cachedTotalCount or fallback: ${components.length} -> $countToUse');
+                return _buildStatsRow(isDark, components, countToUse, isMobile);
+              },
+              error: (error, stack) {
+                final countToUse = _cachedTotalCount ?? components.length;
+                print('AdminPartsPage: totalCount error: $error, using cached: $_cachedTotalCount or fallback: ${components.length} -> $countToUse');
+                return _buildStatsRow(isDark, components, countToUse, isMobile);
+              },
+            ),
+            loading: () => totalCountAsync.when(
+              data: (totalCount) {
+                _cachedTotalCount = totalCount;
+                print('AdminPartsPage: components loading, using totalCount: $totalCount');
+                return _buildStatsRow(isDark, [], totalCount, isMobile);
+              },
+              loading: () {
+                final countToUse = _cachedTotalCount ?? 0;
+                print('AdminPartsPage: both loading, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+              error: (_, __) {
+                final countToUse = _cachedTotalCount ?? 0;
+                print('AdminPartsPage: components loading but totalCount error, using cached: $_cachedTotalCount -> $countToUse');
+                return _buildStatsRow(isDark, [], countToUse, isMobile);
+              },
+            ),
+            error: (error, stack) {
+              final countToUse = _cachedTotalCount ?? 0;
+              print('AdminPartsPage: components error, using cached totalCount: $_cachedTotalCount -> $countToUse');
+              return _buildStatsRow(isDark, [], countToUse, isMobile);
+            },
           ),
         ),
         Expanded(
@@ -442,12 +516,14 @@ class _AdminPartsPageState extends ConsumerState<AdminPartsPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark, List<AdminComponent> allComponents, bool isMobile) {
-    // Calculate stats from all components (not just current page)
-    final totalComponents = allComponents.length;
-    final uniqueTypes = allComponents.map((c) => c.componentType).toSet().length;
-    final withRelease = allComponents.where((c) => c.release != null).length;
-    final totalPages = (totalComponents / _pageSize).ceil();
+  Widget _buildStatsRow(bool isDark, List<AdminComponent> currentPageComponents, int totalComponents, bool isMobile) {
+    // Calculate stats from current page components for types and release date
+    final uniqueTypes = currentPageComponents.map((c) => c.componentType).toSet().length;
+    final withRelease = currentPageComponents.where((c) => c.release != null).length;
+    final totalPages = totalComponents > 0 ? (totalComponents / _pageSize).ceil() : 1;
+    
+    // Debug: Print to verify the value being used
+    print('_buildStatsRow: totalComponents = $totalComponents, currentPageComponents.length = ${currentPageComponents.length}');
     
     // Show total stats
     final stats = [
