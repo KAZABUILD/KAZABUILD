@@ -504,21 +504,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     List<BaseComponent> products, {
     Set<String>? compatibleIds,
   }) {
-    final activeFilters = ref.watch(activeFiltersProvider(widget.componentType));
-    final compatibilityValue = activeFilters['Compatibility'];
-
     return products.where((product) {
-      // Note: All filters except compatibility are handled server-side.
       // Compatibility filter
       if (compatibleIds != null) {
-        if (compatibilityValue == true) {
-          // If compatibility filter is Yes, only show products that are compatible
+        if (_enableCompatibilityFilter) {
+          // If compatibility filter is On, only show products that are compatible
           if (!compatibleIds.contains(product.id)) {
-            return false;
-          }
-        } else if (compatibilityValue == false) {
-          // If compatibility filter is No, only show products that are NOT compatible
-          if (compatibleIds.contains(product.id)) {
             return false;
           }
         }
@@ -2184,7 +2175,7 @@ class _MonitorProductRow extends _ProductRow {
       buildTextCell('${p.maxRefreshRate.toStringAsFixed(0)}Hz', flex: 1),
       buildTextCell(p.panelType, flex: 2),
       buildTextCell(p.adaptiveSyncType, flex: 2),
-      buildPriceCell(context, ref, flex: 3, showAddButton: false),
+      buildPriceCell(context, ref, flex: 3),
     ];
   }
 }
