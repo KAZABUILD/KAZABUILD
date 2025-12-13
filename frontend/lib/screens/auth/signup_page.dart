@@ -538,6 +538,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               CustomTextField(
                                 controller: _usernameController,
                                 label: 'Username',
+                                isRequired: true,
                                 icon: Icons.person_outline,
                                 focusNode: _usernameFocusNode,
                                 textInputAction: TextInputAction.next,
@@ -549,6 +550,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               CustomTextField(
                                 controller: _emailController,
                                 label: 'Email address',
+                                isRequired: true,
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
                                 focusNode: _emailFocusNode,
@@ -561,6 +563,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               CustomTextField(
                                 controller: _passwordController,
                                 label: 'Password',
+                                isRequired: true,
                                 icon: Icons.lock_outline,
                                 isPassword: true,
                                 focusNode: _passwordFocusNode,
@@ -579,6 +582,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               CustomTextField(
                                 controller: _displayNameController,
                                 label: 'Display Name',
+                                isRequired: true,
                                 icon: Icons.badge_outlined,
                                 focusNode: _displayNameFocusNode,
                                 textInputAction: TextInputAction.next,
@@ -590,6 +594,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               CustomTextField(
                                 controller: _confirmPasswordController,
                                 label: 'Confirm Password',
+                                isRequired: true,
                                 icon: Icons.lock_outline,
                                 isPassword: true,
                                 focusNode: _confirmPasswordFocusNode,
@@ -612,6 +617,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         CustomTextField(
                           controller: _usernameController,
                           label: 'Username',
+                          isRequired: true,
                           icon: Icons.person_outline,
                           focusNode: _usernameFocusNode,
                           textInputAction: TextInputAction.next,
@@ -623,6 +629,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         CustomTextField(
                           controller: _displayNameController,
                           label: 'Display Name',
+                          isRequired: true,
                           icon: Icons.badge_outlined,
                           focusNode: _displayNameFocusNode,
                           textInputAction: TextInputAction.next,
@@ -634,6 +641,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         CustomTextField(
                           controller: _emailController,
                           label: 'Email address',
+                          isRequired: true,
                           icon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           focusNode: _emailFocusNode,
@@ -646,6 +654,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         CustomTextField(
                           controller: _passwordController,
                           label: 'Password',
+                          isRequired: true,
                           icon: Icons.lock_outline,
                           isPassword: true,
                           focusNode: _passwordFocusNode,
@@ -658,6 +667,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         CustomTextField(
                           controller: _confirmPasswordController,
                           label: 'Confirm Password',
+                          isRequired: true,
                           icon: Icons.lock_outline,
                           isPassword: true,
                           focusNode: _confirmPasswordFocusNode,
@@ -688,6 +698,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               // Birth Date field
               CustomTextField(
                 label: 'Birth Date',
+                isRequired: true,
                 icon: Icons.cake_outlined,
                 controller: _birthDateController,
                 focusNode: _birthDateFocusNode,
@@ -720,7 +731,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   key: _genderDropdownKey,
                   value: _selectedGender,
                   decoration: InputDecoration(
-                    labelText: 'Gender',
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text('Gender'),
+                        Text(
+                          ' *',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
                     prefixIcon: const Icon(Icons.transgender_outlined),
                     filled: true,
                     fillColor: isDark
@@ -1021,11 +1041,14 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     final successMessage =
         await ref.read(authProvider.notifier).signUp(payload);
 
-    
+    // Always prompt the user to check their email for confirmation
+    final confirmationPrompt =
+        '$successMessage Please check your email to confirm your registration.';
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(successMessage),
+          content: Text(confirmationPrompt),
           backgroundColor: Colors.green,
         ),
       );
