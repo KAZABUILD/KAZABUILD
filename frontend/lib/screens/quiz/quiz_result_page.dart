@@ -4,7 +4,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/build_provider.dart';
@@ -165,8 +164,6 @@ class _BuildGrid extends StatelessWidget {
 
   Future<void> _openBuildInBuilder(BuildContext context, build_model.Build build) async {
     final messenger = ScaffoldMessenger.of(context);
-    List<BaseComponent> components = build.components;
-
     bool dialogShown = false;
     void showLoading() {
       dialogShown = true;
@@ -178,12 +175,9 @@ class _BuildGrid extends StatelessWidget {
     }
 
     try {
-      final needsDetail = components.isEmpty || components.any((c) => c.lowestPrice == null);
-      if (needsDetail) {
-        showLoading();
-        final detailed = await ref.read(buildDetailProvider(build.id).future);
-        components = detailed.components;
-      }
+      showLoading();
+      final detailed = await ref.read(buildDetailProvider(build.id).future);
+      final components = detailed.components;
 
       if (components.isEmpty) {
         messenger.showSnackBar(
@@ -293,53 +287,84 @@ class _BuildCard extends StatelessWidget {
   final Future<void> Function() onViewDetails;
   final bool isLoading;
 
-  BaseComponent? _firstOfType(ComponentType type) {
-    for (final comp in buildData.components) {
-      if (comp.type == type) return comp;
+  String _componentTypeLabel(ComponentType type) {
+    switch (type) {
+      case ComponentType.cpu:
+        return 'CPU';
+      case ComponentType.gpu:
+        return 'GPU';
+      case ComponentType.motherboard:
+        return 'Motherboard';
+      case ComponentType.ram:
+        return 'RAM';
+      case ComponentType.storage:
+        return 'Storage';
+      case ComponentType.psu:
+        return 'PSU';
+      case ComponentType.cooler:
+        return 'Cooler';
+      case ComponentType.caseFan:
+        return 'Case Fan';
+      case ComponentType.pcCase:
+        return 'Case';
+      case ComponentType.monitor:
+        return 'Monitor';
     }
-    return null;
   }
 
-  String _cpuSpec() {
-    final comp = _firstOfType(ComponentType.cpu);
-    if (comp is CPUComponent) return comp.name;
-    return '-';
-  }
+  Widget _componentsListSection() {
+    final components = buildData.components;
 
-  String _gpuSpec() {
-    final comp = _firstOfType(ComponentType.gpu);
-    if (comp is GPUComponent) return comp.name;
-    return '-';
-  }
-
-  String _ramSpec() {
-    final comp = _firstOfType(ComponentType.ram);
-    if (comp is MemoryComponent) {
-      return '${comp.capacity}GB ${comp.ramType}'.trim();
-    }
-    return '-';
-  }
-
-  String _storageSpec() {
-    final comp = _firstOfType(ComponentType.storage);
-    if (comp is StorageComponent) {
-      final cap = comp.capacity;
-      return '${cap}GB';
-    }
-    return '-';
-  }
-
-  double _totalPrice() {
-    return buildData.components.fold(
-      0.0,
-      (sum, item) => sum + (item.lowestPrice ?? 0.0),
+    final textStyle = TextStyle(
+      color: Colors.white.withOpacity(0.85),
+      fontSize: 12.5,
+      fontWeight: FontWeight.w500,
+      height: 1.3,
     );
-  }
 
-  String _formattedPrice() {
-    final total = _totalPrice();
-    if (total <= 0) return '—';
-    return NumberFormat.simpleCurrency(name: 'USD').format(total);
+    if (isLoading) {
+      return Text(
+        'Loading components...',
+        style: textStyle.copyWith(color: Colors.white.withOpacity(0.7)),
+      );
+    }
+
+    if (components.isEmpty) {
+      return Text(
+        'Components unavailable',
+        style: textStyle.copyWith(color: Colors.white.withOpacity(0.7)),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: components
+          .map(
+            (component) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.radio_button_checked,
+                    size: 14,
+                    color: Colors.white.withOpacity(0.75),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${_componentTypeLabel(component.type)}: ${component.name}',
+                      style: textStyle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
   }
 
   Widget _placeholder() {
@@ -422,10 +447,16 @@ class _BuildCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                _SpecRow(icon: Icons.memory, label: 'CPU:', value: _cpuSpec()),
-                _SpecRow(icon: Icons.graphic_eq, label: 'GPU:', value: _gpuSpec()),
-                _SpecRow(icon: Icons.sd_storage_rounded, label: 'RAM:', value: _ramSpec()),
-                _SpecRow(icon: Icons.storage_rounded, label: 'Storage:', value: _storageSpec()),
+                const Text(
+                  'All components',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _componentsListSection(),
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
@@ -453,25 +484,6 @@ class _BuildCard extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            top: 14,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColorsDark.buttonPurple,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _formattedPrice(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -479,51 +491,7 @@ class _BuildCard extends StatelessWidget {
 
 }
 
-class _SpecRow extends StatelessWidget {
-  const _SpecRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColorsDark.buttonPurple),
-          const SizedBox(width: 10),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// Spec row widget removed; component list now serves as primary details.
 
 class _ResultsError extends StatelessWidget {
   const _ResultsError({required this.error, required this.onRetry});

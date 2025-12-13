@@ -134,6 +134,34 @@ class BuildService {
           }
         }
         
+      // Fetch lowest prices for all component IDs and attach as price list if missing
+      try {
+        final lowestPrices = await _fetchLowestPrices(componentIds.toList());
+        final nowIso = DateTime.now().toIso8601String();
+        componentMap.forEach((id, compJson) {
+          final hasPrices = (compJson['prices'] ?? compJson['Prices']) is List && (compJson['prices'] ?? compJson['Prices']).isNotEmpty;
+          final price = lowestPrices[id];
+          if (price != null && !hasPrices) {
+            compJson['prices'] = [
+              {
+                'id': '${id}_lowest',
+                'componentId': id,
+                'sourceUrl': '',
+                'vendorName': 'Lowest',
+                'fetchedAt': nowIso,
+                'price': price,
+                'currency': 'USD',
+                'databaseEntryAt': nowIso,
+                'lastEditedAt': nowIso,
+              },
+            ];
+            compJson['Prices'] = compJson['prices'];
+          }
+        });
+      } catch (_) {
+        // If price fetch fails, proceed without blocking
+      }
+      
         // Delay between batches to avoid rate limiting
         if (i + batchSize < componentIdsList.length) {
           await Future.delayed(const Duration(milliseconds: 300));
@@ -147,6 +175,36 @@ class BuildService {
     } catch (e) {
       return {};
     }
+  }
+
+  /// Fetch lowest prices for given component IDs
+  Future<Map<String, double>> _fetchLowestPrices(List<String> componentIds) async {
+    if (componentIds.isEmpty) return {};
+    final url = '$apiBaseUrl/ComponentPrices/get';
+    try {
+      final response = await _dio.post(url, data: {
+        'ComponentId': componentIds,
+        'Paging': false,
+      });
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> data = response.data;
+        final Map<String, double> prices = {};
+        for (final item in data) {
+          if (item is! Map) continue;
+          final id = (item['componentId'] ?? item['ComponentId'])?.toString();
+          final priceVal = item['price'] ?? item['Price'];
+          if (id == null || priceVal == null) continue;
+          final price = (priceVal as num).toDouble();
+          if (!prices.containsKey(id) || price < prices[id]!) {
+            prices[id] = price;
+          }
+        }
+        return prices;
+      }
+    } catch (_) {
+      // swallow errors; pricing is optional
+    }
+    return {};
   }
 
   /// Groups components by buildId
