@@ -1856,9 +1856,7 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
 
-                query = query
-                .Include(c => c.CompatibleComponents)
-                .Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
             }
 
             //Filter by the specific subclass variables
@@ -2920,9 +2918,7 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
 
-                query = query
-                .Include(c => c.CompatibleComponents)
-                .Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
             }
 
             //Filter by the specific subclass variables
@@ -3436,9 +3432,7 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
 
-                query = query
-                .Include(c => c.CompatibleComponents)
-                .Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
             }
 
             //Filter by the specific subclass variables
