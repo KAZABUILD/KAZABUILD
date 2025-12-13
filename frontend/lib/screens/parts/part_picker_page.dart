@@ -471,18 +471,28 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
 
   /// Fetches compatible component IDs for given component IDs
   Future<Set<String>> _getCompatibleComponentIds(
-    List<String> componentIds,
+    List<BaseComponent> components,
     WidgetRef ref,
   ) async {
+    // 1) Use preloaded compatibleComponentsIds when available.
     final Set<String> compatibleIds = {};
-    final componentService = ref.read(componentServiceProvider);
+    for (final component in components) {
+      if (component.compatibleComponentsIds.isNotEmpty) {
+        compatibleIds.addAll(component.compatibleComponentsIds);
+        compatibleIds.add(component.id); // also allow the selected component
+      }
+    }
+    if (compatibleIds.isNotEmpty) {
+      return compatibleIds;
+    }
 
-    bool usedNewField = false;
+    // 2) Fallback: fetch latest component details to read compatibleComponentsIds.
+    final componentService = ref.read(componentServiceProvider);
     try {
-      final results = await Future.wait<BaseComponent?>(componentIds.map(
-        (id) async {
+      final results = await Future.wait<BaseComponent?>(components.map(
+        (c) async {
           try {
-            return await componentService.getComponentById(id);
+            return await componentService.getComponentById(c.id);
           } catch (_) {
             return null;
           }
@@ -492,7 +502,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       for (final component in results) {
         if (component == null) continue;
         if (component.compatibleComponentsIds.isNotEmpty) {
-          usedNewField = true;
           compatibleIds.addAll(component.compatibleComponentsIds);
           compatibleIds.add(component.id);
         }
@@ -501,23 +510,26 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       debugPrint('Error fetching component compatibility via component GET: $e');
     }
 
-    if (usedNewField) {
+    if (compatibleIds.isNotEmpty) {
       return compatibleIds;
     }
 
-    // Fallback to legacy compatibility service if the new field is missing/empty
-    final service = ref.read(
-      compatibility.componentCompatibilityServiceProvider,
-    );
-    try {
-      final futures = componentIds.map((id) => service.getCompatibleComponentIds(id));
-      final results = await Future.wait(futures);
-      for (final list in results) {
-        compatibleIds.addAll(list);
+    // 3) Final fallback: call compatibility service (both directions).
+    final compatibilityService =
+        ref.read(compatibility.componentCompatibilityServiceProvider);
+    for (final component in components) {
+      try {
+        final ids =
+            await compatibilityService.getCompatibleComponentIds(component.id);
+        if (ids.isNotEmpty) {
+          compatibleIds.addAll(ids);
+          compatibleIds.add(component.id);
+        }
+      } catch (e) {
+        debugPrint(
+          'Error fetching compatibility via compat service for ${component.id}: $e',
+        );
       }
-      compatibleIds.addAll(componentIds);
-    } catch (e) {
-      debugPrint('Error fetching compatible components (fallback): $e');
     }
 
     return compatibleIds;
@@ -728,15 +740,13 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                         Future<Set<String>>? compatibilityFuture;
                         if (_enableCompatibilityFilter &&
                             currentBuild.isNotEmpty) {
-                          final buildComponentIds = currentBuild
+                          final selectedProducts = currentBuild
                               .where((item) => item.selectedProduct != null)
-                              .map((item) => item.selectedProduct!.id)
+                              .map((item) => item.selectedProduct!)
                               .toList();
-                          if (buildComponentIds.isNotEmpty) {
-                            compatibilityFuture = _getCompatibleComponentIds(
-                              buildComponentIds,
-                              ref,
-                            );
+                          if (selectedProducts.isNotEmpty) {
+                            compatibilityFuture =
+                                _getCompatibleComponentIds(selectedProducts, ref);
                           }
                         }
 
@@ -748,9 +758,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             pagingState.items,
                             compatibleIds: compatibleIds,
                           );
-                          // final effectiveCount = _enableCompatibilityFilter
-                          //     ? filteredProducts.length
-                          //     : pagingState.totalCount;
 
                           return _ProductList(
                             componentType: widget.componentType,
@@ -796,8 +803,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
 
                               final compatibleIds =
                                   snapshot.data?[0] as Set<String>?;
+                              final normalizedIds = (compatibleIds == null ||
+                                      compatibleIds.isEmpty)
+                                  ? null // no data -> skip filtering
+                                  : compatibleIds;
                               return buildList(
-                                compatibleIds: compatibleIds,
+                                compatibleIds: normalizedIds,
                                 priceMap: const {},
                               );
                             },
