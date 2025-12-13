@@ -11,6 +11,7 @@ using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.VisualBasic;
 using System.Linq;
 using System.Linq.Dynamic.Core;
@@ -552,6 +553,93 @@ namespace KAZABUILD.API.Controllers.Builds
 
             //Return the builds
             return Ok(responses);
+        }
+
+        /// <summary>
+        /// API endpoint for getting Builds with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<IEnumerable<BuildResponseDto>>> GetBuildsCount([FromBody] GetBuildDto dto)
+        {
+            //Get build id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.Builds.AsNoTracking();
+
+            //Filter by the variables if included
+            if (dto.UserId != null)
+            {
+                query = query.Where(b => dto.UserId.Contains(b.UserId));
+            }
+            if (dto.Name != null)
+            {
+                query = query.Where(b => dto.Name.Contains(b.Name));
+            }
+            if (dto.Status != null)
+            {
+                query = query.Where(b => dto.Status.Contains(b.Status));
+            }
+            if (dto.Tag != null)
+            {
+                query = query.Include(b => b.BuildTags).ThenInclude(t => t.Tag).Where(b => b.BuildTags.Any(t => dto.Tag.Contains(t.Tag!.Name)));
+            }
+
+            //Apply search based on provided query string
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(b => b.User).Search(dto.Query, b => b.Name, b => b.Status, b => b.Description, b => b.User!.DisplayName);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get builds with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of builds to return as views
+            var views = await query.CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "Builds",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - Builds Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("builds.gotBuildsCount", new
+            {
+                count = views,
+                gotBy = currentUserId
+            });
+
+            //Return the views amount
+            return Ok(views);
         }
 
         /// <summary>
