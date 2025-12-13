@@ -413,6 +413,75 @@ namespace KAZABUILD.API.Controllers.Builds
         }
 
         /// <summary>
+        /// API endpoint for getting Tags with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<IEnumerable<TagResponseDto>>> GetTagsCount([FromBody] GetTagDto dto)
+        {
+            //Get tag id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.Tags.AsNoTracking();
+
+            //Apply search based on provided query string
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Search(dto.Query, t => t.Name, t => t.Description);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get tags with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of tags to return as views
+            var count = await query.CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "ForumPost",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - Tags Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("tags.gotCount", new
+            {
+                count,
+                gotBy = currentUserId
+            });
+
+            //Return the tag count
+            return Ok(count);
+        }
+
+        /// <summary>
         /// API endpoint for deleting the selected Tag for administration.
         /// Removes all related BuiltTags as well.
         /// </summary>
