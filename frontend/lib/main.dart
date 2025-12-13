@@ -16,6 +16,8 @@ import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
+import 'widgets/global_swipe_reload.dart';
+import 'widgets/restart_widget.dart';
 
 /// The main function that runs when the application starts.
 void main() {
@@ -29,7 +31,11 @@ void main() {
   // ProviderScope is the widget that stores the state of all Riverpod providers.
   // All Flutter applications using Riverpod must have a ProviderScope at the
   // root of their widget tree.
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    RestartWidget(
+      child: const ProviderScope(child: MyApp()),
+    ),
+  );
 }
 
 /// The root widget of the application.
@@ -55,6 +61,10 @@ class MyApp extends ConsumerWidget {
     // localization, and other core functionalities.
     return MaterialApp.router(
       title: 'KazaBuild',
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return GlobalSwipeReload(child: child);
+      },
 
       // Defines the theme to use when the app is in light mode.
       theme: AppTheme.lightTheme,

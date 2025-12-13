@@ -237,6 +237,9 @@ class CustomTextField extends StatefulWidget {
   /// Callback when the user submits the field (e.g., presses Enter).
   final void Function(String)? onFieldSubmitted;
 
+  /// Whether the field is required; if true, a red asterisk is shown.
+  final bool isRequired;
+
   const CustomTextField({
     super.key,
     required this.label,
@@ -251,6 +254,7 @@ class CustomTextField extends StatefulWidget {
     this.focusNode,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.isRequired = false,
   });
 
   @override
@@ -271,6 +275,18 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final iconColor = theme.iconTheme.color?.withValues(alpha: 0.5);
+
+    final labelWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(widget.label),
+        if (widget.isRequired)
+          const Text(
+            ' *',
+            style: TextStyle(color: Colors.red),
+          ),
+      ],
+    );
     
     return TextFormField(
       controller: widget.controller,
@@ -284,7 +300,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       onTap: widget.onTap,
       onFieldSubmitted: widget.onFieldSubmitted,
       decoration: InputDecoration(
-        labelText: widget.label,
+        label: labelWidget,
         prefixIcon: Icon(
           widget.icon,
           color: iconColor,

@@ -157,23 +157,33 @@ class _ConfirmRegisterPageState
         final token = uri.queryParameters['token'];
 
         // Build new URL with userId and token (keep both, remove hash)
-        String newUrl;
+        Uri rebuiltUri;
         if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
           // Keep both token and userId
-          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?token=$token&userId=$userId';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'token': token,
+            'userId': userId,
+          });
         } else if (userId != null && userId.isNotEmpty) {
           // Only userId available
-          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?userId=$userId';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'userId': userId,
+          });
         } else if (token != null && token.isNotEmpty) {
           // Only token available
-          newUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}${uri.path}?token=$token';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'token': token,
+          });
         } else {
           // Just remove hash, keep existing query params
-          newUrl = mainPart;
+          rebuiltUri = uri;
         }
 
-        // Force update browser URL (this removes hash)
-        html.window.history.replaceState(null, '', newUrl);
+        // Force update browser URL (this removes hash). This preserves custom schemes.
+        html.window.history.replaceState(null, '', rebuiltUri.toString());
 
         // Also clear hash directly (double check)
         html.window.location.hash = '';

@@ -21,23 +21,25 @@ class DynamicFilterPanel extends ConsumerWidget {
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       ),
-      data: (filters) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Iterate through filter definitions and render corresponding widgets
-          ...filters.map((filter) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 24.0),
-              child: _buildFilterWidget(
-                context,
-                filter,
-                activeFilters[filter.key],
-                (value) => notifier.setFilter(filter.key, value),
-              ),
-            );
-          }),
-        ],
-      ),
+      data: (filters) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Iterate through filter definitions and render corresponding widgets
+            ...filters.map((filter) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: _buildFilterWidget(
+                  context,
+                  filter,
+                  activeFilters[filter.key],
+                  (value) => notifier.setFilter(filter.key, value),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 

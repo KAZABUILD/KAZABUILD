@@ -207,10 +207,10 @@ class _ConfirmResetPasswordPageState
       // CRITICAL: Check if hash exists and remove it
       if (currentHref.contains('#')) {
         // Remove hash fragment completely from URL
-        currentHref = currentHref.split('#').first;
+        final mainPart = currentHref.split('#').first;
 
         // Parse URL to get userId and token (from cleaned URL without hash)
-        final uri = Uri.parse(currentHref);
+        final uri = Uri.parse(mainPart);
         final userId = uri.queryParameters['userId'] ?? _savedUserId;
         final token = uri.queryParameters['token'] ?? _savedToken;
 
@@ -223,24 +223,31 @@ class _ConfirmResetPasswordPageState
         }
 
         // Build new URL with userId and token (keep both, remove hash)
-        String newUrl;
+        Uri rebuiltUri;
         if (userId != null && userId.isNotEmpty && token != null && token.isNotEmpty) {
-          // Keep both token and userId
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?token=$token&userId=$userId';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'token': token,
+            'userId': userId,
+          });
         } else if (userId != null && userId.isNotEmpty) {
-          // Only userId available
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?userId=$userId';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'userId': userId,
+          });
         } else if (token != null && token.isNotEmpty) {
-          // Only token available
-          newUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}?token=$token';
+          rebuiltUri = uri.replace(queryParameters: {
+            ...uri.queryParameters,
+            'token': token,
+          });
         } else {
           // Just remove hash, keep existing query params
-          newUrl = currentHref;
+          rebuiltUri = uri;
         }
 
-        // Update browser URL without hash
-        html.window.history.replaceState(null, '', newUrl);
-        debugPrint('🧹 Cleaned URL: $newUrl');
+        // Update browser URL without hash (preserves scheme/host, no forced ports)
+        html.window.history.replaceState(null, '', rebuiltUri.toString());
+        debugPrint('🧹 Cleaned URL: ${rebuiltUri.toString()}');
       }
     } catch (e) {
       // Not web platform or error occurred, ignore

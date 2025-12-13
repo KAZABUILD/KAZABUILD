@@ -92,6 +92,7 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   
   // Unused fields removed to clean up warnings
   // The state is now fully managed by the activeFiltersProvider and DynamicFilterPanel
+  bool _enableCompatibilityFilter = false;
 
   // Track if we've shown the component details dialog for the current componentId
   String? _shownComponentId;
@@ -105,8 +106,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       // Clear previous filters on load to ensure clean state
       final notifier = ref.read(activeFiltersProvider(widget.componentType).notifier);
       notifier.clearAll();
-      // Set default compatibility filter to true
-      notifier.setFilter('Compatibility', true);
+      // Default compatibility filter OFF for all parts
+      notifier.setFilter('Compatibility', false);
       _loadCurrentPage();
     });
   }
@@ -133,8 +134,8 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
         if (widget.componentType != oldWidget.componentType) {
           final notifier = ref.read(activeFiltersProvider(widget.componentType).notifier);
           notifier.clearAll();
-          // Keep compatibility filter enabled by default on type change
-          notifier.setFilter('Compatibility', true);
+          // Default compatibility filter OFF for all parts
+          notifier.setFilter('Compatibility', false);
         }
         _loadCurrentPage(force: true, targetPage: nextPage);
       });
@@ -503,21 +504,12 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     List<BaseComponent> products, {
     Set<String>? compatibleIds,
   }) {
-    final activeFilters = ref.watch(activeFiltersProvider(widget.componentType));
-    final compatibilityValue = activeFilters['Compatibility'];
-
     return products.where((product) {
-      // Note: All filters except compatibility are handled server-side.
       // Compatibility filter
       if (compatibleIds != null) {
-        if (compatibilityValue == true) {
-          // If compatibility filter is Yes, only show products that are compatible
+        if (_enableCompatibilityFilter) {
+          // If compatibility filter is On, only show products that are compatible
           if (!compatibleIds.contains(product.id)) {
-            return false;
-          }
-        } else if (compatibilityValue == false) {
-          // If compatibility filter is No, only show products that are NOT compatible
-          if (compatibleIds.contains(product.id)) {
             return false;
           }
         }
@@ -1774,6 +1766,7 @@ abstract class _ProductRow extends ConsumerWidget {
     WidgetRef ref, {
     int flex = 3,
     double? priceOverride,
+    bool showAddButton = true,
   }) {
     final displayPrice = priceOverride ?? product.lowestPrice;
     final priceText = displayPrice != null
@@ -1792,35 +1785,37 @@ abstract class _ProductRow extends ConsumerWidget {
               fontSize: 16,
             ),
           ),
-          const SizedBox(width: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              // If callback is provided (e.g., from edit page), use it instead of buildProvider
-              if (onComponentSelected != null) {
-                onComponentSelected!(product);
-                Navigator.pop(context);
-              } else {
-                // Default behavior: Add component to buildProvider and navigate to build-now
-                ref.read(buildProvider.notifier).addComponent(product);
-                // Navigate to build-now page
-                context.go('/build-now');
-                // Also pop if we came from a navigation stack
-                if (Navigator.canPop(context)) {
+          if (showAddButton) ...[
+            const SizedBox(width: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // If callback is provided (e.g., from edit page), use it instead of buildProvider
+                if (onComponentSelected != null) {
+                  onComponentSelected!(product);
                   Navigator.pop(context);
+                } else {
+                  // Default behavior: Add component to buildProvider and navigate to build-now
+                  ref.read(buildProvider.notifier).addComponent(product);
+                  // Navigate to build-now page
+                  context.go('/build-now');
+                  // Also pop if we came from a navigation stack
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
                 }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00E676),
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00E676),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
+          ],
         ],
       ),
     );
