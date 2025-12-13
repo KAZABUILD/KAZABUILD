@@ -25,7 +25,7 @@ namespace KAZABUILD.Application.Helpers
                     return path;
                 }
             }
-
+            Console.WriteLine("kaza.png not found in expected locations.");
             // --- DEBUGGING: FILE NOT FOUND ---
             throw new FileNotFoundException($"kaza.png not found");
         }
