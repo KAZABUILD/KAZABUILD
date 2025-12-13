@@ -10,7 +10,7 @@ namespace KAZABUILD.Application.Helpers
         {
             var basePath = AppContext.BaseDirectory;
             //Get the root folder and use it to get the application logo
-            var imagePath = Path.Combine(basePath, "wwwroot", "temp_defaults", "kaza.png");
+            var imagePath = Path.Combine(basePath, "wwwroot", "defaults", "kaza.png");
             
             if (!File.Exists(imagePath))
             {
