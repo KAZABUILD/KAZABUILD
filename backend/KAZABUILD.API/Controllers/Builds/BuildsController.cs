@@ -1055,13 +1055,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterForExtraCores, c => c.CoreTotal)
                     );
 
-                if (cpuComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"cpu failed to generate in batch {i+1}";
-                    break;
-                }
-                components.Add(cpuComponent);
+                    if (cpuComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"cpu failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(cpuComponent);
 
                     //Get the motherboard component
                     var motherboardBaseQuery = _db.Components
@@ -1077,13 +1077,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
                     );
 
-                if (motherboardComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"motherboard failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(motherboardComponent);
+                    if (motherboardComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"motherboard failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(motherboardComponent);
 
                     //Get the cooler component
                     var coolerBaseQuery = _db.Components
@@ -1100,13 +1100,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterForQuietFans, c => c.MinNoiseLevel)
                     );
 
-                if (coolerComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"cooler failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(coolerComponent);
+                    if (coolerComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"cooler failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(coolerComponent);
 
                     //Get the memory component
                     var memoryBaseQuery = _db.Components
@@ -1122,13 +1122,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         null
                     );
 
-                if (memoryComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"memory failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(memoryComponent);
+                    if (memoryComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"memory failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(memoryComponent);
 
                     //Get the storage component
                     var storageBaseQuery = _db.Components
@@ -1144,13 +1144,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
                     );
 
-                if (storageComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"storage failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(storageComponent);
+                    if (storageComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"storage failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(storageComponent);
 
                     //Get the GPU component
                     var gpuBaseQuery = _db.Components
@@ -1166,13 +1166,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         null
                     );
 
-                if (gpuComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"gpu failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(gpuComponent);
+                    if (gpuComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"gpu failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(gpuComponent);
 
                     //Get the power supply component adjusting for the power usage in other components
                     var powerSupplyBaseQuery = _db.Components
@@ -1190,13 +1190,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         null
                     );
 
-                if (powerSupplyComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"powerSupply failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(powerSupplyComponent);
+                    if (powerSupplyComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"powerSupply failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(powerSupplyComponent);
 
                     //Get the case component
                     var caseBaseQuery = _db.Components
@@ -1215,13 +1215,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         null
                     );
 
-                if (caseComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"case failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(caseComponent);
+                    if (caseComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"case failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(caseComponent);
 
                     //Get the case fan component
                     var caseFanBaseQuery = _db.Components
@@ -1237,13 +1237,13 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterForQuietFans, c => c.MinNoiseLevel)
                     );
 
-                if (caseFanComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"caseFan failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(caseFanComponent);
+                    if (caseFanComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"caseFan failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(caseFanComponent);
 
                     //Get the monitor component
                     var monitorBaseQuery = _db.Components
@@ -1259,13 +1259,27 @@ namespace KAZABUILD.API.Controllers.Builds
                         q => q.OrderByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
                     );
 
-                if (monitorComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"monitor failed to generate in batch {i + 1}";
-                    break;
+                    if (monitorComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"monitor failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(monitorComponent);
                 }
-                components.Add(monitorComponent);
+                catch (Exception ex)
+                {
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Build",
+                        ip,
+                        Guid.Empty,
+                        PrivacyLevel.ERROR,
+                        $"CPU Query Exception: {ex.Message} - {ex.InnerException?.Message}"
+                    );
+                    throw; // Re-throw to trigger proper error response
+                }
 
                 //Add all the components to the build
                 foreach (BaseComponent component in components)
