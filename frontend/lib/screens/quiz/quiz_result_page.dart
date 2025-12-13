@@ -67,11 +67,6 @@ class QuizResultsPage extends ConsumerWidget {
                 ref: ref,
                 builds: builds,
                 theme: theme,
-                onRetake: () {
-                  ref.read(quizProvider.notifier).resetQuiz();
-                  ref.read(quizStepProvider.notifier).state = 0;
-                  context.go('/quiz');
-                },
               ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => _ResultsError(
@@ -90,13 +85,11 @@ class _ResultsBody extends StatelessWidget {
   const _ResultsBody({
     required this.builds,
     required this.theme,
-    required this.onRetake,
     required this.ref,
   });
 
   final List<build_model.Build> builds;
   final ThemeData theme;
-  final VoidCallback onRetake;
   final WidgetRef ref;
 
   @override
@@ -132,7 +125,7 @@ class _ResultsBody extends StatelessWidget {
               const SizedBox(height: 28),
               Expanded(
                 child: isEmpty
-                    ? _EmptyRecommendations(theme: theme, onRetake: onRetake)
+                    ? _EmptyRecommendations(theme: theme)
                     : _BuildGrid(
                         builds: displayedBuilds,
                         ref: ref,
@@ -152,12 +145,6 @@ class _ResultsBody extends StatelessWidget {
                   'Build Your Own PC',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: onRetake,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retake Quiz'),
               ),
             ],
           ),
@@ -264,10 +251,9 @@ class _BuildGrid extends StatelessWidget {
 }
 
 class _EmptyRecommendations extends StatelessWidget {
-  const _EmptyRecommendations({required this.theme, required this.onRetake});
+  const _EmptyRecommendations({required this.theme});
 
   final ThemeData theme;
-  final VoidCallback onRetake;
 
   @override
   Widget build(BuildContext context) {
@@ -290,12 +276,6 @@ class _EmptyRecommendations extends StatelessWidget {
           'Try adjusting your preferences and run the quiz again.',
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
           textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        OutlinedButton.icon(
-          onPressed: onRetake,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Try Again'),
         ),
       ],
     );
