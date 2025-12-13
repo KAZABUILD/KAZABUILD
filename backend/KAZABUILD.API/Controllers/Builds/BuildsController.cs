@@ -678,7 +678,7 @@ namespace KAZABUILD.API.Controllers.Builds
             //Set all related interactions foreign key field to null
             if (build.Interactions.Count != 0)
             {
-                foreach(var interaction in  build.Interactions)
+                foreach (var interaction in build.Interactions)
                 {
                     interaction.BuildId = null;
                 }
@@ -836,14 +836,14 @@ namespace KAZABUILD.API.Controllers.Builds
             };
 
             //Adjust the price bound accordingly
-            if(priceAnswers.Select(a => a.Answer).Contains("$400–$600 (Entry Level)"))
+            if (priceAnswers.Select(a => a.Answer).Contains("$400–$600 (Entry Level)"))
             {
                 bounds[0] = 400.0f;
                 bounds[3] = 600.0f;
             }
             if (priceAnswers.Select(a => a.Answer).Contains("$600–$900 (Balanced Value)"))
             {
-                if(bounds[0] > 600.0f)
+                if (bounds[0] > 600.0f)
                     bounds[0] = 600.0f;
 
                 if (bounds[3] < 900.0f)
@@ -875,8 +875,8 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Calculate middle bounds for the 3 price ranges
-            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f/3f));
-            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f/3f));
+            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f / 3f));
+            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f / 3f));
 
             //Convert the bounds to PLN
             bounds = [.. bounds.Select(b => b * 3.6f)];
@@ -917,7 +917,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 Build build = new()
                 {
                     UserId = currentUserId,
-                    Name = $"Generated build nr.{i+1} for {user.DisplayName}",
+                    Name = $"Generated build nr.{i + 1} for {user.DisplayName}",
                     Description = "",
                     Status = BuildStatus.GENERATED,
                     PublishedAt = null,
@@ -983,7 +983,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 storageRatio *= 1 + (storageScore - averageScore) / totalScore;
                 monitorRatio *= 1 + (monitorScore - averageScore) / totalScore;
                 coolerRatio *= 1 + (coolerScore - averageScore) / totalScore;
-                motherboardRatio *= 1 + ((gpuRatio+cpuRatio)/2 - averageScore) / totalScore;
+                motherboardRatio *= 1 + ((gpuRatio + cpuRatio) / 2 - averageScore) / totalScore;
 
                 //Additional criteria for filtering components
                 decimal additionalPower = 0.0m;

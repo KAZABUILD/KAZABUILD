@@ -3346,7 +3346,8 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
-            };
+            }
+            ;
 
             //Order by specified field if provided
             if (!string.IsNullOrWhiteSpace(dto.OrderBy))
@@ -3967,10 +3968,10 @@ namespace KAZABUILD.API.Controllers.Components
             //Set it to null in all builds it's used in
             if (component.Builds.Count != 0)
             {
-                foreach(var buildComponent in component.Builds)
+                foreach (var buildComponent in component.Builds)
                 {
                     buildComponent.ComponentId = null;
-                }    
+                }
             }
 
             //Handle deleting compatible components to avoid conflicts with cascade deletes

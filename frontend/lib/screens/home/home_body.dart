@@ -318,7 +318,7 @@ class _HeroVisual extends StatelessWidget {
   Widget _build3DModel(BuildContext context) {
     
     return Flutter3DViewer(
-      src: 'assets/3d_models/pc.glb',
+      src: 'assets/assets/3d_models/pc.glb',
       controller: controller,
       enableTouch: false,
     );
