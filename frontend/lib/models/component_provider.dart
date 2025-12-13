@@ -207,6 +207,14 @@ class ComponentService {
           print('Received component data for ID: $componentId');
         }
 
+        // Fetch lowest price for this component to ensure pricing is available
+        double? priceOverride;
+        try {
+          priceOverride = await getLowestPriceForComponent(componentId);
+        } catch (_) {
+          // If price fetch fails, continue without override
+        }
+
         // Parse component based on type
         final typeString = (json['type'] ?? json['Type'])
             ?.toString()
@@ -214,28 +222,28 @@ class ComponentService {
         
         switch (typeString) {
           case 'CPU':
-            return CPUComponent.fromJson(json);
+            return CPUComponent.fromJson(json, priceOverride: priceOverride);
           case 'GPU':
-            return GPUComponent.fromJson(json);
+            return GPUComponent.fromJson(json, priceOverride: priceOverride);
           case 'MOTHERBOARD':
-            return MotherboardComponent.fromJson(json);
+            return MotherboardComponent.fromJson(json, priceOverride: priceOverride);
           case 'MEMORY':
           case 'RAM':
-            return MemoryComponent.fromJson(json);
+            return MemoryComponent.fromJson(json, priceOverride: priceOverride);
           case 'STORAGE':
-            return StorageComponent.fromJson(json);
+            return StorageComponent.fromJson(json, priceOverride: priceOverride);
           case 'POWERSUPPLY':
           case 'POWER_SUPPLY':
-            return PowerSupplyComponent.fromJson(json);
+            return PowerSupplyComponent.fromJson(json, priceOverride: priceOverride);
           case 'COOLER':
-            return CoolerComponent.fromJson(json);
+            return CoolerComponent.fromJson(json, priceOverride: priceOverride);
           case 'CASE':
-            return CaseComponent.fromJson(json);
+            return CaseComponent.fromJson(json, priceOverride: priceOverride);
           case 'CASEFAN':
           case 'CASE_FAN':
-            return CaseFanComponent.fromJson(json);
+            return CaseFanComponent.fromJson(json, priceOverride: priceOverride);
           case 'MONITOR':
-            return MonitorComponent.fromJson(json);
+            return MonitorComponent.fromJson(json, priceOverride: priceOverride);
           default:
             throw Exception('Unknown component type: $typeString');
         }

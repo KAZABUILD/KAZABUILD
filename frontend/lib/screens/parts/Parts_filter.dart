@@ -21,23 +21,49 @@ class DynamicFilterPanel extends ConsumerWidget {
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       ),
-      data: (filters) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Iterate through filter definitions and render corresponding widgets
-          ...filters.map((filter) {
-            return Padding(
+      data: (filters) {
+        // Ensure Price filter is always available and pinned to the top.
+        final priceFilter = FilterDefinition(
+          key: 'Price',
+          label: AppLocalizations.of(context)!.price,
+          type: FilterInputType.range,
+          min: 0,
+          max: 10000,
+          unit: 'zł',
+          formatValue: (val) => (val as num).toStringAsFixed(0),
+        );
+
+        // Avoid duplicating the backend-provided price filter if it ever appears.
+        final remainingFilters =
+            filters.where((f) => f.key != priceFilter.key).toList();
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Padding(
               padding: const EdgeInsets.only(bottom: 24.0),
-              child: _buildFilterWidget(
-                context,
-                filter,
-                activeFilters[filter.key],
-                (value) => notifier.setFilter(filter.key, value),
+              child: _DynamicRangeFilter(
+                filter: priceFilter,
+                value: activeFilters[priceFilter.key] as RangeValues?,
+                onChanged: (value) =>
+                    notifier.setFilter(priceFilter.key, value),
               ),
-            );
-          }),
-        ],
-      ),
+            ),
+            // Iterate through filter definitions and render corresponding widgets
+            ...remainingFilters.map((filter) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: _buildFilterWidget(
+                  context,
+                  filter,
+                  activeFilters[filter.key],
+                  (value) => notifier.setFilter(filter.key, value),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 
