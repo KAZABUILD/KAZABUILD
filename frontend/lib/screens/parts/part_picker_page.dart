@@ -475,23 +475,49 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     WidgetRef ref,
   ) async {
     final Set<String> compatibleIds = {};
+    final componentService = ref.read(componentServiceProvider);
+
+    bool usedNewField = false;
+    try {
+      final results = await Future.wait<BaseComponent?>(componentIds.map(
+        (id) async {
+          try {
+            return await componentService.getComponentById(id);
+          } catch (_) {
+            return null;
+          }
+        },
+      ));
+
+      for (final component in results) {
+        if (component == null) continue;
+        if (component.compatibleComponentsIds.isNotEmpty) {
+          usedNewField = true;
+          compatibleIds.addAll(component.compatibleComponentsIds);
+          compatibleIds.add(component.id);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching component compatibility via component GET: $e');
+    }
+
+    if (usedNewField) {
+      return compatibleIds;
+    }
+
+    // Fallback to legacy compatibility service if the new field is missing/empty
     final service = ref.read(
       compatibility.componentCompatibilityServiceProvider,
     );
-
     try {
-      // Fetch in parallel
       final futures = componentIds.map((id) => service.getCompatibleComponentIds(id));
       final results = await Future.wait(futures);
-      
       for (final list in results) {
         compatibleIds.addAll(list);
       }
-      
-      // Also add the components themselves as compatible
       compatibleIds.addAll(componentIds);
     } catch (e) {
-      debugPrint('Error fetching compatible components: $e');
+      debugPrint('Error fetching compatible components (fallback): $e');
     }
 
     return compatibleIds;
@@ -722,6 +748,9 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             pagingState.items,
                             compatibleIds: compatibleIds,
                           );
+                          // final effectiveCount = _enableCompatibilityFilter
+                          //     ? filteredProducts.length
+                          //     : pagingState.totalCount;
 
                           return _ProductList(
                             componentType: widget.componentType,

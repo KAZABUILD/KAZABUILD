@@ -455,6 +455,9 @@ class PortSubComponent extends BaseSubComponent {
 abstract class BaseComponent {
   /// The unique identifier for this component.
   final String id;
+  
+  /// IDs of components marked compatible with this component.
+  final List<String> compatibleComponentsIds;
 
   /// The full product name of the component.
   final String name;
@@ -497,6 +500,7 @@ abstract class BaseComponent {
 
   const BaseComponent({
     required this.id,
+    this.compatibleComponentsIds = const [],
     required this.name,
     required this.manufacturer,
     required this.type,
@@ -527,6 +531,14 @@ abstract class BaseComponent {
     final avg = totalRating / reviews.length;
     return avg / 20.0;
   }
+}
+
+List<String> _parseCompatibleIds(Map<String, dynamic> json) {
+  final raw = json['compatibleComponentsIds'] ?? json['CompatibleComponentsIds'];
+  if (raw is List) {
+    return raw.map((e) => e.toString()).toList();
+  }
+  return const [];
 }
 
 /// Represents a PC Case component with its physical specifications.
@@ -588,6 +600,7 @@ class CaseComponent extends BaseComponent {
 
   const CaseComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -640,6 +653,7 @@ class CaseComponent extends BaseComponent {
 
     return CaseComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -712,6 +726,7 @@ class CaseFanComponent extends BaseComponent {
 
   const CaseFanComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -758,6 +773,7 @@ class CaseFanComponent extends BaseComponent {
 
     return CaseFanComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -818,6 +834,7 @@ class CoolerComponent extends BaseComponent {
 
   const CoolerComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -862,6 +879,7 @@ class CoolerComponent extends BaseComponent {
 
     return CoolerComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -955,6 +973,7 @@ class CPUComponent extends BaseComponent {
 
   const CPUComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1012,6 +1031,7 @@ class CPUComponent extends BaseComponent {
 
     return CPUComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1110,6 +1130,7 @@ class GPUComponent extends BaseComponent {
 
   const GPUComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1158,6 +1179,7 @@ class GPUComponent extends BaseComponent {
 
     return GPUComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1233,6 +1255,7 @@ class MemoryComponent extends BaseComponent {
 
   const MemoryComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1281,6 +1304,7 @@ class MemoryComponent extends BaseComponent {
 
     return MemoryComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1346,6 +1370,7 @@ class MonitorComponent extends BaseComponent {
 
   const MonitorComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1391,6 +1416,7 @@ class MonitorComponent extends BaseComponent {
 
     return MonitorComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1510,6 +1536,7 @@ class MotherboardComponent extends BaseComponent {
 
   const MotherboardComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1581,6 +1608,7 @@ class MotherboardComponent extends BaseComponent {
 
     return MotherboardComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1647,6 +1675,7 @@ class PowerSupplyComponent extends BaseComponent {
 
   const PowerSupplyComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1687,6 +1716,7 @@ class PowerSupplyComponent extends BaseComponent {
 
     return PowerSupplyComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
@@ -1729,6 +1759,7 @@ class StorageComponent extends BaseComponent {
 
   const StorageComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1769,6 +1800,7 @@ class StorageComponent extends BaseComponent {
 
     return StorageComponent(
       id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
       name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
       manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
       databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
