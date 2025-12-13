@@ -1178,7 +1178,6 @@ namespace KAZABUILD.API.Controllers.Builds
                     var powerSupplyBaseQuery = _db.Components
                         .OfType<PowerSupplyComponent>()
                         .Include(c => c.Prices.OrderByDescending(p => p.FetchedAt).Take(1))
-                        .Include(c => c.CompatibleComponents)
                         .Where(c => c.Type == ComponentType.POWER_SUPPLY)
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                         .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
