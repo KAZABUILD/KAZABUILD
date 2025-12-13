@@ -37,9 +37,10 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
     <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <Content Include="kaza.png">
+    <Content Include="wwwroot\defaults\**">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+  </Content>
   </ItemGroup>
 
   <ItemGroup>
