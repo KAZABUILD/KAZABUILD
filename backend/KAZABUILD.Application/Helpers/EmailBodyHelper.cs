@@ -1,6 +1,7 @@
 using KAZABUILD.Infrastructure.SMTP;
 using MimeKit;
 using MimeKit.Utils;
+using System.Text;
 
 namespace KAZABUILD.Application.Helpers
 {
@@ -32,13 +33,65 @@ namespace KAZABUILD.Application.Helpers
                 }
             }
 
-            // If none found, log all attempted paths and throw
-            var attemptedPaths = string.Join("\n", possiblePaths);
-            var errorMessage = $"kaza.png not found. Attempted paths:\n{attemptedPaths}\nCurrent directory: {Directory.GetCurrentDirectory()}\nBase directory: {AppContext.BaseDirectory}";
-            Console.WriteLine($"[CRITICAL] {errorMessage}");
-            throw new FileNotFoundException(errorMessage);
+            // --- DEBUGGING: FILE NOT FOUND ---
+            var sb = new StringBuilder();
+            sb.AppendLine("[CRITICAL] kaza.png not found.");
+            sb.AppendLine($"Current Directory: {Directory.GetCurrentDirectory()}");
+            sb.AppendLine($"Base Directory: {AppContext.BaseDirectory}");
+            sb.AppendLine("Attempted paths:");
+            foreach (var p in possiblePaths) sb.AppendLine($" - {p}");
+
+            sb.AppendLine("\n[FILE TREE DUMP START]");
+            try
+            {
+                // Start printing from the App Directory (usually /app in Docker)
+                PrintDirectoryTree(AppContext.BaseDirectory, sb, 0, 4); // Max depth 4 to prevent infinite loops
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"Error printing tree: {ex.Message}");
+            }
+            sb.AppendLine("[FILE TREE DUMP END]");
+
+            Console.WriteLine(sb.ToString());
+            
+            throw new FileNotFoundException($"kaza.png not found. Check logs for file tree dump.");
         }
 
+        /// <summary>
+        /// Recursively prints directories and files to a StringBuilder.
+        /// </summary>
+        private static void PrintDirectoryTree(string dirPath, StringBuilder sb, int depth, int maxDepth)
+        {
+            if (depth > maxDepth) return;
+            
+            // Indentation for visual tree
+            var indent = new string(' ', depth * 2);
+
+            try
+            {
+                var dirInfo = new DirectoryInfo(dirPath);
+                if (!dirInfo.Exists) return;
+
+                // Print Files
+                foreach (var file in dirInfo.GetFiles())
+                {
+                    sb.AppendLine($"{indent}- {file.Name}");
+                }
+
+                // Recurse Directories
+                foreach (var dir in dirInfo.GetDirectories())
+                {
+                    sb.AppendLine($"{indent}+ [{dir.Name}]");
+                    PrintDirectoryTree(dir.FullName, sb, depth + 1, maxDepth);
+                }
+            }
+            catch (UnauthorizedAccessException) { /* Skip permission errors */ }
+            catch (Exception ex) 
+            { 
+                sb.AppendLine($"{indent}Error accessing {dirPath}: {ex.Message}"); 
+            }
+        }
         public static EmailContent GetAccountConfirmationEmailBody(string displayName, string confirmUrl)
         {
             var imagePath = FindImagePath();
