@@ -116,30 +116,61 @@ class ComponentCompatibilityService {
   }
 
   /// Gets all compatible component IDs for a given component.
+  /// Fetches compatibilities in both directions to ensure all links are found.
   Future<List<String>> getCompatibleComponentIds(String componentId) async {
     try {
-      final compatibilities = await getComponentCompatibilities(
-        componentIds: [componentId],
-        paging: false,
-      );
-      return compatibilities
-          .map((c) => c.compatibleComponentId)
-          .where((id) => id.isNotEmpty)
-          .toList();
+      final results = await Future.wait([
+        getComponentCompatibilities(
+          componentIds: [componentId],
+          paging: false,
+        ),
+        getComponentCompatibilities(
+          compatibleComponentIds: [componentId],
+          paging: false,
+        ),
+      ]);
+
+      final forwardCompatibilities = results[0];
+      final backwardCompatibilities = results[1];
+
+      final ids = <String>{};
+
+      for (var c in forwardCompatibilities) {
+        if (c.compatibleComponentId.isNotEmpty) {
+          ids.add(c.compatibleComponentId);
+        }
+      }
+
+      for (var c in backwardCompatibilities) {
+        if (c.componentId.isNotEmpty) {
+          ids.add(c.componentId);
+        }
+      }
+
+      return ids.toList();
     } catch (e) {
       rethrow;
     }
   }
 
   /// Checks if two components are compatible.
+  /// Checks both directions.
   Future<bool> areComponentsCompatible(String componentId1, String componentId2) async {
     try {
-      final compatibilities = await getComponentCompatibilities(
-        componentIds: [componentId1],
-        compatibleComponentIds: [componentId2],
-        paging: false,
-      );
-      return compatibilities.isNotEmpty;
+      final results = await Future.wait([
+        getComponentCompatibilities(
+          componentIds: [componentId1],
+          compatibleComponentIds: [componentId2],
+          paging: false,
+        ),
+        getComponentCompatibilities(
+          componentIds: [componentId2],
+          compatibleComponentIds: [componentId1],
+          paging: false,
+        ),
+      ]);
+      
+      return results[0].isNotEmpty || results[1].isNotEmpty;
     } catch (e) {
       return false;
     }
@@ -147,6 +178,7 @@ class ComponentCompatibilityService {
 
   /// Gets all components that are compatible with the given component.
   /// Returns a map of compatibility ID to compatible component ID.
+  /// Note: Returns only forward direction compatibilities to maintain map structure safely.
   Future<Map<String, String>> getCompatibleComponents(String componentId) async {
     try {
       final compatibilities = await getComponentCompatibilities(

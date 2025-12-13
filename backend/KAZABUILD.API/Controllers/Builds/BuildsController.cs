@@ -1041,233 +1041,249 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 //Get all components that fit the criteria
 
-                //Get the CPU component
-                var cpuBaseQuery = _db.Components
-                    .OfType<CPUComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.CPU);
-
-                var cpuComponent = await BuildGenerationHelper.FindComponentAsync(
-                    cpuBaseQuery,
-                    cpuMinPrice,
-                    cpuMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForExtraCores, c => c.CoreTotal)
-                );
-
-                if (cpuComponent == null)
+                try
                 {
-                    failed = true;
-                    failureDescription = $"cpu failed to generate in batch {i+1}";
-                    break;
+                    //Get the CPU component
+                    var cpuBaseQuery = _db.Components
+                        .OfType<CPUComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.CPU);
+
+                    var cpuComponent = await BuildGenerationHelper.FindComponentAsync(
+                        cpuBaseQuery,
+                        cpuMinPrice,
+                        cpuMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForExtraCores, c => c.CoreTotal)
+                    );
+
+                    if (cpuComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"cpu failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(cpuComponent);
+
+                    //Get the motherboard component
+                    var motherboardBaseQuery = _db.Components
+                        .OfType<MotherboardComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.MOTHERBOARD)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id));
+
+                    var motherboardComponent = await BuildGenerationHelper.FindComponentAsync(
+                        motherboardBaseQuery,
+                        motherboardMinPrice,
+                        motherboardMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
+                    );
+
+                    if (motherboardComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"motherboard failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(motherboardComponent);
+
+                    //Get the cooler component
+                    var coolerBaseQuery = _db.Components
+                        .OfType<CoolerComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.COOLER)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id) &&
+                            c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+
+                    var coolerComponent = await BuildGenerationHelper.FindComponentAsync(
+                        coolerBaseQuery,
+                        coolerMinPrice,
+                        coolerMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
+                    );
+
+                    if (coolerComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"cooler failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(coolerComponent);
+
+                    //Get the memory component
+                    var memoryBaseQuery = _db.Components
+                        .OfType<MemoryComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.MEMORY)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+
+                    var memoryComponent = await BuildGenerationHelper.FindComponentAsync(
+                        memoryBaseQuery,
+                        memoryMinPrice,
+                        memoryMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid())
+                    );
+
+                    if (memoryComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"memory failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(memoryComponent);
+
+                    //Get the storage component
+                    var storageBaseQuery = _db.Components
+                        .OfType<StorageComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.STORAGE)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+
+                    var storageComponent = await BuildGenerationHelper.FindComponentAsync(
+                        storageBaseQuery,
+                        storageMinPrice,
+                        storageMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
+                    );
+
+                    if (storageComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"storage failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(storageComponent);
+
+                    //Get the GPU component
+                    var gpuBaseQuery = _db.Components
+                        .OfType<GPUComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.GPU)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+
+                    var gpuComponent = await BuildGenerationHelper.FindComponentAsync(
+                        gpuBaseQuery,
+                        gpuMinPrice,
+                        gpuMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid())
+                    );
+
+                    if (gpuComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"gpu failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(gpuComponent);
+
+                    //Get the power supply component adjusting for the power usage in other components
+                    var powerSupplyBaseQuery = _db.Components
+                        .OfType<PowerSupplyComponent>()
+                        .Include(c => c.Prices)
+                        .Include(c => c.CompatibleComponents)
+                        .Where(c => c.Type == ComponentType.POWER_SUPPLY)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
+                        .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
+
+                    var powerSupplyComponent = await BuildGenerationHelper.FindComponentAsync(
+                        powerSupplyBaseQuery,
+                        powerSupplyMinPrice,
+                        powerSupplyMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid())
+                    );
+
+                    if (powerSupplyComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"powerSupply failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(powerSupplyComponent);
+
+                    //Get the case component
+                    var caseBaseQuery = _db.Components
+                        .OfType<CaseComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.CASE)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
+
+                            c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == coolerComponent.Id) &&
+                            c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+
+                    var caseComponent = await BuildGenerationHelper.FindComponentAsync(
+                        caseBaseQuery,
+                        caseMinPrice,
+                        caseMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid())
+                    );
+
+                    if (caseComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"case failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(caseComponent);
+
+                    //Get the case fan component
+                    var caseFanBaseQuery = _db.Components
+                        .OfType<CaseFanComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.CASE_FAN)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == caseComponent.Id));
+
+                    var caseFanComponent = await BuildGenerationHelper.FindComponentAsync(
+                        caseFanBaseQuery,
+                        caseFanMinPrice,
+                        caseFanMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
+                    );
+
+                    if (caseFanComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"caseFan failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(caseFanComponent);
+
+                    //Get the monitor component
+                    var monitorBaseQuery = _db.Components
+                        .OfType<MonitorComponent>()
+                        .Include(c => c.Prices)
+                        .Where(c => c.Type == ComponentType.MONITOR)
+                        .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
+
+                    var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
+                        monitorBaseQuery,
+                        monitorMinPrice,
+                        monitorMaxPrice,
+                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
+                    );
+
+                    if (monitorComponent == null)
+                    {
+                        failed = true;
+                        failureDescription = $"monitor failed to generate in batch {i + 1}";
+                        break;
+                    }
+                    components.Add(monitorComponent);
                 }
-                components.Add(cpuComponent);
-
-                //Get the motherboard component
-                var motherboardBaseQuery = _db.Components
-                    .OfType<MotherboardComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.MOTHERBOARD)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id));
-
-                var motherboardComponent = await BuildGenerationHelper.FindComponentAsync(
-                    motherboardBaseQuery,
-                    motherboardMinPrice,
-                    motherboardMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
-                );
-
-                if (motherboardComponent == null)
+                catch (Exception ex)
                 {
-                    failed = true;
-                    failureDescription = $"motherboard failed to generate in batch {i + 1}";
-                    break;
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Build",
+                        ip,
+                        Guid.Empty,
+                        PrivacyLevel.ERROR,
+                        $"CPU Query Exception: {ex.Message} - {ex.InnerException?.Message}"
+                    );
+                    throw; // Re-throw to trigger proper error response
                 }
-                components.Add(motherboardComponent);
 
-                //Get the cooler component
-                var coolerBaseQuery = _db.Components
-                    .OfType<CoolerComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.COOLER)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id) &&
-                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
-
-                var coolerComponent = await BuildGenerationHelper.FindComponentAsync(
-                    coolerBaseQuery,
-                    coolerMinPrice,
-                    coolerMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
-                );
-
-                if (coolerComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"cooler failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(coolerComponent);
-
-                //Get the memory component
-                var memoryBaseQuery = _db.Components
-                    .OfType<MemoryComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.MEMORY)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
-
-                var memoryComponent = await BuildGenerationHelper.FindComponentAsync(
-                    memoryBaseQuery,
-                    memoryMinPrice,
-                    memoryMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid())
-                );
-
-                if (memoryComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"memory failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(memoryComponent);
-
-                //Get the storage component
-                var storageBaseQuery = _db.Components
-                    .OfType<StorageComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.STORAGE)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
-
-                var storageComponent = await BuildGenerationHelper.FindComponentAsync(
-                    storageBaseQuery,
-                    storageMinPrice,
-                    storageMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
-                );
-
-                if (storageComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"storage failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(storageComponent);
-
-                //Get the GPU component
-                var gpuBaseQuery = _db.Components
-                    .OfType<GPUComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.GPU)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
-
-                var gpuComponent = await BuildGenerationHelper.FindComponentAsync(
-                    gpuBaseQuery,
-                    gpuMinPrice,
-                    gpuMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid())
-                );
-
-                if (gpuComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"gpu failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(gpuComponent);
-
-                //Get the power supply component adjusting for the power usage in other components
-                var powerSupplyBaseQuery = _db.Components
-                    .OfType<PowerSupplyComponent>()
-                    .Include(c => c.Prices)
-                    .Include(c => c.CompatibleComponents)
-                    .Where(c => c.Type == ComponentType.POWER_SUPPLY)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
-                    .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
-
-                var powerSupplyComponent = await BuildGenerationHelper.FindComponentAsync(
-                    powerSupplyBaseQuery,
-                    powerSupplyMinPrice,
-                    powerSupplyMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid())
-                );
-
-                if (powerSupplyComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"powerSupply failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(powerSupplyComponent);
-
-                //Get the case component
-                var caseBaseQuery = _db.Components
-                    .OfType<CaseComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.CASE)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
-
-                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == coolerComponent.Id) &&
-                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
-
-                var caseComponent = await BuildGenerationHelper.FindComponentAsync(
-                    caseBaseQuery,
-                    caseMinPrice,
-                    caseMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid())
-                );
-
-                if (caseComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"case failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(caseComponent);
-
-                //Get the case fan component
-                var caseFanBaseQuery = _db.Components
-                    .OfType<CaseFanComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.CASE_FAN)
-                    .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == caseComponent.Id) );
-
-                var caseFanComponent = await BuildGenerationHelper.FindComponentAsync(
-                    caseFanBaseQuery,
-                    caseFanMinPrice,
-                    caseFanMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
-                );
-
-                if (caseFanComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"caseFan failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(caseFanComponent);
-
-                //Get the monitor component
-                var monitorBaseQuery = _db.Components
-                    .OfType<MonitorComponent>()
-                    .Include(c => c.Prices)
-                    .Where(c => c.Type == ComponentType.MONITOR);
-                    //.Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
-
-                var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
-                    monitorBaseQuery,
-                    monitorMinPrice,
-                    monitorMaxPrice,
-                    q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
-                );
-
-                if (monitorComponent == null)
-                {
-                    failed = true;
-                    failureDescription = $"monitor failed to generate in batch {i + 1}";
-                    break;
-                }
-                components.Add(monitorComponent);
-
-                //Add all the components to the build
-                foreach (BaseComponent component in components)
+            //Add all the components to the build
+            foreach (BaseComponent component in components)
                 {
                     BuildComponent buildComponent = new()
                     {

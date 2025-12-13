@@ -93,9 +93,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   // Unused fields removed to clean up warnings
   // The state is now fully managed by the activeFiltersProvider and DynamicFilterPanel
 
-  // Compatibility filter
-  bool _enableCompatibilityFilter = true;
-  
   // Track if we've shown the component details dialog for the current componentId
   String? _shownComponentId;
 
@@ -106,7 +103,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     _currentPage = _sanitizePage(widget.initialPage);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Clear previous filters on load to ensure clean state
-      ref.read(activeFiltersProvider(widget.componentType).notifier).clearAll();
+      final notifier = ref.read(activeFiltersProvider(widget.componentType).notifier);
+      notifier.clearAll();
+      // Set default compatibility filter to true
+      notifier.setFilter('Compatibility', true);
       _loadCurrentPage();
     });
   }
@@ -131,11 +131,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Clear filters when component type changes
         if (widget.componentType != oldWidget.componentType) {
-          ref.read(activeFiltersProvider(widget.componentType).notifier).clearAll();
+          final notifier = ref.read(activeFiltersProvider(widget.componentType).notifier);
+          notifier.clearAll();
           // Keep compatibility filter enabled by default on type change
-          setState(() {
-            _enableCompatibilityFilter = true;
-          });
+          notifier.setFilter('Compatibility', true);
         }
         _loadCurrentPage(force: true, targetPage: nextPage);
       });
@@ -163,6 +162,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   Map<String, dynamic> _buildFilters() {
     final activeFilters =
         Map<String, dynamic>.from(ref.read(activeFiltersProvider(widget.componentType)));
+    
+    // Remove client-side only filters
+    activeFilters.remove('Compatibility');
+
     final query = _searchController.text.trim();
     if (query.isNotEmpty) {
       activeFilters['Query'] = query;
@@ -476,12 +479,16 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     );
 
     try {
-      for (final componentId in componentIds) {
-        final compatible = await service.getCompatibleComponentIds(componentId);
-        compatibleIds.addAll(compatible);
-        // Also add the component itself as compatible
-        compatibleIds.add(componentId);
+      // Fetch in parallel
+      final futures = componentIds.map((id) => service.getCompatibleComponentIds(id));
+      final results = await Future.wait(futures);
+      
+      for (final list in results) {
+        compatibleIds.addAll(list);
       }
+      
+      // Also add the components themselves as compatible
+      compatibleIds.addAll(componentIds);
     } catch (e) {
       debugPrint('Error fetching compatible components: $e');
     }
@@ -496,14 +503,23 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     List<BaseComponent> products, {
     Set<String>? compatibleIds,
   }) {
+    final activeFilters = ref.watch(activeFiltersProvider(widget.componentType));
+    final compatibilityValue = activeFilters['Compatibility'];
+
     return products.where((product) {
       // Note: All filters except compatibility are handled server-side.
       // Compatibility filter
-      if (_enableCompatibilityFilter && compatibleIds != null) {
-        // If compatibility filter is enabled, only show products that are compatible
-        // with at least one component in the current build
-        if (!compatibleIds.contains(product.id)) {
-          return false;
+      if (compatibleIds != null) {
+        if (compatibilityValue == true) {
+          // If compatibility filter is Yes, only show products that are compatible
+          if (!compatibleIds.contains(product.id)) {
+            return false;
+          }
+        } else if (compatibilityValue == false) {
+          // If compatibility filter is No, only show products that are NOT compatible
+          if (compatibleIds.contains(product.id)) {
+            return false;
+          }
         }
       }
 
