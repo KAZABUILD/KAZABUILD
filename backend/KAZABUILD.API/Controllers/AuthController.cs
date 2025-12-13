@@ -572,6 +572,9 @@ namespace KAZABUILD.API.Controllers
                 return BadRequest(new { message = "Unable to determine the IP address" });
             }
             
+            //Add the user to the database
+            _db.Users.Add(user);
+
             //Generate a new token
             var tokenString = Guid.NewGuid().ToString("N");
 
@@ -615,9 +618,6 @@ namespace KAZABUILD.API.Controllers
                 //Return an internal error response
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
             }
-
-            //Add the user to the database
-            _db.Users.Add(user);
 
             //Add the token to the database
             _db.UserTokens.Add(token);
