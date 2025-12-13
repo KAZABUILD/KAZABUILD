@@ -442,7 +442,10 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userPreference to delete
-            var userPreference = await _db.UserPreferences.FirstOrDefaultAsync(p => p.Id == id);
+            var userPreference = await _db.UserPreferences
+                .Include(p => p.UserPreferenceAnswers)
+                .ThenInclude(a => a.UserAnswers)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (userPreference == null)
             {
                 //Log failure
@@ -458,6 +461,23 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return not found response
                 return NotFound(new { message = "UserPreference not found!" });
+            }
+
+            //Remove all child UserPreferenceAnswers and UserAnswers
+            if (userPreference.UserPreferenceAnswers.Count != 0)
+            {
+                var childAnswers = userPreference.UserPreferenceAnswers;
+                var childUserAnswers = childAnswers
+                    .Where(a => a.UserAnswers.Count != 0)
+                    .SelectMany(a => a.UserAnswers)
+                    .ToList();
+
+                if (childUserAnswers.Count != 0)
+                {
+                    _db.UserAnswers.RemoveRange(childUserAnswers);
+                }
+
+                _db.UserPreferenceAnswers.RemoveRange(childAnswers);
             }
 
             //Delete the userPreference
