@@ -58,16 +58,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   if (_generationError != null) {
                     return _GenerationError(
                       message: _generationError!,
-                      onRetry: () {
-                        ref.read(quizProvider.notifier).resetQuiz();
-                        ref.read(quizStepProvider.notifier).state = 0;
-                        setState(() {
-                          _generationStarted = false;
-                          _generationFuture = null;
-                          _generationError = null;
-                          _selectedAnswerIds.clear();
-                        });
-                      },
+                      onRetry: () => _retryGeneration(context),
+                      onRetake: _retakeQuiz,
                     );
                   }
                   _startGeneration(context);
@@ -186,6 +178,33 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         ),
       ),
     );
+  }
+
+  /// Retry generation with the existing answers without forcing the user
+  /// to retake the entire quiz. We clear the local error state first so
+  /// the page can transition to the loading view.
+  void _retryGeneration(BuildContext context) {
+    setState(() {
+      _generationError = null;
+      _generationStarted = false;
+      _generationFuture = null;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startGeneration(context);
+    });
+  }
+
+  /// Fully reset the quiz so the user can change their answers.
+  void _retakeQuiz() {
+    ref.read(quizProvider.notifier).resetQuiz();
+    ref.read(quizStepProvider.notifier).state = 0;
+    setState(() {
+      _generationStarted = false;
+      _generationFuture = null;
+      _generationError = null;
+      _selectedAnswerIds.clear();
+    });
   }
 
   Future<void> _startGeneration(BuildContext context) async {
@@ -542,10 +561,15 @@ class _GenerationLoading extends StatelessWidget {
 }
 
 class _GenerationError extends StatelessWidget {
-  const _GenerationError({required this.message, required this.onRetry});
+  const _GenerationError({
+    required this.message,
+    required this.onRetry,
+    this.onRetake,
+  });
 
   final String message;
   final VoidCallback onRetry;
+  final VoidCallback? onRetake;
 
   @override
   Widget build(BuildContext context) {
@@ -567,15 +591,33 @@ class _GenerationError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6B46FF),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Retake Quiz'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: onRetry,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B46FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Try Again'),
+                ),
+                if (onRetake != null)
+                  OutlinedButton(
+                    onPressed: onRetake,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFF6B46FF)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Retake Quiz'),
+                  ),
+              ],
             ),
           ],
         ),
