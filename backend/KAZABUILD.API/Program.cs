@@ -64,6 +64,13 @@ namespace KAZABUILD.API
             //Add Prometheus HTTP metrics before building the app
             builder.Services.AddHealthChecks();
 
+            //Increase max endpoint wait time to 5 minutes
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(300);
+                options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(300);
+            });
+
             //Build the app using the declared configuration
             var app = builder.Build();
 

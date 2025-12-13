@@ -338,7 +338,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
                       },
                     ),
                   ),
-                  _buildPagination(isDark, tagsAsync),
+                  _buildPagination(context, isDark, tagsAsync),
                 ],
               ),
             ),
@@ -732,7 +732,7 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
     );
   }
 
-  Widget _buildPagination(bool isDark, AsyncValue<List<Tag>> tagsAsync) {
+  Widget _buildPagination(BuildContext context, bool isDark, AsyncValue<List<Tag>> tagsAsync) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
 
@@ -914,14 +914,47 @@ class _AdminTagsPageState extends ConsumerState<AdminTagsPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // TODO: Implement add tag API call
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Add tag functionality coming soon'),
-                  backgroundColor: AppColorsDark.buttonBlue,
-                ),
-              );
+              if (nameController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tag name cannot be empty'),
+                    backgroundColor: AppColorsDark.error,
+                  ),
+                );
+                return;
+              }
+              
+              try {
+                final buildService = ref.read(buildServiceProvider);
+                await buildService.addTag({
+                  'Name': nameController.text.trim(),
+                  'Description': descriptionController.text.trim(),
+                });
+                
+                Navigator.of(context).pop();
+                
+                if (mounted) {
+                  setState(() {
+                    _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                  });
+                  ref.invalidate(adminTagsProvider(_buildQueryParams()));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tag added successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(getUserFriendlyError(e)),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Add'),
           ),

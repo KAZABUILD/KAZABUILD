@@ -571,7 +571,7 @@ namespace KAZABUILD.API.Controllers
                 //Return conflict response
                 return BadRequest(new { message = "Unable to determine the IP address" });
             }
-
+            
             //Add the user to the database
             _db.Users.Add(user);
 

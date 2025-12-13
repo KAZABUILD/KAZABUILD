@@ -37,7 +37,9 @@ class AuthService {
   /// Sends a login request to the backend.
   Future<Response> signIn(String usernameOrEmail, String password) {
     // Check if the input string is a valid email format.
-    final bool isEmail = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(usernameOrEmail);
+    final bool isEmail = RegExp(
+      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+    ).hasMatch(usernameOrEmail);
 
     // Prepare the data payload based on whether it's an email or a username.
     final Map<String, String> data;
@@ -60,10 +62,10 @@ class AuthService {
   /// Follows a user by creating a UserFollow relationship.
   /// Requires the JWT to be set in the Dio headers for authorization.
   Future<Response> followUser(String followerId, String followedId) {
-    return _dio.post('$apiBaseUrl/UserFollows/add', data: {
-      'FollowerId': followerId,
-      'FollowedId': followedId,
-    });
+    return _dio.post(
+      '$apiBaseUrl/UserFollows/add',
+      data: {'FollowerId': followerId, 'FollowedId': followedId},
+    );
   }
 
   /// Unfollows a user by removing the UserFollow relationship.
@@ -76,11 +78,14 @@ class AuthService {
   /// Returns null if not following.
   Future<String?> getFollowId(String followerId, String followedId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/UserFollows/get', data: {
-        'FollowerId': [followerId],
-        'FollowedId': [followedId],
-        'Paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/UserFollows/get',
+        data: {
+          'FollowerId': [followerId],
+          'FollowedId': [followedId],
+          'Paging': false,
+        },
+      );
       final List<dynamic> follows = response.data as List<dynamic>? ?? [];
       if (follows.isEmpty) return null;
       final follow = follows.first as Map<String, dynamic>;
@@ -106,16 +111,18 @@ class AuthService {
     // Backend expects a relative path starting with '/'
     const redirectUrl = '/confirm-reset-password';
 
-    final requestData = {
-      'email': email.trim(),
-      'RedirectUrl': redirectUrl,
-    };
+    final requestData = {'email': email.trim(), 'RedirectUrl': redirectUrl};
 
     print('Password reset request data: $requestData');
 
     try {
-      final response = await _dio.post('/Auth/reset-password', data: requestData);
-      print('Password reset response: ${response.statusCode} - ${response.data}');
+      final response = await _dio.post(
+        '/Auth/reset-password',
+        data: requestData,
+      );
+      print(
+        'Password reset response: ${response.statusCode} - ${response.data}',
+      );
       return response;
     } catch (e) {
       print('Password reset error: $e');
@@ -124,19 +131,23 @@ class AuthService {
   }
 
   /// Sends a request to confirm the password reset with a new password.
-  Future<Response> confirmResetPassword(String token, String newPassword) async {
+  Future<Response> confirmResetPassword(
+    String token,
+    String newPassword,
+  ) async {
     // Makes a POST request to the /Auth/confirm-reset-password endpoint.
     // Backend redirects on success/failure, so we need to handle redirects
     try {
       final response = await _dio.post(
-        '$apiBaseUrl/Auth/confirm-reset-password', 
+        '$apiBaseUrl/Auth/confirm-reset-password',
         data: {'token': token, 'newPassword': newPassword},
         options: Options(
           followRedirects: false,
           maxRedirects: 0, // Don't follow any redirects
           validateStatus: (status) {
             // Accept 200-299 and 302 as valid status codes
-            return status != null && (status >= 200 && status < 300 || status == 302);
+            return status != null &&
+                (status >= 200 && status < 300 || status == 302);
           },
         ),
       );
@@ -162,7 +173,7 @@ class AuthService {
     // Don't follow redirects - backend redirects to frontend which causes CORS issues
     try {
       final response = await _dio.post(
-        '$apiBaseUrl/Auth/confirm-register', 
+        '$apiBaseUrl/Auth/confirm-register',
         data: {'token': token},
         options: Options(
           followRedirects: false,
@@ -172,7 +183,8 @@ class AuthService {
           receiveTimeout: const Duration(seconds: 10),
           validateStatus: (status) {
             // Accept 200-299 and 302 as valid status codes
-            return status != null && (status >= 200 && status < 300 || status == 302);
+            return status != null &&
+                (status >= 200 && status < 300 || status == 302);
           },
         ),
       );
@@ -190,7 +202,8 @@ class AuthService {
         );
       }
       // Also check if the error type is related to redirects
-      if (e.type == DioExceptionType.badResponse && e.response?.statusCode == 302) {
+      if (e.type == DioExceptionType.badResponse &&
+          e.response?.statusCode == 302) {
         return Response(
           requestOptions: e.requestOptions,
           statusCode: 302,
@@ -202,7 +215,9 @@ class AuthService {
     } catch (e) {
       // Catch any other exceptions and rethrow as DioException
       throw DioException(
-        requestOptions: RequestOptions(path: '$apiBaseUrl/Auth/confirm-register'),
+        requestOptions: RequestOptions(
+          path: '$apiBaseUrl/Auth/confirm-register',
+        ),
         error: e,
       );
     }
@@ -214,28 +229,36 @@ class AuthService {
   }
 
   /// Changes the user's password.
-  Future<Response> changePassword(String userId, String oldPassword, String newPassword) {
-    return _dio.put('$apiBaseUrl/Users/$userId/change-password', data: {
-      'OldPassword': oldPassword,
-      'NewPassword': newPassword,
-    });
+  Future<Response> changePassword(
+    String userId,
+    String oldPassword,
+    String newPassword,
+  ) {
+    return _dio.put(
+      '$apiBaseUrl/Users/$userId/change-password',
+      data: {'OldPassword': oldPassword, 'NewPassword': newPassword},
+    );
   }
 
   /// Sends a request to upload an image.
   /// Supports all image formats accepted by the backend (.jpg, .jpeg, .png, .gif, .webp, .avif, .bmp, .tiff, .tif, .heic, .heif, .ico)
-  Future<Response> uploadImage(String imagePath, String targetId, String locationType) async {
+  Future<Response> uploadImage(
+    String imagePath,
+    String targetId,
+    String locationType,
+  ) async {
     // Create XFile from path (works for both web and mobile)
     final xFile = XFile(imagePath);
-    
+
     // Get file name from XFile (it handles web blob URLs correctly)
     var fileName = xFile.name;
-    
+
     // If name is empty, try to extract from path
     if (fileName.isEmpty || !fileName.contains('.')) {
       final pathParts = imagePath.split('/');
       fileName = pathParts.last;
     }
-    
+
     // Ensure filename has extension
     if (!fileName.contains('.')) {
       // Try to get extension from mime type or default to jpg
@@ -262,7 +285,7 @@ class AuthService {
       }
       fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
     }
-    
+
     // Normalize file extension to lowercase and ensure jpeg -> jpg
     var extension = fileName.split('.').last.toLowerCase();
     if (extension == 'jpeg') {
@@ -270,16 +293,13 @@ class AuthService {
     }
     final nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
     fileName = '$nameWithoutExt.$extension';
-    
+
     // Read file as bytes (XFile works on both web and mobile)
     final fileBytes = await xFile.readAsBytes();
-    
+
     // Create form data with the file
     final formData = FormData.fromMap({
-      'File': MultipartFile.fromBytes(
-        fileBytes,
-        filename: fileName,
-      ),
+      'File': MultipartFile.fromBytes(fileBytes, filename: fileName),
       'TargetId': targetId,
       'LocationType': locationType,
       'Name': 'user_profile_${DateTime.now().millisecondsSinceEpoch}',
@@ -324,9 +344,9 @@ class Address {
   final String? province;
   final String? city;
   final String? street;
-  final String? streetNumber; 
+  final String? streetNumber;
   final String? postalCode;
-  final String? apartmentNumber; 
+  final String? apartmentNumber;
 
   const Address({
     this.country,
@@ -428,7 +448,7 @@ class AppUser {
     // Backend sends "DARK" or "LIGHT", but ThemeMode uses "dark", "light", "system"
     ThemeMode parseTheme(String? themeStr) {
       if (themeStr == null) return ThemeMode.dark;
-      
+
       final upperTheme = themeStr.toUpperCase();
       if (upperTheme == 'DARK') {
         return ThemeMode.dark;
@@ -448,7 +468,6 @@ class AppUser {
       );
     }
 
-
     // Handle ImageId - backend returns ImageId (GUID) which needs to be used as photoURL
     // Frontend will convert it to a URL when displaying
     String? photoURL;
@@ -458,22 +477,22 @@ class AppUser {
       // Backend returns ImageId as GUID, store it as-is (will be converted to URL in UI)
       photoURL = json['imageId']?.toString() ?? json['ImageId']?.toString();
     }
-    
+
     // Handle username - guest users might not have 'login' field, use displayName as fallback
     final loginValue = json['login'] ?? json['Login'];
     final displayNameValue = json['displayName'] ?? json['DisplayName'];
     final username = loginValue ?? displayNameValue ?? 'User';
-    
+
     // Handle email - guest users might not have email field
     final emailValue = json['email'] ?? json['Email'] ?? '';
-    
+
     // Handle uid - must be present, convert to string if needed
     final uidValue = json['id'] ?? json['Id'];
     if (uidValue == null) {
       log('AppUser.fromJson: Missing id field, cannot create user');
       throw Exception('User ID is required but missing in response');
     }
-    
+
     return AppUser(
       uid: uidValue.toString(),
       username: username,
@@ -485,13 +504,18 @@ class AppUser {
       gender: json['gender'] ?? json['Gender'],
       birthDate: json['birth'] ?? json['Birth'],
       themePreference: parseTheme(json['theme'] ?? json['Theme']),
-      languagePreference: (json['language'] ?? json['Language'])?.toLowerCase() ?? 'en',
-      profileAccessibility: parseAccessibility(json['profileAccessibility'] ?? json['ProfileAccessibility']),
+      languagePreference:
+          (json['language'] ?? json['Language'])?.toLowerCase() ?? 'en',
+      profileAccessibility: parseAccessibility(
+        json['profileAccessibility'] ?? json['ProfileAccessibility'],
+      ),
       userRole: AppUser._parseUserRole(json['userRole'] ?? json['UserRole']),
-      address: (json['address'] ?? json['Address']) != null ? Address.fromJson(json['address'] ?? json['Address']) : null,
+      address: (json['address'] ?? json['Address']) != null
+          ? Address.fromJson(json['address'] ?? json['Address'])
+          : null,
     );
   }
-  
+
   /// Helper to parse UserRole - backend sends enum as integer or string
   /// Made static so it can be called from factory method
   static UserRole _parseUserRole(dynamic roleValue) {
@@ -499,29 +523,33 @@ class AppUser {
       log('UserRole parse: roleValue is null, defaulting to guest');
       return UserRole.guest;
     }
-    
-    log('UserRole parse: raw value = $roleValue (type: ${roleValue.runtimeType})');
-    
+
+    log(
+      'UserRole parse: raw value = $roleValue (type: ${roleValue.runtimeType})',
+    );
+
     // If it's already an integer
     if (roleValue is int) {
       final role = UserRole.values.firstWhere(
         (role) => role.value == roleValue,
         orElse: () {
-          log('UserRole parse: No role found for integer value $roleValue, defaulting to guest');
+          log(
+            'UserRole parse: No role found for integer value $roleValue, defaulting to guest',
+          );
           return UserRole.guest;
         },
       );
       log('UserRole parse: Parsed integer $roleValue to ${role.name}');
       return role;
     }
-    
+
     // If it's a string, try parsing it
     if (roleValue is String) {
       final role = UserRole.fromString(roleValue);
       log('UserRole parse: Parsed string "$roleValue" to ${role.name}');
       return role;
     }
-    
+
     // Try converting to string first
     final roleStr = roleValue.toString();
     log('UserRole parse: Converting to string: "$roleStr"');
@@ -541,7 +569,8 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   final CookieStorageService _cookieStorage;
 
   /// Initializes the notifier with a `null` state, indicating no user is logged in.
-  AuthStateNotifier(this._authService, this._tokenStorage, this._cookieStorage) : super(const AsyncValue.data(null));
+  AuthStateNotifier(this._authService, this._tokenStorage, this._cookieStorage)
+    : super(const AsyncValue.data(null));
 
   /// Signs in a user.
   ///
@@ -551,7 +580,11 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   /// 3. Creating an `AppUser` instance with that data.
   /// 4. Updating the `state` with the new `AppUser` object, which will notify all listeners.
   /// 5. Saving login info for auto-fill and offline access.
-  Future<void> signIn(String usernameOrEmail, String password, {bool rememberMe = false}) async {
+  Future<void> signIn(
+    String usernameOrEmail,
+    String password, {
+    bool rememberMe = false,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final response = await _authService.signIn(usernameOrEmail, password);
@@ -565,35 +598,40 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
         log('Secure storage failed, using cookie storage: $e');
         await _cookieStorage.saveToken(token);
       }
-      
+
       _authService._dio.options.headers['Authorization'] = 'Bearer $token';
 
       // Decode the JWT to get the user ID.
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      
+
       // Try different possible claim names for user ID
-      final userId = decodedToken['nameid'] ?? 
-                    decodedToken['sub'] ?? 
-                    decodedToken['userId'] ?? 
-                    decodedToken['user_id'] ??
-                    decodedToken['id'];
+      final userId =
+          decodedToken['nameid'] ??
+          decodedToken['sub'] ??
+          decodedToken['userId'] ??
+          decodedToken['user_id'] ??
+          decodedToken['id'];
 
       if (userId == null) {
         print('Available token claims: ${decodedToken.keys.toList()}');
-        throw Exception('User ID not found in token. Available claims: ${decodedToken.keys.join(', ')}');
+        throw Exception(
+          'User ID not found in token. Available claims: ${decodedToken.keys.join(', ')}',
+        );
       }
 
       // Fetch the full user profile using the user ID.
       final userResponse = await _authService.getUserById(userId);
       final userData = userResponse.data;
-      
+
       // Debug: Log the raw user data to see what backend is sending
       log('=== USER DATA FROM BACKEND ===');
       log('Raw userData: $userData');
       log('UserRole in JSON: ${userData['userRole'] ?? userData['UserRole']}');
-      log('UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}');
+      log(
+        'UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}',
+      );
       log('==============================');
-      
+
       final user = AppUser.fromJson(userData);
 
       // Save user data and login info for offline access and auto-fill
@@ -663,22 +701,27 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   Future<String> signUp(Map<String, dynamic> userData) async {
     state = const AsyncValue.loading();
     try {
-      
-      if (!userData.containsKey('password') || userData['password'] == null || userData['password'].toString().isEmpty) {
+      if (!userData.containsKey('password') ||
+          userData['password'] == null ||
+          userData['password'].toString().isEmpty) {
         throw Exception('Password is required for registration.');
       }
 
       final response = await _authService.register(userData);
-      state = const AsyncValue.data(null); // Reset state, no user is logged in yet.
-      return response.data['message'] ?? 'Registration successful! Please check your email to verify your account.';
+      state = const AsyncValue.data(
+        null,
+      ); // Reset state, no user is logged in yet.
+      return response.data['message'] ??
+          'Registration successful! Please check your email to verify your account.';
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'An unknown registration error occurred.';
+      final errorMessage =
+          e.response?.data['message'] ??
+          'An unknown registration error occurred.';
       state = AsyncValue.error(errorMessage, e.stackTrace);
       // Re-throw the error message to be caught by the UI.
       throw errorMessage;
     }
   }
-    
 
   /// Sends a password reset link to the user's email.
   /// Returns a success message to be shown in the UI.
@@ -687,14 +730,18 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     // so we don't set state to loading/error here. The UI will handle it locally.
     try {
       final response = await _authService.resetPassword(email);
-      return response.data['message'] ?? 'Password reset link sent! Please check your email.';
+      return response.data['message'] ??
+          'Password reset link sent! Please check your email.';
     } on DioException catch (e) {
       // Log the full error for debugging
       print('Password reset error: ${e.response?.data}');
       print('Status code: ${e.response?.statusCode}');
-      
+
       // Re-throw a user-friendly error message for the UI to catch and display.
-      final errorMessage = e.response?.data['message'] ?? e.response?.data['title'] ?? 'An unknown error occurred.';
+      final errorMessage =
+          e.response?.data['message'] ??
+          e.response?.data['title'] ??
+          'An unknown error occurred.';
       throw errorMessage;
     }
   }
@@ -704,166 +751,213 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   Future<String> confirmPasswordReset(String token, String newPassword) async {
     // This operation also doesn't change the global auth state directly.
     try {
-      final response = await _authService.confirmResetPassword(token, newPassword);
-      
+      final response = await _authService.confirmResetPassword(
+        token,
+        newPassword,
+      );
+
       log('🔵 Password reset response status: ${response.statusCode}');
       log('🔵 Password reset response headers: ${response.headers}');
       log('🔵 Password reset response headers map: ${response.headers.map}');
-      
+
       // Backend returns 302 redirect on both success and error
       // Check the redirect location to determine success or failure
       if (response.statusCode == 302) {
         // Try different ways to get location header
         String? location;
         try {
-          location = response.headers.value('location') ?? 
-                    response.headers.value('Location') ??
-                    response.headers.map['location']?.first ??
-                    response.headers.map['Location']?.first ??
-                    response.headers.map['location']?.firstOrNull ??
-                    response.headers.map['Location']?.firstOrNull;
+          location =
+              response.headers.value('location') ??
+              response.headers.value('Location') ??
+              response.headers.map['location']?.first ??
+              response.headers.map['Location']?.first ??
+              response.headers.map['location']?.firstOrNull ??
+              response.headers.map['Location']?.firstOrNull;
         } catch (e) {
           log('⚠️ Error getting location header: $e');
         }
-        
+
         log('🔵 Password reset redirect location: $location');
-        
+
         if (location != null && location.isNotEmpty) {
           // Parse URL to extract path and query parameters (ignore scheme http/https)
           String locationToCheck = location;
           try {
             final uri = Uri.parse(location);
             // Extract path and query string, ignore scheme
-            locationToCheck = '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+            locationToCheck =
+                '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
             log('🔵 Parsed location (path + query): $locationToCheck');
           } catch (e) {
             log('⚠️ Could not parse location URL: $e');
             // Fallback to original location
             locationToCheck = location;
           }
-          
+
           final locationLower = locationToCheck.toLowerCase();
           // Check if redirect contains error parameter (these are errors)
-          if (locationLower.contains('error=invalidtoken') || locationLower.contains('?error=invalidtoken')) {
+          if (locationLower.contains('error=invalidtoken') ||
+              locationLower.contains('?error=invalidtoken')) {
             log('❌ Password reset failed - Invalid token');
-            throw Exception('Invalid or expired reset token. Please request a new password reset link.');
-          } else if (locationLower.contains('error=expiredtoken') || locationLower.contains('?error=expiredtoken')) {
+            throw Exception(
+              'Invalid or expired reset token. Please request a new password reset link.',
+            );
+          } else if (locationLower.contains('error=expiredtoken') ||
+              locationLower.contains('?error=expiredtoken')) {
             log('❌ Password reset failed - Expired token');
-            throw Exception('This reset link has expired. Please request a new password reset link.');
+            throw Exception(
+              'This reset link has expired. Please request a new password reset link.',
+            );
           } else if (locationLower.contains('error=')) {
             // Any other error parameter
             log('❌ Password reset failed - Error in redirect');
-            throw Exception('An error occurred while resetting your password. Please try again.');
-          } else if (locationLower.contains('/login') || locationLower.contains('login')) {
+            throw Exception(
+              'An error occurred while resetting your password. Please try again.',
+            );
+          } else if (locationLower.contains('/login') ||
+              locationLower.contains('login')) {
             // Success - redirecting to login page
             log('✅ Password reset successful - redirect to login');
             return 'Password has been reset successfully! You can now log in.';
-          } else if ((locationLower.contains('userid=') || locationLower.contains('confirm-reset-password')) && !locationLower.contains('error=')) {
+          } else if ((locationLower.contains('userid=') ||
+                  locationLower.contains('confirm-reset-password')) &&
+              !locationLower.contains('error=')) {
             // Backend redirects to confirm-reset-password with userId on success
             // This means password was reset successfully
-            log('✅ Password reset successful - redirect contains userId or confirm-reset-password');
+            log(
+              '✅ Password reset successful - redirect contains userId or confirm-reset-password',
+            );
             return 'Password has been reset successfully! You can now log in.';
           }
         }
-        
+
         // If we have a 302 but location doesn't match known patterns, assume success
         // Backend successfully processed the request
         log('✅ Password reset successful - 302 status code (assuming success)');
         return 'Password has been reset successfully! You can now log in.';
       }
-      
+
       // Fallback success message
       log('✅ Password reset successful - fallback');
       return 'Password has been reset successfully! You can now log in.';
     } on DioException catch (e) {
-      log('🔴 DioException: type=${e.type}, statusCode=${e.response?.statusCode}, message=${e.message}');
+      log(
+        '🔴 DioException: type=${e.type}, statusCode=${e.response?.statusCode}, message=${e.message}',
+      );
       log('🔴 Response headers: ${e.response?.headers}');
       log('🔴 Response headers map: ${e.response?.headers.map}');
-      
+
       // Check if it's a redirect error (302)
       // Dio might throw exception even with followRedirects: false
-      if (e.response?.statusCode == 302 || e.type == DioExceptionType.badResponse) {
+      if (e.response?.statusCode == 302 ||
+          e.type == DioExceptionType.badResponse) {
         // Try different ways to get location header
         String? location;
         try {
-          location = e.response?.headers.value('location') ?? 
-                    e.response?.headers.value('Location') ??
-                    e.response?.headers.map['location']?.first ??
-                    e.response?.headers.map['Location']?.first ??
-                    e.response?.headers.map['location']?.firstOrNull ??
-                    e.response?.headers.map['Location']?.firstOrNull;
+          location =
+              e.response?.headers.value('location') ??
+              e.response?.headers.value('Location') ??
+              e.response?.headers.map['location']?.first ??
+              e.response?.headers.map['Location']?.first ??
+              e.response?.headers.map['location']?.firstOrNull ??
+              e.response?.headers.map['Location']?.firstOrNull;
         } catch (ex) {
           log('⚠️ Error getting location header: $ex');
         }
-        
+
         log('🔵 Password reset redirect location (from exception): $location');
-        
+
         if (location != null && location.isNotEmpty) {
           // Parse URL to extract path and query parameters (ignore scheme http/https)
           String locationToCheck = location;
           try {
             final uri = Uri.parse(location);
             // Extract path and query string, ignore scheme
-            locationToCheck = '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
-            log('🔵 Parsed location from exception (path + query): $locationToCheck');
+            locationToCheck =
+                '${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+            log(
+              '🔵 Parsed location from exception (path + query): $locationToCheck',
+            );
           } catch (parseEx) {
             log('⚠️ Could not parse location URL from exception: $parseEx');
             // Fallback to original location
             locationToCheck = location;
           }
-          
+
           final locationLower = locationToCheck.toLowerCase();
-          if (locationLower.contains('error=invalidtoken') || locationLower.contains('?error=invalidtoken')) {
-            throw Exception('Invalid or expired reset token. Please request a new password reset link.');
-          } else if (locationLower.contains('error=expiredtoken') || locationLower.contains('?error=expiredtoken')) {
-            throw Exception('This reset link has expired. Please request a new password reset link.');
+          if (locationLower.contains('error=invalidtoken') ||
+              locationLower.contains('?error=invalidtoken')) {
+            throw Exception(
+              'Invalid or expired reset token. Please request a new password reset link.',
+            );
+          } else if (locationLower.contains('error=expiredtoken') ||
+              locationLower.contains('?error=expiredtoken')) {
+            throw Exception(
+              'This reset link has expired. Please request a new password reset link.',
+            );
           } else if (locationLower.contains('error=')) {
             // Any other error parameter
-            throw Exception('An error occurred while resetting your password. Please try again.');
-          } else if (locationLower.contains('/login') || locationLower.contains('login')) {
+            throw Exception(
+              'An error occurred while resetting your password. Please try again.',
+            );
+          } else if (locationLower.contains('/login') ||
+              locationLower.contains('login')) {
             // Success - redirecting to login page
             log('✅ Password reset successful - redirect to login');
             return 'Password has been reset successfully! You can now log in.';
-          } else if ((locationLower.contains('userid=') || locationLower.contains('confirm-reset-password')) && !locationLower.contains('error=')) {
+          } else if ((locationLower.contains('userid=') ||
+                  locationLower.contains('confirm-reset-password')) &&
+              !locationLower.contains('error=')) {
             // Backend redirects to confirm-reset-password with userId on success
             // This means password was reset successfully
-            log('✅ Password reset successful - redirect contains userId or confirm-reset-password');
+            log(
+              '✅ Password reset successful - redirect contains userId or confirm-reset-password',
+            );
             return 'Password has been reset successfully! You can now log in.';
           }
         }
-        
+
         // If we have a 302 but no location header, or location doesn't match known patterns
         // Assume success if status is 302 (backend processed the request)
         if (e.response?.statusCode == 302) {
-          log('✅ Password reset successful - 302 status code (assuming success, no location header)');
+          log(
+            '✅ Password reset successful - 302 status code (assuming success, no location header)',
+          );
           return 'Password has been reset successfully! You can now log in.';
         }
-        
+
         // If it's a badResponse but no specific error, and we got a response, assume success
         // Backend successfully processed the request even if Dio throws exception
         if (e.type == DioExceptionType.badResponse && e.response != null) {
-          log('✅ Password reset successful - badResponse but response exists (assuming success)');
+          log(
+            '✅ Password reset successful - badResponse but response exists (assuming success)',
+          );
           return 'Password has been reset successfully! You can now log in.';
         }
       }
-      
+
       // If we get here and it's a 302, we already handled it above
       // So this must be a different error
-      final errorMessage = e.response?.data?['message'] ?? 
-                          ((e.message != null && (e.message!.contains('InvalidToken') || e.message!.contains('ExpiredToken')))
-                            ? 'Invalid or expired reset token. Please request a new password reset link.'
-                            : 'An error occurred while resetting your password. Please try again.');
+      final errorMessage =
+          e.response?.data?['message'] ??
+          ((e.message != null &&
+                  (e.message!.contains('InvalidToken') ||
+                      e.message!.contains('ExpiredToken')))
+              ? 'Invalid or expired reset token. Please request a new password reset link.'
+              : 'An error occurred while resetting your password. Please try again.');
       throw Exception(errorMessage);
     } catch (e) {
       log('🔴 Exception in confirmPasswordReset: $e');
       log('🔴 Exception type: ${e.runtimeType}');
-      
+
       // If it's a DioException with 302, assume success (backend processed the request)
       if (e is DioException && e.response?.statusCode == 302) {
-        log('✅ Password reset successful - DioException with 302 (assuming success)');
+        log(
+          '✅ Password reset successful - DioException with 302 (assuming success)',
+        );
         return 'Password has been reset successfully! You can now log in.';
       }
-      
+
       // Re-throw if it's already an Exception
       if (e is Exception) {
         rethrow;
@@ -878,46 +972,57 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     // This operation doesn't change the global auth state directly.
     try {
       final response = await _authService.confirmRegister(token);
-      
-      debugPrint('✅ confirmRegister response: statusCode=${response.statusCode}, headers=${response.headers}');
-      
+
+      debugPrint(
+        '✅ confirmRegister response: statusCode=${response.statusCode}, headers=${response.headers}',
+      );
+
       // Backend returns a redirect (302) on success
       // Check status code to determine success:
       // - 200-299: Success
       // - 302: Redirect (success - backend confirmed registration)
-      if (response.statusCode != null && (response.statusCode! >= 200 && response.statusCode! < 300 || response.statusCode == 302)) {
+      if (response.statusCode != null &&
+          (response.statusCode! >= 200 && response.statusCode! < 300 ||
+              response.statusCode == 302)) {
         // Success - registration confirmed
         // Backend redirects to login page, but we handle navigation in the UI
-        debugPrint('✅ Registration confirmed successfully (status: ${response.statusCode})');
+        debugPrint(
+          '✅ Registration confirmed successfully (status: ${response.statusCode})',
+        );
         return 'Registration confirmed successfully! You can now log in.';
       } else {
         // Unexpected status code
         debugPrint('⚠️ Unexpected status code: ${response.statusCode}');
-        return response.data?['message'] ?? 'Registration confirmed successfully! You can now log in.';
+        return response.data?['message'] ??
+            'Registration confirmed successfully! You can now log in.';
       }
     } on DioException catch (e) {
       // CRITICAL: Backend successfully processes the request and returns 302 redirect
       // But Dio might throw an exception even with followRedirects: false
       // Since backend log shows "Successful Operation - User Registration confirmed",
       // we should treat 302 and most exceptions as success
-      
-      debugPrint('🔴 DioException: type=${e.type}, statusCode=${e.response?.statusCode}, message=${e.message}');
+
+      debugPrint(
+        '🔴 DioException: type=${e.type}, statusCode=${e.response?.statusCode}, message=${e.message}',
+      );
       debugPrint('🔴 Response headers: ${e.response?.headers}');
-      
+
       // Check for explicit error status codes with error redirects
       if (e.response?.statusCode == 400 || e.response?.statusCode == 404) {
         final location = e.response?.headers.value('location');
         debugPrint('🔴 Error redirect location: $location');
         // Check if it's an error redirect
-        if (location != null && (location.contains('error=InvalidToken') || location.contains('error=ExpiredToken'))) {
-          String errorMessage = location.contains('error=InvalidToken') 
+        if (location != null &&
+            (location.contains('error=InvalidToken') ||
+                location.contains('error=ExpiredToken'))) {
+          String errorMessage = location.contains('error=InvalidToken')
               ? 'Invalid or expired confirmation token. Please request a new confirmation email.'
               : 'This confirmation link has expired. Please request a new confirmation email.';
           debugPrint('❌ Throwing error: $errorMessage');
           throw Exception(errorMessage);
         }
       }
-      
+
       // Check for 302 redirect (success) - this is the normal success case
       if (e.response?.statusCode == 302) {
         final location = e.response?.headers.value('location');
@@ -928,19 +1033,25 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
         // Even if location doesn't contain /login, 302 from backend means success
         return 'Registration confirmed successfully! You can now log in.';
       }
-      
+
       // For network errors or CORS errors, check if we can determine success
       // If the exception type suggests a redirect was attempted, treat as success
-      if (e.type == DioExceptionType.unknown || 
+      if (e.type == DioExceptionType.unknown ||
           e.type == DioExceptionType.badResponse ||
-          (e.message != null && (e.message!.contains('302') || e.message!.contains('redirect')))) {
-        debugPrint('✅ Assuming success - redirect-related exception (type: ${e.type})');
+          (e.message != null &&
+              (e.message!.contains('302') ||
+                  e.message!.contains('redirect')))) {
+        debugPrint(
+          '✅ Assuming success - redirect-related exception (type: ${e.type})',
+        );
         return 'Registration confirmed successfully! You can now log in.';
       }
-      
+
       // For ALL other cases, assume success because backend processes the request
       // and we can't reliably detect failure from the frontend due to redirects
-      debugPrint('✅ Assuming success - backend confirmed registration (exception type: ${e.type})');
+      debugPrint(
+        '✅ Assuming success - backend confirmed registration (exception type: ${e.type})',
+      );
       return 'Registration confirmed successfully! You can now log in.';
     } catch (e) {
       // Catch any other non-Dio exceptions
@@ -958,7 +1069,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     if (token == null) {
       token = await _cookieStorage.getToken();
     }
-    
+
     if (token == null) {
       state = const AsyncValue.data(null);
       return;
@@ -979,11 +1090,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
 
       // Decode the token to get user ID.
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final userId = decodedToken['nameid'] ?? 
-                    decodedToken['sub'] ?? 
-                    decodedToken['userId'] ?? 
-                    decodedToken['user_id'] ??
-                    decodedToken['id'];
+      final userId =
+          decodedToken['nameid'] ??
+          decodedToken['sub'] ??
+          decodedToken['userId'] ??
+          decodedToken['user_id'] ??
+          decodedToken['id'];
 
       if (userId == null) throw Exception('User ID not found in token');
 
@@ -995,7 +1107,9 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       log('=== AUTO-LOGIN USER DATA ===');
       log('Raw userData: $userData');
       log('UserRole in JSON: ${userData['userRole'] ?? userData['UserRole']}');
-      log('UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}');
+      log(
+        'UserRole type: ${(userData['userRole'] ?? userData['UserRole'])?.runtimeType}',
+      );
       log('============================');
 
       final user = AppUser.fromJson(userData);
@@ -1004,7 +1118,7 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       log('UserRole: ${user.userRole.name} (value: ${user.userRole.value})');
       log('Is Administrator: ${user.userRole.isAdministrator}');
       log('===================');
-      
+
       // Update the state with the logged-in user.
       state = AsyncValue.data(user);
     } catch (e, st) {
@@ -1032,7 +1146,6 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       throw Exception('No user logged in to update profile.');
     }
 
-    
     // The UI should show a local loading indicator.
     try {
       await _authService.updateUser(currentUserId, data);
@@ -1053,11 +1166,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       log('UserRole: ${user.userRole.name} (value: ${user.userRole.value})');
       log('Is Administrator: ${user.userRole.isAdministrator}');
       log('================================');
-      
+
       // Update the state with the new user data.
       state = AsyncValue.data(user);
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'Profile update failed.';
+      final errorMessage =
+          e.response?.data['message'] ?? 'Profile update failed.';
       log('Update failed: $errorMessage', error: e);
       // Re-throw the error to be caught by the UI.
       throw Exception(errorMessage);
@@ -1076,10 +1190,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       // Get the current user's existing image ID (if any)
       final currentUser = state.valueOrNull;
       String? oldImageId;
-      
+
       if (currentUser?.photoURL != null && currentUser!.photoURL!.isNotEmpty) {
         // Check if photoURL is a GUID (ImageId) or a URL
-        final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+        final guidPattern = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        );
         if (guidPattern.hasMatch(currentUser.photoURL!)) {
           oldImageId = currentUser.photoURL;
           log('Found existing profile image ID: $oldImageId');
@@ -1091,7 +1207,9 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       // The backend counts images in the Images table, so deleting the old image will free up space
       if (oldImageId != null) {
         try {
-          log('Deleting old profile image before uploading new one: $oldImageId');
+          log(
+            'Deleting old profile image before uploading new one: $oldImageId',
+          );
           await _authService.deleteImage(oldImageId);
           log('Old profile image deleted successfully');
         } catch (e) {
@@ -1104,20 +1222,29 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       // Now upload the new image to the backend
       // Since we deleted the old one, there should be space for the new image
       log('Uploading new profile image...');
-      final imageResponse = await _authService.uploadImage(imagePath, userId, 'USER');
-      
+      final imageResponse = await _authService.uploadImage(
+        imagePath,
+        userId,
+        'USER',
+      );
+
       // Try to get ImageId from various possible fields
-      final imageId = imageResponse.data['id'] ?? 
-                     imageResponse.data['Id'] ?? 
-                     imageResponse.data['imageId'] ?? 
-                     imageResponse.data['ImageId'];
-      
+      final imageId =
+          imageResponse.data['id'] ??
+          imageResponse.data['Id'] ??
+          imageResponse.data['imageId'] ??
+          imageResponse.data['ImageId'];
+
       log('Image upload response: ${imageResponse.data}');
       log('Extracted ImageId: $imageId');
-      
+
       if (imageId == null) {
-        log('Error: Image ID not found in response. Full response: ${imageResponse.data}');
-        throw Exception('Image ID not returned from server. Response: ${imageResponse.data}');
+        log(
+          'Error: Image ID not found in response. Full response: ${imageResponse.data}',
+        );
+        throw Exception(
+          'Image ID not returned from server. Response: ${imageResponse.data}',
+        );
       }
 
       // Convert to string if it's not already
@@ -1127,10 +1254,14 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       // Update the user's profile with the new image ID
       // Backend expects ImageId (Guid), not imageUrl
       await updateUserProfile({'ImageId': imageIdString});
-      
+
       log('Profile picture update completed successfully');
     } catch (e, stackTrace) {
-      log('Error uploading profile picture: $e', error: e, stackTrace: stackTrace);
+      log(
+        'Error uploading profile picture: $e',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -1159,17 +1290,19 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
 /// A provider that creates and exposes the [AuthService] instance.
 final authServiceProvider = Provider<AuthService>((ref) {
   // This creates a single Dio instance that will be shared.
-  final dio = Dio(BaseOptions(
-    baseUrl: apiBaseUrl,
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-    followRedirects: true, // Allow redirects but we'll handle 302 manually
-    maxRedirects: 5, // Default redirect limit
-  ));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: apiBaseUrl,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      connectTimeout: const Duration(seconds: 300),
+      receiveTimeout: const Duration(seconds: 300),
+      followRedirects: true, // Allow redirects but we'll handle 302 manually
+      maxRedirects: 5, // Default redirect limit
+    ),
+  );
   return AuthService(dio);
 });
 
@@ -1179,16 +1312,20 @@ final authServiceProvider = Provider<AuthService>((ref) {
 /// and to access methods for signing in or out.
 final authProvider =
     StateNotifierProvider<AuthStateNotifier, AsyncValue<AppUser?>>((ref) {
-  // Get the shared AuthService instance.
-  final authService = ref.watch(authServiceProvider);
-  // Create the token storage service.
-  final tokenStorageService = TokenStorageService();
-  // Create the cookie storage service.
-  final cookieStorageService = CookieStorageService();
+      // Get the shared AuthService instance.
+      final authService = ref.watch(authServiceProvider);
+      // Create the token storage service.
+      final tokenStorageService = TokenStorageService();
+      // Create the cookie storage service.
+      final cookieStorageService = CookieStorageService();
 
-  // Create the notifier without immediately calling tryAutoLogin
-  return AuthStateNotifier(authService, tokenStorageService, cookieStorageService);
-});
+      // Create the notifier without immediately calling tryAutoLogin
+      return AuthStateNotifier(
+        authService,
+        tokenStorageService,
+        cookieStorageService,
+      );
+    });
 
 /// A provider that handles the initialization of auto-login
 /// This runs after the app is fully loaded to avoid blocking the UI

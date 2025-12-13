@@ -911,6 +911,15 @@ class BuildService {
     }
   }
 
+  /// Creates a new tag (admin only).
+  Future<void> addTag(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('$apiBaseUrl/Tags/add', data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Updates a tag (admin only).
   Future<void> updateTag(String tagId, Map<String, dynamic> data) async {
     try {

@@ -365,7 +365,7 @@ namespace KAZABUILD.API.Controllers.Users
         }
 
         /// <summary>
-        ///  API endpoint for getting ForumPosts with pagination and search,
+        /// API endpoint for getting ForumPosts with pagination and search,
         /// different level of information returned based on privileges.
         /// </summary>
         /// <param name="dto"></param>
@@ -496,6 +496,93 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Return the forumPosts
             return Ok(responses);
+        }
+
+        /// <summary>
+        /// API endpoint for getting ForumPosts with pagination and search,
+        /// different level of information returned based on privileges.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<IEnumerable<int>>> GetForumPostCount([FromBody] GetForumPostDto dto)
+        {
+            //Get forumPost id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has staff permissions
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.ForumPosts.AsNoTracking();
+
+            //Filter by the variables if included
+            if (dto.Topic != null)
+            {
+                query = query.Where(p => dto.Topic.Contains(p.Topic));
+            }
+            if (dto.CreatorId != null)
+            {
+                query = query.Where(p => p.CreatorId != null && dto.CreatorId.Contains((Guid)p.CreatorId));
+            }
+            if (dto.PostedAtStart != null)
+            {
+                query = query.Where(p => p.PostedAt >= dto.PostedAtStart);
+            }
+            if (dto.PostedAtEnd != null)
+            {
+                query = query.Where(p => p.PostedAt <= dto.PostedAtEnd);
+            }
+
+            //Apply search based on provided query string
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(p => p.Creator).Search(dto.Query, p => p.PostedAt, p => p.Title, p => p.Content, p => p.Topic, p => p.Creator!.DisplayName);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get forumPosts with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of activities to return as views
+            var count = await query.CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "ForumPost",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - ForumPosts Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("forumPost.gotForumPosts", new
+            {
+                count,
+                gotBy = currentUserId
+            });
+
+            //Return the forumPosts
+            return Ok(count);
         }
 
         /// <summary>

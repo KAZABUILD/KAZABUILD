@@ -1,20 +1,38 @@
 using KAZABUILD.Infrastructure.SMTP;
 using MimeKit;
 using MimeKit.Utils;
+using System.Text;
 
 namespace KAZABUILD.Application.Helpers
 {
     public static class EmailBodyHelper
     {
+        /// <summary>
+        /// Finds the kaza.png image file
+        /// This works in both local development and Docker environments.
+        /// </summary>
+        private static string FindImagePath()
+        {
+            var possiblePaths = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, "assets", "kaza.png"),
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+            Console.WriteLine("kaza.png not found in expected locations.");
+            // --- DEBUGGING: FILE NOT FOUND ---
+            throw new FileNotFoundException($"kaza.png not found");
+        }
+
         public static EmailContent GetAccountConfirmationEmailBody(string displayName, string confirmUrl)
         {
-            //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "defaults", "kaza.png");
-
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
@@ -236,13 +254,7 @@ namespace KAZABUILD.Application.Helpers
 
         public static EmailContent GetPasswordResetEmailBody(string displayName, string confirmUrl)
         {
-            //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "defaults", "kaza.png");
-
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
@@ -465,13 +477,7 @@ namespace KAZABUILD.Application.Helpers
 
         public static EmailContent GetTwoFactorEmailBody(string displayName, string code)
         {
-            //Get the root folder and use it to get the application logo
-            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\.."));
-            var imagePath = Path.Combine(projectRoot, "wwwroot", "defaults", "kaza.png");
-
-            //Try to get the logo from the bin as a safeguard
-            if (!File.Exists(imagePath))
-                imagePath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "defaults", "kaza.png");
+            var imagePath = FindImagePath();
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();

@@ -20,6 +20,8 @@ FROM nginx:alpine
 # Copy the built web app to Nginx's default public directory
 COPY --from=builder /app/build/web /usr/share/nginx/html
 
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # Expose port 80 for the web server
 EXPOSE 80
 
