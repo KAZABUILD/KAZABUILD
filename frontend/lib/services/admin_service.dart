@@ -121,6 +121,59 @@ class AdminService {
     }
   }
 
+  /// Gets builds count with filtering (no pagination)
+  /// Uses the get-count endpoint to get total count of all builds matching filters
+  Future<int> getBuildsCount({
+    String? query,
+    List<String>? status,
+    List<String>? userIds,
+    String? orderBy,
+    String sortDirection = 'asc',
+  }) async {
+    final data = <String, dynamic>{
+      'Query': query?.trim().isEmpty == true ? '' : (query ?? ''),
+      'SortDirection': sortDirection,
+      'Paging': false, // No pagination for count - we want total count
+    };
+
+    if (orderBy != null && orderBy.isNotEmpty) {
+      data['OrderBy'] = orderBy;
+    }
+
+    if (status != null && status.isNotEmpty) {
+      data['Status'] = status;
+    }
+
+    if (userIds != null && userIds.isNotEmpty) {
+      data['UserId'] = userIds;
+    }
+
+    try {
+      print('AdminService.getBuildsCount: Calling get-count endpoint with data: $data');
+      final response = await _dio.post('$apiBaseUrl/Builds/get-count', data: data);
+      if (response.statusCode == 200) {
+        // Backend returns an integer count
+        final count = response.data;
+        int result = 0;
+        if (count is int) {
+          result = count;
+        } else if (count is double) {
+          result = count.toInt();
+        } else if (count is String) {
+          result = int.tryParse(count) ?? 0;
+        } else if (count is num) {
+          result = count.toInt();
+        }
+        print('AdminService.getBuildsCount: Received count: $result');
+        return result;
+      }
+      throw Exception('Failed to get builds count: ${response.statusCode}');
+    } catch (e) {
+      print('Error in getBuildsCount: $e');
+      rethrow;
+    }
+  }
+
   /// Gets forum posts with filtering and optional pagination
   /// If page and pageLength are provided, pagination is enabled
   Future<Response> getForumPosts({

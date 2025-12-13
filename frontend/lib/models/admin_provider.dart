@@ -414,6 +414,38 @@ class AdminBuild {
   }
 }
 
+/// Provider for admin builds total count
+/// Using a record as parameter for better equality comparison
+final adminBuildsTotalCountProvider = FutureProvider.autoDispose.family<int, ({
+  String? query,
+  List<String>? status,
+  List<String>? userIds,
+  String? orderBy,
+  String sortDirection,
+})>((ref, params) async {
+  try {
+    final adminService = ref.watch(adminServiceProvider);
+    
+    print('adminBuildsTotalCountProvider: Fetching total count with params: query=${params.query}, status=${params.status}');
+    
+    final count = await adminService.getBuildsCount(
+      query: params.query,
+      status: params.status,
+      userIds: params.userIds,
+      orderBy: params.orderBy,
+      sortDirection: params.sortDirection,
+    );
+    
+    print('adminBuildsTotalCountProvider: Returning total count: $count');
+    return count;
+  } catch (e, stack) {
+    print('Error in adminBuildsTotalCountProvider: $e');
+    print('Stack: $stack');
+    return 0;
+  }
+});
+
+
 /// Provider for admin builds list
 /// Using autoDispose to prevent memory leaks and ensure proper cleanup
 final adminBuildsProvider = FutureProvider.autoDispose.family<List<AdminBuild>, Map<String, dynamic>>((ref, params) async {

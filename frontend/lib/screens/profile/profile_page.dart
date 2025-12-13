@@ -92,7 +92,7 @@ class ProfilePage extends ConsumerWidget {
       backgroundColor: theme.colorScheme.surface,
       body: currentUserAsync.when(
         data: (currentUser) {
-          // If userId is provided, fetch that user's profile
+          // If userId is provided and different from current, fetch that user's profile
           if (userId != null && userId != currentUser?.uid) {
             return _buildOtherUserProfile(context, ref, userId!, currentUser, theme, isDark, scaffoldKey);
           }
@@ -109,14 +109,14 @@ class ProfilePage extends ConsumerWidget {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.background,
+                    color: theme.colorScheme.surface, // Updated for newer Flutter versions
                     gradient: isDark
                         ? LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
                               theme.colorScheme.surface.withValues(alpha: 0.5),
-                              theme.colorScheme.background,
+                              theme.colorScheme.surface,
                             ],
                           )
                         : null,
@@ -187,14 +187,14 @@ class ProfilePage extends ConsumerWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.background,
+                  color: theme.colorScheme.surface,
                   gradient: isDark
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
                             theme.colorScheme.surface.withValues(alpha: 0.5),
-                            theme.colorScheme.background,
+                            theme.colorScheme.surface,
                           ],
                         )
                       : null,
@@ -298,7 +298,7 @@ class ProfilePage extends ConsumerWidget {
                         imageUrl: user.photoURL,
                         isCircle: true,
                         radius: 66,
-                        backgroundColor: theme.colorScheme.surfaceVariant,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
                         username: user.username,
                         userId: user.uid,
                       ),
@@ -323,7 +323,7 @@ class ProfilePage extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant,
+                  color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -342,7 +342,7 @@ class ProfilePage extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -762,7 +762,7 @@ class ProfilePage extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -831,7 +831,7 @@ class ProfilePage extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -1057,7 +1057,8 @@ class _ActionButton extends StatelessWidget {
 
 /// A card widget that displays a summary of a single build.
 /// Shows the build name and component information.
-class _BuildCard extends ConsumerWidget {
+/// Fixed: Using Expanded and SingleChildScrollView to prevent overflow.
+class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
   final bool isOwnProfile;
 
@@ -1066,6 +1067,13 @@ class _BuildCard extends ConsumerWidget {
     this.isOwnProfile = false,
   });
 
+  @override
+  ConsumerState<_BuildCard> createState() => _BuildCardState();
+}
+
+class _BuildCardState extends ConsumerState<_BuildCard> {
+  // Flag to toggle showing all components
+  bool _showAllComponents = false;
 
   /// Builds a placeholder image widget when no image is available
   Widget _buildPlaceholderImage(BuildContext context, ThemeData theme) {
@@ -1076,8 +1084,8 @@ class _BuildCard extends ConsumerWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
-            theme.colorScheme.surfaceVariant.withValues(alpha: 0.2),
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
           ],
         ),
       ),
@@ -1101,6 +1109,289 @@ class _BuildCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final buildData = widget.buildData;
+    final isOwnProfile = widget.isOwnProfile;
+
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            // 1. Build Image (Fixed Aspect Ratio 16/9)
+            InkWell(
+              onTap: () {
+                context.go('/build/${buildData.id}');
+              },
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _buildPlaceholderImage(context, theme),
+              ),
+            ),
+
+            // 2. Content Section
+            // Wrapped in Expanded so it fills the remaining space of the card
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Build Name
+                    Text(
+                      buildData.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Components Header
+                    if (buildData.components.isNotEmpty)
+                      Text(
+                        'Components',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+
+                    // Components List Section
+                    // Wrapped in Expanded + SingleChildScrollView to enable scrolling
+                    // and prevent 144px overflow.
+                    Expanded(
+                      child: buildData.components.isEmpty
+                          ? Text(
+                              'No components',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                children: [
+                                  // Show either first 5 or all components based on state
+                                  ...(_showAllComponents 
+                                      ? buildData.components 
+                                      : buildData.components.take(5)).map((component) {
+                                    
+                                    final componentName = component.name.isNotEmpty 
+                                        ? component.name 
+                                        : _getComponentTypeShortName(component.type);
+                                        
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _getComponentIcon(component.type),
+                                            size: 14,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              componentName,
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                                color: theme.colorScheme.onSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                  
+                                  // "Show more" button if there are more than 5 items
+                                  if (buildData.components.length > 5)
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _showAllComponents = !_showAllComponents;
+                                          });
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 4),
+                                          child: Text(
+                                            _showAllComponents
+                                                ? 'Show less'
+                                                : '+ ${buildData.components.length - 5} more',
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              color: theme.colorScheme.primary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Footer: Status, Rating, and Edit Button
+                    // This is outside the Expanded list, so it stays at the bottom.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Rating
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star_rounded,
+                              size: 16,
+                              color: Colors.amber.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              buildData.averageRating > 0
+                                  ? buildData.averageRating.toStringAsFixed(1)
+                                  : 'New',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Status and Edit/Delete Actions
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                buildData.status,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: _getStatusColor(buildData.status, theme),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                            if (isOwnProfile) ...[
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () {
+                                  context.go('/build/${buildData.id}/edit');
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Icon(
+                                    Icons.edit_outlined, 
+                                    size: 16,
+                                    color: theme.colorScheme.onSurfaceVariant
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => _deleteBuild(context, ref, buildData),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Icon(
+                                    Icons.delete_outline, 
+                                    size: 16, 
+                                    color: theme.colorScheme.error
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Handles the deletion logic for a build
+  Future<void> _deleteBuild(BuildContext context, WidgetRef ref, Build buildData) async {
+    final theme = Theme.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Build'),
+        content: const Text('Are you sure you want to delete this build? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true && context.mounted) {
+      try {
+        final buildService = ref.read(buildServiceProvider);
+        await buildService.deleteBuild(buildData.id);
+        
+        // Invalidate the provider to refresh the list
+        ref.invalidate(userBuildsProvider(buildData.userId));
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Build deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting build: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   /// Returns a short name for component type
@@ -1127,264 +1418,6 @@ class _BuildCard extends ConsumerWidget {
       case ComponentType.monitor:
         return 'Monitor';
     }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Card(
-      elevation: 0,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: theme.colorScheme.outline.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-            // Build Image - always show placeholder to avoid loading and 429 errors
-            // Images will be loaded on the detail page
-            InkWell(
-              onTap: () {
-                context.go('/build/${buildData.id}');
-              },
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _buildPlaceholderImage(context, theme),
-              ),
-            ),
-
-            // Content Section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Build Name
-                  Text(
-                    buildData.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Components preview
-                  if (buildData.components.isNotEmpty) ...[
-                    Text(
-                      'Components',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: buildData.components.take(6).map((component) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _getComponentIcon(component.type),
-                                size: 14,
-                                color: theme.colorScheme.onPrimaryContainer,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _getComponentTypeShortName(component.type),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    if (buildData.components.length > 6)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          '+${buildData.components.length - 6} more',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                  ] else ...[
-                    Text(
-                      'No components',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-
-                  // Status, Rating, and Edit Button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Rating
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.star_rounded,
-                            size: 16,
-                            color: Colors.amber.shade600,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            buildData.averageRating > 0
-                                ? buildData.averageRating.toStringAsFixed(1)
-                                : 'New',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Status and Edit Button (only for own profile)
-                      Row(
-                        children: [
-                          // Status
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Text(
-                              buildData.status,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: _getStatusColor(buildData.status, theme),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                          // Edit and Delete Buttons (only for own profile)
-                          if (isOwnProfile) ...[
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: () {
-                                context.go('/build/${buildData.id}/edit');
-                              },
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              tooltip: 'Edit Build',
-                              style: IconButton.styleFrom(
-                                padding: const EdgeInsets.all(6),
-                                minimumSize: const Size(32, 32),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () async {
-                                // Show confirmation dialog
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Delete Build'),
-                                    content: const Text('Are you sure you want to delete this build? This action cannot be undone.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(true),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: theme.colorScheme.error,
-                                        ),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                
-                                if (confirmed == true && context.mounted) {
-                                  try {
-                                    final buildService = ref.read(buildServiceProvider);
-                                    await buildService.deleteBuild(buildData.id);
-                                    
-                                    // Invalidate the provider to refresh the list
-                                    ref.invalidate(userBuildsProvider(buildData.userId));
-                                    
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Build deleted successfully'),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Error deleting build: ${e.toString()}'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
-                              icon: Icon(Icons.delete_outline, size: 18, color: theme.colorScheme.error),
-                              tooltip: 'Delete Build',
-                              style: IconButton.styleFrom(
-                                padding: const EdgeInsets.all(6),
-                                minimumSize: const Size(32, 32),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
   }
 
   IconData _getComponentIcon(ComponentType type) {

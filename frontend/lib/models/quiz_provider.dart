@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/build_provider.dart';
+import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/explore_build_model.dart' as build_model;
 
 @immutable
@@ -306,49 +308,6 @@ class QuizService {
     await _dio.post('$apiBaseUrl/Builds/generate');
   }
 
-  /// Deletes older GENERATED builds for a user, keeping the latest [keepLatest].
-  /// Does not touch non-generated user builds.
-  Future<void> pruneGeneratedBuilds({
-    required String userId,
-    int keepLatest = 3,
-  }) async {
-    if (userId.isEmpty || keepLatest < 0) return;
-
-    try {
-      final response = await _dio.post(
-        '$apiBaseUrl/Builds/get',
-        data: {
-          'UserId': [userId],
-          'Status': ['GENERATED'],
-          'Paging': false,
-          'OrderBy': 'DatabaseEntryAt',
-          'SortDirection': 'desc',
-        },
-      );
-
-      final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
-      if (buildsJson.length <= keepLatest) return;
-
-      final idsToDelete = buildsJson
-          .skip(keepLatest)
-          .whereType<Map<String, dynamic>>()
-          .map((b) => _asString(b['id'] ?? b['Id']))
-          .whereType<String>()
-          .where((id) => id.isNotEmpty)
-          .toList();
-
-      for (final buildId in idsToDelete) {
-        try {
-          await _dio.delete('$apiBaseUrl/Builds/$buildId');
-        } catch (_) {
-          // continue deleting others even if one fails
-        }
-      }
-    } catch (_) {
-      // pruning should not block quiz flow
-    }
-  }
-
   Future<List<build_model.Build>> fetchGeneratedBuilds({required String userId}) async {
     final response = await _dio.post(
       '$apiBaseUrl/Builds/get',
@@ -430,13 +389,33 @@ final quizServiceProvider = Provider<QuizService>((ref) {
 
 final quizQuestionsProvider =
     FutureProvider.autoDispose<List<QuizQuestion>>((ref) async {
+  final authState = ref.watch(authProvider);
+  final user = authState.valueOrNull;
   final service = ref.watch(quizServiceProvider);
   final questions = await service.fetchQuestions();
 
-  // Start every quiz run with a clean slate; don't pre-fill past answers.
-  ref.read(quizProvider.notifier).resetQuiz();
-  ref.read(quizStepProvider.notifier).state = 0;
+  final questionLookup = {
+    for (final question in questions) question.id: question,
+  };
+  final answerLookup = <String, QuizAnswerOption>{};
+  for (final question in questions) {
+    for (final option in question.options) {
+      answerLookup[option.id] = option;
+    }
+  }
 
+  if (user != null) {
+    final selections = await service.fetchUserSelections(
+      userId: user.uid,
+      questionLookup: questionLookup,
+      answerLookup: answerLookup,
+    );
+    ref.read(quizProvider.notifier).setSelections(selections);
+  } else {
+    ref.read(quizProvider.notifier).resetQuiz();
+  }
+
+  ref.read(quizStepProvider.notifier).state = 0;
   return questions;
 });
 
@@ -444,5 +423,99 @@ final quizRecommendedBuildsProvider = FutureProvider.autoDispose
     .family<List<build_model.Build>, String>((ref, userId) async {
   if (userId.isEmpty) return [];
   final service = ref.watch(quizServiceProvider);
-  return service.fetchGeneratedBuilds(userId: userId);
+  final buildService = ref.watch(buildServiceProvider);
+  
+  // Fetch builds
+  final builds = await service.fetchGeneratedBuilds(userId: userId);
+  if (builds.isEmpty) return builds;
+
+  // Fetch components for these builds so prices can be shown
+  Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
+  try {
+    componentsByBuildId = await buildService.getBuildComponents(builds.map((b) => b.id).toList());
+  } catch (_) {
+    // If component fetch fails, fall back to builds without components
+    componentsByBuildId = {};
+  }
+
+  // Enrich builds with parsed components that include prices
+  return builds.map((build) {
+    final rawComponents = componentsByBuildId[build.id];
+    final parsedComponents = rawComponents != null 
+        ? _parseComponentsWithPrices(rawComponents) 
+        : build.components; // Use existing components if parsing fails
+
+    return build_model.Build(
+      id: build.id,
+      userId: build.userId,
+      name: build.name,
+      description: build.description,
+      status: build.status,
+      imageUrl: build.imageUrl,
+      author: build.author,
+      databaseEntryAt: build.databaseEntryAt,
+      lastEditedAt: build.lastEditedAt,
+      averageRating: build.averageRating,
+      ratingsCount: build.ratingsCount,
+      userRating: build.userRating,
+      components: parsedComponents,
+      tags: build.tags,
+    );
+  }).toList();
 });
+
+/// Parses raw component JSON returned from the API into strongly typed components with prices.
+List<BaseComponent> _parseComponentsWithPrices(List<Map<String, dynamic>> componentsJson) {
+  double? _extractPrice(Map<String, dynamic> data) {
+    final raw = data['lowestPriceOverride'] ??
+        data['LowestPriceOverride'] ??
+        data['lowestPrice'] ??
+        data['LowestPrice'] ??
+        data['price'] ??
+        data['Price'];
+    if (raw == null) return null;
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
+  BaseComponent? mapComponent(Map<String, dynamic> componentData) {
+    final typeString =
+        (componentData['type'] ?? componentData['Type'])?.toString().toUpperCase();
+    if (typeString == null) return null;
+
+    final priceOverride = _extractPrice(componentData);
+
+    switch (typeString) {
+      case 'CPU':
+        return CPUComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'GPU':
+        return GPUComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MOTHERBOARD':
+        return MotherboardComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MEMORY':
+      case 'RAM':
+        return MemoryComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'STORAGE':
+        return StorageComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'POWERSUPPLY':
+      case 'PSU':
+      case 'POWER_SUPPLY':
+        return PowerSupplyComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'CASE':
+      case 'PCCASE':
+        return CaseComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'COOLER':
+        return CoolerComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'CASEFAN':
+      case 'CASE_FAN':
+        return CaseFanComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MONITOR':
+        return MonitorComponent.fromJson(componentData, priceOverride: priceOverride);
+      default:
+        return null;
+    }
+  }
+
+  return componentsJson.map(mapComponent).whereType<BaseComponent>().toList();
+}

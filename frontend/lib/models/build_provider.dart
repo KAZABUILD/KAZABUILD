@@ -11,6 +11,7 @@ import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/tag_model.dart';
+import 'package:frontend/models/component_models.dart';
 
 /// A service class to handle API requests related to builds.
 class BuildService {
@@ -134,34 +135,6 @@ class BuildService {
           }
         }
         
-      // Fetch lowest prices for all component IDs and attach as price list if missing
-      try {
-        final lowestPrices = await _fetchLowestPrices(componentIds.toList());
-        final nowIso = DateTime.now().toIso8601String();
-        componentMap.forEach((id, compJson) {
-          final hasPrices = (compJson['prices'] ?? compJson['Prices']) is List && (compJson['prices'] ?? compJson['Prices']).isNotEmpty;
-          final price = lowestPrices[id];
-          if (price != null && !hasPrices) {
-            compJson['prices'] = [
-              {
-                'id': '${id}_lowest',
-                'componentId': id,
-                'sourceUrl': '',
-                'vendorName': 'Lowest',
-                'fetchedAt': nowIso,
-                'price': price,
-                'currency': 'USD',
-                'databaseEntryAt': nowIso,
-                'lastEditedAt': nowIso,
-              },
-            ];
-            compJson['Prices'] = compJson['prices'];
-          }
-        });
-      } catch (_) {
-        // If price fetch fails, proceed without blocking
-      }
-      
         // Delay between batches to avoid rate limiting
         if (i + batchSize < componentIdsList.length) {
           await Future.delayed(const Duration(milliseconds: 300));
@@ -175,36 +148,6 @@ class BuildService {
     } catch (e) {
       return {};
     }
-  }
-
-  /// Fetch lowest prices for given component IDs
-  Future<Map<String, double>> _fetchLowestPrices(List<String> componentIds) async {
-    if (componentIds.isEmpty) return {};
-    final url = '$apiBaseUrl/ComponentPrices/get';
-    try {
-      final response = await _dio.post(url, data: {
-        'ComponentId': componentIds,
-        'Paging': false,
-      });
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        final Map<String, double> prices = {};
-        for (final item in data) {
-          if (item is! Map) continue;
-          final id = (item['componentId'] ?? item['ComponentId'])?.toString();
-          final priceVal = item['price'] ?? item['Price'];
-          if (id == null || priceVal == null) continue;
-          final price = (priceVal as num).toDouble();
-          if (!prices.containsKey(id) || price < prices[id]!) {
-            prices[id] = price;
-          }
-        }
-        return prices;
-      }
-    } catch (_) {
-      // swallow errors; pricing is optional
-    }
-    return {};
   }
 
   /// Groups components by buildId
@@ -1023,7 +966,48 @@ final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, user
   final buildService = ref.watch(buildServiceProvider);
   // We want all builds for the profile page, so no paging.
   // Skip ratings for list views to reduce API calls
-  return buildService.getBuilds({'userId': [userId], 'paging': false}, skipRatings: true);
+  final builds = await buildService.getBuilds({'userId': [userId], 'paging': false}, skipRatings: true);
+  
+  // Fetch components for these builds so they can be displayed in profile
+  if (builds.isEmpty) return builds;
+  
+  Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
+  try {
+    componentsByBuildId = await buildService.getBuildComponents(builds.map((b) => b.id).toList());
+  } catch (e) {
+    debugPrint('Error fetching components for user builds: $e');
+    // If component fetch fails, return builds without components
+    return builds;
+  }
+  
+  // Enrich builds with parsed components
+  return builds.map((build) {
+    final rawComponents = componentsByBuildId[build.id];
+    if (rawComponents == null || rawComponents.isEmpty) {
+      return build;
+    }
+    
+    // Parse components from raw JSON using the same logic as quiz provider
+    final parsedComponents = _parseComponentsWithPrices(rawComponents);
+    
+    // Create new build with components
+    return Build(
+      id: build.id,
+      userId: build.userId,
+      name: build.name,
+      description: build.description,
+      status: build.status,
+      imageUrl: build.imageUrl,
+      author: build.author,
+      databaseEntryAt: build.databaseEntryAt,
+      lastEditedAt: build.lastEditedAt,
+      averageRating: build.averageRating,
+      ratingsCount: build.ratingsCount,
+      userRating: build.userRating,
+      components: parsedComponents,
+      tags: build.tags,
+    );
+  }).toList();
 });
 
 /// A provider that fetches all public builds for the "Explore" page.
@@ -1191,6 +1175,62 @@ final buildComponentsLazyProvider = FutureProvider.family<Map<String, List<Map<S
   final buildService = ref.watch(buildServiceProvider);
   return buildService.getBuildComponents(buildIds);
 });
+
+/// Parses raw component JSON returned from the API into strongly typed components with prices.
+List<BaseComponent> _parseComponentsWithPrices(List<Map<String, dynamic>> componentsJson) {
+  double? _extractPrice(Map<String, dynamic> data) {
+    final raw = data['lowestPriceOverride'] ??
+        data['LowestPriceOverride'] ??
+        data['lowestPrice'] ??
+        data['LowestPrice'] ??
+        data['price'] ??
+        data['Price'];
+    if (raw == null) return null;
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
+  BaseComponent? mapComponent(Map<String, dynamic> componentData) {
+    final typeString =
+        (componentData['type'] ?? componentData['Type'] ?? componentData['componentType'] ?? componentData['ComponentType'])?.toString().toUpperCase();
+    if (typeString == null) return null;
+
+    final priceOverride = _extractPrice(componentData);
+
+    switch (typeString) {
+      case 'CPU':
+        return CPUComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'GPU':
+        return GPUComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MOTHERBOARD':
+        return MotherboardComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MEMORY':
+      case 'RAM':
+        return MemoryComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'STORAGE':
+        return StorageComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'POWERSUPPLY':
+      case 'PSU':
+      case 'POWER_SUPPLY':
+        return PowerSupplyComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'CASE':
+      case 'PCCASE':
+        return CaseComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'COOLER':
+        return CoolerComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'CASEFAN':
+      case 'CASE_FAN':
+        return CaseFanComponent.fromJson(componentData, priceOverride: priceOverride);
+      case 'MONITOR':
+        return MonitorComponent.fromJson(componentData, priceOverride: priceOverride);
+      default:
+        return null;
+    }
+  }
+
+  return componentsJson.map(mapComponent).whereType<BaseComponent>().toList();
+}
 
 /// Session-based cache for components.
 /// Stores fetched components in memory to avoid re-fetching the same component.
