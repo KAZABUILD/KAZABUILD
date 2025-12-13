@@ -38,6 +38,8 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseEnd { get; set; }
 
+        public List<Guid>? CompatibleComponentsIds { get; set; }
+
         public List<ComponentType>? Type { get; set; }
 
         //Paging related fields

@@ -191,39 +191,74 @@ namespace KAZABUILD.Application.Helpers
         /// <param name="maxPrice"></param>
         /// <param name="orderBy"></param>
         /// <returns></returns>
-        public async static Task<T?> FindComponentAsync<T>(IQueryable<T> baseQuery, double minPrice, double maxPrice, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy) where T : BaseComponent
+        public async static Task<T?> FindComponentAsync<T>(IQueryable<T> baseQuery, double minPrice, double maxPrice, Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null) where T : BaseComponent
         {
-            //Attempt to apply the strict price range for the most correct match
-            var query = baseQuery.Where(c =>
-                c.Prices.Any() &&
-                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
-                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
-            );
-            var result = await orderBy(query).FirstOrDefaultAsync();
-            if (result != null)
-                return result;
+            //Switch to in-memory filtering
+            var candidates = await baseQuery
+                .AsNoTracking()
+                .ToListAsync();
 
+            //Return null if no components found at all
+            if (candidates.Count == 0)
+                return null;
+
+            //Get the amount to decrease the minimum price by on each iteration
             var skipAmount = minPrice * 0.1;
 
-            //Attempt to decrease the price constraints if no result found
-            while (minPrice > 0)
+            //Iterate until a correct price restriction is found
+            while (true)
             {
+                //Filter by price in memory
+                var validCandidates = candidates.Where(c =>
+                {
+                    //Get the latest price
+                    var latest = c.Prices.OrderByDescending(p => p.FetchedAt).FirstOrDefault();
+                    if (latest == null)
+                        return true;
+
+                    var price = (double)latest.Price;
+
+                    //If the price minimum drops below zero, allow any price
+                    if (minPrice <= 0)
+                        return true;
+
+                    //Return whether the price is within range
+                    return price >= minPrice && price <= maxPrice;
+                }).ToList();
+
+                //If there are candidate in the current price range
+                if (validCandidates.Count > 0)
+                {
+                    //Convert back to a Queryable
+                    var queryableCandidates = validCandidates.AsQueryable();
+
+                    //Apply the random sort and additional filters
+                    if (orderBy != null)
+                    {
+                        var sortedQuery = orderBy(queryableCandidates);
+                        var topPool = sortedQuery.Take(15).ToList();
+
+                        //Pick a random candidate from the valid ones
+                        var randomIndex = Random.Shared.Next(topPool.Count);
+                        return topPool[randomIndex];
+                    }
+                    else //Apply only the random sort
+                    {
+                        int index = Random.Shared.Next(validCandidates.Count);
+                        return validCandidates[index];
+                    }
+                }
+
+                //If the minimum price has dropped below zero, stop searching
+                if (minPrice <= 0)
+                    break;
+
+                //If there are no candidates within the current price range, expand it
                 minPrice -= skipAmount;
-                query = baseQuery.Where(c =>
-                    c.Prices.Any() &&
-                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
-                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
-                );
-                result = await orderBy(query).FirstOrDefaultAsync();
-                if (result != null)
-                    return result;
             }
 
-            //Remove the price constraints altogether as a last resort
-            query = baseQuery.Where(c => c.Prices.Any());
-            result = await orderBy(query).FirstOrDefaultAsync();
-
-            return result;
+            //If no candidates were found, return null
+            return null;
         }
     }
 }
