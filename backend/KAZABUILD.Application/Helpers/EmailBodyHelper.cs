@@ -94,7 +94,7 @@ namespace KAZABUILD.Application.Helpers
         }
         public static EmailContent GetAccountConfirmationEmailBody(string displayName, string confirmUrl)
         {
-            var imagePath = FindImagePath();
+            var imagePath = Path.Combine(AppContext.BaseDirectory, "kaza.png");
 
             //Generate an identifier to inbed an image in html
             var contentId = MimeUtils.GenerateMessageId();
