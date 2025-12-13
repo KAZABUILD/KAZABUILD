@@ -443,11 +443,38 @@ class _QuizPageState extends ConsumerState<QuizPage> {
             // Next button - smaller and distinct
             ElevatedButton.icon(
               onPressed: () async {
+                if (_selectedAnswerIds.isEmpty) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF1A1926),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      title: const Text(
+                        'Selection required',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Please choose at least one answer to continue.',
+                        style: TextStyle(color: Color(0xFFB0B0B0)),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
                 final step = ref.read(quizStepProvider);
                 final nextStep = step + 1;
                 final isLast = nextStep >= totalSteps;
 
-                // Move to next step (or finalize), allow skipping with no selection
+                // Move to next step (or finalize) after a selection is made
                 setState(() {
                   _selectedAnswerIds = {};
                 });

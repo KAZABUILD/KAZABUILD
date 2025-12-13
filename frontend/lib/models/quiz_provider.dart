@@ -430,33 +430,13 @@ final quizServiceProvider = Provider<QuizService>((ref) {
 
 final quizQuestionsProvider =
     FutureProvider.autoDispose<List<QuizQuestion>>((ref) async {
-  final authState = ref.watch(authProvider);
-  final user = authState.valueOrNull;
   final service = ref.watch(quizServiceProvider);
   final questions = await service.fetchQuestions();
 
-  final questionLookup = {
-    for (final question in questions) question.id: question,
-  };
-  final answerLookup = <String, QuizAnswerOption>{};
-  for (final question in questions) {
-    for (final option in question.options) {
-      answerLookup[option.id] = option;
-    }
-  }
-
-  if (user != null) {
-    final selections = await service.fetchUserSelections(
-      userId: user.uid,
-      questionLookup: questionLookup,
-      answerLookup: answerLookup,
-    );
-    ref.read(quizProvider.notifier).setSelections(selections);
-  } else {
-    ref.read(quizProvider.notifier).resetQuiz();
-  }
-
+  // Start every quiz run with a clean slate; don't pre-fill past answers.
+  ref.read(quizProvider.notifier).resetQuiz();
   ref.read(quizStepProvider.notifier).state = 0;
+
   return questions;
 });
 
