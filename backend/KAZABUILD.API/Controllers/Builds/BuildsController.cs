@@ -678,7 +678,7 @@ namespace KAZABUILD.API.Controllers.Builds
             //Set all related interactions foreign key field to null
             if (build.Interactions.Count != 0)
             {
-                foreach(var interaction in  build.Interactions)
+                foreach (var interaction in build.Interactions)
                 {
                     interaction.BuildId = null;
                 }
@@ -836,14 +836,14 @@ namespace KAZABUILD.API.Controllers.Builds
             };
 
             //Adjust the price bound accordingly
-            if(priceAnswers.Select(a => a.Answer).Contains("$400–$600 (Entry Level)"))
+            if (priceAnswers.Select(a => a.Answer).Contains("$400–$600 (Entry Level)"))
             {
                 bounds[0] = 400.0f;
                 bounds[3] = 600.0f;
             }
             if (priceAnswers.Select(a => a.Answer).Contains("$600–$900 (Balanced Value)"))
             {
-                if(bounds[0] > 600.0f)
+                if (bounds[0] > 600.0f)
                     bounds[0] = 600.0f;
 
                 if (bounds[3] < 900.0f)
@@ -875,8 +875,8 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Calculate middle bounds for the 3 price ranges
-            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f/3f));
-            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f/3f));
+            bounds[1] = bounds[0] + ((bounds[3] - bounds[0]) * (1f / 3f));
+            bounds[2] = bounds[0] + ((bounds[3] - bounds[0]) * (2f / 3f));
 
             //Convert the bounds to PLN
             bounds = [.. bounds.Select(b => b * 3.6f)];
@@ -917,7 +917,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 Build build = new()
                 {
                     UserId = currentUserId,
-                    Name = $"Generated build nr.{i+1} for {user.DisplayName}",
+                    Name = $"Generated build nr.{i + 1} for {user.DisplayName}",
                     Description = "",
                     Status = BuildStatus.GENERATED,
                     PublishedAt = null,
@@ -983,7 +983,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 storageRatio *= 1 + (storageScore - averageScore) / totalScore;
                 monitorRatio *= 1 + (monitorScore - averageScore) / totalScore;
                 coolerRatio *= 1 + (coolerScore - averageScore) / totalScore;
-                motherboardRatio *= 1 + ((gpuRatio+cpuRatio)/2 - averageScore) / totalScore;
+                motherboardRatio *= 1 + ((gpuRatio + cpuRatio) / 2 - averageScore) / totalScore;
 
                 //Additional criteria for filtering components
                 decimal additionalPower = 0.0m;
@@ -1039,21 +1039,23 @@ namespace KAZABUILD.API.Controllers.Builds
                 var (powerSupplyMinPrice, powerSupplyMaxPrice) = BuildGenerationHelper.AllocateBudget(powerSupplyRatio, totalRatio, bounds[i], bounds[i + 1]);
                 var (storageMinPrice, storageMaxPrice) = BuildGenerationHelper.AllocateBudget(storageRatio, totalRatio, bounds[i], bounds[i + 1]);
 
-                //Get all components that fit the criteria
+                //Data cutoff for prices
+                var recentDate = DateTime.UtcNow.AddDays(-7);
 
+                //Get all components that fit the criteria
                 try
                 {
                     //Get the CPU component
                     var cpuBaseQuery = _db.Components
                         .OfType<CPUComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.CPU);
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery();
 
                     var cpuComponent = await BuildGenerationHelper.FindComponentAsync(
                         cpuBaseQuery,
                         cpuMinPrice,
                         cpuMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForExtraCores, c => c.CoreTotal)
+                        q => q.OrderByIf(filterForExtraCores, c => c.CoreTotal)
                     );
 
                     if (cpuComponent == null)
@@ -1067,15 +1069,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the motherboard component
                     var motherboardBaseQuery = _db.Components
                         .OfType<MotherboardComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.MOTHERBOARD)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id));
 
                     var motherboardComponent = await BuildGenerationHelper.FindComponentAsync(
                         motherboardBaseQuery,
                         motherboardMinPrice,
                         motherboardMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
+                        q => q.OrderByIf(filterForRGB, c => (c.ARGB5vHeaderAmount > 0 || c.RGB12vHeaderAmount > 0) ? 0 : 1)
                     );
 
                     if (motherboardComponent == null)
@@ -1089,8 +1091,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the cooler component
                     var coolerBaseQuery = _db.Components
                         .OfType<CoolerComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.COOLER)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == cpuComponent.Id) &&
                             c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
@@ -1098,7 +1100,7 @@ namespace KAZABUILD.API.Controllers.Builds
                         coolerBaseQuery,
                         coolerMinPrice,
                         coolerMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
+                        q => q.OrderByIf(filterForQuietFans, c => c.MinNoiseLevel)
                     );
 
                     if (coolerComponent == null)
@@ -1112,15 +1114,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the memory component
                     var memoryBaseQuery = _db.Components
                         .OfType<MemoryComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.MEMORY)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                     var memoryComponent = await BuildGenerationHelper.FindComponentAsync(
                         memoryBaseQuery,
                         memoryMinPrice,
                         memoryMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid())
+                        null
                     );
 
                     if (memoryComponent == null)
@@ -1134,15 +1136,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the storage component
                     var storageBaseQuery = _db.Components
                         .OfType<StorageComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.STORAGE)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                     var storageComponent = await BuildGenerationHelper.FindComponentAsync(
                         storageBaseQuery,
                         storageMinPrice,
                         storageMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
+                        q => q.OrderByIf(filterForSSD, c => c.DriveType == "SSD" ? 0 : 1)
                     );
 
                     if (storageComponent == null)
@@ -1156,15 +1158,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the GPU component
                     var gpuBaseQuery = _db.Components
                         .OfType<GPUComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.GPU)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                     var gpuComponent = await BuildGenerationHelper.FindComponentAsync(
                         gpuBaseQuery,
                         gpuMinPrice,
                         gpuMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid())
+                        null
                     );
 
                     if (gpuComponent == null)
@@ -1178,9 +1180,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the power supply component adjusting for the power usage in other components
                     var powerSupplyBaseQuery = _db.Components
                         .OfType<PowerSupplyComponent>()
-                        .Include(c => c.Prices)
-                        .Include(c => c.CompatibleComponents)
-                        .Where(c => c.Type == ComponentType.POWER_SUPPLY)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id))
                         .Where(c => c.PowerOutput > gpuComponent.ThermalDesignPower + cpuComponent.ThermalDesignPower + 100.0m + additionalPower); //Adjust for GPU, CPU + 100 extra + if any extra needed
 
@@ -1188,7 +1189,7 @@ namespace KAZABUILD.API.Controllers.Builds
                         powerSupplyBaseQuery,
                         powerSupplyMinPrice,
                         powerSupplyMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid())
+                        null
                     );
 
                     if (powerSupplyComponent == null)
@@ -1202,18 +1203,18 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the case component
                     var caseBaseQuery = _db.Components
                         .OfType<CaseComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.CASE)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id) &&
 
-                            c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == coolerComponent.Id) &&
-                            c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == coolerComponent.Id) &&
+                        c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == motherboardComponent.Id));
 
                     var caseComponent = await BuildGenerationHelper.FindComponentAsync(
                         caseBaseQuery,
                         caseMinPrice,
                         caseMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid())
+                        null
                     );
 
                     if (caseComponent == null)
@@ -1227,15 +1228,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the case fan component
                     var caseFanBaseQuery = _db.Components
                         .OfType<CaseFanComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.CASE_FAN)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == caseComponent.Id));
 
                     var caseFanComponent = await BuildGenerationHelper.FindComponentAsync(
                         caseFanBaseQuery,
                         caseFanMinPrice,
                         caseFanMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterForQuietFans, c => c.MinNoiseLevel)
+                        q => q.OrderByIf(filterForQuietFans, c => c.MinNoiseLevel)
                     );
 
                     if (caseFanComponent == null)
@@ -1249,15 +1250,15 @@ namespace KAZABUILD.API.Controllers.Builds
                     //Get the monitor component
                     var monitorBaseQuery = _db.Components
                         .OfType<MonitorComponent>()
-                        .Include(c => c.Prices)
-                        .Where(c => c.Type == ComponentType.MONITOR)
+                        .Include(c => c.Prices.Where(p => p.FetchedAt >= recentDate))
+                        .AsSplitQuery()
                         .Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == gpuComponent.Id));
 
                     var monitorComponent = await BuildGenerationHelper.FindComponentAsync(
                         monitorBaseQuery,
                         monitorMinPrice,
                         monitorMaxPrice,
-                        q => q.OrderBy(r => Guid.NewGuid()).ThenByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
+                        q => q.OrderByIf(filterFor4k, c => c.VerticalResolution >= 2160 ? 0 : 1)
                     );
 
                     if (monitorComponent == null)
@@ -1282,8 +1283,8 @@ namespace KAZABUILD.API.Controllers.Builds
                     throw; // Re-throw to trigger proper error response
                 }
 
-            //Add all the components to the build
-            foreach (BaseComponent component in components)
+                //Add all the components to the build
+                foreach (BaseComponent component in components)
                 {
                     BuildComponent buildComponent = new()
                     {

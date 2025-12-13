@@ -1852,6 +1852,12 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
+            }
 
             //Filter by the specific subclass variables
             switch (dto)
@@ -2908,6 +2914,12 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
+            }
 
             //Filter by the specific subclass variables
             switch (dto)
@@ -3334,7 +3346,8 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
-            };
+            }
+            ;
 
             //Order by specified field if provided
             if (!string.IsNullOrWhiteSpace(dto.OrderBy))
@@ -3415,6 +3428,12 @@ namespace KAZABUILD.API.Controllers.Components
             if (dto.ReleaseEnd != null)
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
+            }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                query = query.Where(c => c.CompatibleComponents.Count(cc => requiredIds.Contains(cc.CompatibleComponentId)) == requiredIds.Count);
             }
 
             //Filter by the specific subclass variables
@@ -3949,10 +3968,10 @@ namespace KAZABUILD.API.Controllers.Components
             //Set it to null in all builds it's used in
             if (component.Builds.Count != 0)
             {
-                foreach(var buildComponent in component.Builds)
+                foreach (var buildComponent in component.Builds)
                 {
                     buildComponent.ComponentId = null;
-                }    
+                }
             }
 
             //Handle deleting compatible components to avoid conflicts with cascade deletes

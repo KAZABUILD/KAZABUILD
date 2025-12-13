@@ -36,67 +36,67 @@ namespace KAZABUILD.Application.Helpers
         /// </summary>
         public static Dictionary<string, ComponentAdjustment> HobbyAdjustments = new()
         {
-            ["Gaming"] = new(gpu: 5, cpu: 4, memory: 4, storage: 3, monitor: 3, cooler:  3),
-            ["Video Editing"] = new(gpu: 4, cpu: 4, memory: 5, storage: 5, monitor: 4, cooler:  4),
-            ["3D Modeling"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler:  4),
-            ["Graphic Design"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 4, cooler:  2),
-            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler:  4),
-            ["Music production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler:  2),
-            ["Video Recording"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 3, cooler:  2),
-            ["Coding"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler:  2),
-            ["Drawing"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler:  2),
-            ["3D printing"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler:  3),
-            ["Social Media Activities"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 3, cooler:  3),
-            ["Sports"] = new(gpu: 2, cpu: 2, memory: 2, storage: 4, monitor: 1, cooler:  1),
-            ["Sim Racing"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler:  4),
-            ["Watching Movies & Shows"] = new(gpu: 2, cpu: 3, memory: 2, storage: 3, monitor: 3, cooler:  1),
-            ["Browsing The Internet"] = new(gpu: 2, cpu: 3, memory: 2, storage: 2, monitor: 1, cooler:  1)
+            ["Gaming"] = new(gpu: 5, cpu: 4, memory: 4, storage: 3, monitor: 3, cooler: 3),
+            ["Video Editing"] = new(gpu: 4, cpu: 4, memory: 5, storage: 5, monitor: 4, cooler: 4),
+            ["3D Modeling"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler: 4),
+            ["Graphic Design"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 4, cooler: 2),
+            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler: 4),
+            ["Music production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler: 2),
+            ["Video Recording"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 3, cooler: 2),
+            ["Coding"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler: 2),
+            ["Drawing"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler: 2),
+            ["3D printing"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler: 3),
+            ["Social Media Activities"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 3, cooler: 3),
+            ["Sports"] = new(gpu: 2, cpu: 2, memory: 2, storage: 4, monitor: 1, cooler: 1),
+            ["Sim Racing"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler: 4),
+            ["Watching Movies & Shows"] = new(gpu: 2, cpu: 3, memory: 2, storage: 3, monitor: 3, cooler: 1),
+            ["Browsing The Internet"] = new(gpu: 2, cpu: 3, memory: 2, storage: 2, monitor: 1, cooler: 1)
         };
         public static Dictionary<string, ComponentAdjustment> UsageAdjustments = new()
         {
-            ["General Everyday Use"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Gaming"] = new(gpu: 5, cpu: 4, memory: 4, storage: 3, monitor: 3, cooler:  3),
-            ["Work"] = new(gpu: 2, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler:  2),
-            ["School"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Video Editing"] = new(gpu: 4, cpu: 4, memory: 5, storage: 5, monitor: 4, cooler:  4),
-            ["3D Art"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler:  4),
-            ["Graphic Design"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 4, cooler:  2),
-            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler:  4),
-            ["Multi-cast Streaming"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 3, cooler:  4),
-            ["Music Production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler:  2),
-            ["Video Recording"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 3, cooler:  2),
-            ["Software Development"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler:  2),
-            ["Game Development"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler:  3),
-            ["Data Science"] = new(gpu: 4, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler:  3),
-            ["3D Printing"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler:  3),
-            ["Computer-Aided Design"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler:  4),
-            ["Social Media"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 3, cooler:  2),
-            ["Server Hosting"] = new(gpu: 1, cpu: 5, memory: 5, storage: 5, monitor: 1, cooler:  4),
-            ["AI Training"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 2, cooler:  4),
-            ["Data Management"] = new(gpu: 1, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler:  2)
+            ["General Everyday Use"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Gaming"] = new(gpu: 5, cpu: 4, memory: 4, storage: 3, monitor: 3, cooler: 3),
+            ["Work"] = new(gpu: 2, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler: 2),
+            ["School"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Video Editing"] = new(gpu: 4, cpu: 4, memory: 5, storage: 5, monitor: 4, cooler: 4),
+            ["3D Art"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler: 4),
+            ["Graphic Design"] = new(gpu: 3, cpu: 3, memory: 3, storage: 4, monitor: 4, cooler: 2),
+            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler: 4),
+            ["Multi-cast Streaming"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 3, cooler: 4),
+            ["Music Production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler: 2),
+            ["Video Recording"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 3, cooler: 2),
+            ["Software Development"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler: 2),
+            ["Game Development"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 3, cooler: 3),
+            ["Data Science"] = new(gpu: 4, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler: 3),
+            ["3D Printing"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler: 3),
+            ["Computer-Aided Design"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler: 4),
+            ["Social Media"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 3, cooler: 2),
+            ["Server Hosting"] = new(gpu: 1, cpu: 5, memory: 5, storage: 5, monitor: 1, cooler: 4),
+            ["AI Training"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 2, cooler: 4),
+            ["Data Management"] = new(gpu: 1, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler: 2)
         };
         public static Dictionary<string, ComponentAdjustment> JobAdjustments = new()
         {
-            ["Still In School"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Office Work"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Art"] = new(gpu: 4, cpu: 3, memory: 4, storage: 4, monitor: 4, cooler:  2),
-            ["Engineering"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler:  4),
-            ["Cybersecurity"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler:  2),
-            ["Software Development"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler:  2),
-            ["Data Science"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler:  3),
-            ["Game Development"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 4, cooler:  3),
-            ["Music Production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler:  2),
-            ["AI Research"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler:  4),
-            ["Real Estate"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Architecture"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 4, cooler:  3),
-            ["IT"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler:  2),
-            ["Telecommunication"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler:  2),
-            ["Content Creation"] = new(gpu: 4, cpu: 4, memory: 4, storage: 5, monitor: 4, cooler:  3),
-            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler:  4),
-            ["Healthcare"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Scientific Research"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler:  3),
-            ["Business"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1),
-            ["Personal Use"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler:  1)
+            ["Still In School"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Office Work"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Art"] = new(gpu: 4, cpu: 3, memory: 4, storage: 4, monitor: 4, cooler: 2),
+            ["Engineering"] = new(gpu: 5, cpu: 5, memory: 5, storage: 4, monitor: 4, cooler: 4),
+            ["Cybersecurity"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler: 2),
+            ["Software Development"] = new(gpu: 3, cpu: 4, memory: 4, storage: 5, monitor: 2, cooler: 2),
+            ["Data Science"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler: 3),
+            ["Game Development"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 4, cooler: 3),
+            ["Music Production"] = new(gpu: 2, cpu: 3, memory: 3, storage: 4, monitor: 2, cooler: 2),
+            ["AI Research"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler: 4),
+            ["Real Estate"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Architecture"] = new(gpu: 5, cpu: 4, memory: 4, storage: 4, monitor: 4, cooler: 3),
+            ["IT"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler: 2),
+            ["Telecommunication"] = new(gpu: 3, cpu: 4, memory: 4, storage: 4, monitor: 2, cooler: 2),
+            ["Content Creation"] = new(gpu: 4, cpu: 4, memory: 4, storage: 5, monitor: 4, cooler: 3),
+            ["Livestreaming"] = new(gpu: 5, cpu: 5, memory: 4, storage: 4, monitor: 3, cooler: 4),
+            ["Healthcare"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Scientific Research"] = new(gpu: 5, cpu: 5, memory: 5, storage: 5, monitor: 3, cooler: 3),
+            ["Business"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1),
+            ["Personal Use"] = new(gpu: 2, cpu: 3, memory: 3, storage: 3, monitor: 2, cooler: 1)
         };
         public static Dictionary<string, ComponentAdjustment> PriorityAdjustments = new()
         {
@@ -191,39 +191,74 @@ namespace KAZABUILD.Application.Helpers
         /// <param name="maxPrice"></param>
         /// <param name="orderBy"></param>
         /// <returns></returns>
-        public async static Task<T?> FindComponentAsync<T>(IQueryable<T> baseQuery, double minPrice, double maxPrice, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy) where T : BaseComponent
+        public async static Task<T?> FindComponentAsync<T>(IQueryable<T> baseQuery, double minPrice, double maxPrice, Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null) where T : BaseComponent
         {
-            //Attempt to apply the strict price range for the most correct match
-            var query = baseQuery.Where(c =>
-                c.Prices.Any() &&
-                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
-                c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
-            );
-            var result = await orderBy(query).FirstOrDefaultAsync();
-            if (result != null)
-                return result;
+            //Switch to in-memory filtering
+            var candidates = await baseQuery
+                .AsNoTracking()
+                .ToListAsync();
 
+            //Return null if no components found at all
+            if (candidates.Count == 0)
+                return null;
+
+            //Get the amount to decrease the minimum price by on each iteration
             var skipAmount = minPrice * 0.1;
 
-            //Attempt to decrease the price constraints if no result found
-            while (minPrice > 0)
+            //Iterate until a correct price restriction is found
+            while (true)
             {
+                //Filter by price in memory
+                var validCandidates = candidates.Where(c =>
+                {
+                    //Get the latest price
+                    var latest = c.Prices.OrderByDescending(p => p.FetchedAt).FirstOrDefault();
+                    if (latest == null)
+                        return true;
+
+                    var price = (double)latest.Price;
+
+                    //If the price minimum drops below zero, allow any price
+                    if (minPrice <= 0)
+                        return true;
+
+                    //Return whether the price is within range
+                    return price >= minPrice && price <= maxPrice;
+                }).ToList();
+
+                //If there are candidate in the current price range
+                if (validCandidates.Count > 0)
+                {
+                    //Convert back to a Queryable
+                    var queryableCandidates = validCandidates.AsQueryable();
+
+                    //Apply the random sort and additional filters
+                    if (orderBy != null)
+                    {
+                        var sortedQuery = orderBy(queryableCandidates);
+                        var topPool = sortedQuery.Take(15).ToList();
+
+                        //Pick a random candidate from the valid ones
+                        var randomIndex = Random.Shared.Next(topPool.Count);
+                        return topPool[randomIndex];
+                    }
+                    else //Apply only the random sort
+                    {
+                        int index = Random.Shared.Next(validCandidates.Count);
+                        return validCandidates[index];
+                    }
+                }
+
+                //If the minimum price has dropped below zero, stop searching
+                if (minPrice <= 0)
+                    break;
+
+                //If there are no candidates within the current price range, expand it
                 minPrice -= skipAmount;
-                query = baseQuery.Where(c =>
-                    c.Prices.Any() &&
-                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() < (decimal)maxPrice &&
-                    c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault() > (decimal)minPrice
-                );
-                result = await orderBy(query).FirstOrDefaultAsync();
-                if (result != null)
-                    return result;
             }
 
-            //Remove the price constraints altogether as a last resort
-            query = baseQuery.Where(c => c.Prices.Any());
-            result = await orderBy(query).FirstOrDefaultAsync();
-
-            return result;
+            //If no candidates were found, return null
+            return null;
         }
     }
 }
