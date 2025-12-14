@@ -36,6 +36,7 @@ const Set<String> _integerRangeKeys = {
   'Internal25BayAmount',
   'Internal35BayAmount',
   'MemoryBusWidth',
+  'ModuleQuantity',
   'PerformanceAmount',
   'PumpHeaderAmount',
   'Quantity',
@@ -48,9 +49,13 @@ const Set<String> _integerRangeKeys = {
   'TotalSlotAmount',
   'U2PortAmount',
   'VerticalResolution',
-  'ModuleQuantity',
   'TemperatureSensorHeaderAmount',
-  '',
+  'Width',
+  'Height',
+  'Depth',
+  'Volume',
+  'Weight',
+  'SupportsRearConnectingMotherboard',
 };
 
 String _mapTypeToDiscriminator(ComponentType type) {
@@ -503,20 +508,36 @@ class ComponentService {
       // Merge filters into the request body.
       // We iterate through filters to handle special types if necessary (e.g. ranges)
       filters.forEach((key, value) {
+        final normalizedKey = _normalizeFilterKey(key);
         if (value is RangeValues) {
           // Backend expects ranges as {Key}Start and {Key}End
-          final isIntegerRange = _integerRangeKeys.contains(key);
+          final isIntegerRange = _integerRangeKeys.contains(normalizedKey);
           final start = value.start;
           final end = value.end;
-          baseBody['${key}Start'] = isIntegerRange ? start.round() : start;
-          baseBody['${key}End'] = isIntegerRange ? end.round() : end;
+          baseBody['${normalizedKey}Start'] = isIntegerRange ? start.round() : start;
+          baseBody['${normalizedKey}End'] = isIntegerRange ? end.round() : end;
         } else {
-          baseBody[key] = value;
+          baseBody[normalizedKey] = value;
         }
       });
     }
 
     return baseBody;
+  }
+
+  /// Maps frontend field keys to what the backend expects.
+  /// Some keys arrive with nested names (e.g., DimensionsDepth); strip prefixes.
+  String _normalizeFilterKey(String key) {
+    final lower = key.toLowerCase();
+    if (lower.contains('dimensions')) {
+      if (lower.contains('depth')) return 'Depth';
+      if (lower.contains('height')) return 'Height';
+      if (lower.contains('width')) return 'Width';
+    }
+    // if (lower.contains('volume')) {
+    //   return 'Volume';
+    // }
+    return key;
   }
 
   /// Fetches lowest prices for a list of component IDs via ComponentPrices/get.
