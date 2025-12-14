@@ -6,16 +6,12 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 {
     public class GetMotherboardComponentDto : GetBaseComponentDto
     {
-        [StringLength(50, ErrorMessage = "Socket cannot be longer than 50 characters!")]
         public List<string>? SocketType { get; set; }
-
-        [StringLength(50, ErrorMessage = "Form Factor cannot be longer than 50 characters!")]
+  
         public List<string>? FormFactor { get; set; }
 
-        [StringLength(50, ErrorMessage = "Chipset cannot be longer than 50 characters!")]
         public List<string>? ChipsetType { get; set; }
 
-        [StringLength(50, ErrorMessage = "RAM type cannot be longer than 50 characters!")]
         public List<string>? RAMType { get; set; }
 
         [Range(0, 15, ErrorMessage = "RAM Slots Amount must be between 0 and 15")]
@@ -48,7 +44,6 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         [Range(0, 20, ErrorMessage = "U2 Port Amount must be between 0 and 20")]
         public int? U2PortAmountEnd { get; set; }
 
-        [StringLength(50, ErrorMessage = "Wireless Networking Standard cannot be longer than 50 characters!")]
         public List<string>? WirelessNetworkingStandard { get; set; }
 
         [Range(0, 20, ErrorMessage = "CPU Fan Header Amount must be between 0 and 20")]
@@ -113,7 +108,6 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
         [Range(0, 20, ErrorMessage = "Com Port Header Amount must be between 0 and 20")]
         public int? COMPortHeaderAmountEnd { get; set; }
 
-        [StringLength(50, ErrorMessage = "Main Power Type cannot be longer than 50 characters!")]
         public List<string>? MainPowerType { get; set; }
 
         public bool? HasECCSupport { get; set; }
@@ -124,7 +118,6 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MotherboardComponent
 
         public bool? HasCMOS { get; set; }
 
-        [StringLength(50, ErrorMessage = "Audio Chipset cannot be longer than 50 characters!")]
         public List<string>? AudioChipset { get; set; }
 
         [Range(1, 32, ErrorMessage = "Audio Channels must be between 1 and 32!")]

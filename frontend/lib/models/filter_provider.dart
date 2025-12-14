@@ -63,6 +63,7 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
     if (keyLower.contains('volume')) return;
     if (keyLower == 'efficiencyamount') return;       
     if (keyLower == 'external525bayamount') return;       
+    if (keyLower == 'mainpowertype') return;
     final field = Map<String, dynamic>.from(rawValue);
 
     final typeValue = field['type'] ?? field['Type'];
