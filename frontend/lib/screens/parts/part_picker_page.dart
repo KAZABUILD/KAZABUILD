@@ -24,8 +24,6 @@ import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/filter_models.dart';
 import 'package:frontend/models/filter_provider.dart';
-import 'package:frontend/models/component_compatibility_provider.dart'
-    as compatibility;
 import 'package:frontend/models/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/screens/builder/build_now_page.dart';
@@ -171,7 +169,28 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
     if (query.isNotEmpty) {
       activeFilters['Query'] = query;
     }
+
+    // Server-side compatibility filtering: send selected component IDs
+    if (_enableCompatibilityFilter) {
+      final List<PcComponent> currentBuild =
+          widget.currentBuild ?? ref.read(buildProvider);
+      final selectedProducts = currentBuild
+          .where((item) => item.selectedProduct != null)
+          .map((item) => item.selectedProduct!)
+          .toList();
+
+      if (selectedProducts.isNotEmpty) {
+        activeFilters['CompatibleComponentsIds'] =
+            selectedProducts.map((p) => p.id).toList();
+      }
+    }
     return activeFilters;
+  }
+
+  /// Filters products based on server-provided results.
+  /// Server handles compatibility; keep hook for future client-side filters.
+  List<BaseComponent> _filterProducts(List<BaseComponent> products) {
+    return products;
   }
 
   void _loadCurrentPage({bool force = false, int? targetPage}) {
@@ -470,93 +489,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
   }
 
   /// Fetches compatible component IDs for given component IDs
-  Future<Set<String>> _getCompatibleComponentIds(
-    List<BaseComponent> components,
-    WidgetRef ref,
-  ) async {
-    // 1) Use preloaded compatibleComponentsIds when available.
-    final Set<String> compatibleIds = {};
-    for (final component in components) {
-      if (component.compatibleComponentsIds.isNotEmpty) {
-        compatibleIds.addAll(component.compatibleComponentsIds);
-        compatibleIds.add(component.id); // also allow the selected component
-      }
-    }
-    if (compatibleIds.isNotEmpty) {
-      return compatibleIds;
-    }
-
-    // 2) Fallback: fetch latest component details to read compatibleComponentsIds.
-    final componentService = ref.read(componentServiceProvider);
-    try {
-      final results = await Future.wait<BaseComponent?>(components.map(
-        (c) async {
-          try {
-            return await componentService.getComponentById(c.id);
-          } catch (_) {
-            return null;
-          }
-        },
-      ));
-
-      for (final component in results) {
-        if (component == null) continue;
-        if (component.compatibleComponentsIds.isNotEmpty) {
-          compatibleIds.addAll(component.compatibleComponentsIds);
-          compatibleIds.add(component.id);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching component compatibility via component GET: $e');
-    }
-
-    if (compatibleIds.isNotEmpty) {
-      return compatibleIds;
-    }
-
-    // 3) Final fallback: call compatibility service (both directions).
-    final compatibilityService =
-        ref.read(compatibility.componentCompatibilityServiceProvider);
-    for (final component in components) {
-      try {
-        final ids =
-            await compatibilityService.getCompatibleComponentIds(component.id);
-        if (ids.isNotEmpty) {
-          compatibleIds.addAll(ids);
-          compatibleIds.add(component.id);
-        }
-      } catch (e) {
-        debugPrint(
-          'Error fetching compatibility via compat service for ${component.id}: $e',
-        );
-      }
-    }
-
-    return compatibleIds;
-  }
-
-  /// Filters products based on all active filters
-  // Note: This client-side filtering is now largely redundant as the server handles it,
-  // but we keep search and basic checks here for immediate feedback if needed.
-  List<BaseComponent> _filterProducts(
-    List<BaseComponent> products, {
-    Set<String>? compatibleIds,
-  }) {
-    return products.where((product) {
-      // Compatibility filter
-      if (compatibleIds != null) {
-        if (_enableCompatibilityFilter) {
-          // If compatibility filter is On, only show products that are compatible
-          if (!compatibleIds.contains(product.id)) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     // Listen to filter changes and reload the page
@@ -597,7 +529,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                       onCompatibilityFilterChanged: (val) {
                         setState(() {
                           _enableCompatibilityFilter = val;
+                          _currentPage = 1;
                         });
+                        _loadCurrentPage(force: true, targetPage: 1);
+                        _updateUrl(1);
                       },
                       currentBuild: currentBuild,
                       allProducts: products,
@@ -688,7 +623,10 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                             onCompatibilityFilterChanged: (val) {
                               setState(() {
                                 _enableCompatibilityFilter = val;
+                                _currentPage = 1;
                               });
+                              _loadCurrentPage(force: true, targetPage: 1);
+                              _updateUrl(1);
                             },
                             currentBuild: currentBuild,
                             allProducts: products,
@@ -734,31 +672,11 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                           );
                         }
 
-                        final List<PcComponent> currentBuild =
-                            widget.currentBuild ?? ref.watch(buildProvider);
-
-                        Future<Set<String>>? compatibilityFuture;
-                        if (_enableCompatibilityFilter &&
-                            currentBuild.isNotEmpty) {
-                          final selectedProducts = currentBuild
-                              .where((item) => item.selectedProduct != null)
-                              .map((item) => item.selectedProduct!)
-                              .toList();
-                          if (selectedProducts.isNotEmpty) {
-                            compatibilityFuture =
-                                _getCompatibleComponentIds(selectedProducts, ref);
-                          }
-                        }
-
                         Widget buildList({
-                          Set<String>? compatibleIds,
                           Map<String, double>? priceMap,
                         }) {
-                          final filteredProducts = _filterProducts(
-                            pagingState.items,
-                            compatibleIds: compatibleIds,
-                          );
-
+                          final filteredProducts =
+                              _filterProducts(pagingState.items);
                           return _ProductList(
                             componentType: widget.componentType,
                             searchController: _searchController,
@@ -785,33 +703,6 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
                                     _scaffoldKey.currentState?.openEndDrawer();
                                   }
                                 : null,
-                          );
-                        }
-
-                        if (compatibilityFuture != null) {
-                          return FutureBuilder<List<Object?>>(
-                            future: Future.wait<Object?>([
-                              compatibilityFuture,
-                            ]),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-
-                              final compatibleIds =
-                                  snapshot.data?[0] as Set<String>?;
-                              final normalizedIds = (compatibleIds == null ||
-                                      compatibleIds.isEmpty)
-                                  ? null // no data -> skip filtering
-                                  : compatibleIds;
-                              return buildList(
-                                compatibleIds: normalizedIds,
-                                priceMap: const {},
-                              );
-                            },
                           );
                         }
 
