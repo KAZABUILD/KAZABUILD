@@ -35,6 +35,7 @@ const Set<String> _integerRangeKeys = {
   'HorizontalResolution',
   'Internal25BayAmount',
   'Internal35BayAmount',
+  'MaxRAMAmount',
   'MemoryBusWidth',
   'ModuleQuantity',
   'PerformanceAmount',

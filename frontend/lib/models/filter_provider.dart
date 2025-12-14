@@ -61,6 +61,8 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
     // Skip release-related fields so no release year filter is shown
     if (keyLower.contains('release')) return;
     if (keyLower.contains('volume')) return;
+    if (keyLower == 'efficiencyamount') return;       
+    if (keyLower == 'external525bayamount') return;       
     final field = Map<String, dynamic>.from(rawValue);
 
     final typeValue = field['type'] ?? field['Type'];
@@ -125,13 +127,20 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
     final label = _humanizeKey(rawKey);
 
     // Normalize known backend ranges to API validation limits to avoid 400s.
-    if (rawKey.toString() == 'MaxVideoCardLength') {
+    final rawKeyString = rawKey.toString();
+    if (rawKeyString == 'MaxVideoCardLength') {
       min = 10;
-      max = 650;
+      max = 600;
       unit = 'mm';
       formatValue = (val) => (val as num).toStringAsFixed(0);
     }
-
+    if (rawKeyString == 'MaxRAMAmount') {
+      min = 0;
+      max = 1024; 
+      unit = 'GB';
+      formatValue = (val) => (val as num).toStringAsFixed(0);
+    }
+    
     definitions.add(
       FilterDefinition(
         key: rawKey,

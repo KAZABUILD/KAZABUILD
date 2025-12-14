@@ -50,10 +50,10 @@ namespace KAZABUILD.Application.DTOs.Components.Components.MonitorComponent
 
         public string? AspectRatioEnd { get; set; }
 
-        [Range(0, 100, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
+        [Range(0, 5000, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
         public decimal? MaxBrightnessStart { get; set; }
 
-        [Range(0, 100, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
+        [Range(0, 5000, ErrorMessage = "Max Brightness must be between 0 and 5000 nits")]
         public decimal? MaxBrightnessEnd { get; set; }
 
         public List<string>? HighDynamicRangeType { get; set; }
