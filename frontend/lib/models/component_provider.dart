@@ -16,6 +16,42 @@ import 'package:frontend/models/component_models.dart';
 
 const int _defaultComponentPageLength = 50;
 const int _bulkFetchPageLength = 250;
+// Backend DTOs declare several range fields as int?; keep their keys here so we
+// coerce RangeValues to ints to avoid JSON deserialization errors.
+const Set<String> _integerRangeKeys = {
+  'ARGB5vHeaderAmount',
+  'CPUFanHeaderAmount',
+  'CPUOptionalFanHeaderAmount',
+  'CaseExpansionSlotWidth',
+  'CaseFanHeaderAmount',
+  'COMPortHeaderAmount',
+  'CoreCount',
+  'CoreTotal',
+  'EfficiencyAmount',
+  'ExpansionSlotAmount',
+  'External35BayAmount',
+  'External525BayAmount',
+  'FanQuantity',
+  'HorizontalResolution',
+  'Internal25BayAmount',
+  'Internal35BayAmount',
+  'MemoryBusWidth',
+  'PerformanceAmount',
+  'PumpHeaderAmount',
+  'Quantity',
+  'RAMSlotsAmount',
+  'RGB12vHeaderAmount',
+  'SATA3GBsAmount',
+  'SATA6GBsAmount',
+  'ThreadsAmount',
+  'ThunderboltHeaderAmount',
+  'TotalSlotAmount',
+  'U2PortAmount',
+  'VerticalResolution',
+  'ModuleQuantity',
+  'TemperatureSensorHeaderAmount',
+  '',
+};
 
 String _mapTypeToDiscriminator(ComponentType type) {
   switch (type) {
@@ -469,8 +505,11 @@ class ComponentService {
       filters.forEach((key, value) {
         if (value is RangeValues) {
           // Backend expects ranges as {Key}Start and {Key}End
-          baseBody['${key}Start'] = value.start;
-          baseBody['${key}End'] = value.end;
+          final isIntegerRange = _integerRangeKeys.contains(key);
+          final start = value.start;
+          final end = value.end;
+          baseBody['${key}Start'] = isIntegerRange ? start.round() : start;
+          baseBody['${key}End'] = isIntegerRange ? end.round() : end;
         } else {
           baseBody[key] = value;
         }

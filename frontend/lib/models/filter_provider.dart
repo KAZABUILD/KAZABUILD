@@ -52,6 +52,9 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
 
   fields.forEach((rawKey, rawValue) {
     if (rawValue is! Map) return;
+    final keyLower = rawKey.toString().toLowerCase();
+    // Skip release-related fields so no release year filter is shown
+    if (keyLower.contains('release')) return;
     final field = Map<String, dynamic>.from(rawValue);
 
     final typeValue = field['type'] ?? field['Type'];
