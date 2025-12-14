@@ -352,7 +352,7 @@ class _DynamicRangeFilterState extends State<_DynamicRangeFilter> {
           values: _currentRange,
           min: min,
           max: max,
-          divisions: (max - min > 0) ? 100 : 1, // Increased divisions for smoother sliding on large ranges
+          divisions: (max - min > 0) ? 100 : 1,
           labels: RangeLabels(
             '${formatValue(_currentRange.start)} $unit',
             '${formatValue(_currentRange.end)} $unit',
@@ -363,7 +363,12 @@ class _DynamicRangeFilterState extends State<_DynamicRangeFilter> {
             });
           },
           onChangeEnd: (values) {
-            widget.onChanged(values);
+            // If full range is selected, clear the filter
+            if (values.start == min && values.end == max) {
+              widget.onChanged(null);
+            } else {
+              widget.onChanged(values);
+            }
           },
         ),
       ],

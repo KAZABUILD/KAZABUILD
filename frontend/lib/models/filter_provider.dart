@@ -10,15 +10,20 @@ final availableFiltersProvider =
   try {
     final backendFields = await service.getComponentFiltersRaw(type);
     final filters = _mapBackendFieldsToDefinitions(backendFields);
+    final priceFilter = _buildPriceFilterFromFields(backendFields, type);
     if (filters.isNotEmpty) {
-      return filters;
+      return _ensurePriceFilter(filters, priceFilter, type);
     }
   } catch (e) {
     // Fall back to legacy static filters if backend parsing fails
   }
 
   // Fallback to legacy static definitions to keep UI usable
-  return _componentFilterSchemas[type] ?? [];
+  return _ensurePriceFilter(
+    _componentFilterSchemas[type] ?? [],
+    _buildPriceFilterFromFields(const {}, type),
+    type,
+  );
 });
 
 final activeFiltersProvider = StateNotifierProvider.autoDispose.family<ActiveFiltersNotifier, Map<String, dynamic>, ComponentType>((ref, type) {
@@ -137,6 +142,99 @@ List<FilterDefinition> _mapBackendFieldsToDefinitions(
 
     return definitions;
   }
+
+FilterDefinition _buildDefaultPriceFilter({
+  required ComponentType type,
+  double? min,
+  double? max,
+}) {
+  final defaults = _defaultPriceRangeForType(type);
+  return FilterDefinition(
+    key: 'Price',
+    label: 'Price',
+    type: FilterInputType.range,
+    min: min ?? defaults.$1,
+    max: max ?? defaults.$2,
+    unit: 'zł',
+    formatValue: (val) {
+      if (val is num) return val.toStringAsFixed(0);
+      return val.toString();
+    },
+  );
+}
+
+/// Try to build a price filter from backend metadata, otherwise fall back
+/// to a component-type-specific sensible default.
+FilterDefinition? _buildPriceFilterFromFields(
+  Map<String, dynamic> fields,
+  ComponentType type,
+) {
+  try {
+    final entry = fields.entries.firstWhere(
+      (e) => e.key.toString().toLowerCase() == 'price',
+      orElse: () => MapEntry('', null),
+    );
+
+    if (entry.key.isEmpty || entry.value is! Map) return null;
+
+    final raw = Map<String, dynamic>.from(entry.value as Map);
+    final minRaw = raw['minNumeric'] ?? raw['MinNumeric'];
+    final maxRaw = raw['maxNumeric'] ?? raw['MaxNumeric'];
+
+    final min = minRaw is num ? minRaw.toDouble() : null;
+    final max = maxRaw is num ? maxRaw.toDouble() : null;
+
+    if (min != null && max != null && max > min) {
+      return _buildDefaultPriceFilter(type: type, min: min, max: max);
+    }
+  } catch (_) {
+    // Ignore malformed price metadata and fall back to defaults.
+  }
+
+  return _buildDefaultPriceFilter(type: type);
+}
+
+List<FilterDefinition> _ensurePriceFilter(
+  List<FilterDefinition> filters,
+  FilterDefinition? priceFilter,
+  ComponentType type,
+) {
+  final price = priceFilter ?? _buildDefaultPriceFilter(type: type);
+
+  // Remove any existing price entry to avoid duplicates, then prepend ours.
+  final nonPrice = filters
+      .where((f) => f.key.toLowerCase() != 'price')
+      .toList()
+    ..sort((a, b) => a.label.compareTo(b.label));
+
+  return [price, ...nonPrice];
+}
+
+/// Returns sensible default price ranges per component to keep sliders tight.
+(double, double) _defaultPriceRangeForType(ComponentType type) {
+  switch (type) {
+    case ComponentType.cpu:
+      return (200, 4000);
+    case ComponentType.gpu:
+      return (600, 9000);
+    case ComponentType.motherboard:
+      return (200, 1800);
+    case ComponentType.ram:
+      return (150, 2000);
+    case ComponentType.storage:
+      return (120, 2500);
+    case ComponentType.psu:
+      return (200, 1400);
+    case ComponentType.pcCase:
+      return (180, 1200);
+    case ComponentType.cooler:
+      return (120, 900);
+    case ComponentType.caseFan:
+      return (30, 300);
+    case ComponentType.monitor:
+      return (400, 8000);
+  }
+}
 
 String _humanizeKey(String key) {
   final withSpaces =
