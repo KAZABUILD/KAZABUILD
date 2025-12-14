@@ -93,7 +93,7 @@ class AdminService {
   /// Unbans a user (removes ban)
   Future<Response> unbanUser(String userId) async {
     final data = <String, dynamic>{
-      'UserRole': 1, // GUEST = 1 (or you can use USER = 3)
+      'UserRole': 3, 
       'BannedUntil': null,
     };
 
