@@ -1,5 +1,5 @@
 /// Admin Users Management Page
-/// 
+///
 /// Provides user management interface with search, filter, and user actions.
 library;
 
@@ -23,7 +23,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   String _sortDirection = 'asc';
   int _currentPage = 1;
   final int _pageSize = 20; // Show 20 users per page
-  
+
   // Cache query params to prevent Map recreation on every build
   Map<String, dynamic>? _cachedQueryParams;
 
@@ -46,9 +46,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       body: Column(
         children: [
           _buildHeader(isDark, isMobile),
-          Expanded(
-            child: _buildContent(isDark, isMobile),
-          ),
+          Expanded(child: _buildContent(isDark, isMobile)),
         ],
       ),
     );
@@ -100,7 +98,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                             ? AppColorsDark.textWhite
                             : AppColorsLight.textBlack,
                       ),
-                    )
+                    ),
                   ],
                 ),
           SizedBox(height: isMobile ? 16 : 24),
@@ -153,7 +151,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       'page': _currentPage,
       'pageLength': _pageSize,
     };
-    
+
     // Check if params actually changed to prevent unnecessary rebuilds
     if (_cachedQueryParams != null) {
       bool changed = false;
@@ -167,7 +165,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         return _cachedQueryParams!;
       }
     }
-    
+
     _cachedQueryParams = newParams;
     return _cachedQueryParams!;
   }
@@ -194,20 +192,25 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               ),
               child: usersAsync.when(
                 data: (users) {
-                  print('AdminUsersPage: Received ${users.length} users from backend');
-                  
+                  print(
+                    'AdminUsersPage: Received ${users.length} users from backend',
+                  );
+
                   // Debug: Print all users and their status
                   for (var user in users) {
-                    print('AdminUsersPage: User ${user.id} - Role: ${user.userRole}, Status: ${user.status}, isBlocked: ${user.isBlocked}, bannedUntil: ${user.bannedUntil}');
+                    print(
+                      'AdminUsersPage: User ${user.id} - Role: ${user.userRole}, Status: ${user.status}, isBlocked: ${user.isBlocked}, bannedUntil: ${user.bannedUntil}',
+                    );
                   }
-                  
+
                   // Count statuses
                   final statusCounts = <String, int>{};
                   for (var user in users) {
-                    statusCounts[user.status] = (statusCounts[user.status] ?? 0) + 1;
+                    statusCounts[user.status] =
+                        (statusCounts[user.status] ?? 0) + 1;
                   }
                   print('AdminUsersPage: Status counts: $statusCounts');
-                  
+
                   if (users.isEmpty) {
                     return Center(
                       child: Column(
@@ -218,7 +221,9 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                             size: 64,
                             color: isDark
                                 ? AppColorsDark.textWhite.withValues(alpha: 0.5)
-                                : AppColorsLight.textBlack.withValues(alpha: 0.5),
+                                : AppColorsLight.textBlack.withValues(
+                                    alpha: 0.5,
+                                  ),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -234,16 +239,19 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                       ),
                     );
                   }
-                  
-                  print('AdminUsersPage: Rendering ${users.length} users in ListView');
-                  
+
+                  print(
+                    'AdminUsersPage: Rendering ${users.length} users in ListView',
+                  );
+
                   return Column(
                     children: [
                       if (!isMobile) _buildTableHeader(isDark),
                       Expanded(
                         child: ListView.separated(
                           itemCount: users.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 0),
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 0),
                           itemBuilder: (context, index) {
                             final user = users[index];
                             return _buildUserRow(user, isDark, isMobile);
@@ -276,7 +284,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () => ref.invalidate(adminUsersProvider(queryParams)),
+                        onPressed: () =>
+                            ref.invalidate(adminUsersProvider(queryParams)),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -290,7 +299,11 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     );
   }
 
-  Widget _buildStatsRow(bool isDark, AsyncValue<List<AdminUser>> usersAsync, bool isMobile) {
+  Widget _buildStatsRow(
+    bool isDark,
+    AsyncValue<List<AdminUser>> usersAsync,
+    bool isMobile,
+  ) {
     return usersAsync.when(
       data: (users) {
         final totalUsers = users.length;
@@ -298,35 +311,103 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         final bannedUsers = users.where((u) => u.status == 'Banned').length;
         final now = DateTime.now();
         final startOfMonth = DateTime(now.year, now.month, 1);
-        final newThisMonth = users.where((u) => 
-          u.registeredAt != null && u.registeredAt!.isAfter(startOfMonth)
-        ).length;
+        final newThisMonth = users
+            .where(
+              (u) =>
+                  u.registeredAt != null &&
+                  u.registeredAt!.isAfter(startOfMonth),
+            )
+            .length;
 
         final stats = [
-          {'label': 'Total Users', 'value': totalUsers.toString(), 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
-          {'label': 'Active Users', 'value': activeUsers.toString(), 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
-          {'label': 'Banned Users', 'value': bannedUsers.toString(), 'icon': Icons.block, 'color': AppColorsDark.error},
-          {'label': 'New This Month', 'value': newThisMonth.toString(), 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+          {
+            'label': 'Total Users',
+            'value': totalUsers.toString(),
+            'icon': Icons.people,
+            'color': AppColorsDark.buttonBlue,
+          },
+          {
+            'label': 'Active Users',
+            'value': activeUsers.toString(),
+            'icon': Icons.check_circle,
+            'color': AppColorsDark.buttonGreen,
+          },
+          {
+            'label': 'Banned Users',
+            'value': bannedUsers.toString(),
+            'icon': Icons.block,
+            'color': AppColorsDark.error,
+          },
+          {
+            'label': 'New This Month',
+            'value': newThisMonth.toString(),
+            'icon': Icons.person_add,
+            'color': AppColorsDark.buttonPurple,
+          },
         ];
-        
+
         return _buildStatsContent(isDark, stats, isMobile);
       },
       loading: () => _buildStatsContent(isDark, [
-        {'label': 'Total Users', 'value': '...', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
-        {'label': 'Active Users', 'value': '...', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
-        {'label': 'Banned Users', 'value': '...', 'icon': Icons.block, 'color': AppColorsDark.error},
-        {'label': 'New This Month', 'value': '...', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+        {
+          'label': 'Total Users',
+          'value': '...',
+          'icon': Icons.people,
+          'color': AppColorsDark.buttonBlue,
+        },
+        {
+          'label': 'Active Users',
+          'value': '...',
+          'icon': Icons.check_circle,
+          'color': AppColorsDark.buttonGreen,
+        },
+        {
+          'label': 'Banned Users',
+          'value': '...',
+          'icon': Icons.block,
+          'color': AppColorsDark.error,
+        },
+        {
+          'label': 'New This Month',
+          'value': '...',
+          'icon': Icons.person_add,
+          'color': AppColorsDark.buttonPurple,
+        },
       ], isMobile),
       error: (_, __) => _buildStatsContent(isDark, [
-        {'label': 'Total Users', 'value': '0', 'icon': Icons.people, 'color': AppColorsDark.buttonBlue},
-        {'label': 'Active Users', 'value': '0', 'icon': Icons.check_circle, 'color': AppColorsDark.buttonGreen},
-        {'label': 'Banned Users', 'value': '0', 'icon': Icons.block, 'color': AppColorsDark.error},
-        {'label': 'New This Month', 'value': '0', 'icon': Icons.person_add, 'color': AppColorsDark.buttonPurple},
+        {
+          'label': 'Total Users',
+          'value': '0',
+          'icon': Icons.people,
+          'color': AppColorsDark.buttonBlue,
+        },
+        {
+          'label': 'Active Users',
+          'value': '0',
+          'icon': Icons.check_circle,
+          'color': AppColorsDark.buttonGreen,
+        },
+        {
+          'label': 'Banned Users',
+          'value': '0',
+          'icon': Icons.block,
+          'color': AppColorsDark.error,
+        },
+        {
+          'label': 'New This Month',
+          'value': '0',
+          'icon': Icons.person_add,
+          'color': AppColorsDark.buttonPurple,
+        },
       ], isMobile),
     );
   }
 
-  Widget _buildStatsContent(bool isDark, List<Map<String, dynamic>> stats, bool isMobile) {
+  Widget _buildStatsContent(
+    bool isDark,
+    List<Map<String, dynamic>> stats,
+    bool isMobile,
+  ) {
     if (isMobile) {
       return GridView.builder(
         shrinkWrap: true,
@@ -530,9 +611,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       text,
       style: TextStyle(
         fontWeight: FontWeight.bold,
-        color: isDark
-            ? AppColorsDark.textWhite
-            : AppColorsLight.textBlack,
+        color: isDark ? AppColorsDark.textWhite : AppColorsLight.textBlack,
       ),
     );
   }
@@ -544,8 +623,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     final statusColor = user.status == 'Active'
         ? AppColorsDark.buttonGreen
         : user.status == 'Banned'
-            ? AppColorsDark.error
-            : Colors.grey;
+        ? AppColorsDark.error
+        : Colors.grey;
 
     final displayName = user.displayName ?? user.login;
     final email = user.email ?? 'N/A';
@@ -595,7 +674,9 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                           style: TextStyle(
                             color: isDark
                                 ? AppColorsDark.textWhite.withValues(alpha: 0.5)
-                                : AppColorsLight.textBlack.withValues(alpha: 0.5),
+                                : AppColorsLight.textBlack.withValues(
+                                    alpha: 0.5,
+                                  ),
                             fontSize: 11,
                           ),
                         ),
@@ -627,10 +708,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                constraints: const BoxConstraints(
-                  maxWidth: 200,
-                  minWidth: 80,
-                ),
+                constraints: const BoxConstraints(maxWidth: 200, minWidth: 80),
                 child: Text(
                   user.status,
                   style: TextStyle(
@@ -704,20 +782,30 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   },
                   tooltip: 'Edit',
                 ),
+                if (user.status == 'Banned')
+                  IconButton(
+                    icon: const Icon(Icons.check_circle, size: 18),
+                    onPressed: () {
+                      _showUnbanConfirmation(context, user, isDark);
+                    },
+                    tooltip: 'Unban',
+                    color: AppColorsDark.buttonGreen,
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.block, size: 18),
+                    onPressed: () {
+                      _showBanDialog(context, user, isDark);
+                    },
+                    tooltip: 'Ban',
+                    color: AppColorsDark.error,
+                  ),
                 IconButton(
                   icon: const Icon(Icons.delete, size: 18),
                   onPressed: () {
                     _showDeleteConfirmation(context, user, isDark);
                   },
                   tooltip: 'Delete',
-                  color: AppColorsDark.error,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.block, size: 18),
-                  onPressed: () {
-                    _showBanConfirmation(context, user, isDark);
-                  },
-                  tooltip: 'Ban',
                   color: AppColorsDark.error,
                 ),
               ],
@@ -728,12 +816,137 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     );
   }
 
-  void _showBanConfirmation(BuildContext context, AdminUser user, bool isDark) {
+  void _showBanDialog(BuildContext context, AdminUser user, bool isDark) {
+    DateTime? selectedDate;
+    bool isPermanent = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Ban User'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Ban ${user.displayName ?? user.login}?'),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isPermanent,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          isPermanent = value ?? true;
+                          if (isPermanent) {
+                            selectedDate = null;
+                          }
+                        });
+                      },
+                    ),
+                    const Text('Permanent ban'),
+                  ],
+                ),
+                if (!isPermanent) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(
+                          const Duration(days: 7),
+                        ),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setDialogState(() {
+                            selectedDate = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              time.hour,
+                              time.minute,
+                            );
+                          });
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(
+                      selectedDate == null
+                          ? 'Select ban expiry date'
+                          : 'Expires: ${_formatDateTime(selectedDate!)}',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  final adminService = ref.read(adminServiceProvider);
+                  await adminService.banUser(
+                    user.id,
+                    bannedUntil: isPermanent ? null : selectedDate,
+                  );
+
+                  if (mounted) {
+                    ref.invalidate(
+                      adminUsersProvider(_cachedQueryParams ?? {}),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('User banned successfully'),
+                        backgroundColor: AppColorsDark.buttonGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(getUserFriendlyError(e)),
+                        backgroundColor: AppColorsDark.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: TextButton.styleFrom(foregroundColor: AppColorsDark.error),
+              child: const Text('Ban'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUnbanConfirmation(
+    BuildContext context,
+    AdminUser user,
+    bool isDark,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ban User'),
-        content: Text('Are you sure you want to ban ${user.displayName ?? user.login}?'),
+        title: const Text('Unban User'),
+        content: Text(
+          'Are you sure you want to unban ${user.displayName ?? user.login}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -744,14 +957,13 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               Navigator.of(context).pop();
               try {
                 final adminService = ref.read(adminServiceProvider);
-                await adminService.banUser(user.id);
-                
+                await adminService.unbanUser(user.id);
+
                 if (mounted) {
-                  // Invalidate the users provider to refresh the list
                   ref.invalidate(adminUsersProvider(_cachedQueryParams ?? {}));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('User banned successfully'),
+                      content: Text('User unbanned successfully'),
                       backgroundColor: AppColorsDark.buttonGreen,
                     ),
                   );
@@ -768,21 +980,27 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               }
             },
             style: TextButton.styleFrom(
-              foregroundColor: AppColorsDark.error,
+              foregroundColor: AppColorsDark.buttonGreen,
             ),
-            child: const Text('Ban'),
+            child: const Text('Unban'),
           ),
         ],
       ),
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, AdminUser user, bool isDark) {
+  void _showDeleteConfirmation(
+    BuildContext context,
+    AdminUser user,
+    bool isDark,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete ${user.displayName ?? user.login}? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete ${user.displayName ?? user.login}? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -794,7 +1012,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               try {
                 final adminService = ref.read(adminServiceProvider);
                 await adminService.deleteUser(user.id);
-                
+
                 if (mounted) {
                   // Invalidate the users provider to refresh the list
                   ref.invalidate(adminUsersProvider(_cachedQueryParams ?? {}));
@@ -816,9 +1034,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                 }
               }
             },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColorsDark.error,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColorsDark.error),
             child: const Text('Delete'),
           ),
         ],
@@ -830,8 +1046,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     final statusColor = user.status == 'Active'
         ? AppColorsDark.buttonGreen
         : user.status == 'Banned'
-            ? AppColorsDark.error
-            : Colors.grey;
+        ? AppColorsDark.error
+        : Colors.grey;
 
     final displayName = user.displayName ?? user.login;
     final email = user.email ?? 'N/A';
@@ -877,7 +1093,9 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                           style: TextStyle(
                             color: isDark
                                 ? AppColorsDark.textWhite.withValues(alpha: 0.6)
-                                : AppColorsLight.textBlack.withValues(alpha: 0.6),
+                                : AppColorsLight.textBlack.withValues(
+                                    alpha: 0.6,
+                                  ),
                             fontSize: 12,
                           ),
                         ),
@@ -885,7 +1103,10 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -1008,6 +1229,24 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   },
                   tooltip: 'Edit',
                 ),
+                if (user.status == 'Banned')
+                  IconButton(
+                    icon: const Icon(Icons.check_circle, size: 20),
+                    onPressed: () {
+                      _showUnbanConfirmation(context, user, isDark);
+                    },
+                    tooltip: 'Unban',
+                    color: AppColorsDark.buttonGreen,
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.block, size: 20),
+                    onPressed: () {
+                      _showBanDialog(context, user, isDark);
+                    },
+                    tooltip: 'Ban',
+                    color: AppColorsDark.error,
+                  ),
                 IconButton(
                   icon: const Icon(Icons.delete, size: 20),
                   onPressed: () {
@@ -1028,17 +1267,23 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  String _formatDateTime(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
   Widget _buildPagination(bool isDark, AsyncValue<List<AdminUser>> usersAsync) {
     return usersAsync.when(
       data: (users) {
         final currentPageUsers = users.length;
-        final start = currentPageUsers > 0 ? ((_currentPage - 1) * _pageSize) + 1 : 0;
+        final start = currentPageUsers > 0
+            ? ((_currentPage - 1) * _pageSize) + 1
+            : 0;
         final end = currentPageUsers > 0 ? start + currentPageUsers - 1 : 0;
-        
+
         // If we got a full page, there might be more pages
         // If we got less than pageSize, we're on the last page
         final hasMore = currentPageUsers == _pageSize;
-        
+
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1071,7 +1316,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                         ? () {
                             setState(() {
                               _currentPage--;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                              _cachedQueryParams =
+                                  null; // Invalidate cache to trigger refetch
                             });
                           }
                         : null,
@@ -1090,7 +1336,8 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                         ? () {
                             setState(() {
                               _currentPage++;
-                              _cachedQueryParams = null; // Invalidate cache to trigger refetch
+                              _cachedQueryParams =
+                                  null; // Invalidate cache to trigger refetch
                             });
                           }
                         : null,
@@ -1106,4 +1353,3 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     );
   }
 }
-

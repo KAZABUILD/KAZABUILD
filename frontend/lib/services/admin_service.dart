@@ -71,9 +71,33 @@ class AdminService {
     return _dio.delete('$apiBaseUrl/Users/$userId');
   }
 
-  Future<Response> banUser(String userId) async {
-    final data = {'BannedUntil': DateTime.now().add(const Duration(days: 7)).toIso8601String()};
-    return _dio.put('$apiBaseUrl/Users/$userId', data: data);
+  /// Bans a user
+  /// [bannedUntil] is the date when the ban expires. If null, ban is permanent.
+  /// If [bannedUntil] is in the past or null, sets permanent ban (BannedUntil = null, UserRole = BANNED)
+  Future<Response> banUser(String userId, {DateTime? bannedUntil}) async {
+    final data = <String, dynamic>{
+      'UserRole': 0, // BANNED = 0
+    };
+
+    if (bannedUntil != null && bannedUntil.isAfter(DateTime.now())) {
+      // Temporary ban - set BannedUntil
+      data['BannedUntil'] = bannedUntil.toIso8601String();
+    } else {
+      // Permanent ban - set BannedUntil to null
+      data['BannedUntil'] = null;
+    }
+
+    return updateUser(userId, data);
+  }
+
+  /// Unbans a user (removes ban)
+  Future<Response> unbanUser(String userId) async {
+    final data = <String, dynamic>{
+      'UserRole': 1, // GUEST = 1 (or you can use USER = 3)
+      'BannedUntil': null,
+    };
+
+    return updateUser(userId, data);
   }
 
   /// Gets builds with filtering and optional pagination
@@ -154,8 +178,13 @@ class AdminService {
     }
 
     try {
-      print('AdminService.getBuildsCount: Calling get-count endpoint with data: $data');
-      final response = await _dio.post('$apiBaseUrl/Builds/get-count', data: data);
+      print(
+        'AdminService.getBuildsCount: Calling get-count endpoint with data: $data',
+      );
+      final response = await _dio.post(
+        '$apiBaseUrl/Builds/get-count',
+        data: data,
+      );
       if (response.statusCode == 200) {
         // Backend returns an integer count
         final count = response.data;
