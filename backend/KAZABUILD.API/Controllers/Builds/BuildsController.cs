@@ -1386,7 +1386,7 @@ namespace KAZABUILD.API.Controllers.Builds
 
                 //Add a description to the build
                 var price = components.Select(c => c.Prices.OrderByDescending(p => p.FetchedAt).Select(p => p.Price).FirstOrDefault()).Sum();
-                build.Description = $"A Build generated just for you for the lowest possible price of {price}. Remember to verify the prices on your own as they can differ from vendor to vendor!";
+                build.Description = $"A Build generated just for you for the lowest possible price of {price:0}. Remember to verify the prices on your own as they can differ from vendor to vendor!";
             }
 
             //Check if the components aren't null
