@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
@@ -15,6 +16,12 @@ namespace KAZABUILD.Application.DTOs.Components.ComponentPrice
 
         [DataType(DataType.DateTime)]
         public DateTime? FetchedAtEnd { get; set; } = default!;
+
+        [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
+        public decimal? PriceStart { get; set; } = default!;
+
+        [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
+        public decimal? PriceEnd { get; set; } = default!;
 
         [StringLength(4, ErrorMessage = "Currency cannot be longer than 4 characters!")]
         public List<string>? Currency { get; set; } = default!;

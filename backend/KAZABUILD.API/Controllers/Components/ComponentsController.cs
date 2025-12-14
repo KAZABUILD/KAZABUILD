@@ -1852,6 +1852,14 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.PriceStart != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price >= dto.PriceStart);
+            }
+            if (dto.PriceEnd != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price <= dto.PriceEnd);
+            }
             if (dto.BuildId != null)
             {
                 query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
@@ -1878,8 +1886,8 @@ namespace KAZABUILD.API.Controllers.Components
                         caseQuery = caseQuery.Where(c =>
                             (caseDto.FormFactor == null || caseDto.FormFactor.Contains(c.FormFactor)) &&
                             (caseDto.PowerSupplyShrouded == null || caseDto.PowerSupplyShrouded == c.PowerSupplyShrouded) &&
-                            (caseDto.PowerSupplyAmountStart == null || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
-                            (caseDto.PowerSupplyAmountEnd == null || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountStart == null || (caseDto.PowerSupplyAmountStart == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountEnd == null || (caseDto.PowerSupplyAmountEnd == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
                             (caseDto.HasTransparentSidePanel == null || caseDto.HasTransparentSidePanel == c.HasTransparentSidePanel) &&
                             (caseDto.SidePanelType == null || (c.SidePanelType != null && caseDto.SidePanelType.Contains(c.SidePanelType))) &&
                             (caseDto.MaxVideoCardLengthStart == null || caseDto.MaxVideoCardLengthStart <= c.MaxVideoCardLength) &&
@@ -1934,14 +1942,14 @@ namespace KAZABUILD.API.Controllers.Components
                             (caseFanDto.SizeEnd == null || caseFanDto.SizeEnd >= c.Size) &&
                             (caseFanDto.QuantityStart == null || caseFanDto.QuantityStart <= c.Quantity) &&
                             (caseFanDto.QuantityEnd == null || caseFanDto.QuantityEnd >= c.Quantity) &&
-                            (caseFanDto.MinAirflowStart == null || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
-                            (caseFanDto.MinAirflowEnd == null || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
-                            (caseFanDto.MaxAirflowStart == null || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
-                            (caseFanDto.MaxAirflowEnd == null || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
-                            (caseFanDto.MinNoiseLevelStart == null || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (caseFanDto.MinNoiseLevelEnd == null || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelStart == null || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelEnd == null || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (caseFanDto.MinAirflowStart == null || (caseFanDto.MinAirflowStart == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
+                            (caseFanDto.MinAirflowEnd == null || (caseFanDto.MinAirflowEnd == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
+                            (caseFanDto.MaxAirflowStart == null || (caseFanDto.MaxAirflowStart == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
+                            (caseFanDto.MaxAirflowEnd == null || (caseFanDto.MaxAirflowEnd == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
+                            (caseFanDto.MinNoiseLevelStart == null || (caseFanDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (caseFanDto.MinNoiseLevelEnd == null || (caseFanDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelStart == null || (caseFanDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelEnd == null || (caseFanDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (caseFanDto.StaticPressureAmountStart == null || caseFanDto.StaticPressureAmountStart <= c.StaticPressureAmount) &&
                             (caseFanDto.StaticPressureAmountEnd == null || caseFanDto.StaticPressureAmountEnd >= c.StaticPressureAmount) &&
                             (caseFanDto.PulseWidthModulation == null || caseFanDto.PulseWidthModulation == c.PulseWidthModulation)
@@ -1964,22 +1972,22 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by Cooler class variables
                         coolerQuery = coolerQuery.Where(c =>
-                            (coolerDto.MinFanRotationSpeedStart == null || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
-                            (coolerDto.MinFanRotationSpeedEnd == null || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedStart == null || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedEnd == null || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MinNoiseLevelStart == null || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (coolerDto.MinNoiseLevelEnd == null || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelStart == null || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelEnd == null || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (coolerDto.MinFanRotationSpeedStart == null || (coolerDto.MinFanRotationSpeedStart == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
+                            (coolerDto.MinFanRotationSpeedEnd == null || (coolerDto.MinFanRotationSpeedEnd == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedStart == null || (coolerDto.MaxFanRotationSpeedStart == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedEnd == null || (coolerDto.MaxFanRotationSpeedEnd == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MinNoiseLevelStart == null || (coolerDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (coolerDto.MinNoiseLevelEnd == null || (coolerDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelStart == null || (coolerDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelEnd == null || (coolerDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (coolerDto.HeightStart == null || coolerDto.HeightStart <= c.Height) &&
                             (coolerDto.HeightEnd == null || coolerDto.HeightEnd >= c.Height) &&
-                            (coolerDto.RadiatorSizeStart == null || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
-                            (coolerDto.RadiatorSizeEnd == null || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
-                            (coolerDto.FanSizeStart == null || coolerDto.FanSizeStart <= c.FanSize) &&
-                            (coolerDto.FanSizeEnd == null || coolerDto.FanSizeEnd >= c.FanSize) &&
-                            (coolerDto.FanQuantityStart == null || coolerDto.FanQuantityStart <= c.FanQuantity) &&
-                            (coolerDto.FanQuantityEnd == null || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
+                            (coolerDto.RadiatorSizeStart == null || (coolerDto.RadiatorSizeStart == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
+                            (coolerDto.RadiatorSizeEnd == null || (coolerDto.RadiatorSizeEnd == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
+                            (coolerDto.FanSizeStart == null || (coolerDto.FanSizeStart == 0 && c.FanSize == null) || coolerDto.FanSizeStart <= c.FanSize) &&
+                            (coolerDto.FanSizeEnd == null || (coolerDto.FanSizeEnd == 0 && c.FanSize == null) || coolerDto.FanSizeEnd >= c.FanSize) &&
+                            (coolerDto.FanQuantityStart == null || (coolerDto.FanQuantityStart == 0 && c.FanQuantity == null) || coolerDto.FanQuantityStart <= c.FanQuantity) &&
+                            (coolerDto.FanQuantityEnd == null || (coolerDto.FanQuantityEnd == 0 && c.FanQuantity == null) || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
                             (coolerDto.IsWaterCooled == null || coolerDto.IsWaterCooled == c.IsWaterCooled) &&
                             (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
                         );
@@ -2013,28 +2021,28 @@ namespace KAZABUILD.API.Controllers.Components
                             (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
                             (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
                             (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
-                            (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
-                            (cpuDto.PerformanceAmountEnd == null || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
-                            (cpuDto.EfficiencyAmountStart == null || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
-                            (cpuDto.EfficiencyAmountEnd == null || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
+                            (cpuDto.PerformanceAmountStart == null || (cpuDto.PerformanceAmountStart == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
+                            (cpuDto.PerformanceAmountEnd == null || (cpuDto.PerformanceAmountEnd == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
+                            (cpuDto.EfficiencyAmountStart == null || (cpuDto.EfficiencyAmountStart == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
+                            (cpuDto.EfficiencyAmountEnd == null || (cpuDto.EfficiencyAmountEnd == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
                             (cpuDto.ThreadsAmountStart == null || cpuDto.ThreadsAmountStart <= c.ThreadsAmount) &&
                             (cpuDto.ThreadsAmountEnd == null || cpuDto.ThreadsAmountEnd >= c.ThreadsAmount) &&
-                            (cpuDto.BasePerformanceSpeedStart == null || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
-                            (cpuDto.BasePerformanceSpeedEnd == null || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedStart == null || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedEnd == null || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BaseEfficiencySpeedStart == null || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BaseEfficiencySpeedEnd == null || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedStart == null || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedEnd == null || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
-                            (cpuDto.L1Start == null || cpuDto.L1Start <= c.L1) &&
-                            (cpuDto.L1End == null || cpuDto.L1End >= c.L1) &&
-                            (cpuDto.L2Start == null || cpuDto.L2Start <= c.L2) &&
-                            (cpuDto.L2End == null || cpuDto.L2End >= c.L2) &&
-                            (cpuDto.L3Start == null || cpuDto.L3Start <= c.L3) &&
-                            (cpuDto.L3End == null || cpuDto.L3End >= c.L3) &&
-                            (cpuDto.L4Start == null || cpuDto.L4Start <= c.L4) &&
-                            (cpuDto.L4End == null || cpuDto.L4End >= c.L4) &&
+                            (cpuDto.BasePerformanceSpeedStart == null || (cpuDto.BasePerformanceSpeedStart == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
+                            (cpuDto.BasePerformanceSpeedEnd == null || (cpuDto.BasePerformanceSpeedEnd == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedStart == null || (cpuDto.BoostPerformanceSpeedStart == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedEnd == null || (cpuDto.BoostPerformanceSpeedEnd == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BaseEfficiencySpeedStart == null || (cpuDto.BaseEfficiencySpeedStart == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BaseEfficiencySpeedEnd == null || (cpuDto.BaseEfficiencySpeedEnd == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedStart == null || (cpuDto.BoostEfficiencySpeedStart == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedEnd == null || (cpuDto.BoostEfficiencySpeedEnd == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
+                            (cpuDto.L1Start == null || (cpuDto.L1Start == 0 && c.L1 == null) || cpuDto.L1Start <= c.L1) &&
+                            (cpuDto.L1End == null || (cpuDto.L1End == 0 && c.L1 == null) || cpuDto.L1End >= c.L1) &&
+                            (cpuDto.L2Start == null || (cpuDto.L2Start == 0 && c.L2 == null) || cpuDto.L2Start <= c.L2) &&
+                            (cpuDto.L2End == null || (cpuDto.L2End == 0 && c.L2 == null) || cpuDto.L2End >= c.L2) &&
+                            (cpuDto.L3Start == null || (cpuDto.L3Start == 0 && c.L3 == null) || cpuDto.L3Start <= c.L3) &&
+                            (cpuDto.L3End == null || (cpuDto.L3End == 0 && c.L3 == null) || cpuDto.L3End >= c.L3) &&
+                            (cpuDto.L4Start == null || (cpuDto.L4Start == 0 && c.L4 == null) || cpuDto.L4Start <= c.L4) &&
+                            (cpuDto.L4End == null || (cpuDto.L4End == 0 && c.L4 == null) || cpuDto.L4End >= c.L4) &&
                             (cpuDto.ThermalDesignPowerStart == null || cpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
                             (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                         );
@@ -2118,10 +2126,10 @@ namespace KAZABUILD.API.Controllers.Components
                             (memoryDto.ModuleQuantityEnd == null || memoryDto.ModuleQuantityEnd >= c.ModuleQuantity) &&
                             (memoryDto.ModuleCapacityStart == null || memoryDto.ModuleCapacityStart <= c.ModuleCapacity) &&
                             (memoryDto.ModuleCapacityEnd == null || memoryDto.ModuleCapacityEnd >= c.ModuleCapacity) &&
-                            (memoryDto.HeightStart == null || memoryDto.HeightStart <= c.Height) &&
-                            (memoryDto.HeightEnd == null || memoryDto.HeightEnd >= c.Height) &&
-                            (memoryDto.VoltageStart == null || memoryDto.VoltageStart <= c.Voltage) &&
-                            (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
+                            (memoryDto.HeightStart == null || (memoryDto.HeightStart == 0 && c.Height == null) || memoryDto.HeightStart <= c.Height) &&
+                            (memoryDto.HeightEnd == null || (memoryDto.HeightEnd == 0 && c.Height == null) || memoryDto.HeightEnd >= c.Height) &&
+                            (memoryDto.VoltageStart == null || (memoryDto.VoltageStart == 0 && c.Voltage == null) || memoryDto.VoltageStart <= c.Voltage) &&
+                            (memoryDto.VoltageEnd == null || (memoryDto.VoltageEnd == 0 && c.Voltage == null) || memoryDto.VoltageEnd >= c.Voltage)
                         );
 
                         //Apply search for the memory Component
@@ -2160,8 +2168,8 @@ namespace KAZABUILD.API.Controllers.Components
                             (monitorDto.ViewingAngleEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleEnd) >= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
                             (monitorDto.AspectRatioStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioStart) <= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
                             (monitorDto.AspectRatioEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioEnd) >= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
-                            (monitorDto.MaxBrightnessStart == null || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
-                            (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
+                            (monitorDto.MaxBrightnessStart == null || (monitorDto.MaxBrightnessStart == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
+                            (monitorDto.MaxBrightnessEnd == null || (monitorDto.MaxBrightnessEnd == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
                         );
 
                         //Apply search for the Monitor Component
@@ -2206,24 +2214,24 @@ namespace KAZABUILD.API.Controllers.Components
                             (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
                             (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
                             (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountEnd == null || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountStart == null || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountEnd == null || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountStart == null || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountEnd == null || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountStart == null || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountEnd == null || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountStart == null || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountEnd == null || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountStart == null || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountEnd == null || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountStart == null || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountEnd == null || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountStart == null || (motherboardDto.CPUFanHeaderAmountStart == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountEnd == null || (motherboardDto.CPUFanHeaderAmountEnd == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountStart == null || (motherboardDto.CaseFanHeaderAmountStart == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountEnd == null || (motherboardDto.CaseFanHeaderAmountEnd == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountStart == null || (motherboardDto.PumpHeaderAmountStart == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountEnd == null || (motherboardDto.PumpHeaderAmountEnd == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || (motherboardDto.CPUOptionalFanHeaderAmountStart == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || (motherboardDto.CPUOptionalFanHeaderAmountEnd == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountStart == null || (motherboardDto.ARGB5vHeaderAmountStart == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountEnd == null || (motherboardDto.ARGB5vHeaderAmountEnd == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountStart == null || (motherboardDto.RGB12vHeaderAmountStart == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountEnd == null || (motherboardDto.RGB12vHeaderAmountEnd == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || (motherboardDto.TemperatureSensorHeaderAmountStart == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || (motherboardDto.TemperatureSensorHeaderAmountEnd == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountStart == null || (motherboardDto.ThunderboltHeaderAmountStart == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountEnd == null || (motherboardDto.ThunderboltHeaderAmountEnd == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountStart == null || (motherboardDto.COMPortHeaderAmountStart == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountEnd == null || (motherboardDto.COMPortHeaderAmountEnd == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
                             (motherboardDto.MaxAudioChannelsStart == null || motherboardDto.MaxAudioChannelsStart <= c.MaxAudioChannels) &&
                             (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
                         );
@@ -2928,6 +2936,14 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.PriceStart != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price >= dto.PriceStart);
+            }
+            if (dto.PriceEnd != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price <= dto.PriceEnd);
+            }
             if (dto.BuildId != null)
             {
                 query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
@@ -2954,8 +2970,8 @@ namespace KAZABUILD.API.Controllers.Components
                         caseQuery = caseQuery.Where(c =>
                             (caseDto.FormFactor == null || caseDto.FormFactor.Contains(c.FormFactor)) &&
                             (caseDto.PowerSupplyShrouded == null || caseDto.PowerSupplyShrouded == c.PowerSupplyShrouded) &&
-                            (caseDto.PowerSupplyAmountStart == null || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
-                            (caseDto.PowerSupplyAmountEnd == null || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountStart == null || (caseDto.PowerSupplyAmountStart == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountEnd == null || (caseDto.PowerSupplyAmountEnd == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
                             (caseDto.HasTransparentSidePanel == null || caseDto.HasTransparentSidePanel == c.HasTransparentSidePanel) &&
                             (caseDto.SidePanelType == null || (c.SidePanelType != null && caseDto.SidePanelType.Contains(c.SidePanelType))) &&
                             (caseDto.MaxVideoCardLengthStart == null || caseDto.MaxVideoCardLengthStart <= c.MaxVideoCardLength) &&
@@ -3010,14 +3026,14 @@ namespace KAZABUILD.API.Controllers.Components
                             (caseFanDto.SizeEnd == null || caseFanDto.SizeEnd >= c.Size) &&
                             (caseFanDto.QuantityStart == null || caseFanDto.QuantityStart <= c.Quantity) &&
                             (caseFanDto.QuantityEnd == null || caseFanDto.QuantityEnd >= c.Quantity) &&
-                            (caseFanDto.MinAirflowStart == null || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
-                            (caseFanDto.MinAirflowEnd == null || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
-                            (caseFanDto.MaxAirflowStart == null || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
-                            (caseFanDto.MaxAirflowEnd == null || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
-                            (caseFanDto.MinNoiseLevelStart == null || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (caseFanDto.MinNoiseLevelEnd == null || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelStart == null || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelEnd == null || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (caseFanDto.MinAirflowStart == null || (caseFanDto.MinAirflowStart == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
+                            (caseFanDto.MinAirflowEnd == null || (caseFanDto.MinAirflowEnd == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
+                            (caseFanDto.MaxAirflowStart == null || (caseFanDto.MaxAirflowStart == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
+                            (caseFanDto.MaxAirflowEnd == null || (caseFanDto.MaxAirflowEnd == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
+                            (caseFanDto.MinNoiseLevelStart == null || (caseFanDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (caseFanDto.MinNoiseLevelEnd == null || (caseFanDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelStart == null || (caseFanDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelEnd == null || (caseFanDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (caseFanDto.StaticPressureAmountStart == null || caseFanDto.StaticPressureAmountStart <= c.StaticPressureAmount) &&
                             (caseFanDto.StaticPressureAmountEnd == null || caseFanDto.StaticPressureAmountEnd >= c.StaticPressureAmount) &&
                             (caseFanDto.PulseWidthModulation == null || caseFanDto.PulseWidthModulation == c.PulseWidthModulation)
@@ -3040,22 +3056,22 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by Cooler class variables
                         coolerQuery = coolerQuery.Where(c =>
-                            (coolerDto.MinFanRotationSpeedStart == null || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
-                            (coolerDto.MinFanRotationSpeedEnd == null || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedStart == null || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedEnd == null || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MinNoiseLevelStart == null || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (coolerDto.MinNoiseLevelEnd == null || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelStart == null || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelEnd == null || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (coolerDto.MinFanRotationSpeedStart == null || (coolerDto.MinFanRotationSpeedStart == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
+                            (coolerDto.MinFanRotationSpeedEnd == null || (coolerDto.MinFanRotationSpeedEnd == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedStart == null || (coolerDto.MaxFanRotationSpeedStart == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedEnd == null || (coolerDto.MaxFanRotationSpeedEnd == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MinNoiseLevelStart == null || (coolerDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (coolerDto.MinNoiseLevelEnd == null || (coolerDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelStart == null || (coolerDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelEnd == null || (coolerDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (coolerDto.HeightStart == null || coolerDto.HeightStart <= c.Height) &&
                             (coolerDto.HeightEnd == null || coolerDto.HeightEnd >= c.Height) &&
-                            (coolerDto.RadiatorSizeStart == null || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
-                            (coolerDto.RadiatorSizeEnd == null || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
-                            (coolerDto.FanSizeStart == null || coolerDto.FanSizeStart <= c.FanSize) &&
-                            (coolerDto.FanSizeEnd == null || coolerDto.FanSizeEnd >= c.FanSize) &&
-                            (coolerDto.FanQuantityStart == null || coolerDto.FanQuantityStart <= c.FanQuantity) &&
-                            (coolerDto.FanQuantityEnd == null || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
+                            (coolerDto.RadiatorSizeStart == null || (coolerDto.RadiatorSizeStart == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
+                            (coolerDto.RadiatorSizeEnd == null || (coolerDto.RadiatorSizeEnd == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
+                            (coolerDto.FanSizeStart == null || (coolerDto.FanSizeStart == 0 && c.FanSize == null) || coolerDto.FanSizeStart <= c.FanSize) &&
+                            (coolerDto.FanSizeEnd == null || (coolerDto.FanSizeEnd == 0 && c.FanSize == null) || coolerDto.FanSizeEnd >= c.FanSize) &&
+                            (coolerDto.FanQuantityStart == null || (coolerDto.FanQuantityStart == 0 && c.FanQuantity == null) || coolerDto.FanQuantityStart <= c.FanQuantity) &&
+                            (coolerDto.FanQuantityEnd == null || (coolerDto.FanQuantityEnd == 0 && c.FanQuantity == null) || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
                             (coolerDto.IsWaterCooled == null || coolerDto.IsWaterCooled == c.IsWaterCooled) &&
                             (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
                         );
@@ -3089,28 +3105,28 @@ namespace KAZABUILD.API.Controllers.Components
                             (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
                             (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
                             (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
-                            (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
-                            (cpuDto.PerformanceAmountEnd == null || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
-                            (cpuDto.EfficiencyAmountStart == null || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
-                            (cpuDto.EfficiencyAmountEnd == null || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
+                            (cpuDto.PerformanceAmountStart == null || (cpuDto.PerformanceAmountStart == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
+                            (cpuDto.PerformanceAmountEnd == null || (cpuDto.PerformanceAmountEnd == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
+                            (cpuDto.EfficiencyAmountStart == null || (cpuDto.EfficiencyAmountStart == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
+                            (cpuDto.EfficiencyAmountEnd == null || (cpuDto.EfficiencyAmountEnd == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
                             (cpuDto.ThreadsAmountStart == null || cpuDto.ThreadsAmountStart <= c.ThreadsAmount) &&
                             (cpuDto.ThreadsAmountEnd == null || cpuDto.ThreadsAmountEnd >= c.ThreadsAmount) &&
-                            (cpuDto.BasePerformanceSpeedStart == null || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
-                            (cpuDto.BasePerformanceSpeedEnd == null || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedStart == null || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedEnd == null || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BaseEfficiencySpeedStart == null || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BaseEfficiencySpeedEnd == null || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedStart == null || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedEnd == null || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
-                            (cpuDto.L1Start == null || cpuDto.L1Start <= c.L1) &&
-                            (cpuDto.L1End == null || cpuDto.L1End >= c.L1) &&
-                            (cpuDto.L2Start == null || cpuDto.L2Start <= c.L2) &&
-                            (cpuDto.L2End == null || cpuDto.L2End >= c.L2) &&
-                            (cpuDto.L3Start == null || cpuDto.L3Start <= c.L3) &&
-                            (cpuDto.L3End == null || cpuDto.L3End >= c.L3) &&
-                            (cpuDto.L4Start == null || cpuDto.L4Start <= c.L4) &&
-                            (cpuDto.L4End == null || cpuDto.L4End >= c.L4) &&
+                            (cpuDto.BasePerformanceSpeedStart == null || (cpuDto.BasePerformanceSpeedStart == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
+                            (cpuDto.BasePerformanceSpeedEnd == null || (cpuDto.BasePerformanceSpeedEnd == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedStart == null || (cpuDto.BoostPerformanceSpeedStart == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedEnd == null || (cpuDto.BoostPerformanceSpeedEnd == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BaseEfficiencySpeedStart == null || (cpuDto.BaseEfficiencySpeedStart == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BaseEfficiencySpeedEnd == null || (cpuDto.BaseEfficiencySpeedEnd == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedStart == null || (cpuDto.BoostEfficiencySpeedStart == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedEnd == null || (cpuDto.BoostEfficiencySpeedEnd == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
+                            (cpuDto.L1Start == null || (cpuDto.L1Start == 0 && c.L1 == null) || cpuDto.L1Start <= c.L1) &&
+                            (cpuDto.L1End == null || (cpuDto.L1End == 0 && c.L1 == null) || cpuDto.L1End >= c.L1) &&
+                            (cpuDto.L2Start == null || (cpuDto.L2Start == 0 && c.L2 == null) || cpuDto.L2Start <= c.L2) &&
+                            (cpuDto.L2End == null || (cpuDto.L2End == 0 && c.L2 == null) || cpuDto.L2End >= c.L2) &&
+                            (cpuDto.L3Start == null || (cpuDto.L3Start == 0 && c.L3 == null) || cpuDto.L3Start <= c.L3) &&
+                            (cpuDto.L3End == null || (cpuDto.L3End == 0 && c.L3 == null) || cpuDto.L3End >= c.L3) &&
+                            (cpuDto.L4Start == null || (cpuDto.L4Start == 0 && c.L4 == null) || cpuDto.L4Start <= c.L4) &&
+                            (cpuDto.L4End == null || (cpuDto.L4End == 0 && c.L4 == null) || cpuDto.L4End >= c.L4) &&
                             (cpuDto.ThermalDesignPowerStart == null || cpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
                             (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                         );
@@ -3194,10 +3210,10 @@ namespace KAZABUILD.API.Controllers.Components
                             (memoryDto.ModuleQuantityEnd == null || memoryDto.ModuleQuantityEnd >= c.ModuleQuantity) &&
                             (memoryDto.ModuleCapacityStart == null || memoryDto.ModuleCapacityStart <= c.ModuleCapacity) &&
                             (memoryDto.ModuleCapacityEnd == null || memoryDto.ModuleCapacityEnd >= c.ModuleCapacity) &&
-                            (memoryDto.HeightStart == null || memoryDto.HeightStart <= c.Height) &&
-                            (memoryDto.HeightEnd == null || memoryDto.HeightEnd >= c.Height) &&
-                            (memoryDto.VoltageStart == null || memoryDto.VoltageStart <= c.Voltage) &&
-                            (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
+                            (memoryDto.HeightStart == null || (memoryDto.HeightStart == 0 && c.Height == null) || memoryDto.HeightStart <= c.Height) &&
+                            (memoryDto.HeightEnd == null || (memoryDto.HeightEnd == 0 && c.Height == null) || memoryDto.HeightEnd >= c.Height) &&
+                            (memoryDto.VoltageStart == null || (memoryDto.VoltageStart == 0 && c.Voltage == null) || memoryDto.VoltageStart <= c.Voltage) &&
+                            (memoryDto.VoltageEnd == null || (memoryDto.VoltageEnd == 0 && c.Voltage == null) || memoryDto.VoltageEnd >= c.Voltage)
                         );
 
                         //Apply search for the memory Component
@@ -3236,8 +3252,8 @@ namespace KAZABUILD.API.Controllers.Components
                             (monitorDto.ViewingAngleEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleEnd) >= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
                             (monitorDto.AspectRatioStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioStart) <= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
                             (monitorDto.AspectRatioEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioEnd) >= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
-                            (monitorDto.MaxBrightnessStart == null || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
-                            (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
+                            (monitorDto.MaxBrightnessStart == null || (monitorDto.MaxBrightnessStart == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
+                            (monitorDto.MaxBrightnessEnd == null || (monitorDto.MaxBrightnessEnd == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
                         );
 
                         //Apply search for the Monitor Component
@@ -3282,24 +3298,24 @@ namespace KAZABUILD.API.Controllers.Components
                             (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
                             (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
                             (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountEnd == null || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountStart == null || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountEnd == null || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountStart == null || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountEnd == null || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountStart == null || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountEnd == null || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountStart == null || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountEnd == null || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountStart == null || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountEnd == null || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountStart == null || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountEnd == null || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountStart == null || (motherboardDto.CPUFanHeaderAmountStart == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountEnd == null || (motherboardDto.CPUFanHeaderAmountEnd == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountStart == null || (motherboardDto.CaseFanHeaderAmountStart == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountEnd == null || (motherboardDto.CaseFanHeaderAmountEnd == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountStart == null || (motherboardDto.PumpHeaderAmountStart == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountEnd == null || (motherboardDto.PumpHeaderAmountEnd == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || (motherboardDto.CPUOptionalFanHeaderAmountStart == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || (motherboardDto.CPUOptionalFanHeaderAmountEnd == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountStart == null || (motherboardDto.ARGB5vHeaderAmountStart == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountEnd == null || (motherboardDto.ARGB5vHeaderAmountEnd == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountStart == null || (motherboardDto.RGB12vHeaderAmountStart == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountEnd == null || (motherboardDto.RGB12vHeaderAmountEnd == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || (motherboardDto.TemperatureSensorHeaderAmountStart == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || (motherboardDto.TemperatureSensorHeaderAmountEnd == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountStart == null || (motherboardDto.ThunderboltHeaderAmountStart == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountEnd == null || (motherboardDto.ThunderboltHeaderAmountEnd == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountStart == null || (motherboardDto.COMPortHeaderAmountStart == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountEnd == null || (motherboardDto.COMPortHeaderAmountEnd == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
                             (motherboardDto.MaxAudioChannelsStart == null || motherboardDto.MaxAudioChannelsStart <= c.MaxAudioChannels) &&
                             (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
                         );
@@ -3457,6 +3473,14 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.PriceStart != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price >= dto.PriceStart);
+            }
+            if (dto.PriceEnd != null)
+            {
+                query = query.Where(c => c.Prices.Any() && c.Prices.OrderBy(p => p.FetchedAt).First().Price <= dto.PriceEnd);
+            }
             if (dto.BuildId != null)
             {
                 query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
@@ -3483,8 +3507,8 @@ namespace KAZABUILD.API.Controllers.Components
                         caseQuery = caseQuery.Where(c =>
                             (caseDto.FormFactor == null || caseDto.FormFactor.Contains(c.FormFactor)) &&
                             (caseDto.PowerSupplyShrouded == null || caseDto.PowerSupplyShrouded == c.PowerSupplyShrouded) &&
-                            (caseDto.PowerSupplyAmountStart == null || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
-                            (caseDto.PowerSupplyAmountEnd == null || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountStart == null || (caseDto.PowerSupplyAmountStart == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountEnd == null || (caseDto.PowerSupplyAmountEnd == 0 && c.PowerSupplyAmount == null) || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
                             (caseDto.HasTransparentSidePanel == null || caseDto.HasTransparentSidePanel == c.HasTransparentSidePanel) &&
                             (caseDto.SidePanelType == null || (c.SidePanelType != null && caseDto.SidePanelType.Contains(c.SidePanelType))) &&
                             (caseDto.MaxVideoCardLengthStart == null || caseDto.MaxVideoCardLengthStart <= c.MaxVideoCardLength) &&
@@ -3539,14 +3563,14 @@ namespace KAZABUILD.API.Controllers.Components
                             (caseFanDto.SizeEnd == null || caseFanDto.SizeEnd >= c.Size) &&
                             (caseFanDto.QuantityStart == null || caseFanDto.QuantityStart <= c.Quantity) &&
                             (caseFanDto.QuantityEnd == null || caseFanDto.QuantityEnd >= c.Quantity) &&
-                            (caseFanDto.MinAirflowStart == null || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
-                            (caseFanDto.MinAirflowEnd == null || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
-                            (caseFanDto.MaxAirflowStart == null || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
-                            (caseFanDto.MaxAirflowEnd == null || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
-                            (caseFanDto.MinNoiseLevelStart == null || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (caseFanDto.MinNoiseLevelEnd == null || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelStart == null || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (caseFanDto.MaxNoiseLevelEnd == null || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (caseFanDto.MinAirflowStart == null || (caseFanDto.MinAirflowStart == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
+                            (caseFanDto.MinAirflowEnd == null || (caseFanDto.MinAirflowEnd == 0 && c.MinAirflow == null) || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
+                            (caseFanDto.MaxAirflowStart == null || (caseFanDto.MaxAirflowStart == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
+                            (caseFanDto.MaxAirflowEnd == null || (caseFanDto.MaxAirflowEnd == 0 && c.MaxAirflow == null) || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
+                            (caseFanDto.MinNoiseLevelStart == null || (caseFanDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (caseFanDto.MinNoiseLevelEnd == null || (caseFanDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelStart == null || (caseFanDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelEnd == null || (caseFanDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (caseFanDto.StaticPressureAmountStart == null || caseFanDto.StaticPressureAmountStart <= c.StaticPressureAmount) &&
                             (caseFanDto.StaticPressureAmountEnd == null || caseFanDto.StaticPressureAmountEnd >= c.StaticPressureAmount) &&
                             (caseFanDto.PulseWidthModulation == null || caseFanDto.PulseWidthModulation == c.PulseWidthModulation)
@@ -3569,22 +3593,22 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by Cooler class variables
                         coolerQuery = coolerQuery.Where(c =>
-                            (coolerDto.MinFanRotationSpeedStart == null || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
-                            (coolerDto.MinFanRotationSpeedEnd == null || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedStart == null || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MaxFanRotationSpeedEnd == null || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
-                            (coolerDto.MinNoiseLevelStart == null || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
-                            (coolerDto.MinNoiseLevelEnd == null || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelStart == null || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
-                            (coolerDto.MaxNoiseLevelEnd == null || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (coolerDto.MinFanRotationSpeedStart == null || (coolerDto.MinFanRotationSpeedStart == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
+                            (coolerDto.MinFanRotationSpeedEnd == null || (coolerDto.MinFanRotationSpeedEnd == 0 && c.MinFanRotationSpeed == null) || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedStart == null || (coolerDto.MaxFanRotationSpeedStart == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedEnd == null || (coolerDto.MaxFanRotationSpeedEnd == 0 && c.MaxFanRotationSpeed == null) || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MinNoiseLevelStart == null || (coolerDto.MinNoiseLevelStart == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (coolerDto.MinNoiseLevelEnd == null || (coolerDto.MinNoiseLevelEnd == 0 && c.MinNoiseLevel == null) || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelStart == null || (coolerDto.MaxNoiseLevelStart == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelEnd == null || (coolerDto.MaxNoiseLevelEnd == 0 && c.MaxNoiseLevel == null) || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
                             (coolerDto.HeightStart == null || coolerDto.HeightStart <= c.Height) &&
                             (coolerDto.HeightEnd == null || coolerDto.HeightEnd >= c.Height) &&
-                            (coolerDto.RadiatorSizeStart == null || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
-                            (coolerDto.RadiatorSizeEnd == null || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
-                            (coolerDto.FanSizeStart == null || coolerDto.FanSizeStart <= c.FanSize) &&
-                            (coolerDto.FanSizeEnd == null || coolerDto.FanSizeEnd >= c.FanSize) &&
-                            (coolerDto.FanQuantityStart == null || coolerDto.FanQuantityStart <= c.FanQuantity) &&
-                            (coolerDto.FanQuantityEnd == null || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
+                            (coolerDto.RadiatorSizeStart == null || (coolerDto.RadiatorSizeStart == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
+                            (coolerDto.RadiatorSizeEnd == null || (coolerDto.RadiatorSizeEnd == 0 && c.RadiatorSize == null) || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
+                            (coolerDto.FanSizeStart == null || (coolerDto.FanSizeStart == 0 && c.FanSize == null) || coolerDto.FanSizeStart <= c.FanSize) &&
+                            (coolerDto.FanSizeEnd == null || (coolerDto.FanSizeEnd == 0 && c.FanSize == null) || coolerDto.FanSizeEnd >= c.FanSize) &&
+                            (coolerDto.FanQuantityStart == null || (coolerDto.FanQuantityStart == 0 && c.FanQuantity == null) || coolerDto.FanQuantityStart <= c.FanQuantity) &&
+                            (coolerDto.FanQuantityEnd == null || (coolerDto.FanQuantityEnd == 0 && c.FanQuantity == null) || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
                             (coolerDto.IsWaterCooled == null || coolerDto.IsWaterCooled == c.IsWaterCooled) &&
                             (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
                         );
@@ -3618,28 +3642,28 @@ namespace KAZABUILD.API.Controllers.Components
                             (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
                             (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
                             (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
-                            (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
-                            (cpuDto.PerformanceAmountEnd == null || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
-                            (cpuDto.EfficiencyAmountStart == null || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
-                            (cpuDto.EfficiencyAmountEnd == null || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
+                            (cpuDto.PerformanceAmountStart == null || (cpuDto.PerformanceAmountStart == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
+                            (cpuDto.PerformanceAmountEnd == null || (cpuDto.PerformanceAmountEnd == 0 && c.PerformanceAmount == null) || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
+                            (cpuDto.EfficiencyAmountStart == null || (cpuDto.EfficiencyAmountStart == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
+                            (cpuDto.EfficiencyAmountEnd == null || (cpuDto.EfficiencyAmountEnd == 0 && c.EfficiencyAmount == null) || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
                             (cpuDto.ThreadsAmountStart == null || cpuDto.ThreadsAmountStart <= c.ThreadsAmount) &&
                             (cpuDto.ThreadsAmountEnd == null || cpuDto.ThreadsAmountEnd >= c.ThreadsAmount) &&
-                            (cpuDto.BasePerformanceSpeedStart == null || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
-                            (cpuDto.BasePerformanceSpeedEnd == null || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedStart == null || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BoostPerformanceSpeedEnd == null || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
-                            (cpuDto.BaseEfficiencySpeedStart == null || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BaseEfficiencySpeedEnd == null || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedStart == null || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
-                            (cpuDto.BoostEfficiencySpeedEnd == null || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
-                            (cpuDto.L1Start == null || cpuDto.L1Start <= c.L1) &&
-                            (cpuDto.L1End == null || cpuDto.L1End >= c.L1) &&
-                            (cpuDto.L2Start == null || cpuDto.L2Start <= c.L2) &&
-                            (cpuDto.L2End == null || cpuDto.L2End >= c.L2) &&
-                            (cpuDto.L3Start == null || cpuDto.L3Start <= c.L3) &&
-                            (cpuDto.L3End == null || cpuDto.L3End >= c.L3) &&
-                            (cpuDto.L4Start == null || cpuDto.L4Start <= c.L4) &&
-                            (cpuDto.L4End == null || cpuDto.L4End >= c.L4) &&
+                            (cpuDto.BasePerformanceSpeedStart == null || (cpuDto.BasePerformanceSpeedStart == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
+                            (cpuDto.BasePerformanceSpeedEnd == null || (cpuDto.BasePerformanceSpeedEnd == 0 && c.BasePerformanceSpeed == null) || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedStart == null || (cpuDto.BoostPerformanceSpeedStart == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedEnd == null || (cpuDto.BoostPerformanceSpeedEnd == 0 && c.BoostPerformanceSpeed == null) || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BaseEfficiencySpeedStart == null || (cpuDto.BaseEfficiencySpeedStart == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BaseEfficiencySpeedEnd == null || (cpuDto.BaseEfficiencySpeedEnd == 0 && c.BaseEfficiencySpeed == null) || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedStart == null || (cpuDto.BoostEfficiencySpeedStart == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedEnd == null || (cpuDto.BoostEfficiencySpeedEnd == 0 && c.BoostEfficiencySpeed == null) || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
+                            (cpuDto.L1Start == null || (cpuDto.L1Start == 0 && c.L1 == null) || cpuDto.L1Start <= c.L1) &&
+                            (cpuDto.L1End == null || (cpuDto.L1End == 0 && c.L1 == null) || cpuDto.L1End >= c.L1) &&
+                            (cpuDto.L2Start == null || (cpuDto.L2Start == 0 && c.L2 == null) || cpuDto.L2Start <= c.L2) &&
+                            (cpuDto.L2End == null || (cpuDto.L2End == 0 && c.L2 == null) || cpuDto.L2End >= c.L2) &&
+                            (cpuDto.L3Start == null || (cpuDto.L3Start == 0 && c.L3 == null) || cpuDto.L3Start <= c.L3) &&
+                            (cpuDto.L3End == null || (cpuDto.L3End == 0 && c.L3 == null) || cpuDto.L3End >= c.L3) &&
+                            (cpuDto.L4Start == null || (cpuDto.L4Start == 0 && c.L4 == null) || cpuDto.L4Start <= c.L4) &&
+                            (cpuDto.L4End == null || (cpuDto.L4End == 0 && c.L4 == null) || cpuDto.L4End >= c.L4) &&
                             (cpuDto.ThermalDesignPowerStart == null || cpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
                             (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
                         );
@@ -3723,10 +3747,10 @@ namespace KAZABUILD.API.Controllers.Components
                             (memoryDto.ModuleQuantityEnd == null || memoryDto.ModuleQuantityEnd >= c.ModuleQuantity) &&
                             (memoryDto.ModuleCapacityStart == null || memoryDto.ModuleCapacityStart <= c.ModuleCapacity) &&
                             (memoryDto.ModuleCapacityEnd == null || memoryDto.ModuleCapacityEnd >= c.ModuleCapacity) &&
-                            (memoryDto.HeightStart == null || memoryDto.HeightStart <= c.Height) &&
-                            (memoryDto.HeightEnd == null || memoryDto.HeightEnd >= c.Height) &&
-                            (memoryDto.VoltageStart == null || memoryDto.VoltageStart <= c.Voltage) &&
-                            (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
+                            (memoryDto.HeightStart == null || (memoryDto.HeightStart == 0 && c.Height == null) || memoryDto.HeightStart <= c.Height) &&
+                            (memoryDto.HeightEnd == null || (memoryDto.HeightEnd == 0 && c.Height == null) || memoryDto.HeightEnd >= c.Height) &&
+                            (memoryDto.VoltageStart == null || (memoryDto.VoltageStart == 0 && c.Voltage == null) || memoryDto.VoltageStart <= c.Voltage) &&
+                            (memoryDto.VoltageEnd == null || (memoryDto.VoltageEnd == 0 && c.Voltage == null) || memoryDto.VoltageEnd >= c.Voltage)
                         );
 
                         //Apply search for the memory Component
@@ -3765,8 +3789,8 @@ namespace KAZABUILD.API.Controllers.Components
                             (monitorDto.ViewingAngleEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleEnd) >= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
                             (monitorDto.AspectRatioStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioStart) <= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
                             (monitorDto.AspectRatioEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioEnd) >= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
-                            (monitorDto.MaxBrightnessStart == null || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
-                            (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
+                            (monitorDto.MaxBrightnessStart == null || (monitorDto.MaxBrightnessStart == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
+                            (monitorDto.MaxBrightnessEnd == null || (monitorDto.MaxBrightnessEnd == 0 && c.MaxBrightness == null) || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
                         );
 
                         //Apply search for the Monitor Component
@@ -3811,24 +3835,24 @@ namespace KAZABUILD.API.Controllers.Components
                             (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
                             (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
                             (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CPUFanHeaderAmountEnd == null || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountStart == null || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.CaseFanHeaderAmountEnd == null || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountStart == null || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
-                            (motherboardDto.PumpHeaderAmountEnd == null || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountStart == null || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.ARGB5vHeaderAmountEnd == null || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountStart == null || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.RGB12vHeaderAmountEnd == null || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountStart == null || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.ThunderboltHeaderAmountEnd == null || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountStart == null || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
-                            (motherboardDto.COMPortHeaderAmountEnd == null || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountStart == null || (motherboardDto.CPUFanHeaderAmountStart == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountEnd == null || (motherboardDto.CPUFanHeaderAmountEnd == 0 && c.CPUFanHeaderAmount == null) || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountStart == null || (motherboardDto.CaseFanHeaderAmountStart == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountEnd == null || (motherboardDto.CaseFanHeaderAmountEnd == 0 && c.CaseFanHeaderAmount == null) || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountStart == null || (motherboardDto.PumpHeaderAmountStart == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountEnd == null || (motherboardDto.PumpHeaderAmountEnd == 0 && c.PumpHeaderAmount == null) || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || (motherboardDto.CPUOptionalFanHeaderAmountStart == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || (motherboardDto.CPUOptionalFanHeaderAmountEnd == 0 && c.CPUOptionalFanHeaderAmount == null) || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountStart == null || (motherboardDto.ARGB5vHeaderAmountStart == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountEnd == null || (motherboardDto.ARGB5vHeaderAmountEnd == 0 && c.ARGB5vHeaderAmount == null) || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountStart == null || (motherboardDto.RGB12vHeaderAmountStart == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountEnd == null || (motherboardDto.RGB12vHeaderAmountEnd == 0 && c.RGB12vHeaderAmount == null) || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || (motherboardDto.TemperatureSensorHeaderAmountStart == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || (motherboardDto.TemperatureSensorHeaderAmountEnd == 0 && c.TemperatureSensorHeaderAmount == null) || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountStart == null || (motherboardDto.ThunderboltHeaderAmountStart == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountEnd == null || (motherboardDto.ThunderboltHeaderAmountEnd == 0 && c.ThunderboltHeaderAmount == null) || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountStart == null || (motherboardDto.COMPortHeaderAmountStart == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountEnd == null || (motherboardDto.COMPortHeaderAmountEnd == 0 && c.COMPortHeaderAmount == null) || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
                             (motherboardDto.MaxAudioChannelsStart == null || motherboardDto.MaxAudioChannelsStart <= c.MaxAudioChannels) &&
                             (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
                         );

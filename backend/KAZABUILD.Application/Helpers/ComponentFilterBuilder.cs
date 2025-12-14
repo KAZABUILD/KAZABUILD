@@ -140,6 +140,11 @@ namespace KAZABUILD.Application.Helpers
                     field.MinNumeric = field.MinNumeric.HasValue ? Math.Min(field.MinNumeric.Value, v) : v;
                     field.MaxNumeric = field.MaxNumeric.HasValue ? Math.Max(field.MaxNumeric.Value, v) : v;
                 }
+                else
+                {
+                    //For nullable fields, set MinNumeric to 0 to indicate that null values exist
+                    field.MinNumeric = field.MinNumeric.HasValue ? Math.Min(field.MinNumeric.Value, 0) : 0;
+                }
             }
             //Process if the property is a date type
             else if (dateTypes.Contains(propertyType))

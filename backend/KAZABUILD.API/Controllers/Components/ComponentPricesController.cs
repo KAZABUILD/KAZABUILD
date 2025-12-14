@@ -414,6 +414,14 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(p => p.FetchedAt <= dto.FetchedAtEnd);
             }
+            if (dto.PriceStart != null)
+            {
+                query = query.Where(p => p.Price >= dto.PriceStart);
+            }
+            if (dto.PriceEnd != null)
+            {
+                query = query.Where(p => p.Price <= dto.PriceEnd);
+            }
             if (dto.Currency != null)
             {
                 query = query.Where(p => dto.Currency.Contains(p.Currency));

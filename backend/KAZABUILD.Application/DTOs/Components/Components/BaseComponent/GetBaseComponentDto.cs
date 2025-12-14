@@ -43,6 +43,12 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 
         public List<Guid>? BuildId { get; set; }
 
+        [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
+        public decimal? PriceStart { get; set; } = default!;
+
+        [Range(0, 9999999.99, ErrorMessage = "Price must be between 0 and 9,999,999.99")]
+        public decimal? PriceEnd { get; set; } = default!;
+
         public List<ComponentType>? Type { get; set; }
 
         //Paging related fields
