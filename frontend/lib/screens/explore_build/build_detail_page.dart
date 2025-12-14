@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/build_provider.dart';
+import 'package:frontend/models/component_provider.dart';
 import 'package:frontend/models/explore_build_model.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/comments_provider.dart';
@@ -25,7 +26,8 @@ import 'package:frontend/l10n/app_localization.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frontend/utils/error_utils.dart';
-import 'package:frontend/screens/builder/build_now_page.dart' show buildProvider;
+import 'package:frontend/screens/builder/build_now_page.dart'
+    show buildProvider;
 import 'package:image_picker/image_picker.dart';
 import 'package:frontend/models/image_provider.dart';
 import 'package:frontend/widgets/linkable_text.dart';
@@ -33,11 +35,14 @@ import 'dart:typed_data';
 
 /// Provider to fetch user details based on their ID
 /// Uses autoDispose to prevent caching - data will be refetched each time the page is opened.
-final buildUserProvider = FutureProvider.autoDispose.family<AppUser?, String>((ref, userId) async {
+final buildUserProvider = FutureProvider.autoDispose.family<AppUser?, String>((
+  ref,
+  userId,
+) async {
   try {
     final authService = ref.read(authServiceProvider);
     final userResponse = await authService.getUserById(userId);
-    
+
     if (userResponse.statusCode == 200 && userResponse.data != null) {
       try {
         final user = AppUser.fromJson(userResponse.data);
@@ -89,7 +94,9 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
             child: buildAsyncValue.when(
               data: (build) => _buildContentView(context, ref, build),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text(AppLocalizations.of(context)!.errorLoadingBuilds)),
+              error: (err, stack) => Center(
+                child: Text(AppLocalizations.of(context)!.errorLoadingBuilds),
+              ),
             ),
           ),
         ],
@@ -177,10 +184,15 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
   }
 
   /// Builds the build image widget with proper URL construction and error handling
-  Widget _buildBuildImage(BuildContext context, ThemeData theme, Build build, {required bool isMobile}) {
+  Widget _buildBuildImage(
+    BuildContext context,
+    ThemeData theme,
+    Build build, {
+    required bool isMobile,
+  }) {
     final imageUrl = _getImageUrl(build);
     final imageHeight = isMobile ? 260.0 : 400.0;
-    
+
     if (imageUrl == null || imageUrl.isEmpty) {
       return _buildPlaceholderImage(context, theme);
     }
@@ -206,7 +218,7 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
                 strokeWidth: 2,
                 value: loadingProgress.expectedTotalBytes != null
                     ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
+                          loadingProgress.expectedTotalBytes!
                     : null,
               ),
             ),
@@ -227,10 +239,11 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
     }
 
     final url = build.imageUrl!;
-    
+
     // Check if it's a GUID (image ID)
     final guidPattern = RegExp(
-        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
     if (guidPattern.hasMatch(url)) {
       // It's an image ID, construct download URL
       return '$apiBaseUrl/Images/download/$url';
@@ -266,10 +279,16 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
   }
 
   /// Builds the row containing metadata about the build, such as the author and post date.
-  Widget _buildMetaInfo(BuildContext context, WidgetRef ref, ThemeData theme, Build build, {required bool isMobile}) {
+  Widget _buildMetaInfo(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    Build build, {
+    required bool isMobile,
+  }) {
     // If author is not included in build, fetch it using userId
-    final authorAsync = build.author != null 
-        ? AsyncValue.data(build.author) 
+    final authorAsync = build.author != null
+        ? AsyncValue.data(build.author)
         : ref.watch(buildUserProvider(build.userId));
     final currentUser = ref.watch(authProvider).valueOrNull;
     final isOwner = currentUser != null && currentUser.uid == build.userId;
@@ -283,12 +302,8 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
     }) {
       return [
         if (authorWidget != null) authorWidget,
-        if (authorWidget != null)
-          Text('•', style: theme.textTheme.bodySmall),
-        Text(
-          postedText,
-          style: theme.textTheme.bodySmall,
-        ),
+        if (authorWidget != null) Text('•', style: theme.textTheme.bodySmall),
+        Text(postedText, style: theme.textTheme.bodySmall),
         if (canEditAction)
           OutlinedButton.icon(
             onPressed: () {
@@ -340,7 +355,9 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    author.displayName.isNotEmpty ? author.displayName : author.username,
+                    author.displayName.isNotEmpty
+                        ? author.displayName
+                        : author.username,
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -386,7 +403,11 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
             authorWidget: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
+                Icon(
+                  Icons.error_outline,
+                  size: 16,
+                  color: theme.colorScheme.error,
+                ),
                 const SizedBox(width: 8),
                 Text('Unknown User', style: theme.textTheme.bodyMedium),
               ],
@@ -400,7 +421,11 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
   }
 
   /// Builds the row containing the build's title and its star rating.
-  Widget _buildTitleAndRating(ThemeData theme, Build build, {required bool isMobile}) {
+  Widget _buildTitleAndRating(
+    ThemeData theme,
+    Build build, {
+    required bool isMobile,
+  }) {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,13 +467,13 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
 /// Widget that displays the list of tags for a build
 class _TagsSection extends StatelessWidget {
   final List<String> tags;
-  
+
   const _TagsSection({required this.tags});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -472,11 +497,7 @@ class _TagsSection extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.label,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
+                Icon(Icons.label, size: 16, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
                 Text(
                   tag,
@@ -497,7 +518,7 @@ class _TagsSection extends StatelessWidget {
 /// Widget that displays the list of components in a build
 class _ComponentsSection extends ConsumerWidget {
   final List<BaseComponent> components;
-  
+
   const _ComponentsSection({required this.components});
 
   String _getComponentTypeName(BuildContext context, ComponentType type) {
@@ -554,7 +575,7 @@ class _ComponentsSection extends ConsumerWidget {
   void _showComponentDetails(BuildContext context, BaseComponent component) {
     final theme = Theme.of(context);
     final lowestPrice = component.lowestPrice;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -578,8 +599,18 @@ class _ComponentsSection extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Basic info
-              _buildInfoRow(context, theme, AppLocalizations.of(context)!.manufacturer, component.manufacturer),
-              _buildInfoRow(context, theme, AppLocalizations.of(context)!.type, _getComponentTypeName(context, component.type)),
+              _buildInfoRow(
+                context,
+                theme,
+                AppLocalizations.of(context)!.manufacturer,
+                component.manufacturer,
+              ),
+              _buildInfoRow(
+                context,
+                theme,
+                AppLocalizations.of(context)!.type,
+                _getComponentTypeName(context, component.type),
+              ),
               if (lowestPrice != null)
                 _buildInfoRow(
                   context,
@@ -593,7 +624,9 @@ class _ComponentsSection extends ConsumerWidget {
                   context,
                   theme,
                   AppLocalizations.of(context)!.vendors,
-                  AppLocalizations.of(context)!.fromVendors(component.prices.length),
+                  AppLocalizations.of(
+                    context,
+                  )!.fromVendors(component.prices.length),
                 ),
               if (component.release != null)
                 _buildInfoRow(
@@ -605,7 +638,7 @@ class _ComponentsSection extends ConsumerWidget {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
-              
+
               // Component-specific details
               ..._buildComponentSpecificDetails(context, theme, component),
             ],
@@ -621,7 +654,11 @@ class _ComponentsSection extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildComponentSpecificDetails(BuildContext context, ThemeData theme, BaseComponent component) {
+  List<Widget> _buildComponentSpecificDetails(
+    BuildContext context,
+    ThemeData theme,
+    BaseComponent component,
+  ) {
     switch (component.type) {
       case ComponentType.cpu:
         if (component is CPUComponent) {
@@ -636,35 +673,115 @@ class _ComponentsSection extends ConsumerWidget {
             const SizedBox(height: 12),
             _buildInfoRow(context, theme, 'Series', component.series),
             _buildInfoRow(context, theme, 'Socket', component.socketType),
-            _buildInfoRow(context, theme, 'Microarchitecture', component.microarchitecture),
+            _buildInfoRow(
+              context,
+              theme,
+              'Microarchitecture',
+              component.microarchitecture,
+            ),
             _buildInfoRow(context, theme, 'Core Family', component.coreFamily),
-            _buildInfoRow(context, theme, 'Total Cores', '${component.coreTotal}'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Total Cores',
+              '${component.coreTotal}',
+            ),
             if (component.performanceAmount != null)
-              _buildInfoRow(context, theme, 'P-Cores', '${component.performanceAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'P-Cores',
+                '${component.performanceAmount}',
+              ),
             if (component.efficiencyAmount != null)
-              _buildInfoRow(context, theme, 'E-Cores', '${component.efficiencyAmount}'),
-            _buildInfoRow(context, theme, 'Threads', '${component.threadsAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'E-Cores',
+                '${component.efficiencyAmount}',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Threads',
+              '${component.threadsAmount}',
+            ),
             if (component.basePerformanceSpeed != null)
-              _buildInfoRow(context, theme, 'Base Clock (P-Core)', '${component.basePerformanceSpeed} GHz'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Base Clock (P-Core)',
+                '${component.basePerformanceSpeed} GHz',
+              ),
             if (component.boostPerformanceSpeed != null)
-              _buildInfoRow(context, theme, 'Boost Clock (P-Core)', '${component.boostPerformanceSpeed} GHz'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Boost Clock (P-Core)',
+                '${component.boostPerformanceSpeed} GHz',
+              ),
             if (component.baseEfficiencySpeed != null)
-              _buildInfoRow(context, theme, 'Base Clock (E-Core)', '${component.baseEfficiencySpeed} GHz'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Base Clock (E-Core)',
+                '${component.baseEfficiencySpeed} GHz',
+              ),
             if (component.boostEfficiencySpeed != null)
-              _buildInfoRow(context, theme, 'Boost Clock (E-Core)', '${component.boostEfficiencySpeed} GHz'),
-            if (component.l1 != null) _buildInfoRow(context, theme, 'L1 Cache', '${component.l1} MB'),
-            if (component.l2 != null) _buildInfoRow(context, theme, 'L2 Cache', '${component.l2} MB'),
-            if (component.l3 != null) _buildInfoRow(context, theme, 'L3 Cache', '${component.l3} MB'),
-            if (component.l4 != null) _buildInfoRow(context, theme, 'L4 Cache', '${component.l4} MB'),
-            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Boost Clock (E-Core)',
+                '${component.boostEfficiencySpeed} GHz',
+              ),
+            if (component.l1 != null)
+              _buildInfoRow(context, theme, 'L1 Cache', '${component.l1} MB'),
+            if (component.l2 != null)
+              _buildInfoRow(context, theme, 'L2 Cache', '${component.l2} MB'),
+            if (component.l3 != null)
+              _buildInfoRow(context, theme, 'L3 Cache', '${component.l3} MB'),
+            if (component.l4 != null)
+              _buildInfoRow(context, theme, 'L4 Cache', '${component.l4} MB'),
+            _buildInfoRow(
+              context,
+              theme,
+              'TDP',
+              '${component.thermalDesignPower}W',
+            ),
             _buildInfoRow(context, theme, 'Lithography', component.lithography),
             _buildInfoRow(context, theme, 'Memory Type', component.memoryType),
             _buildInfoRow(context, theme, 'Packaging', component.packagingType),
-            _buildInfoRow(context, theme, 'Includes Cooler', component.includesCooler ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'SMT Support', component.supportsSimultaneousMultithreading ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'ECC Support', component.supportsECC ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(
+              context,
+              theme,
+              'Includes Cooler',
+              component.includesCooler
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'SMT Support',
+              component.supportsSimultaneousMultithreading
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'ECC Support',
+              component.supportsECC
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
             if (component.graphics.isNotEmpty && component.graphics != 'N/A')
-              _buildInfoRow(context, theme, 'Integrated Graphics', component.graphics),
+              _buildInfoRow(
+                context,
+                theme,
+                'Integrated Graphics',
+                component.graphics,
+              ),
           ];
         }
         break;
@@ -680,18 +797,78 @@ class _ComponentsSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _buildInfoRow(context, theme, 'Chipset', component.chipset),
-            _buildInfoRow(context, theme, 'VRAM', '${component.videoMemoryAmount.toStringAsFixed(0)} GB'),
-            _buildInfoRow(context, theme, 'Memory Type', component.videoMemoryType),
-            _buildInfoRow(context, theme, 'Base Clock', '${component.coreBaseClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(context, theme, 'Boost Clock', '${component.coreBoostClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(context, theme, 'Core Count', '${component.coreCount}'),
-            _buildInfoRow(context, theme, 'Memory Clock', '${component.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(context, theme, 'Memory Bus Width', '${component.memoryBusWidth} bit'),
-            _buildInfoRow(context, theme, 'TDP', '${component.thermalDesignPower}W'),
-            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
-            _buildInfoRow(context, theme, 'Slot Width', '${component.caseExpansionSlotWidth} slots'),
-            _buildInfoRow(context, theme, 'Total Slots', '${component.totalSlotAmount}'),
-            _buildInfoRow(context, theme, 'Cooling Type', component.coolingType),
+            _buildInfoRow(
+              context,
+              theme,
+              'VRAM',
+              '${component.videoMemoryAmount.toStringAsFixed(0)} GB',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Memory Type',
+              component.videoMemoryType,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Base Clock',
+              '${component.coreBaseClockSpeed.toStringAsFixed(0)} MHz',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Boost Clock',
+              '${component.coreBoostClockSpeed.toStringAsFixed(0)} MHz',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Core Count',
+              '${component.coreCount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Memory Clock',
+              '${component.effectiveMemoryClockSpeed.toStringAsFixed(0)} MHz',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Memory Bus Width',
+              '${component.memoryBusWidth} bit',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'TDP',
+              '${component.thermalDesignPower}W',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Length',
+              '${component.length.toStringAsFixed(0)} mm',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Slot Width',
+              '${component.caseExpansionSlotWidth} slots',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Total Slots',
+              '${component.totalSlotAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Cooling Type',
+              component.coolingType,
+            ),
             _buildInfoRow(context, theme, 'Frame Sync', component.frameSync),
           ];
         }
@@ -711,28 +888,121 @@ class _ComponentsSection extends ConsumerWidget {
             _buildInfoRow(context, theme, 'Chipset', component.chipsetType),
             _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
             _buildInfoRow(context, theme, 'RAM Type', component.ramType),
-            _buildInfoRow(context, theme, 'RAM Slots', '${component.ramSlotsAmount}'),
-            _buildInfoRow(context, theme, 'Max RAM', '${component.maxRAMAmount} GB'),
-            _buildInfoRow(context, theme, 'SATA 6 Gb/s', '${component.sata6GBsAmount}'),
-            _buildInfoRow(context, theme, 'SATA 3 Gb/s', '${component.sata3GBsAmount}'),
-            _buildInfoRow(context, theme, 'U.2 Ports', '${component.u2PortAmount}'),
-            _buildInfoRow(context, theme, 'Wi-Fi', component.wirelessNetworkingStandard),
+            _buildInfoRow(
+              context,
+              theme,
+              'RAM Slots',
+              '${component.ramSlotsAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Max RAM',
+              '${component.maxRAMAmount} GB',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'SATA 6 Gb/s',
+              '${component.sata6GBsAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'SATA 3 Gb/s',
+              '${component.sata3GBsAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'U.2 Ports',
+              '${component.u2PortAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Wi-Fi',
+              component.wirelessNetworkingStandard,
+            ),
             if (component.cpuFanHeaderAmount != null)
-              _buildInfoRow(context, theme, 'CPU Fan Headers', '${component.cpuFanHeaderAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'CPU Fan Headers',
+                '${component.cpuFanHeaderAmount}',
+              ),
             if (component.caseFanHeaderAmount != null)
-              _buildInfoRow(context, theme, 'Case Fan Headers', '${component.caseFanHeaderAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Case Fan Headers',
+                '${component.caseFanHeaderAmount}',
+              ),
             if (component.pumpHeaderAmount != null)
-              _buildInfoRow(context, theme, 'Pump Headers', '${component.pumpHeaderAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Pump Headers',
+                '${component.pumpHeaderAmount}',
+              ),
             if (component.argb5vHeaderAmount != null)
-              _buildInfoRow(context, theme, 'ARGB 5V Headers', '${component.argb5vHeaderAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'ARGB 5V Headers',
+                '${component.argb5vHeaderAmount}',
+              ),
             if (component.rgb12vHeaderAmount != null)
-              _buildInfoRow(context, theme, 'RGB 12V Headers', '${component.rgb12vHeaderAmount}'),
-            _buildInfoRow(context, theme, 'Audio Chipset', component.audioChipset),
-            _buildInfoRow(context, theme, 'Max Audio Channels', '${component.maxAudioChannels}'),
-            _buildInfoRow(context, theme, 'ECC Support', component.hasECCSupport ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'RAID Support', component.hasRAIDSupport ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'BIOS Flashback', component.hasFlashback ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'Clear CMOS', component.hasCMOS ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+              _buildInfoRow(
+                context,
+                theme,
+                'RGB 12V Headers',
+                '${component.rgb12vHeaderAmount}',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Audio Chipset',
+              component.audioChipset,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Max Audio Channels',
+              '${component.maxAudioChannels}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'ECC Support',
+              component.hasECCSupport
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'RAID Support',
+              component.hasRAIDSupport
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'BIOS Flashback',
+              component.hasFlashback
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Clear CMOS',
+              component.hasCMOS
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
           ];
         }
         break;
@@ -749,18 +1019,67 @@ class _ComponentsSection extends ConsumerWidget {
             const SizedBox(height: 12),
             _buildInfoRow(context, theme, 'Type', component.ramType),
             _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
-            _buildInfoRow(context, theme, 'Speed', '${component.speed.toStringAsFixed(0)} MHz'),
-            _buildInfoRow(context, theme, 'CAS Latency', '${component.casLatency}'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Capacity',
+              '${component.capacity.toStringAsFixed(0)} GB',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Speed',
+              '${component.speed.toStringAsFixed(0)} MHz',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'CAS Latency',
+              '${component.casLatency}',
+            ),
             if (component.timings != null)
               _buildInfoRow(context, theme, 'Timings', component.timings!),
-            _buildInfoRow(context, theme, 'Modules', '${component.moduleQuantity}'),
-            _buildInfoRow(context, theme, 'Module Capacity', '${component.moduleCapacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Modules',
+              '${component.moduleQuantity}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Module Capacity',
+              '${component.moduleCapacity.toStringAsFixed(0)} GB',
+            ),
             _buildInfoRow(context, theme, 'ECC', component.ecc),
-            _buildInfoRow(context, theme, 'Registered', component.registeredType),
-            _buildInfoRow(context, theme, 'Heat Spreader', component.haveHeatSpreader ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'RGB', component.haveRGB ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
-            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Registered',
+              component.registeredType,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Heat Spreader',
+              component.haveHeatSpreader
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'RGB',
+              component.haveRGB
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Height',
+              '${component.height.toStringAsFixed(0)} mm',
+            ),
             _buildInfoRow(context, theme, 'Voltage', '${component.voltage}V'),
           ];
         }
@@ -779,9 +1098,21 @@ class _ComponentsSection extends ConsumerWidget {
             _buildInfoRow(context, theme, 'Series', component.series),
             _buildInfoRow(context, theme, 'Type', component.driveType),
             _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(context, theme, 'Capacity', '${component.capacity.toStringAsFixed(0)} GB'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Capacity',
+              '${component.capacity.toStringAsFixed(0)} GB',
+            ),
             _buildInfoRow(context, theme, 'Interface', component.interface),
-            _buildInfoRow(context, theme, 'NVMe', component.hasNVMe ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(
+              context,
+              theme,
+              'NVMe',
+              component.hasNVMe
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
           ];
         }
         break;
@@ -796,13 +1127,40 @@ class _ComponentsSection extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(context, theme, 'Wattage', '${component.powerOutput.toStringAsFixed(0)}W'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Wattage',
+              '${component.powerOutput.toStringAsFixed(0)}W',
+            ),
             _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
             if (component.efficiencyRating != null)
-              _buildInfoRow(context, theme, 'Efficiency', component.efficiencyRating!),
-            _buildInfoRow(context, theme, 'Modularity', component.modularityType),
-            _buildInfoRow(context, theme, 'Length', '${component.length.toStringAsFixed(0)} mm'),
-            _buildInfoRow(context, theme, 'Fanless', component.isFanless ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+              _buildInfoRow(
+                context,
+                theme,
+                'Efficiency',
+                component.efficiencyRating!,
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Modularity',
+              component.modularityType,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Length',
+              '${component.length.toStringAsFixed(0)} mm',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Fanless',
+              component.isFanless
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
           ];
         }
         break;
@@ -817,22 +1175,74 @@ class _ComponentsSection extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-              _buildInfoRow(context, theme, 'Type', component.isWaterCooled ? 'Water Cooled' : 'Air Cooled'),
-            _buildInfoRow(context, theme, 'Height', '${component.height.toStringAsFixed(0)} mm'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Type',
+              component.isWaterCooled ? 'Water Cooled' : 'Air Cooled',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Height',
+              '${component.height.toStringAsFixed(0)} mm',
+            ),
             if (component.radiatorSize != null)
-              _buildInfoRow(context, theme, 'Radiator Size', '${component.radiatorSize!.toStringAsFixed(0)} mm'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Radiator Size',
+                '${component.radiatorSize!.toStringAsFixed(0)} mm',
+              ),
             if (component.fanSize != null)
-              _buildInfoRow(context, theme, 'Fan Size', '${component.fanSize!.toStringAsFixed(0)} mm'),
-            _buildInfoRow(context, theme, 'Fan Quantity', '${component.fanQuantity}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Fan Size',
+                '${component.fanSize!.toStringAsFixed(0)} mm',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Fan Quantity',
+              '${component.fanQuantity}',
+            ),
             if (component.minFanRotationSpeed != null)
-              _buildInfoRow(context, theme, 'Min Fan Speed', '${component.minFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Min Fan Speed',
+                '${component.minFanRotationSpeed!.toStringAsFixed(0)} RPM',
+              ),
             if (component.maxFanRotationSpeed != null)
-              _buildInfoRow(context, theme, 'Max Fan Speed', '${component.maxFanRotationSpeed!.toStringAsFixed(0)} RPM'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Max Fan Speed',
+                '${component.maxFanRotationSpeed!.toStringAsFixed(0)} RPM',
+              ),
             if (component.minNoiseLevel != null)
-              _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel!.toStringAsFixed(1)} dBA'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Min Noise',
+                '${component.minNoiseLevel!.toStringAsFixed(1)} dBA',
+              ),
             if (component.maxNoiseLevel != null)
-              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
-            _buildInfoRow(context, theme, 'Fanless Operation', component.canOperateFanless ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+              _buildInfoRow(
+                context,
+                theme,
+                'Max Noise',
+                '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Fanless Operation',
+              component.canOperateFanless
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
           ];
         }
         break;
@@ -847,22 +1257,74 @@ class _ComponentsSection extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(context, theme, 'Size', '${component.size.toStringAsFixed(0)} mm'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Size',
+              '${component.size.toStringAsFixed(0)} mm',
+            ),
             _buildInfoRow(context, theme, 'Quantity', '${component.quantity}'),
-            _buildInfoRow(context, theme, 'Min Airflow', '${component.minAirflow.toStringAsFixed(0)} CFM'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Min Airflow',
+              '${component.minAirflow.toStringAsFixed(0)} CFM',
+            ),
             if (component.maxAirflow != null)
-              _buildInfoRow(context, theme, 'Max Airflow', '${component.maxAirflow!.toStringAsFixed(0)} CFM'),
-            _buildInfoRow(context, theme, 'Min Noise', '${component.minNoiseLevel.toStringAsFixed(1)} dBA'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Max Airflow',
+                '${component.maxAirflow!.toStringAsFixed(0)} CFM',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Min Noise',
+              '${component.minNoiseLevel.toStringAsFixed(1)} dBA',
+            ),
             if (component.maxNoiseLevel != null)
-              _buildInfoRow(context, theme, 'Max Noise', '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA'),
-            _buildInfoRow(context, theme, 'PWM', component.pulseWidthModulation ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+              _buildInfoRow(
+                context,
+                theme,
+                'Max Noise',
+                '${component.maxNoiseLevel!.toStringAsFixed(1)} dBA',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'PWM',
+              component.pulseWidthModulation
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
             if (component.ledType != null)
               _buildInfoRow(context, theme, 'LED Type', component.ledType!),
             if (component.connectorType != null)
-              _buildInfoRow(context, theme, 'Connector', component.connectorType!),
-            _buildInfoRow(context, theme, 'Controller', component.controllerType),
-            _buildInfoRow(context, theme, 'Static Pressure', '${component.staticPressureAmount.toStringAsFixed(2)} mmH2O'),
-            _buildInfoRow(context, theme, 'Flow Direction', component.flowDirection),
+              _buildInfoRow(
+                context,
+                theme,
+                'Connector',
+                component.connectorType!,
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Controller',
+              component.controllerType,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Static Pressure',
+              '${component.staticPressureAmount.toStringAsFixed(2)} mmH2O',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Flow Direction',
+              component.flowDirection,
+            ),
           ];
         }
         break;
@@ -878,18 +1340,72 @@ class _ComponentsSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _buildInfoRow(context, theme, 'Form Factor', component.formFactor),
-            _buildInfoRow(context, theme, 'Power Supply Shrouded', component.powerSupplyShrouded ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+            _buildInfoRow(
+              context,
+              theme,
+              'Power Supply Shrouded',
+              component.powerSupplyShrouded
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
             if (component.powerSupplyAmount != null)
-              _buildInfoRow(context, theme, 'Included PSU', '${component.powerSupplyAmount!.toStringAsFixed(0)}W'),
-            _buildInfoRow(context, theme, 'Transparent Side Panel', component.hasTransparentSidePanel ? AppLocalizations.of(context)!.yes : AppLocalizations.of(context)!.no),
+              _buildInfoRow(
+                context,
+                theme,
+                'Included PSU',
+                '${component.powerSupplyAmount!.toStringAsFixed(0)}W',
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Transparent Side Panel',
+              component.hasTransparentSidePanel
+                  ? AppLocalizations.of(context)!.yes
+                  : AppLocalizations.of(context)!.no,
+            ),
             if (component.sidePanelType != null)
-              _buildInfoRow(context, theme, 'Side Panel Type', component.sidePanelType!),
-            _buildInfoRow(context, theme, 'Max GPU Length', '${component.maxVideoCardLength.toStringAsFixed(0)} mm'),
-            _buildInfoRow(context, theme, 'Max CPU Cooler Height', '${component.maxCPUCoolerHeight} mm'),
-            _buildInfoRow(context, theme, '3.5" Bays', '${component.internal35BayAmount}'),
-            _buildInfoRow(context, theme, '2.5" Bays', '${component.internal25BayAmount}'),
-            _buildInfoRow(context, theme, '5.25" Bays', '${component.external525BayAmount}'),
-            _buildInfoRow(context, theme, '3.5" External Bays', '${component.external35BayAmount}'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Side Panel Type',
+                component.sidePanelType!,
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Max GPU Length',
+              '${component.maxVideoCardLength.toStringAsFixed(0)} mm',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Max CPU Cooler Height',
+              '${component.maxCPUCoolerHeight} mm',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              '3.5" Bays',
+              '${component.internal35BayAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              '2.5" Bays',
+              '${component.internal25BayAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              '5.25" Bays',
+              '${component.external525BayAmount}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              '3.5" External Bays',
+              '${component.external35BayAmount}',
+            ),
           ];
         }
         break;
@@ -904,18 +1420,63 @@ class _ComponentsSection extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(context, theme, 'Screen Size', '${component.screenSize.toStringAsFixed(1)}"'),
-            _buildInfoRow(context, theme, 'Resolution', '${component.horizontalResolution}x${component.verticalResolution}'),
-            _buildInfoRow(context, theme, 'Refresh Rate', '${component.maxRefreshRate.toStringAsFixed(0)} Hz'),
+            _buildInfoRow(
+              context,
+              theme,
+              'Screen Size',
+              '${component.screenSize.toStringAsFixed(1)}"',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Resolution',
+              '${component.horizontalResolution}x${component.verticalResolution}',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Refresh Rate',
+              '${component.maxRefreshRate.toStringAsFixed(0)} Hz',
+            ),
             _buildInfoRow(context, theme, 'Panel Type', component.panelType),
-            _buildInfoRow(context, theme, 'Response Time', '${component.responseTime.toStringAsFixed(1)} ms'),
-            _buildInfoRow(context, theme, 'Viewing Angle', component.viewingAngle),
-            _buildInfoRow(context, theme, 'Aspect Ratio', component.aspectRatio),
+            _buildInfoRow(
+              context,
+              theme,
+              'Response Time',
+              '${component.responseTime.toStringAsFixed(1)} ms',
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Viewing Angle',
+              component.viewingAngle,
+            ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Aspect Ratio',
+              component.aspectRatio,
+            ),
             if (component.maxBrightness != null)
-              _buildInfoRow(context, theme, 'Max Brightness', '${component.maxBrightness!.toStringAsFixed(0)} nits'),
+              _buildInfoRow(
+                context,
+                theme,
+                'Max Brightness',
+                '${component.maxBrightness!.toStringAsFixed(0)} nits',
+              ),
             if (component.highDynamicRangeType != null)
-              _buildInfoRow(context, theme, 'HDR', component.highDynamicRangeType!),
-            _buildInfoRow(context, theme, 'Adaptive Sync', component.adaptiveSyncType),
+              _buildInfoRow(
+                context,
+                theme,
+                'HDR',
+                component.highDynamicRangeType!,
+              ),
+            _buildInfoRow(
+              context,
+              theme,
+              'Adaptive Sync',
+              component.adaptiveSyncType,
+            ),
           ];
         }
         break;
@@ -923,133 +1484,257 @@ class _ComponentsSection extends ConsumerWidget {
     return [];
   }
 
-  Widget _buildInfoRow(BuildContext context, ThemeData theme, String label, String value, {bool isHighlighted = false}) {
+  Widget _buildInfoRow(
+    BuildContext context,
+    ThemeData theme,
+    String label,
+    String value, {
+    bool isHighlighted = false,
+  }) {
     // Helper method to get localized label
     String getLocalizedLabel(String label) {
       final l10n = AppLocalizations.of(context)!;
       // Map English labels to localization keys
       switch (label) {
-        case 'Series': return l10n.series;
-        case 'Socket': return l10n.socket;
-        case 'Chipset': return l10n.chipset;
-        case 'Form Factor': return l10n.formFactor;
-        case 'Memory Type': return l10n.memoryType;
-        case 'RAM Type': return l10n.ramType;
-        case 'Capacity': return l10n.capacity;
-        case 'Speed': return l10n.speed;
-        case 'TDP': return l10n.tdp;
-        case 'Length': return l10n.length;
-        case 'Height': return l10n.height;
-        case 'Base Clock': return l10n.baseClock;
-        case 'Boost Clock': return l10n.boostClock;
-        case 'Core Count': return l10n.coreCount;
-        case 'Threads': return l10n.threads;
-        case 'VRAM': return l10n.vram;
-        case 'Microarchitecture': return l10n.microarchitecture;
-        case 'Core Family': return l10n.coreFamily;
-        case 'Total Cores': return l10n.totalCores;
-        case 'P-Cores': return l10n.pCores;
-        case 'E-Cores': return l10n.eCores;
-        case 'L1 Cache': return l10n.l1Cache;
-        case 'L2 Cache': return l10n.l2Cache;
-        case 'L3 Cache': return l10n.l3Cache;
-        case 'L4 Cache': return l10n.l4Cache;
-        case 'Lithography': return l10n.lithography;
-        case 'Packaging': return l10n.packaging;
-        case 'Includes Cooler': return l10n.includesCooler;
-        case 'SMT Support': return l10n.smtSupport;
-        case 'ECC Support': return l10n.eccSupport;
-        case 'Integrated Graphics': return l10n.integratedGraphics;
-        case 'Memory Clock': return l10n.memoryClock;
-        case 'Memory Bus Width': return l10n.memoryBusWidth;
-        case 'Slot Width': return l10n.slotWidth;
-        case 'Total Slots': return l10n.totalSlots;
-        case 'Cooling Type': return l10n.coolingType;
-        case 'Frame Sync': return l10n.frameSync;
-        case 'RAM Slots': return l10n.ramSlots;
-        case 'Max RAM': return l10n.maxRam;
-        case 'CPU Fan Headers': return l10n.cpuFanHeaders;
-        case 'Case Fan Headers': return l10n.caseFanHeaders;
-        case 'Pump Headers': return l10n.pumpHeaders;
-        case 'ARGB 5V Headers': return l10n.argb5vHeaders;
-        case 'RGB 12V Headers': return l10n.rgb12vHeaders;
-        case 'Audio Chipset': return l10n.audioChipset;
-        case 'Max Audio Channels': return l10n.maxAudioChannels;
-        case 'RAID Support': return l10n.raidSupport;
-        case 'BIOS Flashback': return l10n.biosFlashback;
-        case 'Clear CMOS': return l10n.clearCmos;
-        case 'CAS Latency': return l10n.casLatency;
-        case 'Timings': return l10n.timings;
-        case 'Modules': return l10n.modules;
-        case 'Module Capacity': return l10n.moduleCapacity;
-        case 'ECC': return l10n.ecc;
-        case 'Registered': return l10n.registered;
-        case 'Heat Spreader': return l10n.heatSpreader;
-        case 'RGB': return l10n.rgb;
-        case 'Voltage': return l10n.voltage;
-        case 'Interface': return l10n.interface;
-        case 'NVMe': return l10n.nvme;
-        case 'Wattage': return l10n.wattage;
-        case 'Efficiency': return l10n.efficiency;
-        case 'Modularity': return l10n.modularity;
-        case 'Fanless': return l10n.fanless;
-        case 'Radiator Size': return l10n.radiatorSize;
-        case 'Fan Size': return l10n.fanSize;
-        case 'Fan Quantity': return l10n.fanQuantity;
-        case 'Min Fan Speed': return l10n.minFanSpeed;
-        case 'Max Fan Speed': return l10n.maxFanSpeed;
-        case 'Min Noise': return l10n.minNoise;
-        case 'Max Noise': return l10n.maxNoise;
-        case 'Fanless Operation': return l10n.fanlessOperation;
-        case 'Size': return l10n.size;
-        case 'Quantity': return l10n.quantity;
-        case 'Min Airflow': return l10n.minAirflow;
-        case 'Max Airflow': return l10n.maxAirflow;
-        case 'PWM': return l10n.pwm;
-        case 'LED Type': return l10n.ledType;
-        case 'Connector': return l10n.connector;
-        case 'Controller': return l10n.controller;
-        case 'Static Pressure': return l10n.staticPressure;
-        case 'Flow Direction': return l10n.flowDirection;
-        case 'Power Supply Shrouded': return l10n.powerSupplyShrouded;
-        case 'Included PSU': return l10n.includedPsu;
-        case 'Transparent Side Panel': return l10n.transparentSidePanel;
-        case 'Side Panel Type': return l10n.sidePanelType;
-        case 'Max GPU Length': return l10n.maxGpuLength;
-        case 'Max CPU Cooler Height': return l10n.maxCpuCoolerHeight;
-        case 'Screen Size': return l10n.screenSize;
-        case 'Resolution': return l10n.resolution;
-        case 'Refresh Rate': return l10n.refreshRate;
-        case 'Panel Type': return l10n.panelType;
-        case 'Response Time': return l10n.responseTime;
-        case 'Viewing Angle': return l10n.viewingAngle;
-        case 'Aspect Ratio': return l10n.aspectRatio;
-        case 'Max Brightness': return l10n.maxBrightness;
-        case 'HDR': return l10n.hdr;
-        case 'Adaptive Sync': return l10n.adaptiveSync;
-        case 'SATA 6 Gb/s': return l10n.sata6Gbs;
-        case 'SATA 3 Gb/s': return l10n.sata3Gbs;
-        case 'U.2 Ports': return l10n.u2Ports;
-        case 'Wi-Fi': return l10n.wifi;
-        case '3.5" Bays': return l10n.internal35BayAmount;
-        case '2.5" Bays': return l10n.internal25BayAmount;
-        case '5.25" Bays': return l10n.external525BayAmount;
-        case '3.5" External Bays': return l10n.external35BayAmount;
-        case 'Water Cooled': return l10n.waterCooled;
-        case 'Air Cooled': return l10n.airCooled;
-        case 'Type': return l10n.type;
-        case 'Price': return l10n.price;
-        case 'Release Date': return l10n.releaseDate;
-        case 'Manufacturer': return l10n.manufacturer;
-        case 'Vendors': return l10n.vendors;
-        case 'Base Clock (P-Core)': return '${l10n.baseClock} (${l10n.pCores})';
-        case 'Boost Clock (P-Core)': return '${l10n.boostClock} (${l10n.pCores})';
-        case 'Base Clock (E-Core)': return '${l10n.baseClock} (${l10n.eCores})';
-        case 'Boost Clock (E-Core)': return '${l10n.boostClock} (${l10n.eCores})';
-        default: return label; // Return original if not found
+        case 'Series':
+          return l10n.series;
+        case 'Socket':
+          return l10n.socket;
+        case 'Chipset':
+          return l10n.chipset;
+        case 'Form Factor':
+          return l10n.formFactor;
+        case 'Memory Type':
+          return l10n.memoryType;
+        case 'RAM Type':
+          return l10n.ramType;
+        case 'Capacity':
+          return l10n.capacity;
+        case 'Speed':
+          return l10n.speed;
+        case 'TDP':
+          return l10n.tdp;
+        case 'Length':
+          return l10n.length;
+        case 'Height':
+          return l10n.height;
+        case 'Base Clock':
+          return l10n.baseClock;
+        case 'Boost Clock':
+          return l10n.boostClock;
+        case 'Core Count':
+          return l10n.coreCount;
+        case 'Threads':
+          return l10n.threads;
+        case 'VRAM':
+          return l10n.vram;
+        case 'Microarchitecture':
+          return l10n.microarchitecture;
+        case 'Core Family':
+          return l10n.coreFamily;
+        case 'Total Cores':
+          return l10n.totalCores;
+        case 'P-Cores':
+          return l10n.pCores;
+        case 'E-Cores':
+          return l10n.eCores;
+        case 'L1 Cache':
+          return l10n.l1Cache;
+        case 'L2 Cache':
+          return l10n.l2Cache;
+        case 'L3 Cache':
+          return l10n.l3Cache;
+        case 'L4 Cache':
+          return l10n.l4Cache;
+        case 'Lithography':
+          return l10n.lithography;
+        case 'Packaging':
+          return l10n.packaging;
+        case 'Includes Cooler':
+          return l10n.includesCooler;
+        case 'SMT Support':
+          return l10n.smtSupport;
+        case 'ECC Support':
+          return l10n.eccSupport;
+        case 'Integrated Graphics':
+          return l10n.integratedGraphics;
+        case 'Memory Clock':
+          return l10n.memoryClock;
+        case 'Memory Bus Width':
+          return l10n.memoryBusWidth;
+        case 'Slot Width':
+          return l10n.slotWidth;
+        case 'Total Slots':
+          return l10n.totalSlots;
+        case 'Cooling Type':
+          return l10n.coolingType;
+        case 'Frame Sync':
+          return l10n.frameSync;
+        case 'RAM Slots':
+          return l10n.ramSlots;
+        case 'Max RAM':
+          return l10n.maxRam;
+        case 'CPU Fan Headers':
+          return l10n.cpuFanHeaders;
+        case 'Case Fan Headers':
+          return l10n.caseFanHeaders;
+        case 'Pump Headers':
+          return l10n.pumpHeaders;
+        case 'ARGB 5V Headers':
+          return l10n.argb5vHeaders;
+        case 'RGB 12V Headers':
+          return l10n.rgb12vHeaders;
+        case 'Audio Chipset':
+          return l10n.audioChipset;
+        case 'Max Audio Channels':
+          return l10n.maxAudioChannels;
+        case 'RAID Support':
+          return l10n.raidSupport;
+        case 'BIOS Flashback':
+          return l10n.biosFlashback;
+        case 'Clear CMOS':
+          return l10n.clearCmos;
+        case 'CAS Latency':
+          return l10n.casLatency;
+        case 'Timings':
+          return l10n.timings;
+        case 'Modules':
+          return l10n.modules;
+        case 'Module Capacity':
+          return l10n.moduleCapacity;
+        case 'ECC':
+          return l10n.ecc;
+        case 'Registered':
+          return l10n.registered;
+        case 'Heat Spreader':
+          return l10n.heatSpreader;
+        case 'RGB':
+          return l10n.rgb;
+        case 'Voltage':
+          return l10n.voltage;
+        case 'Interface':
+          return l10n.interface;
+        case 'NVMe':
+          return l10n.nvme;
+        case 'Wattage':
+          return l10n.wattage;
+        case 'Efficiency':
+          return l10n.efficiency;
+        case 'Modularity':
+          return l10n.modularity;
+        case 'Fanless':
+          return l10n.fanless;
+        case 'Radiator Size':
+          return l10n.radiatorSize;
+        case 'Fan Size':
+          return l10n.fanSize;
+        case 'Fan Quantity':
+          return l10n.fanQuantity;
+        case 'Min Fan Speed':
+          return l10n.minFanSpeed;
+        case 'Max Fan Speed':
+          return l10n.maxFanSpeed;
+        case 'Min Noise':
+          return l10n.minNoise;
+        case 'Max Noise':
+          return l10n.maxNoise;
+        case 'Fanless Operation':
+          return l10n.fanlessOperation;
+        case 'Size':
+          return l10n.size;
+        case 'Quantity':
+          return l10n.quantity;
+        case 'Min Airflow':
+          return l10n.minAirflow;
+        case 'Max Airflow':
+          return l10n.maxAirflow;
+        case 'PWM':
+          return l10n.pwm;
+        case 'LED Type':
+          return l10n.ledType;
+        case 'Connector':
+          return l10n.connector;
+        case 'Controller':
+          return l10n.controller;
+        case 'Static Pressure':
+          return l10n.staticPressure;
+        case 'Flow Direction':
+          return l10n.flowDirection;
+        case 'Power Supply Shrouded':
+          return l10n.powerSupplyShrouded;
+        case 'Included PSU':
+          return l10n.includedPsu;
+        case 'Transparent Side Panel':
+          return l10n.transparentSidePanel;
+        case 'Side Panel Type':
+          return l10n.sidePanelType;
+        case 'Max GPU Length':
+          return l10n.maxGpuLength;
+        case 'Max CPU Cooler Height':
+          return l10n.maxCpuCoolerHeight;
+        case 'Screen Size':
+          return l10n.screenSize;
+        case 'Resolution':
+          return l10n.resolution;
+        case 'Refresh Rate':
+          return l10n.refreshRate;
+        case 'Panel Type':
+          return l10n.panelType;
+        case 'Response Time':
+          return l10n.responseTime;
+        case 'Viewing Angle':
+          return l10n.viewingAngle;
+        case 'Aspect Ratio':
+          return l10n.aspectRatio;
+        case 'Max Brightness':
+          return l10n.maxBrightness;
+        case 'HDR':
+          return l10n.hdr;
+        case 'Adaptive Sync':
+          return l10n.adaptiveSync;
+        case 'SATA 6 Gb/s':
+          return l10n.sata6Gbs;
+        case 'SATA 3 Gb/s':
+          return l10n.sata3Gbs;
+        case 'U.2 Ports':
+          return l10n.u2Ports;
+        case 'Wi-Fi':
+          return l10n.wifi;
+        case '3.5" Bays':
+          return l10n.internal35BayAmount;
+        case '2.5" Bays':
+          return l10n.internal25BayAmount;
+        case '5.25" Bays':
+          return l10n.external525BayAmount;
+        case '3.5" External Bays':
+          return l10n.external35BayAmount;
+        case 'Water Cooled':
+          return l10n.waterCooled;
+        case 'Air Cooled':
+          return l10n.airCooled;
+        case 'Type':
+          return l10n.type;
+        case 'Price':
+          return l10n.price;
+        case 'Release Date':
+          return l10n.releaseDate;
+        case 'Manufacturer':
+          return l10n.manufacturer;
+        case 'Vendors':
+          return l10n.vendors;
+        case 'Base Clock (P-Core)':
+          return '${l10n.baseClock} (${l10n.pCores})';
+        case 'Boost Clock (P-Core)':
+          return '${l10n.boostClock} (${l10n.pCores})';
+        case 'Base Clock (E-Core)':
+          return '${l10n.baseClock} (${l10n.eCores})';
+        case 'Boost Clock (E-Core)':
+          return '${l10n.boostClock} (${l10n.eCores})';
+        default:
+          return label; // Return original if not found
       }
     }
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1083,7 +1768,7 @@ class _ComponentsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1101,8 +1786,16 @@ class _ComponentsSection extends ConsumerWidget {
             child: FilledButton.icon(
               onPressed: components.isEmpty
                   ? null
-                  : () {
-                      ref.read(buildProvider.notifier).loadComponentsFromBuild(components);
+                  : () async {
+                      final componentService = ref.read(
+                        componentServiceProvider,
+                      );
+                      await ref
+                          .read(buildProvider.notifier)
+                          .loadComponentsFromBuildWithPrices(
+                            components,
+                            componentService,
+                          );
                       context.go('/build-now');
                     },
               icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
@@ -1125,7 +1818,7 @@ class _ComponentsSection extends ConsumerWidget {
           else
             ...components.whereType<BaseComponent>().map((component) {
               final lowestPrice = component.lowestPrice;
-              
+
               return InkWell(
                 onTap: () => _showComponentDetails(context, component),
                 borderRadius: BorderRadius.circular(8),
@@ -1133,92 +1826,110 @@ class _ComponentsSection extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                    color: theme.colorScheme.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          _getComponentTypeIcon(component.type),
+                          size: 24,
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
-                      child: Icon(
-                        _getComponentTypeIcon(component.type),
-                        size: 24,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _getComponentTypeName(context, component.type),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.primary,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _getComponentTypeName(
+                                      context,
+                                      component.type,
+                                    ),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            component.name,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            component.manufacturer,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (lowestPrice != null && component.prices.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
+                            const SizedBox(height: 4),
                             Text(
-                              '\$${lowestPrice.toStringAsFixed(2)}',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
+                              component.name,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              AppLocalizations.of(context)!.fromVendors(component.prices.length),
+                              component.manufacturer,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 10,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                  ],
+                      if (lowestPrice != null && component.prices.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '\$${lowestPrice.toStringAsFixed(2)}',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.fromVendors(component.prices.length),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            );
+              );
             }).toList(),
         ],
       ),
@@ -1254,8 +1965,9 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     _average = widget.build.averageRating;
     _count = widget.build.ratingsCount;
     // Only set userRating if it's a valid rating (not null and > 0)
-    _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
-        ? widget.build.userRating 
+    _userRating =
+        (widget.build.userRating != null && widget.build.userRating! > 0)
+        ? widget.build.userRating
         : null;
   }
 
@@ -1270,8 +1982,9 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         _average = widget.build.averageRating;
         _count = widget.build.ratingsCount;
         // Only set userRating if it's a valid rating (not null and > 0)
-        _userRating = (widget.build.userRating != null && widget.build.userRating! > 0) 
-            ? widget.build.userRating 
+        _userRating =
+            (widget.build.userRating != null && widget.build.userRating! > 0)
+            ? widget.build.userRating
             : null;
       });
     }
@@ -1282,23 +1995,25 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     if (currentUser == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToRate)),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.pleaseSignInToRate),
+          ),
         );
       }
       return;
     }
 
     if (_submitting) return;
-    
+
     // Check if user is clicking the same rating (undo)
     final isUndo = _userRating != null && _userRating == rating;
     final ratingToSubmit = isUndo ? 0.0 : rating;
-    
+
     // Store previous values in case we need to revert
     final previousAverage = _average;
     final previousCount = _count;
     final previousUserRating = _userRating;
-    
+
     setState(() {
       _submitting = true;
       // Optimistic update
@@ -1318,8 +2033,8 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         final hadPrevious = _userRating != null;
         if (!hadPrevious) {
           // New rating
-          _average = _count == 0 
-              ? rating 
+          _average = _count == 0
+              ? rating
               : ((_average * _count) + rating) / (_count + 1);
           _count = _count + 1;
         } else {
@@ -1342,18 +2057,30 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
             _userRating = previousUserRating;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToRateBuilds)),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.pleaseSignInToRateBuilds,
+              ),
+            ),
           );
         }
         return;
       }
       final service = ref.read(buildServiceProvider);
-      final result = await service.rateBuild(widget.build.id, ratingToSubmit, user.uid);
-      
+      final result = await service.rateBuild(
+        widget.build.id,
+        ratingToSubmit,
+        user.uid,
+      );
+
       // Check if backend returned rating statistics
-      final newAvg = result['averageRating'] ?? result['ratingAverage'] ?? result['rating'];
-      final newCount = result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
-      
+      final newAvg =
+          result['averageRating'] ??
+          result['ratingAverage'] ??
+          result['rating'];
+      final newCount =
+          result['ratingsCount'] ?? result['ratingCount'] ?? result['votes'];
+
       if (mounted && newAvg != null && newCount != null) {
         setState(() {
           // Backend returns 0-100; normalize to 0-5
@@ -1376,13 +2103,14 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
         });
         // Check if it's the "already exists" error - treat as success
         final errorMsg = e.toString().toLowerCase();
-        if (errorMsg.contains('already exists') || errorMsg.contains('interaction already')) {
+        if (errorMsg.contains('already exists') ||
+            errorMsg.contains('interaction already')) {
           // Rating was already saved, keep optimistic update
           // Don't refresh to avoid disrupting UI
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(getUserFriendlyError(e))),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(getUserFriendlyError(e))));
         }
       }
     } finally {
@@ -1398,7 +2126,7 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
     // If userRating is null or 0, all stars should be empty (border only)
     final hasUserRating = _userRating != null && _userRating! > 0;
     final userRatingValue = hasUserRating ? _userRating : null;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: <Widget>[
@@ -1407,8 +2135,10 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
           children: List.generate(5, (index) {
             final starIndex = index + 1;
             // Only fill stars if user has a valid rating AND it's >= this star index
-            final isFilled = hasUserRating && userRatingValue! >= starIndex - 0.5;
-            final isCurrentRating = hasUserRating && _userRating == starIndex.toDouble();
+            final isFilled =
+                hasUserRating && userRatingValue! >= starIndex - 0.5;
+            final isCurrentRating =
+                hasUserRating && _userRating == starIndex.toDouble();
             return IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1416,8 +2146,10 @@ class _RatingBarState extends ConsumerState<_RatingBar> {
                 isFilled ? Icons.star : Icons.star_border,
                 color: Colors.amber,
               ),
-              onPressed: _submitting ? null : () => _submit(starIndex.toDouble()),
-              tooltip: isCurrentRating 
+              onPressed: _submitting
+                  ? null
+                  : () => _submit(starIndex.toDouble()),
+              tooltip: isCurrentRating
                   ? AppLocalizations.of(context)!.removeRating
                   : '${AppLocalizations.of(context)!.rate} $starIndex',
             );
@@ -1444,9 +2176,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     if (text.trim().isEmpty || text == '[Image]') return;
     Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Copied to clipboard')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
     }
   }
 
@@ -1480,7 +2212,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             _selectedImages.removeRange(5, _selectedImages.length);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Maximum 5 images allowed. Only first 5 will be uploaded.'),
+                content: Text(
+                  'Maximum 5 images allowed. Only first 5 will be uploaded.',
+                ),
                 backgroundColor: Colors.orange,
               ),
             );
@@ -1508,13 +2242,17 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     // Allow posting with just images (no text required)
     if (text.isEmpty && _selectedImages.isEmpty) return;
     if (_posting) return;
-    
+
     setState(() => _posting = true);
     try {
       final user = ref.read(authProvider).valueOrNull;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSignInToCommentShort)),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.pleaseSignInToCommentShort,
+            ),
+          ),
         );
         setState(() => _posting = false);
         return;
@@ -1522,19 +2260,23 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
       final authorName = user.username;
       // Use text or placeholder if only images
       final commentText = text.isEmpty ? '[Image]' : text;
-      final comment = await ref.read(buildCommentsProvider(widget.buildId).notifier).add(
-        authorName, 
-        commentText, 
-        user.uid,
-        parentCommentId: _replyingToCommentId,
-      );
-      
+      final comment = await ref
+          .read(buildCommentsProvider(widget.buildId).notifier)
+          .add(
+            authorName,
+            commentText,
+            user.uid,
+            parentCommentId: _replyingToCommentId,
+          );
+
       if (_selectedImages.isNotEmpty && comment.id.isNotEmpty) {
         await _uploadImages(comment.id).catchError((e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Comment posted but images failed: ${getUserFriendlyError(e)}'),
+                content: Text(
+                  'Comment posted but images failed: ${getUserFriendlyError(e)}',
+                ),
                 backgroundColor: Colors.orange,
                 duration: const Duration(seconds: 3),
               ),
@@ -1546,7 +2288,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
         await Future.delayed(const Duration(milliseconds: 500));
         ref.invalidate(commentImagesProvider(comment.id));
       }
-      
+
       _controller.clear();
       setState(() {
         _selectedImages.clear();
@@ -1609,7 +2351,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: <Widget>[
@@ -1627,7 +2371,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     // Show a message directing user to sign in
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(AppLocalizations.of(context)!.pleaseSignInToComment),
+                        content: Text(
+                          AppLocalizations.of(context)!.pleaseSignInToComment,
+                        ),
                         duration: const Duration(seconds: 3),
                       ),
                     );
@@ -1643,7 +2389,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.1),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1680,7 +2428,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                         onSubmitted: (_) => _submitComment(),
                         decoration: InputDecoration(
                           hintText: AppLocalizations.of(context)!.writeComment,
-                          helperText: 'Share your thoughts about this build. You can also attach up to 5 images. Press Enter to submit.',
+                          helperText:
+                              'Share your thoughts about this build. You can also attach up to 5 images. Press Enter to submit.',
                           helperMaxLines: 2,
                           border: const OutlineInputBorder(),
                         ),
@@ -1696,7 +2445,13 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     const SizedBox(width: 4),
                     ElevatedButton(
                       onPressed: _posting ? null : _submitComment,
-                      child: _posting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(AppLocalizations.of(context)!.post),
+                      child: _posting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(AppLocalizations.of(context)!.post),
                     ),
                   ],
                 ),
@@ -1718,15 +2473,21 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                 child: FutureBuilder<Uint8List>(
                                   future: image.readAsBytes(),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
                                       return Container(
                                         width: 80,
                                         height: 80,
                                         color: theme.colorScheme.surfaceVariant,
-                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        child: const Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
                                       );
                                     }
-                                    if (snapshot.hasError || !snapshot.hasData) {
+                                    if (snapshot.hasError ||
+                                        !snapshot.hasData) {
                                       return Container(
                                         width: 80,
                                         height: 80,
@@ -1754,7 +2515,11 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                       color: Colors.red,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1779,15 +2544,21 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
           child: commentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(
-              child: Text(AppLocalizations.of(context)!.failedToLoadComments, style: theme.textTheme.bodyMedium),
+              child: Text(
+                AppLocalizations.of(context)!.failedToLoadComments,
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
             data: (comments) {
               if (comments.isEmpty) {
                 return Center(
-                  child: Text(AppLocalizations.of(context)!.noCommentsYet, style: theme.textTheme.bodyMedium),
+                  child: Text(
+                    AppLocalizations.of(context)!.noCommentsYet,
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 );
               }
-              
+
               // Create username to user ID mapping for @mention resolution
               final Map<String, String> usernameToUserIdMap = {};
               for (final comment in comments) {
@@ -1795,21 +2566,24 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   usernameToUserIdMap[comment.authorName] = comment.userId!;
                 }
               }
-              
+
               // Organize comments into a tree structure
               final Map<String, List<BuildComment>> commentTree = {};
               final List<BuildComment> topLevelComments = [];
-              
+
               for (final comment in comments) {
-                if (comment.parentCommentId != null && comment.parentCommentId!.isNotEmpty) {
+                if (comment.parentCommentId != null &&
+                    comment.parentCommentId!.isNotEmpty) {
                   // This is a reply to another comment
-                  commentTree.putIfAbsent(comment.parentCommentId!, () => []).add(comment);
+                  commentTree
+                      .putIfAbsent(comment.parentCommentId!, () => [])
+                      .add(comment);
                 } else {
                   // This is a top-level comment
                   topLevelComments.add(comment);
                 }
               }
-              
+
               // Build flat list with nested structure
               final List<BuildComment> organizedComments = [];
               void addCommentWithReplies(BuildComment comment, int depth) {
@@ -1819,11 +2593,11 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   addCommentWithReplies(reply, depth + 1);
                 }
               }
-              
+
               for (final topLevel in topLevelComments) {
                 addCommentWithReplies(topLevel, 0);
               }
-              
+
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -1831,245 +2605,358 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 separatorBuilder: (_, __) => const Divider(height: 24),
                 itemBuilder: (context, index) {
                   final c = organizedComments[index];
-                  final isReply = c.parentCommentId != null && c.parentCommentId!.isNotEmpty;
+                  final isReply =
+                      c.parentCommentId != null &&
+                      c.parentCommentId!.isNotEmpty;
                   return Padding(
                     padding: EdgeInsets.only(left: isReply ? 32.0 : 0.0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                      if (c.userId != null)
-                        ref.watch(buildUserProvider(c.userId!)).when(
-                          data: (user) => InkWell(
-                            onTap: () {
-                              context.go('/profile/${c.userId}');
-                            },
-                            borderRadius: BorderRadius.circular(20),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: AuthenticatedImage(
-                                imageUrl: user?.photoURL,
-                                isCircle: true,
-                                radius: 16,
-                                username: c.authorName,
-                                userId: c.userId,
-                              ),
-                            ),
-                          ),
-                          loading: () => UserImageUtils.buildUserAvatar(
-                            username: c.authorName,
-                            userId: c.userId,
-                            radius: 16,
-                          ),
-                          error: (_, __) => UserImageUtils.buildUserAvatar(
-                            username: c.authorName,
-                            userId: c.userId,
-                            radius: 16,
-                          ),
-                        )
-                      else
-                        UserImageUtils.buildUserAvatar(
-                          username: c.authorName,
-                          radius: 16,
-                        ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                if (c.userId != null)
-                                  InkWell(
-                                    onTap: () {
-                                      context.go('/profile/${c.userId}');
-                                    },
-                                    child: Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
-                                  )
-                                else
-                                  Text(c.authorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 8),
-                                Text(DateFormat.yMMMd().add_jm().format(c.createdAt), style: theme.textTheme.bodySmall),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            // Only show text if it's not the placeholder
-                            if (c.text != '[Image]')
-                              LinkableText(
-                                text: c.text,
-                                style: theme.textTheme.bodyMedium,
-                                usernameToUserIdMap: usernameToUserIdMap,
-                              ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                  iconSize: 16,
-                                  tooltip: 'Copy',
-                                  onPressed: c.text.trim().isEmpty || c.text == '[Image]'
-                                      ? null
-                                      : () => _copyToClipboard(c.text),
-                                  icon: Icon(
-                                    Icons.copy,
-                                    size: 16,
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        if (c.userId != null)
+                          ref
+                              .watch(buildUserProvider(c.userId!))
+                              .when(
+                                data: (user) => InkWell(
+                                  onTap: () {
+                                    context.go('/profile/${c.userId}');
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: AuthenticatedImage(
+                                      imageUrl: user?.photoURL,
+                                      isCircle: true,
+                                      radius: 16,
+                                      username: c.authorName,
+                                      userId: c.userId,
+                                    ),
                                   ),
                                 ),
-                                if (isLoggedIn)
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        _replyingToCommentId = _replyingToCommentId == c.id ? null : c.id;
-                                        if (_replyingToCommentId == c.id) {
-                                          _controller.text = '@${c.authorName} ';
-                                          _controller.selection = TextSelection.fromPosition(
-                                            TextPosition(offset: _controller.text.length),
-                                          );
-                                        } else {
-                                          _controller.clear();
-                                        }
-                                      });
-                                    },
+                                loading: () => UserImageUtils.buildUserAvatar(
+                                  username: c.authorName,
+                                  userId: c.userId,
+                                  radius: 16,
+                                ),
+                                error: (_, __) =>
+                                    UserImageUtils.buildUserAvatar(
+                                      username: c.authorName,
+                                      userId: c.userId,
+                                      radius: 16,
+                                    ),
+                              )
+                        else
+                          UserImageUtils.buildUserAvatar(
+                            username: c.authorName,
+                            radius: 16,
+                          ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  if (c.userId != null)
+                                    InkWell(
+                                      onTap: () {
+                                        context.go('/profile/${c.userId}');
+                                      },
+                                      child: Text(
+                                        c.authorName,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      c.authorName,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    DateFormat.yMMMd().add_jm().format(
+                                      c.createdAt,
+                                    ),
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              // Only show text if it's not the placeholder
+                              if (c.text != '[Image]')
+                                LinkableText(
+                                  text: c.text,
+                                  style: theme.textTheme.bodyMedium,
+                                  usernameToUserIdMap: usernameToUserIdMap,
+                                ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 28,
+                                      minHeight: 28,
+                                    ),
+                                    iconSize: 16,
+                                    tooltip: 'Copy',
+                                    onPressed:
+                                        c.text.trim().isEmpty ||
+                                            c.text == '[Image]'
+                                        ? null
+                                        : () => _copyToClipboard(c.text),
                                     icon: Icon(
-                                      _replyingToCommentId == c.id ? Icons.close : Icons.reply,
+                                      Icons.copy,
                                       size: 16,
-                                    ),
-                                    label: Text(
-                                      _replyingToCommentId == c.id ? 'Cancel' : 'Reply',
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
                                     ),
                                   ),
-                              ],
-                            ),
-                            // Display images attached to the comment
-                            ref.watch(commentImagesProvider(c.id)).when(
-                              data: (imageUrls) {
-                                if (imageUrls.isEmpty) return const SizedBox.shrink();
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: imageUrls.map((imageUrl) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        // Show fullscreen image viewer
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => Dialog(
-                                            backgroundColor: Colors.transparent,
-                                            insetPadding: const EdgeInsets.all(20),
-                                            child: Stack(
-                                              children: [
-                                                Center(
-                                                  child: InteractiveViewer(
-                                                    minScale: 0.5,
-                                                    maxScale: 4.0,
-                                                    child: Image.network(
-                                                      imageUrl,
-                                                      fit: BoxFit.contain,
-                                                      errorBuilder: (context, error, stackTrace) {
-                                                        return Container(
-                                                          width: 300,
-                                                          height: 300,
-                                                          color: theme.colorScheme.surfaceVariant,
-                                                          child: const Icon(Icons.broken_image, size: 64),
-                                                        );
-                                                      },
-                                                    ),
+                                  if (isLoggedIn)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          _replyingToCommentId =
+                                              _replyingToCommentId == c.id
+                                              ? null
+                                              : c.id;
+                                          if (_replyingToCommentId == c.id) {
+                                            _controller.text =
+                                                '@${c.authorName} ';
+                                            _controller.selection =
+                                                TextSelection.fromPosition(
+                                                  TextPosition(
+                                                    offset:
+                                                        _controller.text.length,
                                                   ),
-                                                ),
-                                                Positioned(
-                                                  top: 10,
-                                                  right: 10,
-                                                  child: IconButton(
-                                                    icon: const Icon(Icons.close, color: Colors.white),
-                                                    onPressed: () => Navigator.of(context).pop(),
-                                                    style: IconButton.styleFrom(
-                                                      backgroundColor: Colors.black54,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Positioned(
-                                                  top: 10,
-                                                  left: 10,
-                                                  child: IconButton(
-                                                    icon: const Icon(Icons.copy, color: Colors.white),
-                                                    tooltip: 'Copy image link',
-                                                    onPressed: () => _copyImageUrlToClipboard(imageUrl),
-                                                    style: IconButton.styleFrom(
-                                                      backgroundColor: Colors.black54,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: Stack(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Image.network(
-                                              imageUrl,
-                                              width: 150,
-                                              height: 150,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return Container(
-                                                  width: 150,
-                                                  height: 150,
-                                                  color: theme.colorScheme.surfaceVariant,
-                                                  child: const Icon(Icons.broken_image),
                                                 );
-                                              },
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 6,
-                                            right: 6,
-                                            child: Material(
-                                              color: Colors.black54,
-                                              borderRadius: BorderRadius.circular(16),
-                                              child: InkWell(
-                                                borderRadius: BorderRadius.circular(16),
-                                                onTap: () => _copyImageUrlToClipboard(imageUrl),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(4.0),
-                                                  child: Icon(
-                                                    Icons.copy,
-                                                    size: 14,
-                                                    color: Colors.white,
-                                                  ),
+                                          } else {
+                                            _controller.clear();
+                                          }
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _replyingToCommentId == c.id
+                                            ? Icons.close
+                                            : Icons.reply,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        _replyingToCommentId == c.id
+                                            ? 'Cancel'
+                                            : 'Reply',
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              // Display images attached to the comment
+                              ref
+                                  .watch(commentImagesProvider(c.id))
+                                  .when(
+                                    data: (imageUrls) {
+                                      if (imageUrls.isEmpty)
+                                        return const SizedBox.shrink();
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 8),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: imageUrls.map((imageUrl) {
+                                              return GestureDetector(
+                                                onTap: () {
+                                                  // Show fullscreen image viewer
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => Dialog(
+                                                      backgroundColor:
+                                                          Colors.transparent,
+                                                      insetPadding:
+                                                          const EdgeInsets.all(
+                                                            20,
+                                                          ),
+                                                      child: Stack(
+                                                        children: [
+                                                          Center(
+                                                            child: InteractiveViewer(
+                                                              minScale: 0.5,
+                                                              maxScale: 4.0,
+                                                              child: Image.network(
+                                                                imageUrl,
+                                                                fit: BoxFit
+                                                                    .contain,
+                                                                errorBuilder:
+                                                                    (
+                                                                      context,
+                                                                      error,
+                                                                      stackTrace,
+                                                                    ) {
+                                                                      return Container(
+                                                                        width:
+                                                                            300,
+                                                                        height:
+                                                                            300,
+                                                                        color: theme
+                                                                            .colorScheme
+                                                                            .surfaceVariant,
+                                                                        child: const Icon(
+                                                                          Icons
+                                                                              .broken_image,
+                                                                          size:
+                                                                              64,
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          Positioned(
+                                                            top: 10,
+                                                            right: 10,
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                Icons.close,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                              onPressed: () =>
+                                                                  Navigator.of(
+                                                                    context,
+                                                                  ).pop(),
+                                                              style: IconButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .black54,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          Positioned(
+                                                            top: 10,
+                                                            left: 10,
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                Icons.copy,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                              tooltip:
+                                                                  'Copy image link',
+                                                              onPressed: () =>
+                                                                  _copyImageUrlToClipboard(
+                                                                    imageUrl,
+                                                                  ),
+                                                              style: IconButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .black54,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                child: Stack(
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      child: Image.network(
+                                                        imageUrl,
+                                                        width: 150,
+                                                        height: 150,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (
+                                                              context,
+                                                              error,
+                                                              stackTrace,
+                                                            ) {
+                                                              return Container(
+                                                                width: 150,
+                                                                height: 150,
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .surfaceVariant,
+                                                                child: const Icon(
+                                                                  Icons
+                                                                      .broken_image,
+                                                                ),
+                                                              );
+                                                            },
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      top: 6,
+                                                      right: 6,
+                                                      child: Material(
+                                                        color: Colors.black54,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                        child: InkWell(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                16,
+                                                              ),
+                                                          onTap: () =>
+                                                              _copyImageUrlToClipboard(
+                                                                imageUrl,
+                                                              ),
+                                                          child: const Padding(
+                                                            padding:
+                                                                EdgeInsets.all(
+                                                                  4.0,
+                                                                ),
+                                                            child: Icon(
+                                                              Icons.copy,
+                                                              size: 14,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ),
+                                              );
+                                            }).toList(),
                                           ),
                                         ],
-                                      ),
-                                    );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                );
-                              },
-                              loading: () => const SizedBox.shrink(),
-                              error: (e, s) => const SizedBox.shrink(),
-                            ),
-                          ],
+                                      );
+                                    },
+                                    loading: () => const SizedBox.shrink(),
+                                    error: (e, s) => const SizedBox.shrink(),
+                                  ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   );
                 },
               );

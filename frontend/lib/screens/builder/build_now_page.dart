@@ -128,8 +128,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
           .length;
       final displayName = duplicates == 0
           ? _componentDisplayName(component.type)
-          : '${_componentDisplayName(component.type)} #${duplicates + 1}';
-
+          : '${_componentDisplayName(component.type)} ${duplicates + 1}';
       updatedState.add(
         PcComponent(
           name: displayName,
@@ -140,6 +139,124 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     }
 
     state = updatedState;
+    // Save to cookies
+    _saveBuildStateToCookies();
+  }
+
+  /// Prefills the builder with components and fetches their prices.
+  /// This is the preferred method when loading from explore/quiz pages.
+  Future<void> loadComponentsFromBuildWithPrices(
+    List<BaseComponent> components,
+    ComponentService componentService,
+  ) async {
+    if (components.isEmpty) {
+      return;
+    }
+
+    // Fetch prices for all components
+    final componentIds = components
+        .map((c) => c.id)
+        .where((id) => id.isNotEmpty)
+        .toList();
+    Map<String, double?> priceMap = {};
+
+    if (componentIds.isNotEmpty) {
+      try {
+        priceMap = await componentService.getLowestPricesForComponents(
+          componentIds,
+        );
+      } catch (e) {
+        debugPrint('Failed to fetch prices for components: $e');
+      }
+    }
+
+    // Create updated components with prices
+    final updatedState = _initialState
+        .map((c) => PcComponent(name: c.name, type: c.type))
+        .toList();
+
+    for (final component in components) {
+      // Create a new component with price override if available
+      final priceOverride = priceMap[component.id];
+      final componentWithPrice = priceOverride != null
+          ? _cloneComponentWithPrice(component, priceOverride)
+          : component;
+
+      final availableSlotIndex = updatedState.indexWhere(
+        (slot) =>
+            slot.type == componentWithPrice.type &&
+            slot.selectedProduct == null,
+      );
+
+      if (availableSlotIndex != -1) {
+        updatedState[availableSlotIndex].selectedProduct = componentWithPrice;
+        continue;
+      }
+
+      final duplicates = updatedState
+          .where((slot) => slot.type == componentWithPrice.type)
+          .length;
+      final displayName = duplicates == 0
+          ? _componentDisplayName(componentWithPrice.type)
+          : '${_componentDisplayName(componentWithPrice.type)} ${duplicates + 1}';
+      updatedState.add(
+        PcComponent(
+          name: displayName,
+          type: componentWithPrice.type,
+          selectedProduct: componentWithPrice,
+        ),
+      );
+    }
+
+    state = updatedState;
+    _saveBuildStateToCookies();
+  }
+
+  /// Helper to create a copy of a component with a price override.
+  BaseComponent _cloneComponentWithPrice(
+    BaseComponent component,
+    double price,
+  ) {
+    // Since BaseComponent subclasses are immutable, we need to re-parse from JSON
+    // This is a workaround - ideally components would have a copyWith method
+    final json = _componentToJson(component);
+    json['lowestPriceOverride'] = price;
+
+    switch (component.type) {
+      case ComponentType.cpu:
+        return CPUComponent.fromJson(json, priceOverride: price);
+      case ComponentType.gpu:
+        return GPUComponent.fromJson(json, priceOverride: price);
+      case ComponentType.motherboard:
+        return MotherboardComponent.fromJson(json, priceOverride: price);
+      case ComponentType.ram:
+        return MemoryComponent.fromJson(json, priceOverride: price);
+      case ComponentType.storage:
+        return StorageComponent.fromJson(json, priceOverride: price);
+      case ComponentType.psu:
+        return PowerSupplyComponent.fromJson(json, priceOverride: price);
+      case ComponentType.pcCase:
+        return CaseComponent.fromJson(json, priceOverride: price);
+      case ComponentType.cooler:
+        return CoolerComponent.fromJson(json, priceOverride: price);
+      case ComponentType.caseFan:
+        return CaseFanComponent.fromJson(json, priceOverride: price);
+      case ComponentType.monitor:
+        return MonitorComponent.fromJson(json, priceOverride: price);
+    }
+  }
+
+  /// Converts a component to a basic JSON map for re-parsing with price.
+  Map<String, dynamic> _componentToJson(BaseComponent component) {
+    return {
+      'id': component.id,
+      'name': component.name,
+      'manufacturer': component.manufacturer,
+      'type': component.type.name.toUpperCase(),
+      'imageUrl': component.imageUrl,
+      'databaseEntryAt': component.databaseEntryAt.toIso8601String(),
+      'lastEditedAt': component.lastEditedAt.toIso8601String(),
+    };
   }
 
   static String _componentDisplayName(ComponentType type) {

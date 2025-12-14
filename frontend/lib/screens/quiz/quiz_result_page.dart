@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/component_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/auth_provider.dart';
@@ -189,7 +190,11 @@ class _BuildGrid extends StatelessWidget {
         return;
       }
 
-      ref.read(buildProvider.notifier).loadComponentsFromBuild(components);
+      final componentService = ref.read(componentServiceProvider);
+      await ref
+          .read(buildProvider.notifier)
+          .loadComponentsFromBuildWithPrices(components, componentService);
+
       if (context.mounted) {
         context.go('/build-now');
       }

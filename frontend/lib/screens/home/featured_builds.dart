@@ -7,6 +7,7 @@ library;
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/component_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_color.dart';
 import '../../models/explore_build_model.dart';
@@ -16,7 +17,9 @@ import '../../l10n/app_localization.dart';
 import '../../utils/error_utils.dart';
 
 /// Provider to fetch featured builds by querying names containing "featured"
-final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) async {
+final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((
+  ref,
+) async {
   final buildService = ref.read(buildServiceProvider);
 
   // Stable params to avoid refetch loops
@@ -35,44 +38,88 @@ final featuredBuildsProvider = FutureProvider.autoDispose<List<Build>>((ref) asy
   // Fetch components for these builds so specs/price can be shown
   Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
   try {
-    componentsByBuildId = await buildService.getBuildComponents(builds.map((b) => b.id).toList());
+    componentsByBuildId = await buildService.getBuildComponents(
+      builds.map((b) => b.id).toList(),
+    );
   } catch (_) {
     // If component fetch fails, fall back to builds without specs
     componentsByBuildId = {};
   }
 
-  // Enrich builds with parsed components
-  final enrichedBuilds = builds.map((build) {
-    final rawComponents = componentsByBuildId[build.id];
-    final parsedComponents =
-        rawComponents != null ? _parseComponents(rawComponents) : <BaseComponent>[];
+  // Enrich builds with parsed components and prices
+  final enrichedBuilds = await Future.wait(
+    builds.map((build) async {
+      final rawComponents = componentsByBuildId[build.id];
 
-    return Build(
-      id: build.id,
-      userId: build.userId,
-      name: build.name,
-      description: build.description,
-      status: build.status,
-      imageUrl: build.imageUrl,
-      author: build.author,
-      databaseEntryAt: build.databaseEntryAt,
-      lastEditedAt: build.lastEditedAt,
-      averageRating: build.averageRating,
-      ratingsCount: build.ratingsCount,
-      userRating: build.userRating,
-      components: parsedComponents,
-      tags: build.tags,
-    );
-  }).toList();
+      // If no components, return build as-is
+      if (rawComponents == null || rawComponents.isEmpty) {
+        return Build(
+          id: build.id,
+          userId: build.userId,
+          name: build.name,
+          description: build.description,
+          status: build.status,
+          imageUrl: build.imageUrl,
+          author: build.author,
+          databaseEntryAt: build.databaseEntryAt,
+          lastEditedAt: build.lastEditedAt,
+          averageRating: build.averageRating,
+          ratingsCount: build.ratingsCount,
+          userRating: build.userRating,
+          components: const [],
+          tags: build.tags,
+        );
+      }
+
+      // Parse components first to get IDs
+      final parsedComponents = _parseComponents(rawComponents);
+
+      // Fetch prices for all components in this build
+      List<BaseComponent> componentsWithPrices = parsedComponents;
+      if (parsedComponents.isNotEmpty) {
+        final componentIds = parsedComponents.map((c) => c.id).toList();
+        final componentService = ref.read(componentServiceProvider);
+        final priceMap = await componentService.getLowestPricesForComponents(
+          componentIds,
+        );
+
+        // Re-parse components with price overrides
+        componentsWithPrices = _parseComponentsWithPrices(
+          rawComponents,
+          priceMap,
+        );
+      }
+
+      return Build(
+        id: build.id,
+        userId: build.userId,
+        name: build.name,
+        description: build.description,
+        status: build.status,
+        imageUrl: build.imageUrl,
+        author: build.author,
+        databaseEntryAt: build.databaseEntryAt,
+        lastEditedAt: build.lastEditedAt,
+        averageRating: build.averageRating,
+        ratingsCount: build.ratingsCount,
+        userRating: build.userRating,
+        components: componentsWithPrices,
+        tags: build.tags,
+      );
+    }).toList(),
+  );
 
   // Keep top 3 most recent
   return enrichedBuilds.take(3).toList();
 });
 
 /// Parses raw component JSON returned from the API into strongly typed components.
-List<BaseComponent> _parseComponents(List<Map<String, dynamic>> componentsJson) {
+List<BaseComponent> _parseComponents(
+  List<Map<String, dynamic>> componentsJson,
+) {
   double? _extractPriceOverride(Map<String, dynamic> data) {
-    final raw = data['lowestPriceOverride'] ??
+    final raw =
+        data['lowestPriceOverride'] ??
         data['LowestPriceOverride'] ??
         data['lowestPrice'] ??
         data['LowestPrice'] ??
@@ -85,38 +132,147 @@ List<BaseComponent> _parseComponents(List<Map<String, dynamic>> componentsJson) 
   }
 
   BaseComponent? mapComponent(Map<String, dynamic> componentData) {
-    final typeString =
-        (componentData['type'] ?? componentData['Type'])?.toString().toUpperCase();
+    final typeString = (componentData['type'] ?? componentData['Type'])
+        ?.toString()
+        .toUpperCase();
     if (typeString == null) return null;
 
     final priceOverride = _extractPriceOverride(componentData);
 
     switch (typeString) {
       case 'CPU':
-        return CPUComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'GPU':
-        return GPUComponent.fromJson(componentData, priceOverride: priceOverride);
+        return GPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MOTHERBOARD':
-        return MotherboardComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MotherboardComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MEMORY':
       case 'RAM':
-        return MemoryComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MemoryComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'STORAGE':
-        return StorageComponent.fromJson(componentData, priceOverride: priceOverride);
+        return StorageComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'POWERSUPPLY':
       case 'PSU':
       case 'POWER_SUPPLY':
-        return PowerSupplyComponent.fromJson(componentData, priceOverride: priceOverride);
+        return PowerSupplyComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'CASE':
       case 'PCCASE':
-        return CaseComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CaseComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'COOLER':
-        return CoolerComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CoolerComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'CASEFAN':
       case 'CASE_FAN':
-        return CaseFanComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CaseFanComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MONITOR':
-        return MonitorComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MonitorComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      default:
+        return null;
+    }
+  }
+
+  return componentsJson.map(mapComponent).whereType<BaseComponent>().toList();
+}
+
+List<BaseComponent> _parseComponentsWithPrices(
+  List<Map<String, dynamic>> componentsJson,
+  Map<String, double?> priceMap,
+) {
+  BaseComponent? mapComponent(Map<String, dynamic> componentData) {
+    final typeString = (componentData['type'] ?? componentData['Type'])
+        ?.toString()
+        .toUpperCase();
+    if (typeString == null) return null;
+
+    final componentId = (componentData['id'] ?? componentData['Id'])
+        ?.toString();
+    final priceOverride = componentId != null ? priceMap[componentId] : null;
+
+    switch (typeString) {
+      case 'CPU':
+        return CPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'GPU':
+        return GPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'MOTHERBOARD':
+        return MotherboardComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'MEMORY':
+      case 'RAM':
+        return MemoryComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'STORAGE':
+        return StorageComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'POWERSUPPLY':
+      case 'PSU':
+      case 'POWER_SUPPLY':
+        return PowerSupplyComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'CASE':
+      case 'PCCASE':
+        return CaseComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'COOLER':
+        return CoolerComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'CASEFAN':
+      case 'CASE_FAN':
+        return CaseFanComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
+      case 'MONITOR':
+        return MonitorComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       default:
         return null;
     }
@@ -153,7 +309,7 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     // Watch the featured builds provider
     final buildsAsync = ref.watch(featuredBuildsProvider);
 
@@ -218,7 +374,9 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
                   autoPlayAnimationDuration: const Duration(milliseconds: 800),
                   autoPlayCurve: Curves.fastOutSlowIn,
                   enlargeCenterPage: true,
-                  viewportFraction: MediaQuery.of(context).size.width < 768 ? 0.85 : 0.35,
+                  viewportFraction: MediaQuery.of(context).size.width < 768
+                      ? 0.85
+                      : 0.35,
                   aspectRatio: 2 / 3,
                   onPageChanged: (index, reason) {
                     if (mounted) {
@@ -266,14 +424,15 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
                         color: _current == entry.key
                             ? null
                             : (isDarkMode ? Colors.white : Colors.black)
-                                .withValues(alpha: 0.3),
+                                  .withValues(alpha: 0.3),
                         boxShadow: _current == entry.key
                             ? [
                                 BoxShadow(
-                                  color: (isDarkMode
-                                          ? AppColorsDark.textNeon
-                                          : AppColorsLight.textNeon)
-                                      .withValues(alpha: 0.5),
+                                  color:
+                                      (isDarkMode
+                                              ? AppColorsDark.textNeon
+                                              : AppColorsLight.textNeon)
+                                          .withValues(alpha: 0.5),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
@@ -292,7 +451,9 @@ class _FeaturedBuildsState extends ConsumerState<FeaturedBuilds> {
         height: 500,
         child: Center(
           child: CircularProgressIndicator(
-            color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+            color: isDarkMode
+                ? AppColorsDark.textNeon
+                : AppColorsLight.textNeon,
           ),
         ),
       ),
@@ -362,7 +523,8 @@ class _BuildCard extends StatefulWidget {
   State<_BuildCard> createState() => _BuildCardState();
 }
 
-class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMixin {
+class _BuildCardState extends State<_BuildCard>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
@@ -419,7 +581,9 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
         scale: _scaleAnimation,
         child: Container(
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width < 768 ? double.infinity : 420,
+            maxWidth: MediaQuery.of(context).size.width < 768
+                ? double.infinity
+                : 420,
             maxHeight: 650,
           ),
           margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -428,14 +592,8 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: widget.isDarkMode
-                  ? [
-                      const Color(0xFF1e1432),
-                      const Color(0xFF0f0915),
-                    ]
-                  : [
-                      const Color(0xFFF5F5F5),
-                      const Color(0xFFE8E8E8),
-                    ],
+                  ? [const Color(0xFF1e1432), const Color(0xFF0f0915)]
+                  : [const Color(0xFFF5F5F5), const Color(0xFFE8E8E8)],
             ),
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
@@ -472,15 +630,16 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Center(
-                                child: Icon(
-                                  Icons.computer,
-                                  size: 100,
-                                  color: widget.isDarkMode
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : Colors.black.withValues(alpha: 0.2),
-                                ),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
+                                    child: Icon(
+                                      Icons.computer,
+                                      size: 100,
+                                      color: widget.isDarkMode
+                                          ? Colors.white.withValues(alpha: 0.2)
+                                          : Colors.black.withValues(alpha: 0.2),
+                                    ),
+                                  ),
                             ),
                           )
                         : Center(
@@ -498,7 +657,10 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                 Expanded(
                   flex: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -507,7 +669,9 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: widget.isDarkMode ? Colors.white : Colors.black,
+                            color: widget.isDarkMode
+                                ? Colors.white
+                                : Colors.black,
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -534,7 +698,8 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                                   child: SingleChildScrollView(
                                     padding: const EdgeInsets.only(right: 8),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: _buildSpecsList(),
                                     ),
                                   ),
@@ -547,7 +712,9 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                         // Price
                         Center(
                           child: Text(
-                            totalPrice > 0 ? 'Price: ${totalPrice.toStringAsFixed(0)} Pin' : 'Price: N/A',
+                            totalPrice > 0
+                                ? 'Price: ${totalPrice.toStringAsFixed(0)} Pin'
+                                : 'Price: N/A',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -569,14 +736,18 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
                               boxShadow: _isHovered
                                   ? [
                                       BoxShadow(
-                                        color: const Color(0xFF00e573).withValues(alpha: 0.5),
+                                        color: const Color(
+                                          0xFF00e573,
+                                        ).withValues(alpha: 0.5),
                                         blurRadius: 20,
                                         spreadRadius: 2,
                                       ),
                                     ]
                                   : [
                                       BoxShadow(
-                                        color: const Color(0xFF00e573).withValues(alpha: 0.3),
+                                        color: const Color(
+                                          0xFF00e573,
+                                        ).withValues(alpha: 0.3),
                                         blurRadius: 10,
                                         spreadRadius: 0,
                                       ),
@@ -638,7 +809,9 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
 
     // Find Storage
     try {
-      final storage = components.firstWhere((c) => c.type == ComponentType.storage);
+      final storage = components.firstWhere(
+        (c) => c.type == ComponentType.storage,
+      );
       specs.add(_truncateName(storage.name, maxLength: 30));
     } catch (_) {}
 
@@ -648,18 +821,22 @@ class _BuildCardState extends State<_BuildCard> with SingleTickerProviderStateMi
       specs.add(_truncateName(gpu.name, maxLength: 30));
     } catch (_) {}
 
-    return specs.map((spec) => Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        spec,
-        style: TextStyle(
-          fontSize: 13,
-          color: widget.isDarkMode
-              ? Colors.white.withValues(alpha: 0.9)
-              : Colors.black.withValues(alpha: 0.9),
-          height: 1.6,
-        ),
-      ),
-    )).toList();
+    return specs
+        .map(
+          (spec) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              spec,
+              style: TextStyle(
+                fontSize: 13,
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : Colors.black.withValues(alpha: 0.9),
+                height: 1.6,
+              ),
+            ),
+          ),
+        )
+        .toList();
   }
 }
