@@ -71,6 +71,11 @@ class AdminService {
     return _dio.delete('$apiBaseUrl/Users/$userId');
   }
 
+  Future<Response> banUser(String userId) async {
+    final data = {'BannedUntil': DateTime.now().add(const Duration(days: 7)).toIso8601String()};
+    return _dio.put('$apiBaseUrl/Users/$userId', data: data);
+  }
+
   /// Gets builds with filtering and optional pagination
   /// If page and pageLength are provided, pagination is enabled
   Future<Response> getBuilds({

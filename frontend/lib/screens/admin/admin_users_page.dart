@@ -712,6 +712,14 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                   tooltip: 'Delete',
                   color: AppColorsDark.error,
                 ),
+                IconButton(
+                  icon: const Icon(Icons.block, size: 18),
+                  onPressed: () {
+                    _showBanConfirmation(context, user, isDark);
+                  },
+                  tooltip: 'Ban',
+                  color: AppColorsDark.error,
+                ),
               ],
             ),
           ),
@@ -720,6 +728,54 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     );
   }
 
+  void _showBanConfirmation(BuildContext context, AdminUser user, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ban User'),
+        content: Text('Are you sure you want to ban ${user.displayName ?? user.login}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              try {
+                final adminService = ref.read(adminServiceProvider);
+                await adminService.banUser(user.id);
+                
+                if (mounted) {
+                  // Invalidate the users provider to refresh the list
+                  ref.invalidate(adminUsersProvider(_cachedQueryParams ?? {}));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('User banned successfully'),
+                      backgroundColor: AppColorsDark.buttonGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(getUserFriendlyError(e)),
+                      backgroundColor: AppColorsDark.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColorsDark.error,
+            ),
+            child: const Text('Ban'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showDeleteConfirmation(BuildContext context, AdminUser user, bool isDark) {
     showDialog(
