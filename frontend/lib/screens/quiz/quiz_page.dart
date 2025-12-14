@@ -50,24 +50,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 }
 
                 final currentStep = ref.watch(quizStepProvider);
-                
+
                 // Filter out follow-up questions for now, show only main questions
-                final mainQuestions = questions.where((q) => q.parentAnswerId == null).toList();
-                
+                final mainQuestions = questions
+                    .where((q) => q.parentAnswerId == null)
+                    .toList();
+
                 if (currentStep >= mainQuestions.length) {
                   if (_generationError != null) {
                     return _GenerationError(
                       message: _generationError!,
-                      onRetry: () {
-                        ref.read(quizProvider.notifier).resetQuiz();
-                        ref.read(quizStepProvider.notifier).state = 0;
-                        setState(() {
-                          _generationStarted = false;
-                          _generationFuture = null;
-                          _generationError = null;
-                          _selectedAnswerIds.clear();
-                        });
-                      },
+                      onRetry: () => _retryGeneration(context),
+                      onRetake: _retakeQuiz,
                     );
                   }
                   _startGeneration(context);
@@ -76,14 +70,15 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
                 final currentQuestion = mainQuestions[currentStep];
                 final quizState = ref.watch(quizProvider);
-                
+
                 // Load existing selections for this question
                 final existingSelections = quizState.selections.values
                     .where((s) => s.questionId.startsWith(currentQuestion.id))
                     .map((s) => s.answerId)
                     .toSet();
-                
-                if (existingSelections.isNotEmpty && _selectedAnswerIds.isEmpty) {
+
+                if (existingSelections.isNotEmpty &&
+                    _selectedAnswerIds.isEmpty) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     setState(() {
                       _selectedAnswerIds = existingSelections;
@@ -100,9 +95,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 );
               },
               loading: () => const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF6B46FF),
-                ),
+                child: CircularProgressIndicator(color: Color(0xFF6B46FF)),
               ),
               error: (error, stack) => Center(
                 child: Padding(
@@ -114,12 +107,18 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       const SizedBox(height: 16),
                       Text(
                         'Error loading questions',
-                        style: const TextStyle(color: Colors.white, fontSize: 18),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         getUserFriendlyError(error),
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -188,6 +187,33 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     );
   }
 
+  /// Retry generation with the existing answers without forcing the user
+  /// to retake the entire quiz. We clear the local error state first so
+  /// the page can transition to the loading view.
+  void _retryGeneration(BuildContext context) {
+    setState(() {
+      _generationError = null;
+      _generationStarted = false;
+      _generationFuture = null;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startGeneration(context);
+    });
+  }
+
+  /// Fully reset the quiz so the user can change their answers.
+  void _retakeQuiz() {
+    ref.read(quizProvider.notifier).resetQuiz();
+    ref.read(quizStepProvider.notifier).state = 0;
+    setState(() {
+      _generationStarted = false;
+      _generationFuture = null;
+      _generationError = null;
+      _selectedAnswerIds.clear();
+    });
+  }
+
   Future<void> _startGeneration(BuildContext context) async {
     if (_generationStarted) return;
     _generationStarted = true;
@@ -199,24 +225,63 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         final quizState = ref.read(quizProvider);
         final selections = quizState.selections.values.toList();
 
-        // Persist any selections that are not yet saved for this user
         final quizService = ref.read(quizServiceProvider);
+
+        // Rebuild lookups (if questions are loaded) so we can clean stale server answers
+        final questionsAsync = ref.read(quizQuestionsProvider);
+        final questions = questionsAsync.valueOrNull ?? [];
+        final questionLookup = {for (final q in questions) q.id: q};
+        final answerLookup = <String, QuizAnswerOption>{};
+        for (final q in questions) {
+          for (final opt in q.options) {
+            answerLookup[opt.id] = opt;
+          }
+        }
+
+        // Delete all previously saved answers for this user (generated builds will use fresh answers)
+        if (questions.isNotEmpty) {
+          try {
+            final existingSelections = await quizService.fetchUserSelections(
+              userId: user.uid,
+              questionLookup: questionLookup,
+              answerLookup: answerLookup,
+            );
+            await Future.wait(
+              existingSelections
+                  .map((s) => s.userAnswerId)
+                  .where((id) => (id ?? '').isNotEmpty)
+                  .map((id) => quizService.deleteUserAnswer(id!)),
+            );
+          } catch (_) {
+            // best-effort cleanup; continue even if it fails
+          }
+        }
+
+        // Persist current selections (always submit all to ensure latest answers are used)
         await Future.wait(
-          selections
-              .where((s) => (s.userAnswerId ?? '').isEmpty)
-              .map((s) async {
-                try {
-                  await quizService.submitAnswer(userId: user.uid, answerId: s.answerId);
-                } on DioException catch (e) {
-                  // Ignore duplicates already recorded server-side
-                  if (e.response?.statusCode != 409) rethrow;
-                }
-              }),
+          selections.map((s) async {
+            try {
+              await quizService.submitAnswer(
+                userId: user.uid,
+                answerId: s.answerId,
+              );
+            } on DioException catch (e) {
+              // Ignore duplicates already recorded server-side
+              if (e.response?.statusCode != 409) rethrow;
+            }
+          }),
         );
 
-        // Run the generation once for a batch of 3 builds
-        _generationFuture ??= quizService.generateBuilds();
+        // Always trigger a fresh generation for a new batch of 3 builds
+        _generationFuture = quizService.generateBuilds();
         await _generationFuture;
+        _generationFuture = null;
+
+        // Delete older GENERATED builds, keep the latest 3
+        await quizService.pruneGeneratedBuilds(userId: user.uid, keepLatest: 3);
+
+        // Ensure recommended builds provider refreshes with the new generation
+        ref.invalidate(quizRecommendedBuildsProvider(user.uid));
       }
 
       if (mounted) {
@@ -267,13 +332,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
     final crossAxisCount = isMobile
         ? 1
         : width > 1200
-            ? 3
-            : 2;
+        ? 3
+        : 2;
     final aspectRatio = isMobile
         ? 4.5
         : width > 1200
-            ? 3.5
-            : 4.0;
+        ? 3.5
+        : 4.0;
 
     return GridView.builder(
       shrinkWrap: false,
@@ -306,14 +371,16 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 // Multi-select: add without clearing others
                 _selectedAnswerIds.add(option.id);
                 // Save with unique key per option
-                ref.read(quizProvider.notifier).setSelection(
-                  QuizAnswerSelection(
-                    questionId: selectionKey,
-                    questionText: question.text,
-                    answerId: option.id,
-                    answerText: option.text,
-                  ),
-                );
+                ref
+                    .read(quizProvider.notifier)
+                    .setSelection(
+                      QuizAnswerSelection(
+                        questionId: selectionKey,
+                        questionText: question.text,
+                        answerId: option.id,
+                        answerText: option.text,
+                      ),
+                    );
               }
             });
           },
@@ -392,7 +459,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       setState(() {
                         _selectedAnswerIds = {};
                       });
-                      ref.read(quizStepProvider.notifier).state = currentStep - 1;
+                      ref.read(quizStepProvider.notifier).state =
+                          currentStep - 1;
                     }
                   : null,
               icon: const Icon(Icons.arrow_back, size: 18),
@@ -400,18 +468,48 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 disabledForegroundColor: const Color(0xFF6B6B6B),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(width: 24),
             // Next button - smaller and distinct
             ElevatedButton.icon(
               onPressed: () async {
+                if (_selectedAnswerIds.isEmpty) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF1A1926),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      title: const Text(
+                        'Selection required',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Please choose at least one answer to continue.',
+                        style: TextStyle(color: Color(0xFFB0B0B0)),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
                 final step = ref.read(quizStepProvider);
                 final nextStep = step + 1;
                 final isLast = nextStep >= totalSteps;
 
-                // Move to next step (or finalize), allow skipping with no selection
+                // Move to next step (or finalize) after a selection is made
                 setState(() {
                   _selectedAnswerIds = {};
                 });
@@ -426,7 +524,10 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B46FF),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -465,10 +566,7 @@ class _GenerationLoading extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               'We\'re preparing a batch of 3 builds based on your answers.',
-              style: TextStyle(
-                color: Color(0xFFB0B0B0),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
@@ -479,10 +577,15 @@ class _GenerationLoading extends StatelessWidget {
 }
 
 class _GenerationError extends StatelessWidget {
-  const _GenerationError({required this.message, required this.onRetry});
+  const _GenerationError({
+    required this.message,
+    required this.onRetry,
+    this.onRetake,
+  });
 
   final String message;
   final VoidCallback onRetry;
+  final VoidCallback? onRetake;
 
   @override
   Widget build(BuildContext context) {
@@ -504,15 +607,43 @@ class _GenerationError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6B46FF),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Retake Quiz'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: onRetry,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B46FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Try Again'),
+                ),
+                if (onRetake != null)
+                  OutlinedButton(
+                    onPressed: onRetake,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFF6B46FF)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Retake Quiz'),
+                  ),
+              ],
             ),
           ],
         ),
