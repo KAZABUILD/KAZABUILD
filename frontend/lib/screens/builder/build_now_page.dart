@@ -692,72 +692,72 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   }
 
   /// Validates build compatibility based on component-type-specific rules.
-  Future<Map<ComponentType, bool>> _validateBuildCompatibility(
-    List<PcComponent> components,
-    WidgetRef ref,
-  ) async {
-    final selectedComponents = components
-        .where((c) => c.selectedProduct != null)
-        .map((c) => c.selectedProduct!)
-        .toList();
+  // Future<Map<ComponentType, bool>> _validateBuildCompatibility(
+  //   List<PcComponent> components,
+  //   WidgetRef ref,
+  // ) async {
+  //   final selectedComponents = components
+  //       .where((c) => c.selectedProduct != null)
+  //       .map((c) => c.selectedProduct!)
+  //       .toList();
 
-    if (selectedComponents.length < 2) {
-      // Not enough components to check compatibility
-      return {for (var c in components) c.type: true};
-    }
+  //   if (selectedComponents.length < 2) {
+  //     // Not enough components to check compatibility
+  //     return {for (var c in components) c.type: true};
+  //   }
 
-    final compatibilityService = ref.read(
-      componentCompatibilityServiceProvider,
-    );
-    final Map<ComponentType, bool> result = {};
+  //   final compatibilityService = ref.read(
+  //     componentCompatibilityServiceProvider,
+  //   );
+  //   final Map<ComponentType, bool> result = {};
 
-    for (final component in components) {
-      if (component.selectedProduct == null) {
-        result[component.type] = true;
-        continue;
-      }
+  //   for (final component in components) {
+  //     if (component.selectedProduct == null) {
+  //       result[component.type] = true;
+  //       continue;
+  //     }
 
-      final relevantComponents = CompatibilityRules.getRelevantComponents(
-        component.type,
-        selectedComponents
-            .where((c) => c.id != component.selectedProduct!.id)
-            .toList(),
-      );
+  //     final relevantComponents = CompatibilityRules.getRelevantComponents(
+  //       component.type,
+  //       selectedComponents
+  //           .where((c) => c.id != component.selectedProduct!.id)
+  //           .toList(),
+  //     );
 
-      if (relevantComponents.isEmpty) {
-        result[component.type] = true;
-        continue;
-      }
+  //     if (relevantComponents.isEmpty) {
+  //       result[component.type] = true;
+  //       continue;
+  //     }
 
-      // Check if this component is compatible with all relevant components
-      try {
-        final compatibleIds = await compatibilityService
-            .getCompatibleComponentIds(component.selectedProduct!.id);
+  //     // Check if this component is compatible with all relevant components
+  //     try {
+  //       final compatibleIds = await compatibilityService
+  //           .getCompatibleComponentIds(component.selectedProduct!.id);
 
-        final isCompatible = relevantComponents.every(
-          (relevant) => compatibleIds.contains(relevant.id),
-        );
-        result[component.type] = isCompatible;
-      } catch (e) {
-        result[component.type] = false;
-      }
-    }
+  //       final isCompatible = relevantComponents.every(
+  //         (relevant) => compatibleIds.contains(relevant.id),
+  //       );
+  //       result[component.type] = isCompatible;
+  //     } catch (e) {
+  //       result[component.type] = false;
+  //     }
+  //   }
 
-    return result;
-  }
+  //   return result;
+  // }
 
-  String _compatibilityStatus(List<PcComponent> components) {
-    final selectedComponents = components
-        .where((c) => c.selectedProduct != null)
-        .toList();
-    if (selectedComponents.isEmpty) {
-      return 'Compatibility: No issues found';
-    }
-    bool allCompatible = selectedComponents.every((c) => c.isCompatible);
-    return allCompatible
-        ? 'Compatibility: No issues found'
-        : 'Compatibility: Issues found!';
-  }
+  // String _compatibilityStatus(List<PcComponent> components) {
+  //   final selectedComponents = components
+  //       .where((c) => c.selectedProduct != null)
+  //       .toList();
+  //   if (selectedComponents.isEmpty) {
+  //     return 'Compatibility: No issues found';
+  //   }
+  //   bool allCompatible = selectedComponents.every((c) => c.isCompatible);
+  //   return allCompatible
+  //       ? 'Compatibility: No issues found'
+  //       : 'Compatibility: Issues found!';
+  // }
 
   IconData _getComponentIcon(ComponentType type) {
     switch (type) {
@@ -1210,10 +1210,10 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             onShowSnackBar: _showSnackBar,
                           ),
                           const SizedBox(height: 24),
-                          _CompatibilityBar(
-                            theme: theme,
-                            statusMessage: _compatibilityStatus(components),
-                          ),
+                          // _CompatibilityBar(
+                          //   theme: theme,
+                          //   statusMessage: _compatibilityStatus(components),
+                          // ),
                           const SizedBox(height: 24),
                           _PriceAndSaveBar(
                             theme: theme,
@@ -2177,59 +2177,59 @@ class _MarkupButton extends StatelessWidget {
   }
 }
 
-class _CompatibilityBar extends StatelessWidget {
-  final ThemeData theme;
-  final String statusMessage;
+// class _CompatibilityBar extends StatelessWidget {
+//   final ThemeData theme;
+//   final String statusMessage;
 
-  const _CompatibilityBar({required this.theme, required this.statusMessage});
+//   const _CompatibilityBar({required this.theme, required this.statusMessage});
 
-  @override
-  Widget build(BuildContext context) {
-    final bool hasIssues =
-        statusMessage.toLowerCase().contains('issues found') &&
-        !statusMessage.toLowerCase().contains('no issues');
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: hasIssues
-            ? AppColorsDark.error.withValues(alpha: 0.1)
-            : const Color(0xFF0C4F2A).withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: hasIssues
-              ? AppColorsDark.error.withValues(alpha: 0.5)
-              : const Color(0xFF0C4F2A),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            hasIssues
-                ? Icons.cancel_outlined
-                : Icons.check_circle_outline_rounded,
-            color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Text(
-            statusMessage,
-            style: TextStyle(
-              color: hasIssues
-                  ? AppColorsDark.error
-                  : AppColorsDark.buttonGreen,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     final bool hasIssues =
+//         statusMessage.toLowerCase().contains('issues found') &&
+//         !statusMessage.toLowerCase().contains('no issues');
+//     return Container(
+//       width: double.infinity,
+//       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+//       decoration: BoxDecoration(
+//         color: hasIssues
+//             ? AppColorsDark.error.withValues(alpha: 0.1)
+//             : const Color(0xFF0C4F2A).withValues(alpha: 0.3),
+//         borderRadius: BorderRadius.circular(8),
+//         border: Border.all(
+//           color: hasIssues
+//               ? AppColorsDark.error.withValues(alpha: 0.5)
+//               : const Color(0xFF0C4F2A),
+//           width: 1,
+//         ),
+//       ),
+//       child: Row(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           Icon(
+//             hasIssues
+//                 ? Icons.cancel_outlined
+//                 : Icons.check_circle_outline_rounded,
+//             color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
+//             size: 20,
+//           ),
+//           const SizedBox(width: 10),
+//           Text(
+//             statusMessage,
+//             style: TextStyle(
+//               color: hasIssues
+//                   ? AppColorsDark.error
+//                   : AppColorsDark.buttonGreen,
+//               fontWeight: FontWeight.w600,
+//               fontSize: 14,
+//               letterSpacing: 0.5,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 class _PriceAndSaveBar extends ConsumerWidget {
   final ThemeData theme;
