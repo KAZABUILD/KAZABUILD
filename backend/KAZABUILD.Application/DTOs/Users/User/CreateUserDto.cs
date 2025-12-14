@@ -33,7 +33,7 @@ namespace KAZABUILD.Application.DTOs.Users.User
         /// </summary>
         [Required]
         [StringLength(50, ErrorMessage = "Display name cannot be longer than 50 characters!")]
-        [MinLength(8, ErrorMessage = "Display Name must be at least 8 characters long!")]
+        [MinLength(4, ErrorMessage = "Display Name must be at least 4 characters long!")]
         public string DisplayName { get; set; } = default!;
 
         /// <summary>
@@ -64,11 +64,11 @@ namespace KAZABUILD.Application.DTOs.Users.User
         public UserRole UserRole { get; set; } = UserRole.GUEST;
 
         /// <summary>
-        /// Url address of user's profile picture stored on the internal application server.
+        /// Id of the images storing the user's profile picture.
+        /// If null the frontend should use a default one.
         /// </summary>
-        [Required]
-        [StringLength(255, ErrorMessage = "Url cannot be longer than 255 characters!")]
-        public string ImageUrl { get; set; } = "wwwroot/defaultuser.png";
+        public Guid? ImageId { get; set; }
+
 
         /// <summary>
         /// User's date of birth.

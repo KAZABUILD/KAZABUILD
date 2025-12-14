@@ -26,39 +26,51 @@ namespace KAZABUILD.Domain.Entities
         //Possible references, only one should ever be set at a time
         /// <summary>
         /// Id of the User Profile this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? UserId { get; set; }
 
         /// <summary>
         /// Id of the Build this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? BuildId { get; set; }
 
         /// <summary>
         /// Id of the Forum Post this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? ForumPostId { get; set; }
 
         /// <summary>
         /// Id of the Comment this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? ComponentId { get; set; }
 
         /// <summary>
         /// Id of the SubComment this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? SubComponentId { get; set; }
 
         /// <summary>
         /// Id of the User Comment this Image is in.
-        /// Can be null as a Image should be stored for only one entity.
+        /// Can be null as an Image should be stored for only one entity.
         /// </summary>
         public Guid? UserCommentId { get; set; }
+
+        /// <summary>
+        /// Id of the Message this Image is in.
+        /// Can be null as an Image should be stored for only one entity.
+        /// </summary>
+        public Guid? MessageId { get; set; }
+
+        /// <summary>
+        /// Id of the User Guide this Image is in.
+        /// Can be null as an Image should be stored for only one entity.
+        /// </summary>
+        public Guid? UserGuideId { get; set; }
 
         /// <summary>
         /// Name which is used for the image in the html.
@@ -96,5 +108,8 @@ namespace KAZABUILD.Domain.Entities
         public BaseSubComponent? SubComponent { get; set; } = default!;
         public UserComment? UserComment { get; set; } = default!;
         public Build? Build { get; set; } = default!;
+        public Message? Message { get; set; } = default!;
+        public UserGuide? UserGuide { get; set; } = default!;
+        public List<User>? Users { get; set; } = default!;
     }
 }

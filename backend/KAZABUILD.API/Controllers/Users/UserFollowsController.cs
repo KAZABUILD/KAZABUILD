@@ -1,4 +1,3 @@
-using KAZABUILD.Application.DTOs.Users.UserActivity;
 using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
@@ -6,9 +5,11 @@ using KAZABUILD.Application.Security;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 
@@ -21,17 +22,19 @@ namespace KAZABUILD.API.Controllers.Users
     /// <param name="db"></param>
     /// <param name="logger"></param>
     /// <param name="publisher"></param>
+    /// <param name="cache"></param>
     [ApiController]
     [Route("[controller]")]
-    public class UserFollowsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher) : ControllerBase
+    public class UserFollowsController(KAZABUILDDBContext db, ILoggerService logger, IRabbitMQPublisher publisher, IMemoryCache cache) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
         private readonly ILoggerService _logger = logger;
         private readonly IRabbitMQPublisher _publisher = publisher;
+        private readonly IMemoryCache _cache = cache;
 
         /// <summary>
-        /// API Endpoint for creating a new UserFollow
+        /// API Endpoint for creating a new UserFollow.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
@@ -47,7 +50,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if the Follower and Followed exists
+            //Check if the Follower and Followed exist
             var Follower = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowerId);
             var Followed = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.FollowedId);
             if (Follower == null || Followed == null)
@@ -113,7 +116,7 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 FollowerId = dto.FollowerId,
                 FollowedId = dto.FollowedId,
-                FollowedAt = dto.FollowedAt,
+                FollowedAt = isPrivileged ? dto.FollowedAt : DateTime.UtcNow,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
             };
@@ -394,7 +397,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
@@ -499,8 +502,26 @@ namespace KAZABUILD.API.Controllers.Users
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Check if current user has staff permissions
-            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            //Generate a cache key
+            var cacheKey = CacheHelper.GetUserFollowCountCacheKey(dto);
+
+            //Try to get the views from cache first
+            if (_cache.TryGetValue(cacheKey, out int cachedViews))
+            {
+                //Log success
+                await _logger.LogAsync(
+                    currentUserId,
+                    "GET",
+                    "UserActivity",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.INFORMATION,
+                    "Operation Successful - UserFollows Count Got From Cache"
+                );
+
+                //Return the views amount
+                return Ok(cachedViews);
+            }
 
             //Declare the query
             var query = _db.UserFollows.AsNoTracking();
@@ -523,7 +544,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(f => f.FollowedAt <= dto.FollowedAtEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.Followed).Include(f => f.Follower).Search(dto.Query, i => i.Followed!.DisplayName, i => i.Follower!.DisplayName);
@@ -545,6 +566,12 @@ namespace KAZABUILD.API.Controllers.Users
 
             //Count the amount of follows to return
             var followsAmount = await query.CountAsync();
+
+            //Cache the query result
+            _cache.Set(cacheKey, followsAmount, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            });
 
             //Log success
             await _logger.LogAsync(
@@ -604,7 +631,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { message = "UserFollow not found!" });
             }
 
-            //Check if current user has staff permissions or if they are unfollowing a user
+            //Check if current user has staff permissions or if they are unfollowing a user they followed
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == userFollow.FollowerId;
 

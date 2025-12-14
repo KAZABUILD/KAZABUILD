@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -7,6 +8,9 @@ namespace KAZABUILD.Application.Helpers
     //Handles Search functionality in controllers
     public static partial class SearchHelper
     {
+        // Configuration flag - set this in your test factory
+        public static bool UseInMemorySearch { get; set; } = false;
+
         //Helper for searching in queries, takes in the search string and all the fields used for search;
         //Split search string into tokens and apply them one by one.
         //Tokens with ":" are treated as field-specific (field:value),
@@ -36,7 +40,7 @@ namespace KAZABUILD.Application.Helpers
                     //Split into the field name and value to search
                     var parts = cleanTerm.Split(':', 2);
                     var fieldName = parts[0];
-                    var value = parts[1].Trim('"');
+                    var value = parts[1].Trim('\"');
 
                     //Call the function to build the filter and apply it to get filtered objects
                     var filter = ApplyFieldFilter(query, fieldName, value);
@@ -50,7 +54,7 @@ namespace KAZABUILD.Application.Helpers
                 {
                     //Build expression for filtering the query using all searchable fields, prune null ones
                     var predicates = searchableFields
-                        .Select(expr => BuildContainsExpression(expr, cleanTerm.Trim('"')))
+                        .Select(expr => BuildContainsExpression(expr, cleanTerm.Trim('\"')))
                         .Where(p => p != null)
                         .ToList();
 
@@ -119,7 +123,7 @@ namespace KAZABUILD.Application.Helpers
         }
 
         //Build a full-text contains expression, e.g. (x.Name.Contains("term"))
-        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value, int minResults = 10, int levenshteinTolerance = 1, int soundexThreshold = 3)
+        private static Expression<Func<T, bool>> BuildContainsExpression<T>(Expression<Func<T, object>> field, string value, int minResults = 10, int levenshteinTolerance = 1)
         {
             //Get the parameter "x"
             var param = field.Parameters[0];
@@ -134,17 +138,19 @@ namespace KAZABUILD.Application.Helpers
             if (body.Type != typeof(string))
                 return null!;
 
-            //Call the contains function imported from SQL
-            var method = typeof(FullTextDbFunction).GetMethod(nameof(FullTextDbFunction.Contains))!;
+            //Build LIKE pattern: "%value%"
+            var likePattern = Expression.Constant($"%{value}%");
 
-            //Build the contains expression
-            var containsCall = Expression.Call(method, body, Expression.Constant(value));
+            //Generate: EF.Functions.Like(x.Property, "%value%")
+            var efFunctions = Expression.Property(null, typeof(EF), nameof(EF.Functions));
+            var likeMethod = typeof(DbFunctionsExtensions)
+                .GetMethod(nameof(DbFunctionsExtensions.Like), [typeof(DbFunctions), typeof(string), typeof(string)])!;
 
-            //Build the expression into a lambda to test the amount of results
-            var containsLambda = Expression.Lambda<Func<T, bool>>(containsCall, field.Parameters);
+            //Create the expression for the LIKE SQL
+            var likeCall = Expression.Call(likeMethod, efFunctions, body, likePattern);
 
             //Wrap the expression into a lambda and return it
-            return Expression.Lambda<Func<T, bool>>(containsCall, param);
+            return Expression.Lambda<Func<T, bool>>(likeCall, param);
         }
 
         //Fuzzy matching helper function

@@ -1,4 +1,5 @@
-﻿using KAZABUILD.Infrastructure.Data;
+﻿using KAZABUILD.Application.Helpers;
+using KAZABUILD.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +14,15 @@ public class KazaWebApplicationFactory : WebApplicationFactory<API.Program>
 
         builder.ConfigureServices(services =>
         {
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<KAZABUILDDBContext>));
+            if (descriptor != null)
+                services.Remove(descriptor);
+
             //Register new in-memory DB
             services.AddDbContext<KAZABUILDDBContext>(options =>
                 options.UseInMemoryDatabase("InMemoryDbForTesting"));
+            SearchHelper.UseInMemorySearch = true;
         });
     }
 

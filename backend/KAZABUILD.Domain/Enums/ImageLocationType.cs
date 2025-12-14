@@ -10,6 +10,8 @@ namespace KAZABUILD.Domain.Enums
         SUBCOMPONENT,
         USER,
         FORUM,
-        COMMENT
+        COMMENT,
+        MESSAGE,
+        GUIDE
     }
 }

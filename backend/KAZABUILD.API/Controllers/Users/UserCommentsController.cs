@@ -68,7 +68,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if current user has admin permissions or if they are posting a comment for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == dto.UserId;
 
             //Check if the user has correct permission
@@ -93,8 +93,9 @@ namespace KAZABUILD.API.Controllers.Users
             UserComment userComment = new()
             {
                 UserId = dto.UserId,
+                DeletedUserId = dto.UserId,
                 Content = dto.Content,
-                PostedAt = dto.PostedAt,
+                PostedAt = isPrivileged ? dto.PostedAt : DateTime.UtcNow,
                 ParentCommentId = dto.ParentCommentId,
                 CommentTargetType = dto.CommentTargetType,
                 DatabaseEntryAt = DateTime.UtcNow,
@@ -109,7 +110,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.BuildId = dto.TargetId;
 
                     //Check if the build exists
-                    var build = await _db.Builds.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var build = await _db.Builds.FirstOrDefaultAsync(b => b.Id == dto.TargetId);
                     if (build == null || build.Status == BuildStatus.DRAFT || build.Status == BuildStatus.GENERATED)
                     {
                         //Log failure
@@ -133,7 +134,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ComponentId = dto.TargetId;
 
                     //Check if the component exists
-                    var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var component = await _db.Components.FirstOrDefaultAsync(c => c.Id == dto.TargetId);
                     if (component == null)
                     {
                         //Log failure
@@ -157,7 +158,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ComponentReviewId = dto.TargetId;
 
                     //Check if the review exists
-                    var review = await _db.ComponentReviews.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var review = await _db.ComponentReviews.FirstOrDefaultAsync(r => r.Id == dto.TargetId);
                     if (review == null)
                     {
                         //Log failure
@@ -181,7 +182,7 @@ namespace KAZABUILD.API.Controllers.Users
                     userComment.ForumPostId = dto.TargetId;
 
                     //Check if the post exists
-                    var post = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    var post = await _db.ForumPosts.FirstOrDefaultAsync(p => p.Id == dto.TargetId);
                     if (post == null)
                     {
                         //Log failure
@@ -284,7 +285,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if current user has admin permissions or if they are modifying a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == userComment.UserId;
 
             //Return unauthorized access exception if the user does not have the correct permissions
@@ -406,7 +407,26 @@ namespace KAZABUILD.API.Controllers.Users
             UserCommentResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isSelf = currentUserId == userComment.UserId;
+
+            //Return an unauthorized response if the user doesn't have correct privileges
+            if (!isPrivileged && !isSelf && userComment.Build != null && !(userComment.Build.Status != BuildStatus.DRAFT && userComment.Build.Status != BuildStatus.GENERATED))
+            {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "UserCommentComponent",
+                    ip,
+                    Guid.Empty,
+                    PrivacyLevel.WARNING,
+                    "Operation Failed - Unauthorized Access"
+                );
+
+                //Return proper unauthorized response
+                return Forbid();
+            }
 
             //Check if has admin privilege
             if (!isPrivileged)
@@ -476,6 +496,10 @@ namespace KAZABUILD.API.Controllers.Users
                     return BadRequest(new { message = "Invalid Target Type!" });
             }
 
+            //If the id is null a deleted id field in the response
+            if (response.UserId == null)
+                response.DeletedUserId = userComment.DeletedUserId;
+
             //Log success
             await _logger.LogAsync(
                 currentUserId,
@@ -517,7 +541,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if current user has admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
             var query = _db.UserComments.AsNoTracking();
@@ -525,7 +549,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(c => dto.UserId.Contains(c.UserId));
+                query = query.Where(c => c.UserId != null && dto.UserId.Contains((Guid)c.UserId));
             }
             if (dto.PostedAtStart != null)
             {
@@ -560,7 +584,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(c => c.ComponentReviewId != null && dto.ComponentReviewId.Contains((Guid)c.ComponentReviewId));
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(c => c.User).Search(dto.Query, c => c.PostedAt, c => c.Content, c => c.User!.DisplayName);
@@ -584,7 +608,7 @@ namespace KAZABUILD.API.Controllers.Users
             string logDescription;
 
             //Get all queried userComments as a list
-            List<UserComment> userComments = await query.ToListAsync();
+            List<UserComment> userComments = await query.Include(c => c.Build).Where(c => currentUserId == c.UserId || isPrivileged || c.Build == null || ( c.Build != null && c.Build.Status != BuildStatus.DRAFT && c.Build.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare the failure check boolean
             bool failure = false;
@@ -633,6 +657,10 @@ namespace KAZABUILD.API.Controllers.Users
                             
                     }
 
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
+
                     return response;
                 })];
 
@@ -678,6 +706,10 @@ namespace KAZABUILD.API.Controllers.Users
                             break;
 
                     }
+
+                    //If the id is null a deleted id field in the response
+                    if (response.UserId == null)
+                        response.DeletedUserId = userComment.DeletedUserId;
 
                     return response;
                 })];
@@ -742,7 +774,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the userComment to delete
-            var userComment = await _db.UserComments.Include(c => c.Images).FirstOrDefaultAsync(c => c.Id == id);
+            var userComment = await _db.UserComments.Include(c => c.Images).Include(c => c.ChildComments).FirstOrDefaultAsync(c => c.Id == id);
             if (userComment == null)
             {
                 //Log failure
@@ -761,7 +793,7 @@ namespace KAZABUILD.API.Controllers.Users
             }
 
             //Check if current user has admin permissions or if they are deleting their own comment
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isSelf = currentUserId == userComment.UserId;
 
             //Check if the user has correct permission
@@ -794,6 +826,12 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Delete all related images
                 _db.Images.RemoveRange(userComment.Images);
+            }
+
+            //Set the ParentCommentId field to null for all children
+            foreach (var child in userComment.ChildComments)
+            {
+                child.ParentCommentId = null;
             }
 
             //Delete the userComment

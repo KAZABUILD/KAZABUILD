@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/navigation_bar.dart' show CustomDrawer, CustomNavigationBar;
 
 /// The main stateful widget for the "About Us" page.
 class AboutUsPage extends StatefulWidget {
@@ -28,9 +29,9 @@ class _AboutUsPageState extends State<AboutUsPage>
   void initState() {
     super.initState();
 
-    // Initialize and start the animation controller.
+    // Initialize and start the animation controller with faster duration for better UX.
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
     _controller.forward();
@@ -46,138 +47,183 @@ class _AboutUsPageState extends State<AboutUsPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('About Us'),
-        backgroundColor: theme.colorScheme.surface,
-      ),
+      drawer: const CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
-      body: SingleChildScrollView(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.scaffoldBackgroundColor,
+              theme.colorScheme.surface.withValues(alpha: 0.3),
+            ],
+          ),
+        ),
         child: Column(
-          // The main column that holds all sections of the page.
           children: [
-            /// The main banner at the top of the page.
-            _buildBanner(theme),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32.0,
-                vertical: 16.0,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
+            const CustomNavigationBar(),
+            Expanded(
+              child: SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // The main column that holds all sections of the page.
                   children: [
-                    /// "Our Mission" section.
-                    _AnimatedFadeSlide(
-                      controller: _controller,
-                      interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
-                      child: _buildSectionTitle(theme, 'Our Mission'),
-                    ),
-                    const SizedBox(height: 16),
+                    /// The main banner at the top of the page.
+                    _buildBanner(theme, isMobile),
 
-                    /// The text content for the mission.
-                    _AnimatedFadeSlide(
-                      controller: _controller,
-                      interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
-                      child: Text(
-                        'At Kaza Build, our mission is to demystify the process of building a personal computer. We believe that everyone, from seasoned enthusiasts to absolute beginners, should have the power to create a machine perfectly tailored to their needs without the usual hassle. Our platform provides intuitive tools, comprehensive compatibility checks, and a vibrant community to guide you every step of the way.',
-                        style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 16.0 : 32.0,
+                        vertical: isMobile ? 12.0 : 16.0,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1000),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            /// "Our Mission" section.
+                            _AnimatedFadeSlide(
+                              controller: _controller,
+                              interval: const Interval(0.1, 0.5, curve: Curves.easeOut),
+                              child: _buildSectionTitle(theme, 'Our Mission', isMobile),
+                            ),
+                            SizedBox(height: isMobile ? 12 : 16),
+
+                            /// The text content for the mission.
+                            _AnimatedFadeSlide(
+                              controller: _controller,
+                              interval: const Interval(0.2, 0.6, curve: Curves.easeOut),
+                              child: Text(
+                                'At Kaza Build, our mission is to demystify the process of building a personal computer. We believe that everyone, from seasoned enthusiasts to absolute beginners, should have the power to create a machine perfectly tailored to their needs without the usual hassle. Our platform provides intuitive tools, comprehensive compatibility checks, and a vibrant community to guide you every step of the way.',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  height: 1.6,
+                                  fontSize: isMobile ? 14 : null,
+                                ),
+                              ),
+                            ),
+                            Divider(height: isMobile ? 24 : 64),
+
+                            /// "Meet the Team" section.
+                            _AnimatedFadeSlide(
+                              controller: _controller,
+                              interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
+                              child: _buildSectionTitle(theme, 'Meet the Team', isMobile),
+                            ),
+                            SizedBox(height: isMobile ? 0 : 24),
+
+                            /// A row of cards, each representing a team member.
+                            isMobile
+                                ? GridView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 0.75,
+                                    ),
+                                    itemCount: 4,
+                                    itemBuilder: (context, index) {
+                                      final teamMembers = [
+                                        {'name': 'Artun', 'role': 'Founder', 'imageUrl': 'https://placehold.co/150x150/7c3aed/white?text=A', 'interval': const Interval(0.4, 0.8, curve: Curves.easeOut)},
+                                        {'name': 'Adrian', 'role': 'Founder', 'imageUrl': 'https://placehold.co/150x150/10b981/white?text=A', 'interval': const Interval(0.5, 0.9, curve: Curves.easeOut)},
+                                        {'name': 'Ziyad', 'role': 'Founder', 'imageUrl': 'https://placehold.co/150x150/f97316/white?text=Z', 'interval': const Interval(0.6, 1.0, curve: Curves.easeOut)},
+                                        {'name': 'Kacper', 'role': 'Founder', 'imageUrl': 'https://placehold.co/150x150/3b82f6/white?text=K', 'interval': const Interval(0.7, 1.1, curve: Curves.easeOut)},
+                                      ];
+                                      final member = teamMembers[index];
+                                      return _AnimatedFadeSlide(
+                                        controller: _controller,
+                                        interval: member['interval'] as Interval,
+                                        child: _TeamMemberCard(
+                                          name: member['name'] as String,
+                                          role: member['role'] as String,
+                                          imageUrl: member['imageUrl'] as String,
+                                          isMobile: true,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      // Show in a row on larger screens
+                                      return Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        children: [
+                                          _AnimatedFadeSlide(
+                                            controller: _controller,
+                                            interval: const Interval(0.4, 0.8, curve: Curves.easeOut),
+                                            child: _TeamMemberCard(
+                                              name: 'Artun',
+                                              role: 'Founder',
+                                              imageUrl: 'https://placehold.co/150x150/7c3aed/white?text=A',
+                                              isMobile: false,
+                                            ),
+                                          ),
+                                          _AnimatedFadeSlide(
+                                            controller: _controller,
+                                            interval: const Interval(0.5, 0.9, curve: Curves.easeOut),
+                                            child: _TeamMemberCard(
+                                              name: 'Adrian',
+                                              role: 'Founder',
+                                              imageUrl: 'https://placehold.co/150x150/10b981/white?text=A',
+                                              isMobile: false,
+                                            ),
+                                          ),
+                                          _AnimatedFadeSlide(
+                                            controller: _controller,
+                                            interval: const Interval(0.6, 1.0, curve: Curves.easeOut),
+                                            child: _TeamMemberCard(
+                                              name: 'Ziyad',
+                                              role: 'Founder',
+                                              imageUrl: 'https://placehold.co/150x150/f97316/white?text=Z',
+                                              isMobile: false,
+                                            ),
+                                          ),
+                                          _AnimatedFadeSlide(
+                                            controller: _controller,
+                                            interval: const Interval(0.7, 1.1, curve: Curves.easeOut),
+                                            child: _TeamMemberCard(
+                                              name: 'Kacper',
+                                              role: 'Founder',
+                                              imageUrl: 'https://placehold.co/150x150/3b82f6/white?text=K',
+                                              isMobile: false,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                            Divider(height: isMobile ? 24 : 64),
+
+                            /// "Our Story" section.
+                            _AnimatedFadeSlide(
+                              controller: _controller,
+                              interval: const Interval(0.8, 1.2, curve: Curves.easeOut),
+                              child: _buildSectionTitle(theme, 'Our Story', isMobile),
+                            ),
+                            SizedBox(height: isMobile ? 0 : 16),
+
+                            /// The text content for the story.
+                            _AnimatedFadeSlide(
+                              controller: _controller,
+                              interval: const Interval(0.9, 1.3, curve: Curves.easeOut),
+                              child: Text(
+                                'Kaza Build started as a passion project among a group of friends tired of the confusing and often frustrating experience of picking PC parts. We envisioned a smarter, more user-friendly platform that could prevent compatibility errors and help users find the best components for their budget. From a simple spreadsheet to a full-fledged application, our goal has remained the same: to empower builders and foster a community of creators.',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  height: 1.6,
+                                  fontSize: isMobile ? 14 : null,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: isMobile ? 40 : 48),
+                          ],
+                        ),
                       ),
                     ),
-                    const Divider(height: 64),
-
-                    /// "Meet the Team" section.
-                    _AnimatedFadeSlide(
-                      controller: _controller,
-                      interval: const Interval(0.3, 0.7, curve: Curves.easeOut),
-                      child: _buildSectionTitle(theme, 'Meet the Team'),
-                    ),
-                    const SizedBox(height: 24),
-
-                    /// A row of cards, each representing a team member.
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _AnimatedFadeSlide(
-                          controller: _controller,
-                          interval: const Interval(
-                            0.4,
-                            0.8,
-                            curve: Curves.easeOut,
-                          ),
-                          child: const _TeamMemberCard(
-                            name: 'Artun',
-                            role: 'Founder',
-                            imageUrl:
-                                'https://placehold.co/150x150/7c3aed/white?text=A',
-                          ),
-                        ),
-                        _AnimatedFadeSlide(
-                          controller: _controller,
-                          interval: const Interval(
-                            0.5,
-                            0.9,
-                            curve: Curves.easeOut,
-                          ),
-                          child: const _TeamMemberCard(
-                            name: 'Adrian',
-                            role: 'Founder',
-                            imageUrl:
-                                'https://placehold.co/150x150/10b981/white?text=A',
-                          ),
-                        ),
-                        _AnimatedFadeSlide(
-                          controller: _controller,
-                          interval: const Interval(
-                            0.6,
-                            1.0,
-                            curve: Curves.easeOut,
-                          ),
-                          child: const _TeamMemberCard(
-                            name: 'Ziyad',
-                            role: 'Founder',
-                            imageUrl:
-                                'https://placehold.co/150x150/f97316/white?text=Z',
-                          ),
-                        ),
-                        _AnimatedFadeSlide(
-                          controller: _controller,
-                          interval: const Interval(
-                            0.7,
-                            1.1,
-                            curve: Curves.easeOut,
-                          ),
-                          child: const _TeamMemberCard(
-                            name: 'Kacper',
-                            role: 'Founder',
-                            imageUrl:
-                                'https://placehold.co/150x150/3b82f6/white?text=K',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 64),
-
-                    /// "Our Story" section.
-                    _AnimatedFadeSlide(
-                      controller: _controller,
-                      interval: const Interval(0.8, 1.2, curve: Curves.easeOut),
-                      child: _buildSectionTitle(theme, 'Our Story'),
-                    ),
-                    const SizedBox(height: 16),
-
-                    /// The text content for the story.
-                    _AnimatedFadeSlide(
-                      controller: _controller,
-                      interval: const Interval(0.9, 1.3, curve: Curves.easeOut),
-                      child: Text(
-                        'Kaza Build started as a passion project among a group of friends tired of the confusing and often frustrating experience of picking PC parts. We envisioned a smarter, more user-friendly platform that could prevent compatibility errors and help users find the best components for their budget. From a simple spreadsheet to a full-fledged application, our goal has remained the same: to empower builders and foster a community of creators.',
-                        style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -189,18 +235,18 @@ class _AboutUsPageState extends State<AboutUsPage>
   }
 
   /// Builds the banner widget at the top of the page with an icon and tagline.
-  Widget _buildBanner(ThemeData theme) {
+  Widget _buildBanner(ThemeData theme, bool isMobile) {
     // This widget is wrapped in an animation to fade and slide in.
     return _AnimatedFadeSlide(
       controller: _controller,
       interval: const Interval(0.0, 0.4, curve: Curves.easeIn),
       child: Container(
-        height: 250,
+        height: isMobile ? 180 : 250,
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
+              theme.colorScheme.primary.withValues(alpha: 0.1),
               theme.colorScheme.background,
             ],
             begin: Alignment.topCenter,
@@ -210,22 +256,32 @@ class _AboutUsPageState extends State<AboutUsPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.build_circle_outlined,
-              size: 60,
-              color: theme.colorScheme.primary,
+            Image.asset(
+              'assets/logo/kaza.png',
+              width: isMobile ? 80 : 120,
+              height: isMobile ? 80 : 120,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(
+                  Icons.build_circle_outlined,
+                  size: isMobile ? 40 : 60,
+                  color: theme.colorScheme.primary,
+                );
+              },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isMobile ? 12 : 16),
             Text(
               'Kaza Build',
               style: theme.textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold,
+                fontSize: isMobile ? 24 : null,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isMobile ? 6 : 8),
             Text(
               'Building Your Dream PC, Simplified.',
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontSize: isMobile ? 14 : null,
+              ),
             ),
           ],
         ),
@@ -234,11 +290,12 @@ class _AboutUsPageState extends State<AboutUsPage>
   }
 
   /// A helper method to create a consistently styled section title.
-  Widget _buildSectionTitle(ThemeData theme, String title) {
+  Widget _buildSectionTitle(ThemeData theme, String title, bool isMobile) {
     return Text(
       title,
       style: theme.textTheme.headlineSmall?.copyWith(
         fontWeight: FontWeight.bold,
+        fontSize: isMobile ? 20 : null,
       ),
     );
   }
@@ -291,12 +348,14 @@ class _TeamMemberCard extends StatefulWidget {
   final String name;
   final String role;
   final String imageUrl;
+  final bool isMobile;
   // TODO: Replace placeholder imageUrl with real image assets or network URLs.
 
   const _TeamMemberCard({
     required this.name,
     required this.role,
     required this.imageUrl,
+    required this.isMobile,
   });
 
   @override
@@ -315,8 +374,8 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
     /// Determine the scale and shadow color based on the hover state.
     final scale = _isHovered ? 1.05 : 1.0;
     final shadowColor = _isHovered
-        ? theme.colorScheme.primary.withOpacity(0.4)
-        : Colors.black.withOpacity(0.2);
+        ? theme.colorScheme.primary.withValues(alpha: 0.4)
+        : Colors.black.withValues(alpha: 0.2);
 
     /// [MouseRegion] detects when the cursor enters or leaves the widget's area to trigger the hover effect.
     return MouseRegion(
@@ -327,7 +386,7 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
         duration: const Duration(milliseconds: 200),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(widget.isMobile ? 10 : 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: theme.colorScheme.surface,
@@ -336,15 +395,65 @@ class _TeamMemberCardState extends State<_TeamMemberCard> {
             ],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 60,
-                backgroundImage: NetworkImage(widget.imageUrl),
+              ClipOval(
+                child: Container(
+                  width: widget.isMobile ? 70 : 120,
+                  height: widget.isMobile ? 70 : 120,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant,
+                    shape: BoxShape.circle,
+                  ),
+                  child: widget.imageUrl.isNotEmpty
+                      ? Image.network(
+                          widget.imageUrl,
+                          width: widget.isMobile ? 70 : 120,
+                          height: widget.isMobile ? 70 : 120,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.person,
+                              size: widget.isMobile ? 35 : 60,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                        )
+                      : Icon(
+                          Icons.person,
+                          size: widget.isMobile ? 35 : 60,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                ),
               ),
-              const SizedBox(height: 16),
-              Text(widget.name, style: theme.textTheme.titleLarge),
+              SizedBox(height: widget.isMobile ? 8 : 16),
+              Text(
+                widget.name,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: widget.isMobile ? 16 : null,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 4),
-              Text(widget.role, style: theme.textTheme.bodyMedium),
+              Text(
+                widget.role,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: widget.isMobile ? 12 : null,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),

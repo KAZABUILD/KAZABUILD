@@ -15,6 +15,7 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
+    [JsonDerivedType(typeof(GetBaseComponentDto), "All")]
     [JsonDerivedType(typeof(GetCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(GetCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(GetCoolerComponentDto), "Cooler")]
@@ -25,7 +26,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     [JsonDerivedType(typeof(GetMotherboardComponentDto), "Motherboard")]
     [JsonDerivedType(typeof(GetPowerSupplyComponentDto), "PowerSupply")]
     [JsonDerivedType(typeof(GetStorageComponentDto), "Storage")]
-    public abstract class GetBaseComponentDto
+    public class GetBaseComponentDto
     {
         //Filter By fields
         public List<string>? Name { get; set; }
@@ -38,24 +39,26 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
         [DataType(DataType.DateTime)]
         public DateTime? ReleaseEnd { get; set; }
 
+        public List<Guid>? CompatibleComponentsIds { get; set; }
+
+        public List<Guid>? BuildId { get; set; }
+
         public List<ComponentType>? Type { get; set; }
 
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.
         /// </summary>
-        public bool Paging = false;
+        public bool Paging { get; set; } = false;
 
         /// <summary>
         /// Which page should be gotten if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page number must be greater than 0")]
         public int? Page { get; set; }
 
         /// <summary>
         /// How many objects should be in the response if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page length must be greater than 0")]
         public int? PageLength { get; set; }
 
         //Query search string

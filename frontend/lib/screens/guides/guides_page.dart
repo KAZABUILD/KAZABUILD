@@ -8,62 +8,47 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/guide_model.dart';
+import 'package:frontend/models/guide_provider.dart';
 import 'package:frontend/screens/guides/guide_detail_page.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import 'package:frontend/utils/error_utils.dart';
 
 /// The main widget for the guides page.
-class GuidesPage extends StatefulWidget {
+class GuidesPage extends ConsumerStatefulWidget {
   const GuidesPage({super.key});
 
   @override
-  State<GuidesPage> createState() => _GuidesPageState();
+  ConsumerState<GuidesPage> createState() => _GuidesPageState();
 }
 
 /// The state for the [GuidesPage].
 /// This class manages the layout and data for the page.
-class _GuidesPageState extends State<GuidesPage> {
+class _GuidesPageState extends ConsumerState<GuidesPage> {
   /// A key to manage the Scaffold, particularly for opening the drawer on mobile.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String? _selectedCategory;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    /// Determine if the layout should be for mobile based on screen width.
     final isMobile = MediaQuery.of(context).size.width < 700;
-
-    // TODO: Replace this mock data with a list fetched from a backend service.
-    // This should ideally be handled by a Riverpod `FutureProvider` to manage
-    // loading and error states gracefully.
-    final List<Guide> guides = [];
+    final guidesAsync = ref.watch(guidesProvider);
 
     return Scaffold(
       key: _scaffoldKey,
       drawer: CustomDrawer(showProfileArea: true),
       backgroundColor: theme.colorScheme.background,
-
-      /// The main layout is a column with the navigation bar at the top
-      /// and the scrollable content below.
       body: Column(
         children: [
           CustomNavigationBar(scaffoldKey: _scaffoldKey),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  /// The header section with the page title and description.
-                  _buildHeader(theme),
-                  Padding(
-                    padding: const EdgeInsets.all(24.0),
-
-                    /// Dynamically switch between a list and a grid based on screen size.
-                    child: isMobile
-                        ? _buildGuidesList(guides)
-                        : _buildGuidesGrid(guides),
-                  ),
-                ],
-              ),
+            child: guidesAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _buildErrorState(theme, error),
+              data: (allGuides) => _buildGuidesBody(theme, isMobile, allGuides),
             ),
           ),
         ],
@@ -71,23 +56,212 @@ class _GuidesPageState extends State<GuidesPage> {
     );
   }
 
-  /// Builds the header widget for the page.
-  Widget _buildHeader(ThemeData theme) {
-    /// A simple container for the page's main title and subtitle.
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-      color: theme.colorScheme.surface.withOpacity(0.5),
-      child: Center(
+  Widget _buildGuidesBody(
+    ThemeData theme,
+    bool isMobile,
+    List<Guide> allGuides,
+  ) {
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final guides = selectedCat == allText
+        ? allGuides
+        : allGuides.where((g) => g.category == selectedCat).toList();
+    final categorySet =
+        allGuides
+            .map((g) => g.category)
+            .where((category) => category.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final categories = [allText, ...categorySet];
+
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(guidesProvider.future),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-            Text('PC Building Guides', style: theme.textTheme.headlineLarge),
-            const SizedBox(height: 8),
-            Text(
-              'From beginner tips to advanced performance tuning, find everything you need to build better.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
+            _buildHeader(theme, categories.isEmpty ? [allText] : categories),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1400),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    guides.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(48.0),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.article_outlined,
+                                    size: 64,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    AppLocalizations.of(context)!.noGuidesFound,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : isMobile
+                        ? _buildGuidesList(guides)
+                        : _buildGuidesGrid(guides),
+                  ],
+                ),
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme, Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: theme.colorScheme.error.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)!.noGuidesFound,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              getUserFriendlyError(error),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => ref.refresh(guidesProvider),
+              child: Text(AppLocalizations.of(context)!.retry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds the header widget for the page with category filters.
+  Widget _buildHeader(ThemeData theme, List<String> categories) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.1),
+            theme.colorScheme.surface.withValues(alpha: 0.5),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.book_outlined,
+                      size: 32,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.guidesTitle,
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppLocalizations.of(context)!.guidesDescription,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              // Category filter chips
+              Builder(
+                builder: (context) {
+                  final allText = AppLocalizations.of(context)!.all;
+                  final selectedCat = _selectedCategory ?? allText;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: categories.map((category) {
+                      final isSelected = selectedCat == category;
+                      return FilterChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        selectedColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.2,
+                        ),
+                        checkmarkColor: theme.colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -144,6 +318,84 @@ class _GuideCardState extends State<_GuideCard> {
   /// A flag to track whether the mouse cursor is currently over the card.
   bool _isHovered = false;
 
+  Widget _buildGuideImage(Guide guide, ThemeData theme) {
+    final imageUrl = guide.imageUrl;
+    final placeholder = Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.3),
+            theme.colorScheme.secondary.withValues(alpha: 0.2),
+          ],
+        ),
+      ),
+      child: Icon(
+        Icons.article_outlined,
+        size: 64,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+      ),
+    );
+
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return placeholder;
+    }
+
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.3),
+            theme.colorScheme.secondary.withValues(alpha: 0.2),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => placeholder,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.3),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -164,8 +416,10 @@ class _GuideCardState extends State<_GuideCard> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => GuideDetailPage(guide: widget.guide),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => GuideDetailPage(guide: widget.guide),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
               ),
             );
           },
@@ -183,12 +437,7 @@ class _GuideCardState extends State<_GuideCard> {
                 Hero(
                   /// The tag must be unique for each guide to identify the correct image for the animation.
                   tag: 'guide_image_${widget.guide.id}',
-                  child: Image.network(
-                    widget.guide.imageUrl,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  child: _buildGuideImage(widget.guide, theme),
                 ),
 
                 /// The content section of the card containing text details.
@@ -197,14 +446,27 @@ class _GuideCardState extends State<_GuideCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.guide.category,
-                        // Category text with a distinct primary color.
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          widget.guide.category,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         widget.guide.title,
                         // Guide title with a larger font size.
@@ -212,18 +474,43 @@ class _GuideCardState extends State<_GuideCard> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Row(
                         // A row for metadata like author and read time.
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            widget.guide.author,
-                            style: theme.textTheme.bodyMedium,
+                          Expanded(
+                            child: Text(
+                              widget.guide.author,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          Text(
-                            widget.guide.readTime,
-                            style: theme.textTheme.bodySmall,
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                widget.guide.readTime,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

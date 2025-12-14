@@ -7,6 +7,7 @@ using KAZABUILD.Domain.Entities.Components.SubComponents;
 using KAZABUILD.Domain.Entities.Users;
 
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace KAZABUILD.Infrastructure.Data
 {
@@ -24,6 +25,8 @@ namespace KAZABUILD.Infrastructure.Data
         //User related tables
         public DbSet<User> Users { get; set; } = default!;
         public DbSet<UserPreference> UserPreferences { get; set; } = default!;
+        public DbSet<UserPreferenceAnswer> UserPreferenceAnswers { get; set; } = default!;
+        public DbSet<UserAnswer> UserAnswers { get; set; } = default!;
         public DbSet<UserFollow> UserFollows { get; set; } = default!;
         public DbSet<UserToken> UserTokens { get; set; } = default!;
         public DbSet<UserComment> UserComments { get; set; } = default!;
@@ -33,6 +36,9 @@ namespace KAZABUILD.Infrastructure.Data
         public DbSet<Notification> Notifications { get; set; } = default!;
         public DbSet<UserActivity> UserActivities { get; set; } = default!;
         public DbSet<UserFeedback> UserFeedback { get; set; } = default!;
+        public DbSet<UserReport> UserReports { get; set; } = default!;
+        public DbSet<UserBlock> UserBlocks { get; set; } = default!;
+        public DbSet<UserGuide> UserGuides { get; set; } = default!;
 
         //Component related tables
         public DbSet<BaseComponent> Components { get; set; } = default!;
@@ -71,10 +77,11 @@ namespace KAZABUILD.Infrastructure.Data
                 }
             }
 
-            //Register the db full-text search function
+            //Register the db full-text search CONTAINS function
             modelBuilder
                 .HasDbFunction(() => FullTextDbFunction.Contains(default!, default!))
-                .HasName("CONTAINS");
+                .HasName("CONTAINS")
+                .IsBuiltIn(true);
 
             //====================================== USER ======================================//
 
@@ -115,6 +122,13 @@ namespace KAZABUILD.Infrastructure.Data
             modelBuilder.Entity<User>()
                 .OwnsOne(u => u.Address);
 
+            //Register relationship with image
+            modelBuilder.Entity<User>()
+                .HasOne(f => f.Image)
+                .WithMany(u => u.Users)
+                .HasForeignKey(f => f.ImageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             //====================================== USER FOLLOW ======================================//
 
             //Register relationships, disable cascade delete, must be handled in API calls
@@ -147,11 +161,35 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== USER PREFERENCE ======================================//
 
-            //Register relationship with user
+            //Register relationship with the optional preference answer
             modelBuilder.Entity<UserPreference>()
-                .HasOne(p => p.User)
-                .WithMany(u => u.UserPreferences)
-                .HasForeignKey(p => p.UserId)
+                .HasOne(p => p.UserPreferenceAnswer)
+                .WithOne(a => a.SubUserPreference)
+                .HasForeignKey<UserPreference>(p => p.UserPreferenceAnswerId)
+                .IsRequired(false);
+
+            //====================================== USER PREFERENCE ANSWER ======================================//
+
+            //Register relationship with user preference
+            modelBuilder.Entity<UserPreferenceAnswer>()
+                .HasOne(t => t.UserPreference)
+                .WithMany(p => p.UserPreferenceAnswers)
+                .HasForeignKey(t => t.UserPreferenceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //====================================== USER ANSWER ======================================//
+
+            //Register relationships, restrict cascade delete as the answers should only get deleted when the user is 
+            modelBuilder.Entity<UserAnswer>()
+                .HasOne(t => t.UserPreferenceAnswer)
+                .WithMany(p => p.UserAnswers)
+                .HasForeignKey(t => t.UserPreferenceAnswerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserAnswer>()
+                .HasOne(t => t.User)
+                .WithMany(p => p.UserAnswers)
+                .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== USER COMMENT ======================================//
@@ -159,7 +197,7 @@ namespace KAZABUILD.Infrastructure.Data
             //Configure CommentTargetType enum as string
             modelBuilder
                 .Entity<UserComment>()
-                .Property(u => u.CommentTargetType)
+                .Property(c => c.CommentTargetType)
                 .HasConversion<string>();
 
             //Register relationships, restrict cascade delete as comments should remain on the website until removed manually
@@ -167,37 +205,37 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(c => c.User)
                 .WithMany(u => u.UserComments)
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ForumPost)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ForumPostId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.Component)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ComponentReview)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.ComponentReviewId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.Build)
                 .WithMany(u => u.Comments)
                 .HasForeignKey(c => c.BuildId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<UserComment>()
                 .HasOne(c => c.ParentComment)
                 .WithMany(pc => pc.ChildComments)
                 .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== USER COMMENT INTERACTION ======================================//
 
@@ -212,7 +250,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(i => i.UserComment)
                 .WithMany(u => u.UserCommentInteractions)
                 .HasForeignKey(i => i.UserCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== FORUM POST ======================================//
 
@@ -221,7 +259,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(p => p.Creator)
                 .WithMany(u => u.ForumPosts)
                 .HasForeignKey(p => p.CreatorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== MESSAGE ======================================//
 
@@ -248,7 +286,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(m => m.ParentMessage)
                 .WithMany(pm => pm.ChildMessages)
                 .HasForeignKey(m => m.ParentMessageId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Restrict);
 
             //====================================== NOTFICATION ======================================//
 
@@ -272,7 +310,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(a => a.User)
                 .WithMany(u => u.UserActivities)
                 .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.SetNull);
 
             //====================================== USER FEEDBACK ======================================//
 
@@ -281,7 +319,67 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(a => a.User)
                 .WithMany(u => u.UserFeedback)
                 .HasForeignKey(a => a.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.SetNull);
+
+            //====================================== USER REPORT ======================================//
+
+            //Configure ReportTargetType enum as string
+            modelBuilder
+                .Entity<UserReport>()
+                .Property(r => r.TargetType)
+                .HasConversion<string>();
+
+            //Register relationships, restrict cascade delete as reports should remain on the website until removed manually
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.ReportedUser)
+                .WithMany(u => u.ReportedUsers)
+                .HasForeignKey(c => c.ReportedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.ReportingUsers)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.ForumPost)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.ForumPostId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.UserComment)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.Build)
+                .WithMany(u => u.UserReports)
+                .HasForeignKey(c => c.BuildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserReport>()
+                .HasOne(c => c.Message)
+                .WithMany(pc => pc.UserReports)
+                .HasForeignKey(c => c.MessageId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //====================================== USER BLOCK ======================================//
+
+            //Register relationships, restrict cascade delete for blocked users
+            modelBuilder.Entity<UserBlock>()
+                .HasOne(c => c.BlockedUser)
+                .WithMany(u => u.BlockedUsers)
+                .HasForeignKey(c => c.BlockedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserBlock>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.BlockingUsers)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             //====================================== COMPONENT ======================================//
 
@@ -435,7 +533,7 @@ namespace KAZABUILD.Infrastructure.Data
 
             //====================================== BUILD COMPONENT ======================================//
 
-            //Register relationships, disable cascade delete for components, should remain in database until the user deletes it
+            //Register relationships, disable cascade delete for components, must be handled in API calls
             modelBuilder.Entity<BuildComponent>()
                 .HasOne(c => c.Build)
                 .WithMany(u => u.Components)
@@ -446,7 +544,7 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(c => c.Component)
                 .WithMany(u => u.Builds)
                 .HasForeignKey(c => c.ComponentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
 
             //====================================== BUILD INTERACTION ======================================//
 
@@ -531,6 +629,18 @@ namespace KAZABUILD.Infrastructure.Data
                 .HasOne(i => i.UserComment)
                 .WithMany(pc => pc.Images)
                 .HasForeignKey(i => i.UserCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.UserGuide)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.UserGuideId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Image>()
+                .HasOne(i => i.Message)
+                .WithMany(pc => pc.Images)
+                .HasForeignKey(i => i.MessageId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

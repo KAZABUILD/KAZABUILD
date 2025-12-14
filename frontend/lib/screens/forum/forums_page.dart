@@ -1,676 +1,248 @@
-/// This file defines the main forum page where users can browse, filter,
-/// and sort discussion posts. It serves as the central hub for community
-/// interaction.
+/// Ultra Premium Professional Forums Page - Screenshot Match Edition
 ///
-/// Key features include:
-/// - A modern, visually appealing header with a gradient and call-to-action button.
-/// - A `SliverPersistentHeader` that keeps search, filter, and sort controls
-///   accessible while scrolling.
-/// - An animated list of post cards that fade and slide in for a smooth
-///   user experience, powered by `flutter_staggered_animations`.
+/// This file combines the "WOW" header effects with the specific 
+/// minimalist list-style card design requested from the screenshot.
 library;
 
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:frontend/models/forum_model.dart';
-import 'package:frontend/screens/forum/new_post_page.dart';
-import 'package:frontend/screens/forum/post_detail_page.dart';
+import 'package:frontend/models/forum_provider.dart';
+import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/widgets/navigation_bar.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:frontend/l10n/app_localization.dart';
+import '../../core/constants/app_color.dart';
+import 'package:frontend/utils/error_utils.dart';
+import 'dart:math' as math;
 
-/// The main widget for the forums page.
-class ForumsPage extends StatefulWidget {
+// -----------------------------------------------------------------------------
+// PROVIDERS
+// -----------------------------------------------------------------------------
+
+/// A provider to fetch the author's details based on their ID.
+final userProvider = FutureProvider.family<AppUser?, String>((ref, userId) async {
+  try {
+    final authService = ref.read(authServiceProvider);
+    final userResponse = await authService.getUserById(userId);
+    
+    if (userResponse.statusCode == 200 && userResponse.data != null) {
+      try {
+        final user = AppUser.fromJson(userResponse.data);
+        return user;
+      } catch (parseError) {
+        debugPrint('Error parsing user $userId: $parseError');
+        return null;
+      }
+    }
+    return null;
+  } on DioException catch (e) {
+    debugPrint('Error fetching user $userId: ${e.response?.statusCode}');
+    return null;
+  } catch (e) {
+    debugPrint('Unexpected error fetching user $userId: $e');
+    return null;
+  }
+});
+
+// -----------------------------------------------------------------------------
+// MAIN PAGE WIDGET
+// -----------------------------------------------------------------------------
+
+class ForumsPage extends ConsumerStatefulWidget {
   const ForumsPage({super.key});
 
   @override
-  State<ForumsPage> createState() => _ForumsPageState();
+  ConsumerState<ForumsPage> createState() => _ForumsPageState();
 }
 
-/// The state for the [ForumsPage].
-///
-/// It manages the UI state for filters, search, and sorting.
-class _ForumsPageState extends State<ForumsPage> {
-  /// A key to manage the [Scaffold], particularly for opening the drawer on mobile.
+class _ForumsPageState extends ConsumerState<ForumsPage> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  /// The currently selected category for filtering posts.
-  String _selectedCategory = 'All';
-
-  /// The current text in the search input field.
+  String? _selectedCategory;
   String _searchQuery = '';
-
-  /// The currently selected option for sorting posts.
-  String _selectedSortOption = 'Newest';
-
-  /// Controller for the search text field.
+  String? _selectedSortOption;
+  int _currentPage = 1;
+  ForumPostsParams? _lastSuccessfulParams;
+  static const int _pageSize = 10;
+  bool _hasMorePages = false;
   final TextEditingController _searchController = TextEditingController();
-
-  /// A static list of available categories for the filter chips.
-  final List<String> _categories = [
-    'All',
-    'Troubleshooting',
-    'Build Advice',
-    'Show Off Your Build',
-  ];
-
-  /// A static list of available options for the sort dropdown.
-  final List<String> _sortOptions = [
-    'Newest',
-    'Most Popular',
-    'Most Viewed',
-    'Unanswered',
-  ];
-
-  /// Controller for the main [CustomScrollView] to manage scroll-related effects if needed.
+  Timer? _searchDebounce;
   final ScrollController _scrollController = ScrollController();
+  late AnimationController _headerAnimationController;
+  late AnimationController _backgroundAnimationController;
+  late Animation<double> _headerFadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _headerAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _headerFadeAnimation = CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+    
+    _backgroundAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+    
+    _headerAnimationController.forward();
 
-    /// Adds a listener to the search controller to update the UI in real-time as the user types.
     _searchController.addListener(() {
-      if (_searchController.text != _searchQuery) {
-        setState(() {
-          _searchQuery = _searchController.text;
-        });
-      }
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (_searchController.text != _searchQuery) {
+          setState(() {
+            _searchQuery = _searchController.text.trim();
+            _currentPage = 1;
+            _hasMorePages = false;
+            _lastSuccessfulParams = null;
+          });
+        }
+      });
     });
   }
-
+  
+  void _goToPage(int page) {
+    if (page < 1) return;
+    
+    setState(() {
+      _currentPage = page;
+    });
+    
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+  
   @override
   void dispose() {
-    // Clean up controllers to prevent memory leaks.
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
+    _headerAnimationController.dispose();
+    _backgroundAnimationController.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // TODO: Replace this mock data with a list fetched from a backend service.
-    // This should ideally be handled by a Riverpod `FutureProvider` to manage
-    // loading and error states gracefully.
-    final List<ForumPost> allPosts = [];
-
-    /// Apply category and search filters to the list of all posts.
-    List<ForumPost> processedPosts = allPosts.where((post) {
-      final categoryMatch =
-          _selectedCategory == 'All' || post.category == _selectedCategory;
-      final searchMatch = post.title.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      return categoryMatch && searchMatch;
-    }).toList();
-
-    /// The 'Unanswered' option acts as a filter, so it's applied before sorting.
-    if (_selectedSortOption == 'Unanswered') {
-      processedPosts = processedPosts
-          .where((post) => post.replies.isEmpty)
-          .toList();
-    }
-
-    /// Apply sorting based on the selected option.
-    switch (_selectedSortOption) {
-      case 'Most Viewed':
-        processedPosts.sort((a, b) => b.viewCount.compareTo(a.viewCount));
-        break;
-      case 'Newest':
-      default:
-        processedPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-    }
-
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: CustomDrawer(showProfileArea: true),
-      backgroundColor: theme.colorScheme.background,
-      body: Column(
-        children: [
-          CustomNavigationBar(scaffoldKey: _scaffoldKey),
-          Expanded(
-            /// [CustomScrollView] allows for combining different types of scrollable lists and headers.
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                /// The main header section with the title and "Start Discussion" button.
-                _buildModernHeader(theme, context),
-
-                /// The persistent header that contains search, filter, and sort controls.
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _ModernForumActionsHeader(
-                    searchController: _searchController,
-                    categories: _categories,
-                    selectedCategory: _selectedCategory,
-                    onCategorySelected: (category) {
-                      setState(() => _selectedCategory = category);
-                    },
-                    sortOptions: _sortOptions,
-                    selectedSortOption: _selectedSortOption,
-                    onSortOptionSelected: (option) {
-                      setState(() => _selectedSortOption = option!);
-                    },
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16.0),
-
-                  /// The main list of forum posts, with staggered animations for a polished look.
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => AnimationConfiguration.staggeredList(
-                        position: index,
-                        duration: const Duration(milliseconds: 375),
-                        child: SlideAnimation(
-                          verticalOffset: 50.0,
-                          child: FadeInAnimation(
-                            child: _ModernPostCard(post: processedPosts[index]),
-                          ),
-                        ),
-                      ),
-                      childCount: processedPosts.length,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  List<String> _getCategories(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [l10n.all, l10n.troubleshooting, l10n.buildAdvice, l10n.showOffBuild];
   }
 
-  /// Builds the main header section of the page, which includes the title and a button to create a new post.
-  Widget _buildModernHeader(ThemeData theme, BuildContext context) {
-    return SliverToBoxAdapter(
-      /// A decorative container with a gradient background for the header.
-      child: Container(
-        height: 280,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
-              theme.colorScheme.secondary.withOpacity(0.05),
-              theme.colorScheme.background,
-            ],
-          ),
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(32),
-            bottomRight: Radius.circular(32),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                /// The main title and subtitle of the forum page.
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.forum,
-                        color: theme.colorScheme.onPrimaryContainer,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Community Hub',
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onBackground,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Connect, share, and learn from fellow enthusiasts',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onBackground.withOpacity(
-                                0.7,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                /// A prominent button to encourage users to start a new discussion.
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NewPostPage(),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add, size: 24),
-                    label: const Text('Start Discussion'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A persistent header delegate that stays visible while scrolling.
-///
-/// It contains the search bar, category filters, and sorting dropdown, allowing
-/// users to refine the post list at any time.
-class _ModernForumActionsHeader extends SliverPersistentHeaderDelegate {
-  final TextEditingController searchController;
-  final List<String> categories;
-  final String selectedCategory;
-  final Function(String) onCategorySelected;
-  final List<String> sortOptions;
-  final String selectedSortOption;
-  final Function(String?) onSortOptionSelected;
-
-  _ModernForumActionsHeader({
-    required this.searchController,
-    required this.categories,
-    required this.selectedCategory,
-    required this.onCategorySelected,
-    required this.sortOptions,
-    required this.selectedSortOption,
-    required this.onSortOptionSelected,
-  });
-
-  /// Builds the content of the persistent header.
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final theme = Theme.of(context);
-
-    /// The main container for the actions header, with a background color and shadow.
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        children: [
-          /// The search bar for filtering posts by title.
-          SizedBox(
-            height: 48,
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Search in post titles...',
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          /// A row containing the category filter chips and the sorting dropdown.
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: categories.map((category) {
-                      final isSelected = category == selectedCategory;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (_) => onCategorySelected(category),
-                          backgroundColor: theme.colorScheme.surfaceVariant
-                              .withOpacity(0.5),
-                          selectedColor: theme.colorScheme.primary,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? theme.colorScheme.onPrimary
-                                : theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide.none,
-                          ),
-                          showCheckmark: false,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              /// The dropdown menu for sorting the posts.
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: DropdownButton<String>(
-                  value: selectedSortOption,
-                  onChanged: onSortOptionSelected,
-                  underline: const SizedBox(),
-                  icon: const Icon(Icons.sort),
-                  items: sortOptions.map<DropdownMenuItem<String>>((
-                    String value,
-                  ) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  List<String> _getSortOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [l10n.newest, l10n.oldest];
   }
 
-  @override
-  /// The maximum height of the header.
-  double get maxExtent => 130;
-  @override
-  /// The minimum height of the header (it doesn't shrink).
-  double get minExtent => 130;
-  @override
-  /// Determines if the header should rebuild. Set to true for simplicity,
-  /// but can be optimized by comparing old and new delegate properties.
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      true;
-}
+  Widget _buildPostsList(bool isDarkMode, ThemeData theme) {
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
 
-/// A card widget that displays a summary of a single [ForumPost].
-///
-/// It includes the post title, author, category, a content preview, and stats.
-/// It also has a subtle animation on tap.
-class _ModernPostCard extends StatefulWidget {
-  final ForumPost post;
-  const _ModernPostCard({required this.post});
-
-  @override
-  State<_ModernPostCard> createState() => _ModernPostCardState();
-}
-
-/// The state for [_ModernPostCard], which manages the tap animation.
-class _ModernPostCardState extends State<_ModernPostCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
-      vsync: this,
+    final params = ForumPostsParams(
+      page: _currentPage,
+      pageSize: _pageSize,
+      category: selectedCat != allText ? _selectedCategory : null,
+      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+      sortOption: selectedSort,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-  }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+    final postsAsync = ref.watch(forumPostsProvider(params));
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AnimatedBuilder(
-      // The AnimatedBuilder rebuilds the card when the animation value changes.
-      // The AnimatedBuilder rebuilds the card when the animation value changes.
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            elevation: 0,
-            color: theme.colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.1),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () {
-                /// Play a quick "press down" animation on tap before navigating.
-                _animationController.forward().then(
-                  // After the forward animation completes...
-                  (_) => _animationController.reverse(),
-                );
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PostDetailPage(post: widget.post),
+    return postsAsync.when(
+      data: (posts) {
+        _lastSuccessfulParams = params;
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _hasMorePages = posts.length >= _pageSize;
+            });
+          }
+        });
+
+        if (posts.isEmpty) {
+          return SliverFillRemaining(
+            child: _WOWEmptyState(isDarkMode: isDarkMode, theme: theme),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return AnimationConfiguration.staggeredList(
+                  position: index,
+                  duration: const Duration(milliseconds: 500),
+                  child: SlideAnimation(
+                    verticalOffset: 50.0,
+                    child: FadeInAnimation(
+                      child: _WOWPremiumPostCard(
+                        post: posts[index],
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// A circular avatar for the author with a gradient background.
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primary,
-                            theme.colorScheme.secondary,
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          widget.post.author.username
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
+              childCount: posts.length,
+            ),
+          ),
+        );
+      },
+      loading: () {
+        if (_lastSuccessfulParams != null && _lastSuccessfulParams == params) {
+          return const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return const SliverFillRemaining(
+          child: Center(child: CircularProgressIndicator()),
+        );
+      },
+      error: (error, stack) {
+        // Always show error, don't show loading spinner for errors
+        return SliverFillRemaining(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading posts',
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    getUserFriendlyError(error),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  widget.post.title,
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              /// A chip that displays the post's category with a unique color.
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getCategoryColor(
-                                    widget.post.category,
-                                    theme,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  widget.post.category,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-
-                          /// A preview of the post's content, displayed in a subtle container.
-                          if (widget.post.content.isNotEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceVariant
-                                    .withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                widget.post.content,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          const SizedBox(height: 12),
-
-                          /// The footer of the card, containing metadata and stats.
-                          Row(
-                            children: [
-                              /// Author's avatar, name, and post date.
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: theme.colorScheme.primary
-                                        .withOpacity(0.1),
-                                    child: Text(
-                                      widget.post.author.username.substring(
-                                        0,
-                                        1,
-                                      ),
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        widget.post.author.username,
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      ),
-                                      Text(
-                                        DateFormat(
-                                          'MMM dd, yyyy',
-                                        ).format(widget.post.createdAt),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-
-                              /// Chips for displaying view and reply counts.
-                              _StatChip(
-                                Icons.visibility,
-                                '${widget.post.viewCount} views',
-                              ),
-                              const SizedBox(width: 8),
-                              _StatChip(
-                                Icons.reply,
-                                '${widget.post.replies.length} replies',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.invalidate(forumPostsProvider(params));
+                    },
+                    child: Text(AppLocalizations.of(context)!.retry),
+                  ),
+                ],
               ),
             ),
           ),
@@ -679,50 +251,816 @@ class _ModernPostCardState extends State<_ModernPostCard>
     );
   }
 
-  /// Returns a specific color based on the post's category for styling the category chip.
-  Color _getCategoryColor(String category, ThemeData theme) {
-    switch (category) {
-      case 'Troubleshooting':
-        return theme.colorScheme.error;
-      case 'Build Advice':
-        return theme.colorScheme.tertiary;
-      case 'Show Off Your Build':
-        return theme.colorScheme.secondary;
-      default:
-        return theme.colorScheme.primary;
+  Widget _buildPaginationControls(bool isDarkMode, ThemeData theme) {
+    final shouldShowPagination = _currentPage > 1 || _hasMorePages;
+    
+    if (!shouldShowPagination) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
+
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _PaginationButton(
+              icon: Icons.chevron_left,
+              onTap: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
+              isDarkMode: isDarkMode,
+              theme: theme,
+            ),
+            const SizedBox(width: 16),
+            Text(
+              'Page $_currentPage',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 16),
+            _PaginationButton(
+              icon: Icons.chevron_right,
+              onTap: _hasMorePages ? () => _goToPage(_currentPage + 1) : null,
+              isDarkMode: isDarkMode,
+              theme: theme,
+            ),
+          ],
+        ),
+      ),
+    );
   }
-}
-
-/// A small, reusable widget for displaying post statistics like views and replies.
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _StatChip(this.icon, this.label);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final allText = AppLocalizations.of(context)!.all;
+    final selectedCat = _selectedCategory ?? allText;
+    final selectedSort = _selectedSortOption ?? AppLocalizations.of(context)!.newest;
+
+    // Use a deep dark background color matching the screenshot
+    final backgroundColor = isDarkMode 
+        ? const Color(0xFF0B0B0F) 
+        : AppColorsLight.backgroundPrimary;
+
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: CustomDrawer(showProfileArea: true),
+      backgroundColor: backgroundColor,
+      body: Stack(
+        children: [
+          // Animated Background (Subtle)
+          AnimatedBuilder(
+            animation: _backgroundAnimationController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: _AnimatedBackgroundPainter(
+                  progress: _backgroundAnimationController.value,
+                  isDarkMode: isDarkMode,
+                ),
+                size: Size.infinite,
+              );
+            },
+          ),
+          Column(
+            children: [
+              CustomNavigationBar(scaffoldKey: _scaffoldKey),
+              Expanded(
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    _WOWPremiumHeader(
+                      animation: _headerFadeAnimation,
+                      isDarkMode: isDarkMode,
+                      theme: theme,
+                    ),
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _WOWPremiumActionsHeader(
+                        searchController: _searchController,
+                        categories: _getCategories(context),
+                        selectedCategory: selectedCat,
+                        onCategorySelected: (category) {
+                          setState(() {
+                            _selectedCategory = category;
+                            _currentPage = 1;
+                            _hasMorePages = false;
+                            _lastSuccessfulParams = null;
+                          });
+                        },
+                        sortOptions: _getSortOptions(context),
+                        selectedSortOption: selectedSort,
+                        onSortOptionSelected: (option) {
+                          setState(() {
+                            _selectedSortOption = option;
+                            _currentPage = 1;
+                            _hasMorePages = false;
+                            _lastSuccessfulParams = null;
+                          });
+                        },
+                        isDarkMode: isDarkMode,
+                        theme: theme,
+                      ),
+                    ),
+                    _buildPostsList(isDarkMode, theme),
+                    _buildPaginationControls(isDarkMode, theme),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      child: Row(
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// POST CARD WIDGET 
+// -----------------------------------------------------------------------------
+
+
+/// 
+/// This widget has been completely redesigned to match the minimalist list-view style.
+class _WOWPremiumPostCard extends ConsumerStatefulWidget {
+  final ForumPost post;
+  final bool isDarkMode;
+
+  const _WOWPremiumPostCard({
+    required this.post,
+    required this.isDarkMode,
+  });
+
+  @override
+  ConsumerState<_WOWPremiumPostCard> createState() => _WOWPremiumPostCardState();
+}
+
+class _WOWPremiumPostCardState extends ConsumerState<_WOWPremiumPostCard>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final authorAsync = ref.watch(userProvider(widget.post.creatorId));
+    
+    // Exact background color from screenshot vibe (Deep Dark Blue/Black)
+    final cardBackgroundColor = widget.isDarkMode 
+        ? const Color(0xFF13131F) 
+        : Colors.white;
+
+    final borderColor = widget.isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12), // Spacing between list items
+        decoration: BoxDecoration(
+          color: cardBackgroundColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHovered 
+                ? (widget.isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon).withValues(alpha: 0.3)
+                : borderColor,
+            width: 1,
+          ),
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push('/forums/${widget.post.id}'),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- LEFT SIDE CONTENT ---
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Category Pill Badge
+                        _buildCategoryBadge(widget.post.topic, widget.isDarkMode),
+                        
+                        const SizedBox(height: 10),
+                        
+                        // 2. Title
+                        Text(
+                          widget.post.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            height: 1.3,
+                            color: widget.isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        // 3. Metadata (@user • time)
+                        authorAsync.when(
+                          data: (author) {
+                            final username = author?.username ?? 'User';
+                            final handle = '@$username';
+                            // Real time formatting
+                            final timeStr = _formatTimeAgo(widget.post.createdAt); 
+                            
+                            return Text(
+                              '$handle  •  $timeStr',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: widget.isDarkMode 
+                                    ? Colors.white.withValues(alpha: 0.4)
+                                    : Colors.black.withValues(alpha: 0.5),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            );
+                          },
+                          loading: () => Container(
+                            width: 100, height: 14, 
+                            color: Colors.grey.withValues(alpha: 0.1)
+                          ),
+                          error: (_, __) => const SizedBox(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // --- RIGHT SIDE CONTENT ---
+                  // Arrow Icon
+                  Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 20,
+                    color: widget.isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.black26,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper to format time ago
+  String _formatTimeAgo(DateTime dateTime) {
+    // Ensure we're working with local time
+    final localDateTime = dateTime.isUtc ? dateTime.toLocal() : dateTime;
+    final now = DateTime.now();
+    final difference = now.difference(localDateTime);
+
+    // If less than 1 minute, show "Just now"
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    }
+    
+    // If less than 1 hour, show minutes
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    }
+    
+    // If less than 24 hours, show hours
+    if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    }
+    
+    // If less than 30 days, show days
+    if (difference.inDays < 30) {
+      return '${difference.inDays}d ago';
+    }
+    
+    // Otherwise show months
+    final months = (difference.inDays / 30).floor();
+    if (months < 12) {
+      return '${months}mo ago';
+    }
+    
+    // Show years
+    final years = (months / 12).floor();
+    return '${years}y ago';
+  }
+
+  /// Helper to build the specific category badge style
+  Widget _buildCategoryBadge(String topic, bool isDarkMode) {
+    Color textColor;
+    Color borderColor;
+
+    // Matching screenshot colors
+    if (topic.contains('Support') || topic.contains('Troubleshooting')) {
+      textColor = const Color(0xFFE2E8F0); // Light Grey/White
+      borderColor = const Color(0xFFE2E8F0);
+    } else if (topic.contains('News') || topic.contains('Build Advice')) {
+      textColor = const Color(0xFFA855F7); // Purple
+      borderColor = const Color(0xFFA855F7);
+    } else if (topic.contains('Build') || topic.contains('Show Off Your Build')) {
+      textColor = const Color(0xFF4ADE80); // Green
+      borderColor = const Color(0xFF4ADE80);
+    } else {
+      textColor = AppColorsDark.buttonBlue;
+      borderColor = AppColorsDark.buttonBlue;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        color: borderColor.withValues(alpha: 0.05),
+      ),
+      child: Text(
+        topic,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// BACKGROUND PAINTER
+// -----------------------------------------------------------------------------
+
+class _AnimatedBackgroundPainter extends CustomPainter {
+  final double progress;
+  final bool isDarkMode;
+
+  _AnimatedBackgroundPainter({
+    required this.progress,
+    required this.isDarkMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Keep it extremely subtle for the clean screenshot look
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
+
+    for (int i = 0; i < 2; i++) {
+      final offset = progress + (i * 0.5);
+      final x = size.width * (0.3 + 0.4 * math.sin(offset * 2 * math.pi));
+      final y = size.height * (0.2 + 0.3 * math.cos(offset * 2 * math.pi));
+      
+      paint.shader = RadialGradient(
+        colors: [
+          (isDarkMode ? AppColorsDark.textPurple : AppColorsLight.textPurple)
+              .withValues(alpha: 0.05), // Extremely low opacity
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: Offset(x, y), radius: 400));
+      
+      canvas.drawCircle(Offset(x, y), 400, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// -----------------------------------------------------------------------------
+// HEADER WIDGETS
+// -----------------------------------------------------------------------------
+
+class _WOWPremiumHeader extends StatelessWidget {
+  final Animation<double> animation;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumHeader({
+    required this.animation,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
+    return SliverToBoxAdapter(
+      child: FadeTransition(
+        opacity: animation,
+        child: Container(
+          constraints: BoxConstraints(minHeight: isMobile ? 240 : 280),
+          decoration: BoxDecoration(
+            // Minimalist dark gradient/solid color to match screenshot
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isDarkMode
+                  ? [
+                      const Color(0xFF0F0F13),
+                      const Color(0xFF0B0B0F),
+                    ]
+                  : [
+                      AppColorsLight.backgroundSecondary.withValues(alpha: 0.5),
+                      AppColorsLight.backgroundPrimary,
+                    ],
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 20 : 32,
+                vertical: isMobile ? 20 : 40,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Minimal Badge
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 12 : 16,
+                      vertical: isMobile ? 6 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDarkMode 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (isDarkMode ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: Text(
+                      'COMMUNITY FORUM',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: isDarkMode ? AppColorsDark.textNeon : AppColorsLight.textNeon,
+                        letterSpacing: 2,
+                        fontSize: isMobile ? 10 : 11,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 16 : 24),
+                  
+                  // Main Title
+                  Text(
+                    'Community Hub',
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontSize: isMobile ? 32 : 42,
+                      letterSpacing: -1,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      height: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 8 : 12),
+                  
+                  Text(
+                    'Connect, share, and learn from fellow PC building enthusiasts',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: isMobile ? 14 : 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      height: 1.4,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 20 : 32),
+                  
+                  // Primary Button
+                  _WOWPremiumStartButton(
+                    isDarkMode: isDarkMode,
+                    theme: theme,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WOWPremiumStartButton extends StatelessWidget {
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumStartButton({
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.go('/forums/new'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFA8FF5F), // Accent color from the brand
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFA8FF5F).withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 5),
+            )
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add, color: Colors.black, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              AppLocalizations.of(context)!.startDiscussion,
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WOWPremiumActionsHeader extends SliverPersistentHeaderDelegate {
+  final TextEditingController searchController;
+  final List<String> categories;
+  final String selectedCategory;
+  final Function(String) onCategorySelected;
+  final List<String> sortOptions;
+  final String selectedSortOption;
+  final Function(String?) onSortOptionSelected;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  _WOWPremiumActionsHeader({
+    required this.searchController,
+    required this.categories,
+    required this.selectedCategory,
+    required this.onCategorySelected,
+    required this.sortOptions,
+    required this.selectedSortOption,
+    required this.onSortOptionSelected,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    
+    final headerColor = isDarkMode
+          ? const Color(0xFF0B0B0F).withValues(alpha: 0.95)
+          : AppColorsLight.backgroundPrimary.withValues(alpha: 0.95);
+
+    return Container(
+      height: maxExtent, 
+      decoration: BoxDecoration(
+        color: headerColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          )
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 10), 
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
+          
+          SizedBox(
+            height: 46,
+            child: TextField(
+              controller: searchController,
+              style: theme.textTheme.bodyLarge,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: isDarkMode 
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.withValues(alpha: 0.1),
+                hintText: 'Search for topics...',
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: isDarkMode 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+         
+          SizedBox(
+            height: 40, 
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: categories.map((category) {
+                final isSelected = category == selectedCategory;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: _WOWPremiumFilterChip(
+                    label: category,
+                    isSelected: isSelected,
+                    onTap: () => onCategorySelected(category),
+                    isDarkMode: isDarkMode,
+                    theme: theme,
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  
+  @override
+  double get maxExtent => 180; 
+
+  @override
+  double get minExtent => 180;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+}
+
+class _WOWPremiumFilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWPremiumFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDarkMode ? AppColorsDark.buttonPurple : AppColorsLight.buttonPurple)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected 
+                ? Colors.white 
+                : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WOWEmptyState extends StatelessWidget {
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _WOWEmptyState({
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.forum_outlined,
+            size: 80,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            AppLocalizations.of(context)!.noPostsFound,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try adjusting your filters',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaginationButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isDarkMode;
+  final ThemeData theme;
+
+  const _PaginationButton({
+    required this.icon,
+    this.onTap,
+    required this.isDarkMode,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onTap != null;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isEnabled
+              ? (isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isEnabled
+                ? Colors.transparent
+                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: isEnabled
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          size: 20,
+        ),
       ),
     );
   }

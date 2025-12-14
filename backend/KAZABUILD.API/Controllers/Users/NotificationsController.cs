@@ -97,7 +97,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Body = dto.Body,
                 Title = dto.Title,
                 LinkUrl = dto.LinkUrl,
-                SentAt = dto.SentAt,
+                SentAt = isPrivileged ? dto.SentAt : DateTime.UtcNow,
                 IsRead = dto.IsRead,
                 DatabaseEntryAt = DateTime.UtcNow,
                 LastEditedAt = DateTime.UtcNow
@@ -443,14 +443,14 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.SentAtStart != null)
             {
-                query = query.Where(n => n.SentAt >= dto.SentAtEnd);
+                query = query.Where(n => n.SentAt >= dto.SentAtStart);
             }
             if (dto.SentAtEnd != null)
             {
                 query = query.Where(n => n.SentAt <= dto.SentAtEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Search(dto.Query, n => n.SentAt, n => n.Title, n => n.Body);
@@ -473,7 +473,11 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<Notification> notifications = await query.Where(n => n.UserId == currentUserId || isPrivileged).ToListAsync();
+            //Current date for querying only notifications which have been sent in the past
+            var currentDate = DateTime.UtcNow;
+
+            //Get all the notifications that fit the requested criteria
+            List<Notification> notifications = await query.Where(n => isPrivileged || (n.UserId == currentUserId && n.SentAt > currentDate) ).ToListAsync();
 
             //Declare response variable
             List<NotificationResponseDto> responses;

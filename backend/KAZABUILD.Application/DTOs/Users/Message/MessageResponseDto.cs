@@ -10,6 +10,10 @@ namespace KAZABUILD.Application.DTOs.Users.Message
 
         public Guid? ReceiverId { get; set; }
 
+        public Guid? DeletedSenderId { get; set; }
+
+        public Guid? DeletedReceiverId { get; set; }
+
         public string? Content { get; set; }
 
         public string? Title { get; set; }

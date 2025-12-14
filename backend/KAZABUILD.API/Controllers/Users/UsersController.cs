@@ -1,7 +1,9 @@
+using KAZABUILD.API.Controllers.Builds;
 using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
+using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
@@ -101,7 +103,7 @@ namespace KAZABUILD.API.Controllers.Users
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = dto.UserRole,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,
@@ -238,11 +240,11 @@ namespace KAZABUILD.API.Controllers.Users
 
                 user.Gender = dto.Gender;
             }
-            if (!string.IsNullOrWhiteSpace(dto.ImageUrl))
+            if (dto.ImageId != null)
             {
-                changedFields.Add("ImageUrl: " + user.ImageUrl);
+                changedFields.Add("ImageId: " + user.ImageId);
 
-                user.ImageUrl = dto.ImageUrl;
+                user.ImageId = dto.ImageId;
             }
             if (dto.Birth != null)
             {
@@ -577,6 +579,9 @@ namespace KAZABUILD.API.Controllers.Users
             //Check if the calling user is followed
             var isFollowed = await _db.UserFollows.AnyAsync(f => f.FollowerId == id && f.FollowedId == currentUserId);
 
+            //Check if the user is blocked
+            var isBlocked = await _db.UserBlocks.AnyAsync(f => f.BlockedUserId == id && f.UserId == currentUserId);
+
             //Check what permissions user has and return respective information
             if (!isSelf && !isPrivileged
                 && (user.ProfileAccessibility == ProfileAccessibility.PRIVATE
@@ -604,8 +609,9 @@ namespace KAZABUILD.API.Controllers.Users
                     Id = user.Id,
                     DisplayName = user.DisplayName,
                     Description = user.Description,
-                    ImageUrl = user.ImageUrl,
-                    UserRole = user.UserRole
+                    ImageId = user.ImageId,
+                    UserRole = user.UserRole,
+                    IsBlocked = isBlocked
                 };
             }
             else if (isSelf && !isPrivileged) //Return full knowledge if is user
@@ -624,7 +630,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -633,7 +639,8 @@ namespace KAZABUILD.API.Controllers.Users
                     Language = user.Language,
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
-                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication
+                    EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked
                 };
             }
             else //Return admin knowledge if has privileges
@@ -652,7 +659,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -662,6 +669,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Location = user.Location,
                     ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                     EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
+                    IsBlocked = isBlocked,
                     DatabaseEntryAt = user.DatabaseEntryAt,
                     LastEditedAt = user.LastEditedAt,
                     Note = user.Note
@@ -724,7 +732,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(u => dto.UserRole.Contains(u.UserRole));
             }
 
-            //Apply search based on credentials if query string included in request
+            //Apply search based on provided query string if query string included in request
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 //Apply the query based on user privilege
@@ -774,13 +782,22 @@ namespace KAZABUILD.API.Controllers.Users
                     .Select(f => f.FollowerId)
                     .ToListAsync();
 
+                //Get all blocks for the current user
+                var blocks = await _db.UserBlocks
+                    .Where(f => f.UserId == currentUserId)
+                    .Select(f => f.BlockedUserId)
+                    .ToListAsync();
+
                 //Create a user response list
                 responses = [.. users.Select(user =>
                 {
-                    //Check if the calling user is followed
+                    //Check if the user is followed
                     var isFollowed = followers.Contains(user.Id);
 
-                    //Check if current user is getting themselves
+                    //Check if the user is followed
+                    var isBlocked = blocks.Contains(user.Id);
+
+                    //Check if user is getting themselves
                     var isSelf = currentUserId == user.Id;
 
                     //Return limited or restricted information based on user profile settings
@@ -791,7 +808,8 @@ namespace KAZABUILD.API.Controllers.Users
                         {
                             Id = user.Id,
                             DisplayName = user.DisplayName,
-                            UserRole = user.UserRole
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else if(!isSelf)
@@ -802,8 +820,9 @@ namespace KAZABUILD.API.Controllers.Users
                             Id = user.Id,
                             DisplayName = user.DisplayName,
                             Description = user.Description,
-                            ImageUrl = user.ImageUrl,
-                            UserRole = user.UserRole
+                            ImageId = user.ImageId,
+                            UserRole = user.UserRole,
+                            IsBlocked = isBlocked
                         };
                     }
                     else
@@ -819,7 +838,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Description = user.Description,
                             Gender = user.Gender,
                             UserRole = user.UserRole,
-                            ImageUrl = user.ImageUrl,
+                            ImageId = user.ImageId,
                             RegisteredAt = user.RegisteredAt,
                             Birth = user.Birth,
                             Address = user.Address,
@@ -829,9 +848,7 @@ namespace KAZABUILD.API.Controllers.Users
                             Location = user.Location,
                             ReceiveEmailNotifications = user.ReceiveEmailNotifications,
                             EnableDoubleFactorAuthentication = user.EnableDoubleFactorAuthentication,
-                            DatabaseEntryAt = user.DatabaseEntryAt,
-                            LastEditedAt = user.LastEditedAt,
-                            Note = user.Note
+                            IsBlocked = isBlocked
                         };
                     }
                 })];
@@ -852,7 +869,7 @@ namespace KAZABUILD.API.Controllers.Users
                     Description = user.Description,
                     Gender = user.Gender,
                     UserRole = user.UserRole,
-                    ImageUrl = user.ImageUrl,
+                    ImageId = user.ImageId,
                     RegisteredAt = user.RegisteredAt,
                     Birth = user.Birth,
                     Address = user.Address,
@@ -892,7 +909,7 @@ namespace KAZABUILD.API.Controllers.Users
 
         /// <summary>
         /// API endpoint for deleting the selected user for staff.
-        /// Removes all related UserFollows as well.
+        /// Removes all related objects as well.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -909,7 +926,26 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the user to delete
-            var user = await _db.Users.Include(u => u.Images).FirstOrDefaultAsync(u => u.Id == id);
+            var user = await _db.Users
+                .AsSplitQuery()
+                .Include(u => u.Images)
+                .Include(u => u.ReceivedMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.SentMessages)
+                    .ThenInclude(m => m.ChildMessages)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Images)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.ChildComments)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Comments)
+                        .ThenInclude(c => c.Images)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Components)
+                .Include(u => u.Builds)
+                    .ThenInclude(b => b.Interactions)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (user == null)
             {
                 //Log failure
@@ -967,6 +1003,153 @@ namespace KAZABUILD.API.Controllers.Users
             if (follows.Count != 0)
             {
                 _db.UserFollows.RemoveRange(follows);
+            }
+
+            //Set all sent messages' foreign key field to null or delete it if receiver also null
+            if (user.SentMessages.Count != 0)
+            {
+                foreach (var message in user.SentMessages)
+                {
+                    if(message.ReceiverId != null)
+                        message.SenderId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
+            }
+
+            //Set all received messages' foreign key field to null or delete it if sender also null
+            if (user.ReceivedMessages.Count != 0)
+            {
+                foreach (var message in user.ReceivedMessages)
+                {
+                    if (message.SenderId != null)
+                        message.ReceiverId = null;
+                    else
+                    {
+                        //Set all child message foreign keys to null
+                        foreach (var child in message.ChildMessages)
+                        {
+                            child.ParentMessageId = null;
+                        }
+
+                        //Remove all related images
+                        if (message.Images.Count != 0)
+                        {
+                            foreach (var image in message.Images)
+                            {
+                                //Remove the file from the file system
+                                if (System.IO.File.Exists(image.Location))
+                                    System.IO.File.Delete(image.Location);
+                            }
+
+                            //Delete all related images
+                            _db.Images.RemoveRange(message.Images);
+                        }
+
+                        _db.Messages.Remove(message);
+                    }
+                }
+            }
+
+            //Remove all builds created by the user
+            if (user.Builds.Count != 0)
+            {
+                foreach(var build in user.Builds)
+                {
+                    //Remove all related images
+                    if (build.Images.Count != 0)
+                    {
+                        foreach (var image in build.Images)
+                        {
+                            //Remove the file from the file system
+                            if (System.IO.File.Exists(image.Location))
+                                System.IO.File.Delete(image.Location);
+                        }
+
+                        //Delete all related images
+                        _db.Images.RemoveRange(build.Images);
+                    }
+
+                    //Remove all related comments
+                    if (build.Comments.Count != 0)
+                    {
+                        foreach(var comment in build.Comments)
+                        {
+                            //Remove all related images
+                            if (comment.Images.Count != 0)
+                            {
+                                foreach (var image in comment.Images)
+                                {
+                                    //Remove the file from the file system
+                                    if (System.IO.File.Exists(image.Location))
+                                        System.IO.File.Delete(image.Location);
+                                }
+
+                                //Delete all related images
+                                _db.Images.RemoveRange(comment.Images);
+                            }
+
+                            //Set the ParentCommentId field to null for all children
+                            foreach (var child in comment.ChildComments)
+                            {
+                                child.ParentCommentId = null;
+                            }
+
+                            //Delete the userComment
+                            _db.UserComments.Remove(comment);
+                        }
+                    }
+
+                    //Handle deleting build tags to avoid conflicts with cascade deletes
+                    //Get all tags
+                    var tags = await _db.BuildTags.Where(f => f.BuildId == build.Id).ToListAsync();
+
+                    //Remove all related tags
+                    if (tags.Count != 0)
+                    {
+                        _db.BuildTags.RemoveRange(tags);
+                    }
+
+                    //Set all related interactions foreign key field to null
+                    if (build.Interactions.Count != 0)
+                    {
+                        foreach (var interaction in build.Interactions)
+                        {
+                            interaction.BuildId = null;
+                        }
+                    }
+
+                    //Remove all components from build
+                    if (build.Components.Count != 0)
+                    {
+                        _db.BuildComponents.RemoveRange(build.Components);
+                    }
+
+                    //Delete the build
+                    _db.Builds.Remove(build);
+                }
             }
 
             //Delete the user

@@ -1,6 +1,4 @@
 using KAZABUILD.Application.DTOs.Admin;
-using KAZABUILD.Application.DTOs.Users.User;
-using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
@@ -16,15 +14,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using Prometheus;
 
 namespace KAZABUILD.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings, IWebHostEnvironment env) : ControllerBase
+    public class AdminController(KAZABUILDDBContext db, IHashingService hasher, ILoggerService logger, IRabbitMQPublisher publisher, IDataSeeder seeder, IOptions<SystemAdminSetings> systemAdminSettigns, IOptions<SmtpSettings> SmtpServiceSettings, IWebHostEnvironment env, IPricesApiService pricesApiService, IOptions<PricesApiSettings> pricesApiSettings) : ControllerBase
     {
         //Services used in the controller
         private readonly KAZABUILDDBContext _db = db;
@@ -35,6 +32,14 @@ namespace KAZABUILD.API.Controllers
         private readonly SystemAdminSetings _systemAdminSettigns = systemAdminSettigns.Value;
         private readonly SmtpSettings _smtpServiceSettings = SmtpServiceSettings.Value;
         private readonly IWebHostEnvironment _env = env;
+        private readonly IPricesApiService _pricesApiService = pricesApiService;
+        private readonly PricesApiSettings _pricesApiSettings = pricesApiSettings.Value;
+
+        // Prometheus metric for tracking number of banned users (blocked IPs)
+        private static readonly Gauge BannedUsersGauge = Metrics
+            .CreateGauge(
+                "kazabuild_banned_users_total",
+                "Current number of banned users (blocked IPs)");
 
         /// <summary>
         /// Allows the super admins to reset the system admin account in case of data breach.
@@ -87,7 +92,7 @@ namespace KAZABUILD.API.Controllers
                 Description = "System Admin account. Beware!",
                 Gender = "None",
                 UserRole = UserRole.SYSTEM,
-                ImageUrl = "",
+                ImageId = null,
                 Birth = DateTime.UtcNow,
                 RegisteredAt = DateTime.UtcNow,
                 ProfileAccessibility = ProfileAccessibility.PUBLIC,
@@ -245,16 +250,19 @@ namespace KAZABUILD.API.Controllers
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            //Get all table names
-            var tableNames = _db.Model.GetEntityTypes()
-                .Select(t => t.GetTableName())
-                .Distinct()
-                .ToList();
-
             //Go through every table and reset them
-            foreach (var tableName in tableNames)
+            foreach (var entityType in _db.Model.GetEntityTypes())
             {
-                _db.Database.ExecuteSql($"DELETE FROM [{tableName}]");
+                //Get table name
+                var tableName = entityType.GetTableName();
+
+                //Omit cleaning invalid tables
+                if (string.IsNullOrWhiteSpace(tableName) || tableName == "__EFMigrationsHistory")
+                    continue;
+
+                //Build and execute a query for resetting
+                var sql = $"DELETE FROM [{tableName}]";
+                await _db.Database.ExecuteSqlRawAsync(sql);
             }
 
             //Log the creation
@@ -275,7 +283,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return success response
-            return Ok(new { message = "Database reset successfully!" });
+            return Ok(new { message = "Database reset successfully! Restart the backend to reinitialize." });
         }
 
         /// <summary>
@@ -327,6 +335,9 @@ namespace KAZABUILD.API.Controllers
 
             //Save changes to the database
             await _db.SaveChangesAsync();
+
+            // Increment the banned users gauge
+            BannedUsersGauge.Inc();
 
             //Log the creation
             await _logger.LogAsync(
@@ -447,6 +458,9 @@ namespace KAZABUILD.API.Controllers
             //Save changes to the database
             await _db.SaveChangesAsync();
 
+            //Decrement the banned users gauge
+            BannedUsersGauge.Dec();
+
             //Log the creation
             await _logger.LogAsync(
                 currentUserId,
@@ -467,6 +481,125 @@ namespace KAZABUILD.API.Controllers
 
             //Return success response
             return Ok(new { message = $"Ip has been unblocked!" });
+        }
+
+        /// <summary>
+        /// Seed first set of prices for each component (call after data seeding)
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("fetch-component-prices")]
+        [Authorize(Policy = "SuperAdmins")]
+        public async Task<IActionResult> FetchComponentPrices()
+        {
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                     ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            var components = await _db.Components.ToListAsync();
+            if (!components.Any())
+            {
+                return Ok(new { message = "No components found to fetch prices for." });
+            }
+
+            int total = components.Count;
+            int successful = 0;
+            int failed = 0;
+            int processed = 0;
+            int skipped = 0;
+
+            await _logger.LogAsync(
+                currentUserId,
+                "POST",
+                "Admin",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.WARNING,
+                $"Starting bulk fetch of component prices. Total components: {total}"
+            );
+            try
+            {
+                foreach (BaseComponent comp in components)
+                {
+
+                    if (await _db.ComponentPrices.AnyAsync(p => p.ComponentId == comp.Id))
+                    {
+                        skipped++;
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Admin",
+                            ip,
+                            comp.Id,
+                            PrivacyLevel.INFORMATION,
+                            $"Price fetch SKIPPED for component {processed}/{total} (already has prices)"
+                        );
+                        continue;
+                    }
+                    
+                    processed++;
+
+                    var response = await _pricesApiService.GetPartPrice(comp);
+
+                    if (response == null)
+                    {
+                        failed++;
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Admin",
+                            ip,
+                            comp.Id,
+                            PrivacyLevel.WARNING,
+                            $"Price fetch FAILED for component {processed}/{total}"
+                        );
+                        continue;
+                    }
+
+                    successful++;
+
+                    var tempComponentPrice = new ComponentPrice
+                    {
+                        ComponentId = comp.Id,
+                        SourceUrl = _pricesApiSettings.Url,
+                        VendorName = _pricesApiSettings.VendorName,
+                        FetchedAt = DateTime.UtcNow,
+                        Price = response.Price,
+                        Currency = response.Currency,
+                        DatabaseEntryAt = DateTime.UtcNow,
+                        LastEditedAt = DateTime.UtcNow,
+                        Note = "First price pull"
+                    };
+
+                    _db.ComponentPrices.Add(tempComponentPrice);
+
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "POST",
+                        "Admin",
+                        ip,
+                        comp.Id,
+                        PrivacyLevel.INFORMATION,
+                        $"Price fetched for component {processed}/{total}"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, stack = ex.StackTrace });
+            }
+
+            await _db.SaveChangesAsync();
+
+            // Final summary
+            return Ok(new
+            {
+                message = "Bulk price fetch complete.",
+                totalComponents = total,
+                successfulFetches = successful,
+                failedFetches = failed,
+                progress = $"{successful} successful out of {total}"
+            });
         }
     }
 }

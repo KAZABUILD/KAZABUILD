@@ -20,22 +20,24 @@ namespace KAZABUILD.Application.DTOs.Image
 
         public List<Guid>? UserCommentId { get; set; }
 
+        public List<Guid>? MessageId { get; set; }
+
+        public List<Guid>? UserGuideId { get; set; }
+
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.
         /// </summary>
-        public bool Paging = false;
+        public bool Paging { get; set; } = false;
 
         /// <summary>
         /// Which page should be gotten if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page number must be greater than 0")]
         public int? Page { get; set; }
 
         /// <summary>
         /// How many objects should be in the response if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page length must be greater than 0")]
         public int? PageLength { get; set; }
 
         //Query search string

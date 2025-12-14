@@ -1,6 +1,7 @@
 using KAZABUILD.Application.DTOs.Components.Components.BaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CaseFanComponent;
+using KAZABUILD.Application.DTOs.Components.Components.ComponentFilter;
 using KAZABUILD.Application.DTOs.Components.Components.CoolerComponent;
 using KAZABUILD.Application.DTOs.Components.Components.CPUComponent;
 using KAZABUILD.Application.DTOs.Components.Components.GPUComponent;
@@ -12,9 +13,7 @@ using KAZABUILD.Application.DTOs.Components.Components.StorageComponent;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Components.Components;
-using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
 
@@ -1765,6 +1764,13 @@ namespace KAZABUILD.API.Controllers.Components
             //Check if current user has admin permissions
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
+            //Add the common fields to the response
+            response.Id = component.Id;
+            response.Name = component.Name;
+            response.Manufacturer = component.Manufacturer;
+            response.Release = component.Release;
+            response.Type = component.Type;
+
             //Check if has admin privilege
             if (!isPrivileged)
             {
@@ -1845,6 +1851,19 @@ namespace KAZABUILD.API.Controllers.Components
             if (dto.ReleaseEnd != null)
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
+            }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                foreach (var id in requiredIds)
+                {
+                    query = query.Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == id));
+                }
             }
 
             //Filter by the specific subclass variables
@@ -2037,6 +2056,7 @@ namespace KAZABUILD.API.Controllers.Components
 
                         //Filter by GPU Component class variables
                         gpuQuery = gpuQuery.Where(c =>
+                            (gpuDto.Chipset == null || gpuDto.Chipset.Contains(c.Chipset)) &&
                             (gpuDto.VideoMemoryType == null || gpuDto.VideoMemoryType.Contains(c.VideoMemoryType)) &&
                             (gpuDto.CoolingType == null || gpuDto.CoolingType.Contains(c.CoolingType)) &&
                             (gpuDto.FrameSync == null || gpuDto.FrameSync.Contains(c.FrameSync)) &&
@@ -2067,7 +2087,7 @@ namespace KAZABUILD.API.Controllers.Components
                         //Apply search for the GPU Component
                         if (!string.IsNullOrWhiteSpace(dto.Query))
                         {
-                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Chipset, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
                         }
 
                         query = gpuQuery;
@@ -2271,6 +2291,13 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
             }
             ;
 
@@ -2312,6 +2339,7 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             CaseComponent caseComponent => new CaseComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseComponent.Name,
                                 Manufacturer = caseComponent.Manufacturer,
                                 Release = caseComponent.Release,
@@ -2334,6 +2362,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CaseFanComponent caseFanComponent => new CaseFanComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseFanComponent.Name,
                                 Manufacturer = caseFanComponent.Manufacturer,
                                 Release = caseFanComponent.Release,
@@ -2353,6 +2382,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CoolerComponent coolerComponent => new CoolerComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = coolerComponent.Name,
                                 Manufacturer = coolerComponent.Manufacturer,
                                 Release = coolerComponent.Release,
@@ -2370,6 +2400,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CPUComponent cpuComponent => new CPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = cpuComponent.Name,
                                 Manufacturer = cpuComponent.Manufacturer,
                                 Release = cpuComponent.Release,
@@ -2400,6 +2431,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             GPUComponent gpuComponent => new GPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = gpuComponent.Name,
                                 Manufacturer = gpuComponent.Manufacturer,
                                 Release = gpuComponent.Release,
@@ -2421,6 +2453,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MemoryComponent memoryComponent => new MemoryComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = memoryComponent.Name,
                                 Manufacturer = memoryComponent.Manufacturer,
                                 Release = memoryComponent.Release,
@@ -2442,6 +2475,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MonitorComponent monitorComponent => new MonitorComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = monitorComponent.Name,
                                 Manufacturer = monitorComponent.Manufacturer,
                                 Release = monitorComponent.Release,
@@ -2460,6 +2494,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MotherboardComponent motherboardComponent => new MotherboardComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = motherboardComponent.Name,
                                 Manufacturer = motherboardComponent.Manufacturer,
                                 Release = motherboardComponent.Release,
@@ -2497,6 +2532,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             PowerSupplyComponent powerSupplyComponent => new PowerSupplyComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = powerSupplyComponent.Name,
                                 Manufacturer = powerSupplyComponent.Manufacturer,
                                 Release = powerSupplyComponent.Release,
@@ -2510,6 +2546,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             StorageComponent storageComponent => new StorageComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = storageComponent.Name,
                                 Manufacturer = storageComponent.Manufacturer,
                                 Release = storageComponent.Release,
@@ -2557,6 +2594,7 @@ namespace KAZABUILD.API.Controllers.Components
                         {
                             CaseComponent caseComponent => new CaseComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseComponent.Name,
                                 Manufacturer = caseComponent.Manufacturer,
                                 Release = caseComponent.Release,
@@ -2582,6 +2620,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CaseFanComponent caseFanComponent => new CaseFanComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = caseFanComponent.Name,
                                 Manufacturer = caseFanComponent.Manufacturer,
                                 Release = caseFanComponent.Release,
@@ -2604,6 +2643,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CoolerComponent coolerComponent => new CoolerComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = coolerComponent.Name,
                                 Manufacturer = coolerComponent.Manufacturer,
                                 Release = coolerComponent.Release,
@@ -2624,6 +2664,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             CPUComponent cpuComponent => new CPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = cpuComponent.Name,
                                 Manufacturer = cpuComponent.Manufacturer,
                                 Release = cpuComponent.Release,
@@ -2657,6 +2698,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             GPUComponent gpuComponent => new GPUComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = gpuComponent.Name,
                                 Manufacturer = gpuComponent.Manufacturer,
                                 Release = gpuComponent.Release,
@@ -2681,6 +2723,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MemoryComponent memoryComponent => new MemoryComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = memoryComponent.Name,
                                 Manufacturer = memoryComponent.Manufacturer,
                                 Release = memoryComponent.Release,
@@ -2705,6 +2748,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MonitorComponent monitorComponent => new MonitorComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = monitorComponent.Name,
                                 Manufacturer = monitorComponent.Manufacturer,
                                 Release = monitorComponent.Release,
@@ -2726,6 +2770,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             MotherboardComponent motherboardComponent => new MotherboardComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = motherboardComponent.Name,
                                 Manufacturer = motherboardComponent.Manufacturer,
                                 Release = motherboardComponent.Release,
@@ -2766,6 +2811,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             PowerSupplyComponent powerSupplyComponent => new PowerSupplyComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = powerSupplyComponent.Name,
                                 Manufacturer = powerSupplyComponent.Manufacturer,
                                 Release = powerSupplyComponent.Release,
@@ -2782,6 +2828,7 @@ namespace KAZABUILD.API.Controllers.Components
                             },
                             StorageComponent storageComponent => new StorageComponentResponseDto
                             {
+                                Id = component.Id,
                                 Name = storageComponent.Name,
                                 Manufacturer = storageComponent.Manufacturer,
                                 Release = storageComponent.Release,
@@ -2842,6 +2889,1064 @@ namespace KAZABUILD.API.Controllers.Components
         }
 
         /// <summary>
+        /// API endpoint for getting Components' count with pagination and search.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-count")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<double>> GetComponentsCount([FromBody] GetBaseComponentDto dto)
+        {
+            //Get component id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.Components.AsNoTracking();
+
+            //Filter by Base Component class variables
+            if (dto.Name != null)
+            {
+                query = query.Where(c => dto.Name.Contains(c.Name));
+            }
+            if (dto.Manufacturer != null)
+            {
+                query = query.Where(c => dto.Manufacturer.Contains(c.Manufacturer));
+            }
+            if (dto.ReleaseStart != null)
+            {
+                query = query.Where(c => c.Release >= dto.ReleaseStart);
+            }
+            if (dto.ReleaseEnd != null)
+            {
+                query = query.Where(c => c.Release <= dto.ReleaseEnd);
+            }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                foreach (var id in requiredIds)
+                {
+                    query = query.Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == id));
+                }
+            }
+
+            //Filter by the specific subclass variables
+            switch (dto)
+            {
+                case GetCaseComponentDto caseDto:
+                    {
+                        //Create a subquery based on the Case type
+                        var caseQuery = query.OfType<CaseComponent>();
+
+                        //Filter by Case Component class variables
+                        caseQuery = caseQuery.Where(c =>
+                            (caseDto.FormFactor == null || caseDto.FormFactor.Contains(c.FormFactor)) &&
+                            (caseDto.PowerSupplyShrouded == null || caseDto.PowerSupplyShrouded == c.PowerSupplyShrouded) &&
+                            (caseDto.PowerSupplyAmountStart == null || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountEnd == null || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
+                            (caseDto.HasTransparentSidePanel == null || caseDto.HasTransparentSidePanel == c.HasTransparentSidePanel) &&
+                            (caseDto.SidePanelType == null || (c.SidePanelType != null && caseDto.SidePanelType.Contains(c.SidePanelType))) &&
+                            (caseDto.MaxVideoCardLengthStart == null || caseDto.MaxVideoCardLengthStart <= c.MaxVideoCardLength) &&
+                            (caseDto.MaxVideoCardLengthEnd == null || caseDto.MaxVideoCardLengthEnd >= c.MaxVideoCardLength) &&
+                            (caseDto.MaxCPUCoolerHeightStart == null || caseDto.MaxCPUCoolerHeightStart <= c.MaxCPUCoolerHeight) &&
+                            (caseDto.MaxCPUCoolerHeightEnd == null || caseDto.MaxCPUCoolerHeightEnd >= c.MaxCPUCoolerHeight) &&
+                            (caseDto.Internal35BayAmountStart == null || caseDto.Internal35BayAmountStart <= c.Internal35BayAmount) &&
+                            (caseDto.Internal35BayAmountEnd == null || caseDto.Internal35BayAmountEnd >= c.Internal35BayAmount) &&
+                            (caseDto.Internal25BayAmountStart == null || caseDto.Internal25BayAmountStart <= c.Internal25BayAmount) &&
+                            (caseDto.Internal25BayAmountEnd == null || caseDto.Internal25BayAmountEnd >= c.Internal25BayAmount) &&
+                            (caseDto.External35BayAmountStart == null || caseDto.External35BayAmountStart <= c.External35BayAmount) &&
+                            (caseDto.External35BayAmountEnd == null || caseDto.External35BayAmountEnd >= c.External35BayAmount) &&
+                            (caseDto.External525BayAmountStart == null || caseDto.External525BayAmountStart <= c.External525BayAmount) &&
+                            (caseDto.External525BayAmountEnd == null || caseDto.External525BayAmountEnd >= c.External525BayAmount) &&
+                            (caseDto.ExpansionSlotAmountStart == null || caseDto.ExpansionSlotAmountStart <= c.ExpansionSlotAmount) &&
+                            (caseDto.ExpansionSlotAmountEnd == null || caseDto.ExpansionSlotAmountEnd >= c.ExpansionSlotAmount) &&
+                            (caseDto.DepthStart == null || caseDto.DepthStart <= c.Dimensions.Depth) &&
+                            (caseDto.DepthEnd == null || caseDto.DepthEnd >= c.Dimensions.Depth) &&
+                            (caseDto.HeightStart == null || caseDto.HeightStart <= c.Dimensions.Height) &&
+                            (caseDto.HeightEnd == null || caseDto.HeightEnd >= c.Dimensions.Height) &&
+                            (caseDto.WidthStart == null || caseDto.WidthStart <= c.Dimensions.Width) &&
+                            (caseDto.WidthEnd == null || caseDto.WidthEnd >= c.Dimensions.Width) &&
+                            (caseDto.VolumeStart == null || caseDto.VolumeStart <= c.Volume) &&
+                            (caseDto.VolumeEnd == null || caseDto.VolumeEnd >= c.Volume) &&
+                            (caseDto.WeightStart == null || caseDto.WeightStart <= c.Weight) &&
+                            (caseDto.WeightEnd == null || caseDto.WeightEnd >= c.Weight) &&
+                            (caseDto.SupportsRearConnectingMotherboard == null || caseDto.SupportsRearConnectingMotherboard == c.SupportsRearConnectingMotherboard)
+                        );
+
+                        //Apply search for the Case Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            caseQuery = caseQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor);
+                        }
+
+                        query = caseQuery;
+
+                        break;
+                    }
+                case GetCaseFanComponentDto caseFanDto:
+                    {
+                        //Create a subquery based on the CaseFan type
+                        var caseFanQuery = query.OfType<CaseFanComponent>();
+
+                        //Filter by Case Fan Component class variables
+                        caseFanQuery = caseFanQuery.Where(c =>
+                            (caseFanDto.LEDType == null || (c.LEDType != null && caseFanDto.LEDType.Contains(c.LEDType))) &&
+                            (caseFanDto.ConnectorType == null || (c.ConnectorType != null && caseFanDto.ConnectorType.Contains(c.ConnectorType))) &&
+                            (caseFanDto.ControllerType == null || (c.ControllerType != null && caseFanDto.ControllerType.Contains(c.ControllerType))) &&
+                            (caseFanDto.FlowDirection == null || caseFanDto.FlowDirection.Contains(c.FlowDirection)) &&
+                            (caseFanDto.SizeStart == null || caseFanDto.SizeStart <= c.Size) &&
+                            (caseFanDto.SizeEnd == null || caseFanDto.SizeEnd >= c.Size) &&
+                            (caseFanDto.QuantityStart == null || caseFanDto.QuantityStart <= c.Quantity) &&
+                            (caseFanDto.QuantityEnd == null || caseFanDto.QuantityEnd >= c.Quantity) &&
+                            (caseFanDto.MinAirflowStart == null || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
+                            (caseFanDto.MinAirflowEnd == null || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
+                            (caseFanDto.MaxAirflowStart == null || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
+                            (caseFanDto.MaxAirflowEnd == null || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
+                            (caseFanDto.MinNoiseLevelStart == null || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (caseFanDto.MinNoiseLevelEnd == null || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelStart == null || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelEnd == null || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (caseFanDto.StaticPressureAmountStart == null || caseFanDto.StaticPressureAmountStart <= c.StaticPressureAmount) &&
+                            (caseFanDto.StaticPressureAmountEnd == null || caseFanDto.StaticPressureAmountEnd >= c.StaticPressureAmount) &&
+                            (caseFanDto.PulseWidthModulation == null || caseFanDto.PulseWidthModulation == c.PulseWidthModulation)
+                        );
+
+                        //Apply search for the Case Fan Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            caseFanQuery = caseFanQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.LEDType!, c => c.ConnectorType!, c => c.ControllerType!);
+                        }
+
+                        query = caseFanQuery;
+
+                        break;
+                    }
+                case GetCoolerComponentDto coolerDto:
+                    {
+                        //Create a subquery based on the Cooler type
+                        var coolerQuery = query.OfType<CoolerComponent>();
+
+                        //Filter by Cooler class variables
+                        coolerQuery = coolerQuery.Where(c =>
+                            (coolerDto.MinFanRotationSpeedStart == null || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
+                            (coolerDto.MinFanRotationSpeedEnd == null || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedStart == null || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedEnd == null || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MinNoiseLevelStart == null || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (coolerDto.MinNoiseLevelEnd == null || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelStart == null || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelEnd == null || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (coolerDto.HeightStart == null || coolerDto.HeightStart <= c.Height) &&
+                            (coolerDto.HeightEnd == null || coolerDto.HeightEnd >= c.Height) &&
+                            (coolerDto.RadiatorSizeStart == null || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
+                            (coolerDto.RadiatorSizeEnd == null || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
+                            (coolerDto.FanSizeStart == null || coolerDto.FanSizeStart <= c.FanSize) &&
+                            (coolerDto.FanSizeEnd == null || coolerDto.FanSizeEnd >= c.FanSize) &&
+                            (coolerDto.FanQuantityStart == null || coolerDto.FanQuantityStart <= c.FanQuantity) &&
+                            (coolerDto.FanQuantityEnd == null || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
+                            (coolerDto.IsWaterCooled == null || coolerDto.IsWaterCooled == c.IsWaterCooled) &&
+                            (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
+                        );
+
+                        //Apply search for the Cooler Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            coolerQuery = coolerQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                        }
+
+                        query = coolerQuery;
+
+                        break;
+                    }
+                case GetCPUComponentDto cpuDto:
+                    {
+                        //Create a subquery based on the CPU type
+                        var cpuQuery = query.OfType<CPUComponent>();
+
+                        //Filter by CPU class variables
+                        cpuQuery = cpuQuery.Where(c =>
+                            (cpuDto.Series == null || cpuDto.Series.Contains(c.Series)) &&
+                            (cpuDto.Microarchitecture == null || cpuDto.Microarchitecture.Contains(c.Microarchitecture)) &&
+                            (cpuDto.CoreFamily == null || cpuDto.CoreFamily.Contains(c.CoreFamily)) &&
+                            (cpuDto.SocketType == null || cpuDto.SocketType.Contains(c.SocketType)) &&
+                            (cpuDto.Lithography == null || cpuDto.Lithography.Contains(c.Lithography)) &&
+                            (cpuDto.MemoryType == null || cpuDto.MemoryType.Contains(c.MemoryType)) &&
+                            (cpuDto.PackagingType == null || cpuDto.PackagingType.Contains(c.PackagingType)) &&
+                            (cpuDto.IncludesCooler == null || cpuDto.IncludesCooler == c.IncludesCooler) &&
+                            (cpuDto.SupportsSimultaneousMultithreading == null || cpuDto.SupportsSimultaneousMultithreading == c.SupportsSimultaneousMultithreading) &&
+                            (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
+                            (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
+                            (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
+                            (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
+                            (cpuDto.PerformanceAmountEnd == null || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
+                            (cpuDto.EfficiencyAmountStart == null || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
+                            (cpuDto.EfficiencyAmountEnd == null || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
+                            (cpuDto.ThreadsAmountStart == null || cpuDto.ThreadsAmountStart <= c.ThreadsAmount) &&
+                            (cpuDto.ThreadsAmountEnd == null || cpuDto.ThreadsAmountEnd >= c.ThreadsAmount) &&
+                            (cpuDto.BasePerformanceSpeedStart == null || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
+                            (cpuDto.BasePerformanceSpeedEnd == null || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedStart == null || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedEnd == null || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BaseEfficiencySpeedStart == null || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BaseEfficiencySpeedEnd == null || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedStart == null || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedEnd == null || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
+                            (cpuDto.L1Start == null || cpuDto.L1Start <= c.L1) &&
+                            (cpuDto.L1End == null || cpuDto.L1End >= c.L1) &&
+                            (cpuDto.L2Start == null || cpuDto.L2Start <= c.L2) &&
+                            (cpuDto.L2End == null || cpuDto.L2End >= c.L2) &&
+                            (cpuDto.L3Start == null || cpuDto.L3Start <= c.L3) &&
+                            (cpuDto.L3End == null || cpuDto.L3End >= c.L3) &&
+                            (cpuDto.L4Start == null || cpuDto.L4Start <= c.L4) &&
+                            (cpuDto.L4End == null || cpuDto.L4End >= c.L4) &&
+                            (cpuDto.ThermalDesignPowerStart == null || cpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
+                        );
+
+                        //Apply search for the CPU Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            cpuQuery = cpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.Microarchitecture, c => c.CoreFamily, c => c.SocketType, c => c.Lithography, c => c.MemoryType, c => c.PackagingType);
+                        }
+
+                        query = cpuQuery;
+
+                        break;
+                    }
+                case GetGPUComponentDto gpuDto:
+                    {
+                        //Create a subquery based on the GPU type
+                        var gpuQuery = query.OfType<GPUComponent>();
+
+                        //Filter by GPU Component class variables
+                        gpuQuery = gpuQuery.Where(c =>
+                            (gpuDto.Chipset == null || gpuDto.Chipset.Contains(c.Chipset)) &&
+                            (gpuDto.VideoMemoryType == null || gpuDto.VideoMemoryType.Contains(c.VideoMemoryType)) &&
+                            (gpuDto.CoolingType == null || gpuDto.CoolingType.Contains(c.CoolingType)) &&
+                            (gpuDto.FrameSync == null || gpuDto.FrameSync.Contains(c.FrameSync)) &&
+                            (gpuDto.VideoMemoryAmountStart == null || gpuDto.VideoMemoryAmountStart <= c.VideoMemoryAmount) &&
+                            (gpuDto.VideoMemoryAmountEnd == null || gpuDto.VideoMemoryAmountEnd >= c.VideoMemoryAmount) &&
+                            (gpuDto.CoreBaseClockSpeedStart == null || gpuDto.CoreBaseClockSpeedStart <= c.CoreBaseClockSpeed) &&
+                            (gpuDto.CoreBaseClockSpeedEnd == null || gpuDto.CoreBaseClockSpeedEnd >= c.CoreBaseClockSpeed) &&
+                            (gpuDto.CoreBoostClockSpeedStart == null || gpuDto.CoreBoostClockSpeedStart <= c.CoreBoostClockSpeed) &&
+                            (gpuDto.CoreBoostClockSpeedEnd == null || gpuDto.CoreBoostClockSpeedEnd >= c.CoreBoostClockSpeed) &&
+                            (gpuDto.CoreCountStart == null || gpuDto.CoreCountStart <= c.CoreCount) &&
+                            (gpuDto.CoreCountEnd == null || gpuDto.CoreCountEnd >= c.CoreCount) &&
+                            (gpuDto.EffectiveMemoryClockSpeedStart == null || gpuDto.EffectiveMemoryClockSpeedStart <= c.EffectiveMemoryClockSpeed) &&
+                            (gpuDto.EffectiveMemoryClockSpeedEnd == null || gpuDto.EffectiveMemoryClockSpeedEnd >= c.EffectiveMemoryClockSpeed) &&
+                            (gpuDto.MemoryBusWidthStart == null || gpuDto.MemoryBusWidthStart <= c.MemoryBusWidth) &&
+                            (gpuDto.MemoryBusWidthEnd == null || gpuDto.MemoryBusWidthEnd >= c.MemoryBusWidth) &&
+                            (gpuDto.LengthStart == null || gpuDto.LengthStart <= c.Length) &&
+                            (gpuDto.LengthEnd == null || gpuDto.LengthEnd >= c.Length) &&
+                            (gpuDto.ThermalDesignPowerStart == null || gpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower) &&
+                            (gpuDto.CaseExpansionSlotWidthStart == null || gpuDto.CaseExpansionSlotWidthStart <= c.CaseExpansionSlotWidth) &&
+                            (gpuDto.CaseExpansionSlotWidthEnd == null || gpuDto.CaseExpansionSlotWidthEnd >= c.CaseExpansionSlotWidth) &&
+                            (gpuDto.TotalSlotAmountStart == null || gpuDto.TotalSlotAmountStart <= c.TotalSlotAmount) &&
+                            (gpuDto.TotalSlotAmountEnd == null || gpuDto.TotalSlotAmountEnd >= c.TotalSlotAmount) &&
+                            (gpuDto.ThermalDesignPowerStart == null || gpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
+                        );
+
+                        //Apply search for the GPU Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Chipset, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                        }
+
+                        query = gpuQuery;
+
+                        break;
+                    }
+                case GetMemoryComponentDto memoryDto:
+                    {
+                        //Create a subquery based on the Memory type
+                        var memoryQuery = query.OfType<MemoryComponent>();
+
+                        //Filter by Memory Component class variables
+                        memoryQuery = memoryQuery.Where(c =>
+                            (memoryDto.RAMType == null || memoryDto.RAMType.Contains(c.RAMType)) &&
+                            (memoryDto.FormFactor == null || memoryDto.FormFactor.Contains(c.FormFactor)) &&
+                            (memoryDto.Timings == null || (c.Timings != null && memoryDto.Timings.Contains(c.Timings))) &&
+                            (memoryDto.ECC == null || memoryDto.ECC.Contains(c.ECC)) &&
+                            (memoryDto.RegisteredType == null || memoryDto.RegisteredType.Contains(c.RegisteredType)) &&
+                            (memoryDto.HaveHeatSpreader == null || memoryDto.HaveHeatSpreader == c.HaveHeatSpreader) &&
+                            (memoryDto.HaveRGB == null || memoryDto.HaveRGB == c.HaveRGB) &&
+                            (memoryDto.SpeedStart == null || memoryDto.SpeedStart <= c.Speed) &&
+                            (memoryDto.SpeedEnd == null || memoryDto.SpeedEnd >= c.Speed) &&
+                            (memoryDto.CapacityStart == null || memoryDto.CapacityStart <= c.Capacity) &&
+                            (memoryDto.CapacityEnd == null || memoryDto.CapacityEnd >= c.Capacity) &&
+                            (memoryDto.CASLatencyStart == null || memoryDto.CASLatencyStart <= c.CASLatency) &&
+                            (memoryDto.CASLatencyEnd == null || memoryDto.CASLatencyEnd >= c.CASLatency) &&
+                            (memoryDto.ModuleQuantityStart == null || memoryDto.ModuleQuantityStart <= c.ModuleQuantity) &&
+                            (memoryDto.ModuleQuantityEnd == null || memoryDto.ModuleQuantityEnd >= c.ModuleQuantity) &&
+                            (memoryDto.ModuleCapacityStart == null || memoryDto.ModuleCapacityStart <= c.ModuleCapacity) &&
+                            (memoryDto.ModuleCapacityEnd == null || memoryDto.ModuleCapacityEnd >= c.ModuleCapacity) &&
+                            (memoryDto.HeightStart == null || memoryDto.HeightStart <= c.Height) &&
+                            (memoryDto.HeightEnd == null || memoryDto.HeightEnd >= c.Height) &&
+                            (memoryDto.VoltageStart == null || memoryDto.VoltageStart <= c.Voltage) &&
+                            (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
+                        );
+
+                        //Apply search for the memory Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            memoryQuery = memoryQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ECC, c => c.RegisteredType);
+                        }
+
+                        query = memoryQuery;
+
+                        break;
+                    }
+                case GetMonitorComponentDto monitorDto:
+                    {
+                        //Create a subquery based on the Monitor type
+                        var monitorQuery = query.OfType<MonitorComponent>();
+
+                        //Filter by Monitor Component class variables
+                        monitorQuery = monitorQuery.Where(c =>
+                            (monitorDto.PanelType == null || monitorDto.PanelType.Contains(c.PanelType)) &&
+                            (monitorDto.ViewingAngle == null || monitorDto.ViewingAngle.Contains(c.ViewingAngle)) &&
+                            (monitorDto.AspectRatio == null || monitorDto.AspectRatio.Contains(c.AspectRatio)) &&
+                            (monitorDto.HighDynamicRangeType == null || (c.HighDynamicRangeType != null && monitorDto.HighDynamicRangeType.Contains(c.HighDynamicRangeType))) &&
+                            (monitorDto.AdaptiveSyncType == null || monitorDto.AdaptiveSyncType.Contains(c.AdaptiveSyncType)) &&
+                            (monitorDto.ScreenSizeStart == null || monitorDto.ScreenSizeStart <= c.ScreenSize) &&
+                            (monitorDto.ScreenSizeEnd == null || monitorDto.ScreenSizeEnd >= c.ScreenSize) &&
+                            (monitorDto.HorizontalResolutionStart == null || monitorDto.HorizontalResolutionStart <= c.HorizontalResolution) &&
+                            (monitorDto.HorizontalResolutionEnd == null || monitorDto.HorizontalResolutionEnd >= c.HorizontalResolution) &&
+                            (monitorDto.VerticalResolutionStart == null || monitorDto.VerticalResolutionStart <= c.VerticalResolution) &&
+                            (monitorDto.VerticalResolutionEnd == null || monitorDto.VerticalResolutionEnd >= c.VerticalResolution) &&
+                            (monitorDto.MaxRefreshRateStart == null || monitorDto.MaxRefreshRateStart <= c.MaxRefreshRate) &&
+                            (monitorDto.MaxRefreshRateEnd == null || monitorDto.MaxRefreshRateEnd >= c.MaxRefreshRate) &&
+                            (monitorDto.ResponseTimeStart == null || monitorDto.ResponseTimeStart <= c.ResponseTime) &&
+                            (monitorDto.ResponseTimeEnd == null || monitorDto.ResponseTimeEnd >= c.ResponseTime) &&
+                            (monitorDto.ViewingAngleStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleStart) <= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
+                            (monitorDto.ViewingAngleEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleEnd) >= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
+                            (monitorDto.AspectRatioStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioStart) <= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
+                            (monitorDto.AspectRatioEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioEnd) >= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
+                            (monitorDto.MaxBrightnessStart == null || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
+                            (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
+                        );
+
+                        //Apply search for the Monitor Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            monitorQuery = monitorQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.PanelType, c => c.ViewingAngle, c => c.AspectRatio, c => c.HighDynamicRangeType!, c => c.AdaptiveSyncType);
+                        }
+
+                        query = monitorQuery;
+
+                        break;
+                    }
+                case GetMotherboardComponentDto motherboardDto:
+                    {
+                        //Create a subquery based on the Motherboard type
+                        var motherboardQuery = query.OfType<MotherboardComponent>();
+
+                        //Filter by Motherboard Component class variables
+                        motherboardQuery = motherboardQuery.Where(c =>
+                            (motherboardDto.SocketType == null || motherboardDto.SocketType.Contains(c.SocketType)) &&
+                            (motherboardDto.FormFactor == null || motherboardDto.FormFactor.Contains(c.FormFactor)) &&
+                            (motherboardDto.ChipsetType == null || motherboardDto.ChipsetType.Contains(c.ChipsetType)) &&
+                            (motherboardDto.RAMType == null || motherboardDto.RAMType.Contains(c.RAMType)) &&
+                            (motherboardDto.AudioChipset == null || motherboardDto.AudioChipset.Contains(c.AudioChipset)) &&
+                            (motherboardDto.WirelessNetworkingStandard == null || motherboardDto.WirelessNetworkingStandard.Contains(c.WirelessNetworkingStandard)) &&
+                            (motherboardDto.MainPowerType == null || (c.MainPowerType != null && motherboardDto.MainPowerType.Contains(c.MainPowerType))) &&
+                            (motherboardDto.HasPowerButtonHeader == null || motherboardDto.HasPowerButtonHeader == c.HasPowerButtonHeader) &&
+                            (motherboardDto.HasResetButtonHeader == null || motherboardDto.HasResetButtonHeader == c.HasResetButtonHeader) &&
+                            (motherboardDto.HasPowerLEDHeader == null || motherboardDto.HasPowerLEDHeader == c.HasPowerLEDHeader) &&
+                            (motherboardDto.HasHDDLEDHeader == null || motherboardDto.HasHDDLEDHeader == c.HasHDDLEDHeader) &&
+                            (motherboardDto.HasECCSupport == null || motherboardDto.HasECCSupport == c.HasECCSupport) &&
+                            (motherboardDto.HasRAIDSupport == null || motherboardDto.HasRAIDSupport == c.HasRAIDSupport) &&
+                            (motherboardDto.HasFlashback == null || motherboardDto.HasFlashback == c.HasFlashback) &&
+                            (motherboardDto.HasCMOS == null || motherboardDto.HasCMOS == c.HasCMOS) &&
+                            (motherboardDto.RAMSlotsAmountStart == null || motherboardDto.RAMSlotsAmountStart <= c.RAMSlotsAmount) &&
+                            (motherboardDto.RAMSlotsAmountEnd == null || motherboardDto.RAMSlotsAmountEnd >= c.RAMSlotsAmount) &&
+                            (motherboardDto.MaxRAMAmountStart == null || motherboardDto.MaxRAMAmountStart <= c.MaxRAMAmount) &&
+                            (motherboardDto.MaxRAMAmountEnd == null || motherboardDto.MaxRAMAmountEnd >= c.MaxRAMAmount) &&
+                            (motherboardDto.SATA6GBsAmountStart == null || motherboardDto.SATA6GBsAmountStart <= c.SATA6GBsAmount) &&
+                            (motherboardDto.SATA6GBsAmountEnd == null || motherboardDto.SATA6GBsAmountEnd >= c.SATA6GBsAmount) &&
+                            (motherboardDto.SATA3GBsAmountStart == null || motherboardDto.SATA3GBsAmountStart <= c.SATA3GBsAmount) &&
+                            (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
+                            (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
+                            (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountEnd == null || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountStart == null || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountEnd == null || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountStart == null || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountEnd == null || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountStart == null || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountEnd == null || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountStart == null || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountEnd == null || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountStart == null || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountEnd == null || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountStart == null || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountEnd == null || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
+                            (motherboardDto.MaxAudioChannelsStart == null || motherboardDto.MaxAudioChannelsStart <= c.MaxAudioChannels) &&
+                            (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
+                        );
+
+                        //Apply search for the Motherboard Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            motherboardQuery = motherboardQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.SocketType, c => c.FormFactor, c => c.ChipsetType, c => c.RAMType, c => c.AudioChipset, c => c.WirelessNetworkingStandard, c => c.MainPowerType!);
+                        }
+
+                        query = motherboardQuery;
+
+                        break;
+                    }
+                case GetPowerSupplyComponentDto powerSupplyDto:
+                    {
+                        //Create a subquery based on the Power Supply type
+                        var powerSupplyQuery = query.OfType<PowerSupplyComponent>();
+
+                        //Filter by Power Supply Component class variables
+                        powerSupplyQuery = powerSupplyQuery.Where(c =>
+                            (powerSupplyDto.FormFactor == null || powerSupplyDto.FormFactor.Contains(c.FormFactor)) &&
+                            (powerSupplyDto.EfficiencyRating == null || (c.EfficiencyRating != null && powerSupplyDto.EfficiencyRating.Contains(c.EfficiencyRating))) &&
+                            (powerSupplyDto.ModularityType == null || powerSupplyDto.ModularityType.Contains(c.ModularityType)) &&
+                            (powerSupplyDto.IsFanless == null || powerSupplyDto.IsFanless == c.IsFanless) &&
+                            (powerSupplyDto.PowerOutputStart == null || powerSupplyDto.PowerOutputStart <= c.PowerOutput) &&
+                            (powerSupplyDto.PowerOutputEnd == null || powerSupplyDto.PowerOutputEnd >= c.PowerOutput) &&
+                            (powerSupplyDto.LengthStart == null || powerSupplyDto.LengthStart <= c.Length) &&
+                            (powerSupplyDto.LengthEnd == null || powerSupplyDto.LengthEnd >= c.Length)
+                        );
+
+                        //Apply search for the Power Supply Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            powerSupplyQuery = powerSupplyQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor, c => c.EfficiencyRating!, c => c.ModularityType);
+                        }
+
+                        query = powerSupplyQuery;
+
+                        break;
+                    }
+                case GetStorageComponentDto storageDto:
+                    {
+                        //Create a subquery based on the Storage type
+                        var storageQuery = query.OfType<StorageComponent>();
+
+                        //Filter by Storage Component class variables
+                        storageQuery = storageQuery.Where(c =>
+                            (storageDto.Series == null || storageDto.Series.Contains(c.Series)) &&
+                            (storageDto.DriveType == null || storageDto.DriveType.Contains(c.DriveType)) &&
+                            (storageDto.FormFactor == null || storageDto.FormFactor.Contains(c.FormFactor)) &&
+                            (storageDto.Interface == null || storageDto.Interface.Contains(c.Interface)) &&
+                            (storageDto.HasNVMe == null || storageDto.HasNVMe == c.HasNVMe) &&
+                            (storageDto.CapacityStart == null || storageDto.CapacityStart <= c.Capacity) &&
+                            (storageDto.CapacityEnd == null || storageDto.CapacityEnd >= c.Capacity)
+                        );
+
+                        //Apply search for the Storage Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            storageQuery = storageQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.DriveType, c => c.FormFactor, c => c.Interface);
+                        }
+
+                        query = storageQuery;
+
+                        break;
+                    }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
+            }
+            ;
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get components with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of interactions to return
+            var componentsAmount = await query.CountAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "Component",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - Components Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("component.gotComponentsCount", new
+            {
+                count = componentsAmount,
+                gotBy = currentUserId
+            });
+
+            //Return the components
+            return Ok(componentsAmount);
+        }
+
+        /// <summary>
+        /// API endpoint for getting all Filters for specified Components with pagination and search custom for each subclass.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        [HttpPost("get-filters")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<ComponentFiltersDto>> GetComponentFilters([FromBody] GetBaseComponentDto dto)
+        {
+            //Get component id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.Components.AsNoTracking();
+
+            //Filter by Base Component class variables
+            if (dto.Name != null)
+            {
+                query = query.Where(c => dto.Name.Contains(c.Name));
+            }
+            if (dto.Manufacturer != null)
+            {
+                query = query.Where(c => dto.Manufacturer.Contains(c.Manufacturer));
+            }
+            if (dto.ReleaseStart != null)
+            {
+                query = query.Where(c => c.Release >= dto.ReleaseStart);
+            }
+            if (dto.ReleaseEnd != null)
+            {
+                query = query.Where(c => c.Release <= dto.ReleaseEnd);
+            }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
+            if (dto.CompatibleComponentsIds != null)
+            {
+                var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
+
+                foreach (var id in requiredIds)
+                {
+                    query = query.Where(c => c.CompatibleComponents.Any(cc => cc.CompatibleComponentId == id));
+                }
+            }
+
+            //Filter by the specific subclass variables
+            switch (dto)
+            {
+                case GetCaseComponentDto caseDto:
+                    {
+                        //Create a subquery based on the Case type
+                        var caseQuery = query.OfType<CaseComponent>();
+
+                        //Filter by Case Component class variables
+                        caseQuery = caseQuery.Where(c =>
+                            (caseDto.FormFactor == null || caseDto.FormFactor.Contains(c.FormFactor)) &&
+                            (caseDto.PowerSupplyShrouded == null || caseDto.PowerSupplyShrouded == c.PowerSupplyShrouded) &&
+                            (caseDto.PowerSupplyAmountStart == null || caseDto.PowerSupplyAmountStart <= c.PowerSupplyAmount) &&
+                            (caseDto.PowerSupplyAmountEnd == null || caseDto.PowerSupplyAmountEnd >= c.PowerSupplyAmount) &&
+                            (caseDto.HasTransparentSidePanel == null || caseDto.HasTransparentSidePanel == c.HasTransparentSidePanel) &&
+                            (caseDto.SidePanelType == null || (c.SidePanelType != null && caseDto.SidePanelType.Contains(c.SidePanelType))) &&
+                            (caseDto.MaxVideoCardLengthStart == null || caseDto.MaxVideoCardLengthStart <= c.MaxVideoCardLength) &&
+                            (caseDto.MaxVideoCardLengthEnd == null || caseDto.MaxVideoCardLengthEnd >= c.MaxVideoCardLength) &&
+                            (caseDto.MaxCPUCoolerHeightStart == null || caseDto.MaxCPUCoolerHeightStart <= c.MaxCPUCoolerHeight) &&
+                            (caseDto.MaxCPUCoolerHeightEnd == null || caseDto.MaxCPUCoolerHeightEnd >= c.MaxCPUCoolerHeight) &&
+                            (caseDto.Internal35BayAmountStart == null || caseDto.Internal35BayAmountStart <= c.Internal35BayAmount) &&
+                            (caseDto.Internal35BayAmountEnd == null || caseDto.Internal35BayAmountEnd >= c.Internal35BayAmount) &&
+                            (caseDto.Internal25BayAmountStart == null || caseDto.Internal25BayAmountStart <= c.Internal25BayAmount) &&
+                            (caseDto.Internal25BayAmountEnd == null || caseDto.Internal25BayAmountEnd >= c.Internal25BayAmount) &&
+                            (caseDto.External35BayAmountStart == null || caseDto.External35BayAmountStart <= c.External35BayAmount) &&
+                            (caseDto.External35BayAmountEnd == null || caseDto.External35BayAmountEnd >= c.External35BayAmount) &&
+                            (caseDto.External525BayAmountStart == null || caseDto.External525BayAmountStart <= c.External525BayAmount) &&
+                            (caseDto.External525BayAmountEnd == null || caseDto.External525BayAmountEnd >= c.External525BayAmount) &&
+                            (caseDto.ExpansionSlotAmountStart == null || caseDto.ExpansionSlotAmountStart <= c.ExpansionSlotAmount) &&
+                            (caseDto.ExpansionSlotAmountEnd == null || caseDto.ExpansionSlotAmountEnd >= c.ExpansionSlotAmount) &&
+                            (caseDto.DepthStart == null || caseDto.DepthStart <= c.Dimensions.Depth) &&
+                            (caseDto.DepthEnd == null || caseDto.DepthEnd >= c.Dimensions.Depth) &&
+                            (caseDto.HeightStart == null || caseDto.HeightStart <= c.Dimensions.Height) &&
+                            (caseDto.HeightEnd == null || caseDto.HeightEnd >= c.Dimensions.Height) &&
+                            (caseDto.WidthStart == null || caseDto.WidthStart <= c.Dimensions.Width) &&
+                            (caseDto.WidthEnd == null || caseDto.WidthEnd >= c.Dimensions.Width) &&
+                            (caseDto.VolumeStart == null || caseDto.VolumeStart <= c.Volume) &&
+                            (caseDto.VolumeEnd == null || caseDto.VolumeEnd >= c.Volume) &&
+                            (caseDto.WeightStart == null || caseDto.WeightStart <= c.Weight) &&
+                            (caseDto.WeightEnd == null || caseDto.WeightEnd >= c.Weight) &&
+                            (caseDto.SupportsRearConnectingMotherboard == null || caseDto.SupportsRearConnectingMotherboard == c.SupportsRearConnectingMotherboard)
+                        );
+
+                        //Apply search for the Case Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            caseQuery = caseQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor);
+                        }
+
+                        query = caseQuery;
+
+                        break;
+                    }
+                case GetCaseFanComponentDto caseFanDto:
+                    {
+                        //Create a subquery based on the CaseFan type
+                        var caseFanQuery = query.OfType<CaseFanComponent>();
+
+                        //Filter by Case Fan Component class variables
+                        caseFanQuery = caseFanQuery.Where(c =>
+                            (caseFanDto.LEDType == null || (c.LEDType != null && caseFanDto.LEDType.Contains(c.LEDType))) &&
+                            (caseFanDto.ConnectorType == null || (c.ConnectorType != null && caseFanDto.ConnectorType.Contains(c.ConnectorType))) &&
+                            (caseFanDto.ControllerType == null || (c.ControllerType != null && caseFanDto.ControllerType.Contains(c.ControllerType))) &&
+                            (caseFanDto.FlowDirection == null || caseFanDto.FlowDirection.Contains(c.FlowDirection)) &&
+                            (caseFanDto.SizeStart == null || caseFanDto.SizeStart <= c.Size) &&
+                            (caseFanDto.SizeEnd == null || caseFanDto.SizeEnd >= c.Size) &&
+                            (caseFanDto.QuantityStart == null || caseFanDto.QuantityStart <= c.Quantity) &&
+                            (caseFanDto.QuantityEnd == null || caseFanDto.QuantityEnd >= c.Quantity) &&
+                            (caseFanDto.MinAirflowStart == null || caseFanDto.MinAirflowStart <= c.MinAirflow) &&
+                            (caseFanDto.MinAirflowEnd == null || caseFanDto.MinAirflowEnd >= c.MinAirflow) &&
+                            (caseFanDto.MaxAirflowStart == null || caseFanDto.MaxAirflowStart <= c.MaxAirflow) &&
+                            (caseFanDto.MaxAirflowEnd == null || caseFanDto.MaxAirflowEnd >= c.MaxAirflow) &&
+                            (caseFanDto.MinNoiseLevelStart == null || caseFanDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (caseFanDto.MinNoiseLevelEnd == null || caseFanDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelStart == null || caseFanDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (caseFanDto.MaxNoiseLevelEnd == null || caseFanDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (caseFanDto.StaticPressureAmountStart == null || caseFanDto.StaticPressureAmountStart <= c.StaticPressureAmount) &&
+                            (caseFanDto.StaticPressureAmountEnd == null || caseFanDto.StaticPressureAmountEnd >= c.StaticPressureAmount) &&
+                            (caseFanDto.PulseWidthModulation == null || caseFanDto.PulseWidthModulation == c.PulseWidthModulation)
+                        );
+
+                        //Apply search for the Case Fan Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            caseFanQuery = caseFanQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.LEDType!, c => c.ConnectorType!, c => c.ControllerType!);
+                        }
+
+                        query = caseFanQuery;
+
+                        break;
+                    }
+                case GetCoolerComponentDto coolerDto:
+                    {
+                        //Create a subquery based on the Cooler type
+                        var coolerQuery = query.OfType<CoolerComponent>();
+
+                        //Filter by Cooler class variables
+                        coolerQuery = coolerQuery.Where(c =>
+                            (coolerDto.MinFanRotationSpeedStart == null || coolerDto.MinFanRotationSpeedStart <= c.MinFanRotationSpeed) &&
+                            (coolerDto.MinFanRotationSpeedEnd == null || coolerDto.MinFanRotationSpeedEnd >= c.MinFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedStart == null || coolerDto.MaxFanRotationSpeedStart <= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MaxFanRotationSpeedEnd == null || coolerDto.MaxFanRotationSpeedEnd >= c.MaxFanRotationSpeed) &&
+                            (coolerDto.MinNoiseLevelStart == null || coolerDto.MinNoiseLevelStart <= c.MinNoiseLevel) &&
+                            (coolerDto.MinNoiseLevelEnd == null || coolerDto.MinNoiseLevelEnd >= c.MinNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelStart == null || coolerDto.MaxNoiseLevelStart <= c.MaxNoiseLevel) &&
+                            (coolerDto.MaxNoiseLevelEnd == null || coolerDto.MaxNoiseLevelEnd >= c.MaxNoiseLevel) &&
+                            (coolerDto.HeightStart == null || coolerDto.HeightStart <= c.Height) &&
+                            (coolerDto.HeightEnd == null || coolerDto.HeightEnd >= c.Height) &&
+                            (coolerDto.RadiatorSizeStart == null || coolerDto.RadiatorSizeStart <= c.RadiatorSize) &&
+                            (coolerDto.RadiatorSizeEnd == null || coolerDto.RadiatorSizeEnd >= c.RadiatorSize) &&
+                            (coolerDto.FanSizeStart == null || coolerDto.FanSizeStart <= c.FanSize) &&
+                            (coolerDto.FanSizeEnd == null || coolerDto.FanSizeEnd >= c.FanSize) &&
+                            (coolerDto.FanQuantityStart == null || coolerDto.FanQuantityStart <= c.FanQuantity) &&
+                            (coolerDto.FanQuantityEnd == null || coolerDto.FanQuantityEnd >= c.FanQuantity) &&
+                            (coolerDto.IsWaterCooled == null || coolerDto.IsWaterCooled == c.IsWaterCooled) &&
+                            (coolerDto.CanOperateFanless == null || coolerDto.CanOperateFanless == c.CanOperateFanless)
+                        );
+
+                        //Apply search for the Cooler Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            coolerQuery = coolerQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                        }
+
+                        query = coolerQuery;
+
+                        break;
+                    }
+                case GetCPUComponentDto cpuDto:
+                    {
+                        //Create a subquery based on the CPU type
+                        var cpuQuery = query.OfType<CPUComponent>();
+
+                        //Filter by CPU class variables
+                        cpuQuery = cpuQuery.Where(c =>
+                            (cpuDto.Series == null || cpuDto.Series.Contains(c.Series)) &&
+                            (cpuDto.Microarchitecture == null || cpuDto.Microarchitecture.Contains(c.Microarchitecture)) &&
+                            (cpuDto.CoreFamily == null || cpuDto.CoreFamily.Contains(c.CoreFamily)) &&
+                            (cpuDto.SocketType == null || cpuDto.SocketType.Contains(c.SocketType)) &&
+                            (cpuDto.Lithography == null || cpuDto.Lithography.Contains(c.Lithography)) &&
+                            (cpuDto.MemoryType == null || cpuDto.MemoryType.Contains(c.MemoryType)) &&
+                            (cpuDto.PackagingType == null || cpuDto.PackagingType.Contains(c.PackagingType)) &&
+                            (cpuDto.IncludesCooler == null || cpuDto.IncludesCooler == c.IncludesCooler) &&
+                            (cpuDto.SupportsSimultaneousMultithreading == null || cpuDto.SupportsSimultaneousMultithreading == c.SupportsSimultaneousMultithreading) &&
+                            (cpuDto.SupportsECC == null || cpuDto.SupportsECC == c.SupportsECC) &&
+                            (cpuDto.CoreTotalStart == null || cpuDto.CoreTotalStart <= c.CoreTotal) &&
+                            (cpuDto.CoreTotalEnd == null || cpuDto.CoreTotalEnd >= c.CoreTotal) &&
+                            (cpuDto.PerformanceAmountStart == null || cpuDto.PerformanceAmountStart <= c.PerformanceAmount) &&
+                            (cpuDto.PerformanceAmountEnd == null || cpuDto.PerformanceAmountEnd >= c.PerformanceAmount) &&
+                            (cpuDto.EfficiencyAmountStart == null || cpuDto.EfficiencyAmountStart <= c.EfficiencyAmount) &&
+                            (cpuDto.EfficiencyAmountEnd == null || cpuDto.EfficiencyAmountEnd >= c.EfficiencyAmount) &&
+                            (cpuDto.ThreadsAmountStart == null || cpuDto.ThreadsAmountStart <= c.ThreadsAmount) &&
+                            (cpuDto.ThreadsAmountEnd == null || cpuDto.ThreadsAmountEnd >= c.ThreadsAmount) &&
+                            (cpuDto.BasePerformanceSpeedStart == null || cpuDto.BasePerformanceSpeedStart <= c.BasePerformanceSpeed) &&
+                            (cpuDto.BasePerformanceSpeedEnd == null || cpuDto.BasePerformanceSpeedEnd >= c.BasePerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedStart == null || cpuDto.BoostPerformanceSpeedStart <= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BoostPerformanceSpeedEnd == null || cpuDto.BoostPerformanceSpeedEnd >= c.BoostPerformanceSpeed) &&
+                            (cpuDto.BaseEfficiencySpeedStart == null || cpuDto.BaseEfficiencySpeedStart <= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BaseEfficiencySpeedEnd == null || cpuDto.BaseEfficiencySpeedEnd >= c.BaseEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedStart == null || cpuDto.BoostEfficiencySpeedStart <= c.BoostEfficiencySpeed) &&
+                            (cpuDto.BoostEfficiencySpeedEnd == null || cpuDto.BoostEfficiencySpeedEnd >= c.BoostEfficiencySpeed) &&
+                            (cpuDto.L1Start == null || cpuDto.L1Start <= c.L1) &&
+                            (cpuDto.L1End == null || cpuDto.L1End >= c.L1) &&
+                            (cpuDto.L2Start == null || cpuDto.L2Start <= c.L2) &&
+                            (cpuDto.L2End == null || cpuDto.L2End >= c.L2) &&
+                            (cpuDto.L3Start == null || cpuDto.L3Start <= c.L3) &&
+                            (cpuDto.L3End == null || cpuDto.L3End >= c.L3) &&
+                            (cpuDto.L4Start == null || cpuDto.L4Start <= c.L4) &&
+                            (cpuDto.L4End == null || cpuDto.L4End >= c.L4) &&
+                            (cpuDto.ThermalDesignPowerStart == null || cpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (cpuDto.ThermalDesignPowerEnd == null || cpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
+                        );
+
+                        //Apply search for the CPU Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            cpuQuery = cpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.Microarchitecture, c => c.CoreFamily, c => c.SocketType, c => c.Lithography, c => c.MemoryType, c => c.PackagingType);
+                        }
+
+                        query = cpuQuery;
+
+                        break;
+                    }
+                case GetGPUComponentDto gpuDto:
+                    {
+                        //Create a subquery based on the GPU type
+                        var gpuQuery = query.OfType<GPUComponent>();
+
+                        //Filter by GPU Component class variables
+                        gpuQuery = gpuQuery.Where(c =>
+                            (gpuDto.Chipset == null || gpuDto.Chipset.Contains(c.Chipset)) &&
+                            (gpuDto.VideoMemoryType == null || gpuDto.VideoMemoryType.Contains(c.VideoMemoryType)) &&
+                            (gpuDto.CoolingType == null || gpuDto.CoolingType.Contains(c.CoolingType)) &&
+                            (gpuDto.FrameSync == null || gpuDto.FrameSync.Contains(c.FrameSync)) &&
+                            (gpuDto.VideoMemoryAmountStart == null || gpuDto.VideoMemoryAmountStart <= c.VideoMemoryAmount) &&
+                            (gpuDto.VideoMemoryAmountEnd == null || gpuDto.VideoMemoryAmountEnd >= c.VideoMemoryAmount) &&
+                            (gpuDto.CoreBaseClockSpeedStart == null || gpuDto.CoreBaseClockSpeedStart <= c.CoreBaseClockSpeed) &&
+                            (gpuDto.CoreBaseClockSpeedEnd == null || gpuDto.CoreBaseClockSpeedEnd >= c.CoreBaseClockSpeed) &&
+                            (gpuDto.CoreBoostClockSpeedStart == null || gpuDto.CoreBoostClockSpeedStart <= c.CoreBoostClockSpeed) &&
+                            (gpuDto.CoreBoostClockSpeedEnd == null || gpuDto.CoreBoostClockSpeedEnd >= c.CoreBoostClockSpeed) &&
+                            (gpuDto.CoreCountStart == null || gpuDto.CoreCountStart <= c.CoreCount) &&
+                            (gpuDto.CoreCountEnd == null || gpuDto.CoreCountEnd >= c.CoreCount) &&
+                            (gpuDto.EffectiveMemoryClockSpeedStart == null || gpuDto.EffectiveMemoryClockSpeedStart <= c.EffectiveMemoryClockSpeed) &&
+                            (gpuDto.EffectiveMemoryClockSpeedEnd == null || gpuDto.EffectiveMemoryClockSpeedEnd >= c.EffectiveMemoryClockSpeed) &&
+                            (gpuDto.MemoryBusWidthStart == null || gpuDto.MemoryBusWidthStart <= c.MemoryBusWidth) &&
+                            (gpuDto.MemoryBusWidthEnd == null || gpuDto.MemoryBusWidthEnd >= c.MemoryBusWidth) &&
+                            (gpuDto.LengthStart == null || gpuDto.LengthStart <= c.Length) &&
+                            (gpuDto.LengthEnd == null || gpuDto.LengthEnd >= c.Length) &&
+                            (gpuDto.ThermalDesignPowerStart == null || gpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower) &&
+                            (gpuDto.CaseExpansionSlotWidthStart == null || gpuDto.CaseExpansionSlotWidthStart <= c.CaseExpansionSlotWidth) &&
+                            (gpuDto.CaseExpansionSlotWidthEnd == null || gpuDto.CaseExpansionSlotWidthEnd >= c.CaseExpansionSlotWidth) &&
+                            (gpuDto.TotalSlotAmountStart == null || gpuDto.TotalSlotAmountStart <= c.TotalSlotAmount) &&
+                            (gpuDto.TotalSlotAmountEnd == null || gpuDto.TotalSlotAmountEnd >= c.TotalSlotAmount) &&
+                            (gpuDto.ThermalDesignPowerStart == null || gpuDto.ThermalDesignPowerStart <= c.ThermalDesignPower) &&
+                            (gpuDto.ThermalDesignPowerEnd == null || gpuDto.ThermalDesignPowerEnd >= c.ThermalDesignPower)
+                        );
+
+                        //Apply search for the GPU Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            gpuQuery = gpuQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Chipset, c => c.VideoMemoryType, c => c.CoolingType, c => c.FrameSync);
+                        }
+
+                        query = gpuQuery;
+
+                        break;
+                    }
+                case GetMemoryComponentDto memoryDto:
+                    {
+                        //Create a subquery based on the Memory type
+                        var memoryQuery = query.OfType<MemoryComponent>();
+
+                        //Filter by Memory Component class variables
+                        memoryQuery = memoryQuery.Where(c =>
+                            (memoryDto.RAMType == null || memoryDto.RAMType.Contains(c.RAMType)) &&
+                            (memoryDto.FormFactor == null || memoryDto.FormFactor.Contains(c.FormFactor)) &&
+                            (memoryDto.Timings == null || (c.Timings != null && memoryDto.Timings.Contains(c.Timings))) &&
+                            (memoryDto.ECC == null || memoryDto.ECC.Contains(c.ECC)) &&
+                            (memoryDto.RegisteredType == null || memoryDto.RegisteredType.Contains(c.RegisteredType)) &&
+                            (memoryDto.HaveHeatSpreader == null || memoryDto.HaveHeatSpreader == c.HaveHeatSpreader) &&
+                            (memoryDto.HaveRGB == null || memoryDto.HaveRGB == c.HaveRGB) &&
+                            (memoryDto.SpeedStart == null || memoryDto.SpeedStart <= c.Speed) &&
+                            (memoryDto.SpeedEnd == null || memoryDto.SpeedEnd >= c.Speed) &&
+                            (memoryDto.CapacityStart == null || memoryDto.CapacityStart <= c.Capacity) &&
+                            (memoryDto.CapacityEnd == null || memoryDto.CapacityEnd >= c.Capacity) &&
+                            (memoryDto.CASLatencyStart == null || memoryDto.CASLatencyStart <= c.CASLatency) &&
+                            (memoryDto.CASLatencyEnd == null || memoryDto.CASLatencyEnd >= c.CASLatency) &&
+                            (memoryDto.ModuleQuantityStart == null || memoryDto.ModuleQuantityStart <= c.ModuleQuantity) &&
+                            (memoryDto.ModuleQuantityEnd == null || memoryDto.ModuleQuantityEnd >= c.ModuleQuantity) &&
+                            (memoryDto.ModuleCapacityStart == null || memoryDto.ModuleCapacityStart <= c.ModuleCapacity) &&
+                            (memoryDto.ModuleCapacityEnd == null || memoryDto.ModuleCapacityEnd >= c.ModuleCapacity) &&
+                            (memoryDto.HeightStart == null || memoryDto.HeightStart <= c.Height) &&
+                            (memoryDto.HeightEnd == null || memoryDto.HeightEnd >= c.Height) &&
+                            (memoryDto.VoltageStart == null || memoryDto.VoltageStart <= c.Voltage) &&
+                            (memoryDto.VoltageEnd == null || memoryDto.VoltageEnd >= c.Voltage)
+                        );
+
+                        //Apply search for the memory Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            memoryQuery = memoryQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.RAMType, c => c.FormFactor, c => c.Timings!, c => c.ECC, c => c.RegisteredType);
+                        }
+
+                        query = memoryQuery;
+
+                        break;
+                    }
+                case GetMonitorComponentDto monitorDto:
+                    {
+                        //Create a subquery based on the Monitor type
+                        var monitorQuery = query.OfType<MonitorComponent>();
+
+                        //Filter by Monitor Component class variables
+                        monitorQuery = monitorQuery.Where(c =>
+                            (monitorDto.PanelType == null || monitorDto.PanelType.Contains(c.PanelType)) &&
+                            (monitorDto.ViewingAngle == null || monitorDto.ViewingAngle.Contains(c.ViewingAngle)) &&
+                            (monitorDto.AspectRatio == null || monitorDto.AspectRatio.Contains(c.AspectRatio)) &&
+                            (monitorDto.HighDynamicRangeType == null || (c.HighDynamicRangeType != null && monitorDto.HighDynamicRangeType.Contains(c.HighDynamicRangeType))) &&
+                            (monitorDto.AdaptiveSyncType == null || monitorDto.AdaptiveSyncType.Contains(c.AdaptiveSyncType)) &&
+                            (monitorDto.ScreenSizeStart == null || monitorDto.ScreenSizeStart <= c.ScreenSize) &&
+                            (monitorDto.ScreenSizeEnd == null || monitorDto.ScreenSizeEnd >= c.ScreenSize) &&
+                            (monitorDto.HorizontalResolutionStart == null || monitorDto.HorizontalResolutionStart <= c.HorizontalResolution) &&
+                            (monitorDto.HorizontalResolutionEnd == null || monitorDto.HorizontalResolutionEnd >= c.HorizontalResolution) &&
+                            (monitorDto.VerticalResolutionStart == null || monitorDto.VerticalResolutionStart <= c.VerticalResolution) &&
+                            (monitorDto.VerticalResolutionEnd == null || monitorDto.VerticalResolutionEnd >= c.VerticalResolution) &&
+                            (monitorDto.MaxRefreshRateStart == null || monitorDto.MaxRefreshRateStart <= c.MaxRefreshRate) &&
+                            (monitorDto.MaxRefreshRateEnd == null || monitorDto.MaxRefreshRateEnd >= c.MaxRefreshRate) &&
+                            (monitorDto.ResponseTimeStart == null || monitorDto.ResponseTimeStart <= c.ResponseTime) &&
+                            (monitorDto.ResponseTimeEnd == null || monitorDto.ResponseTimeEnd >= c.ResponseTime) &&
+                            (monitorDto.ViewingAngleStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleStart) <= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
+                            (monitorDto.ViewingAngleEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.ViewingAngleEnd) >= MonitorParseHelper.ParseViewingAngle(c.ViewingAngle)) &&
+                            (monitorDto.AspectRatioStart == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioStart) <= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
+                            (monitorDto.AspectRatioEnd == null || MonitorParseHelper.ParseViewingAngle(monitorDto.AspectRatioEnd) >= MonitorParseHelper.ParseViewingAngle(c.AspectRatio)) &&
+                            (monitorDto.MaxBrightnessStart == null || monitorDto.MaxBrightnessStart <= c.MaxBrightness) &&
+                            (monitorDto.MaxBrightnessEnd == null || monitorDto.MaxBrightnessEnd >= c.MaxBrightness)
+                        );
+
+                        //Apply search for the Monitor Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            monitorQuery = monitorQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.PanelType, c => c.ViewingAngle, c => c.AspectRatio, c => c.HighDynamicRangeType!, c => c.AdaptiveSyncType);
+                        }
+
+                        query = monitorQuery;
+
+                        break;
+                    }
+                case GetMotherboardComponentDto motherboardDto:
+                    {
+                        //Create a subquery based on the Motherboard type
+                        var motherboardQuery = query.OfType<MotherboardComponent>();
+
+                        //Filter by Motherboard Component class variables
+                        motherboardQuery = motherboardQuery.Where(c =>
+                            (motherboardDto.SocketType == null || motherboardDto.SocketType.Contains(c.SocketType)) &&
+                            (motherboardDto.FormFactor == null || motherboardDto.FormFactor.Contains(c.FormFactor)) &&
+                            (motherboardDto.ChipsetType == null || motherboardDto.ChipsetType.Contains(c.ChipsetType)) &&
+                            (motherboardDto.RAMType == null || motherboardDto.RAMType.Contains(c.RAMType)) &&
+                            (motherboardDto.AudioChipset == null || motherboardDto.AudioChipset.Contains(c.AudioChipset)) &&
+                            (motherboardDto.WirelessNetworkingStandard == null || motherboardDto.WirelessNetworkingStandard.Contains(c.WirelessNetworkingStandard)) &&
+                            (motherboardDto.MainPowerType == null || (c.MainPowerType != null && motherboardDto.MainPowerType.Contains(c.MainPowerType))) &&
+                            (motherboardDto.HasPowerButtonHeader == null || motherboardDto.HasPowerButtonHeader == c.HasPowerButtonHeader) &&
+                            (motherboardDto.HasResetButtonHeader == null || motherboardDto.HasResetButtonHeader == c.HasResetButtonHeader) &&
+                            (motherboardDto.HasPowerLEDHeader == null || motherboardDto.HasPowerLEDHeader == c.HasPowerLEDHeader) &&
+                            (motherboardDto.HasHDDLEDHeader == null || motherboardDto.HasHDDLEDHeader == c.HasHDDLEDHeader) &&
+                            (motherboardDto.HasECCSupport == null || motherboardDto.HasECCSupport == c.HasECCSupport) &&
+                            (motherboardDto.HasRAIDSupport == null || motherboardDto.HasRAIDSupport == c.HasRAIDSupport) &&
+                            (motherboardDto.HasFlashback == null || motherboardDto.HasFlashback == c.HasFlashback) &&
+                            (motherboardDto.HasCMOS == null || motherboardDto.HasCMOS == c.HasCMOS) &&
+                            (motherboardDto.RAMSlotsAmountStart == null || motherboardDto.RAMSlotsAmountStart <= c.RAMSlotsAmount) &&
+                            (motherboardDto.RAMSlotsAmountEnd == null || motherboardDto.RAMSlotsAmountEnd >= c.RAMSlotsAmount) &&
+                            (motherboardDto.MaxRAMAmountStart == null || motherboardDto.MaxRAMAmountStart <= c.MaxRAMAmount) &&
+                            (motherboardDto.MaxRAMAmountEnd == null || motherboardDto.MaxRAMAmountEnd >= c.MaxRAMAmount) &&
+                            (motherboardDto.SATA6GBsAmountStart == null || motherboardDto.SATA6GBsAmountStart <= c.SATA6GBsAmount) &&
+                            (motherboardDto.SATA6GBsAmountEnd == null || motherboardDto.SATA6GBsAmountEnd >= c.SATA6GBsAmount) &&
+                            (motherboardDto.SATA3GBsAmountStart == null || motherboardDto.SATA3GBsAmountStart <= c.SATA3GBsAmount) &&
+                            (motherboardDto.SATA3GBsAmountEnd == null || motherboardDto.SATA3GBsAmountEnd >= c.SATA3GBsAmount) &&
+                            (motherboardDto.U2PortAmountStart == null || motherboardDto.U2PortAmountStart <= c.U2PortAmount) &&
+                            (motherboardDto.U2PortAmountEnd == null || motherboardDto.U2PortAmountEnd >= c.U2PortAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountStart == null || motherboardDto.CPUFanHeaderAmountStart <= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CPUFanHeaderAmountEnd == null || motherboardDto.CPUFanHeaderAmountEnd >= c.CPUFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountStart == null || motherboardDto.CaseFanHeaderAmountStart <= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.CaseFanHeaderAmountEnd == null || motherboardDto.CaseFanHeaderAmountEnd >= c.CaseFanHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountStart == null || motherboardDto.PumpHeaderAmountStart <= c.PumpHeaderAmount) &&
+                            (motherboardDto.PumpHeaderAmountEnd == null || motherboardDto.PumpHeaderAmountEnd >= c.PumpHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountStart == null || motherboardDto.CPUOptionalFanHeaderAmountStart <= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.CPUOptionalFanHeaderAmountEnd == null || motherboardDto.CPUOptionalFanHeaderAmountEnd >= c.CPUOptionalFanHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountStart == null || motherboardDto.ARGB5vHeaderAmountStart <= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.ARGB5vHeaderAmountEnd == null || motherboardDto.ARGB5vHeaderAmountEnd >= c.ARGB5vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountStart == null || motherboardDto.RGB12vHeaderAmountStart <= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.RGB12vHeaderAmountEnd == null || motherboardDto.RGB12vHeaderAmountEnd >= c.RGB12vHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountStart == null || motherboardDto.TemperatureSensorHeaderAmountStart <= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.TemperatureSensorHeaderAmountEnd == null || motherboardDto.TemperatureSensorHeaderAmountEnd >= c.TemperatureSensorHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountStart == null || motherboardDto.ThunderboltHeaderAmountStart <= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.ThunderboltHeaderAmountEnd == null || motherboardDto.ThunderboltHeaderAmountEnd >= c.ThunderboltHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountStart == null || motherboardDto.COMPortHeaderAmountStart <= c.COMPortHeaderAmount) &&
+                            (motherboardDto.COMPortHeaderAmountEnd == null || motherboardDto.COMPortHeaderAmountEnd >= c.COMPortHeaderAmount) &&
+                            (motherboardDto.MaxAudioChannelsStart == null || motherboardDto.MaxAudioChannelsStart <= c.MaxAudioChannels) &&
+                            (motherboardDto.MaxAudioChannelsEnd == null || motherboardDto.MaxAudioChannelsEnd >= c.MaxAudioChannels)
+                        );
+
+                        //Apply search for the Motherboard Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            motherboardQuery = motherboardQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.SocketType, c => c.FormFactor, c => c.ChipsetType, c => c.RAMType, c => c.AudioChipset, c => c.WirelessNetworkingStandard, c => c.MainPowerType!);
+                        }
+
+                        query = motherboardQuery;
+
+                        break;
+                    }
+                case GetPowerSupplyComponentDto powerSupplyDto:
+                    {
+                        //Create a subquery based on the Power Supply type
+                        var powerSupplyQuery = query.OfType<PowerSupplyComponent>();
+
+                        //Filter by Power Supply Component class variables
+                        powerSupplyQuery = powerSupplyQuery.Where(c =>
+                            (powerSupplyDto.FormFactor == null || powerSupplyDto.FormFactor.Contains(c.FormFactor)) &&
+                            (powerSupplyDto.EfficiencyRating == null || (c.EfficiencyRating != null && powerSupplyDto.EfficiencyRating.Contains(c.EfficiencyRating))) &&
+                            (powerSupplyDto.ModularityType == null || powerSupplyDto.ModularityType.Contains(c.ModularityType)) &&
+                            (powerSupplyDto.IsFanless == null || powerSupplyDto.IsFanless == c.IsFanless) &&
+                            (powerSupplyDto.PowerOutputStart == null || powerSupplyDto.PowerOutputStart <= c.PowerOutput) &&
+                            (powerSupplyDto.PowerOutputEnd == null || powerSupplyDto.PowerOutputEnd >= c.PowerOutput) &&
+                            (powerSupplyDto.LengthStart == null || powerSupplyDto.LengthStart <= c.Length) &&
+                            (powerSupplyDto.LengthEnd == null || powerSupplyDto.LengthEnd >= c.Length)
+                        );
+
+                        //Apply search for the Power Supply Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            powerSupplyQuery = powerSupplyQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.FormFactor, c => c.EfficiencyRating!, c => c.ModularityType);
+                        }
+
+                        query = powerSupplyQuery;
+
+                        break;
+                    }
+                case GetStorageComponentDto storageDto:
+                    {
+                        //Create a subquery based on the Storage type
+                        var storageQuery = query.OfType<StorageComponent>();
+
+                        //Filter by Storage Component class variables
+                        storageQuery = storageQuery.Where(c =>
+                            (storageDto.Series == null || storageDto.Series.Contains(c.Series)) &&
+                            (storageDto.DriveType == null || storageDto.DriveType.Contains(c.DriveType)) &&
+                            (storageDto.FormFactor == null || storageDto.FormFactor.Contains(c.FormFactor)) &&
+                            (storageDto.Interface == null || storageDto.Interface.Contains(c.Interface)) &&
+                            (storageDto.HasNVMe == null || storageDto.HasNVMe == c.HasNVMe) &&
+                            (storageDto.CapacityStart == null || storageDto.CapacityStart <= c.Capacity) &&
+                            (storageDto.CapacityEnd == null || storageDto.CapacityEnd >= c.Capacity)
+                        );
+
+                        //Apply search for the Storage Component
+                        if (!string.IsNullOrWhiteSpace(dto.Query))
+                        {
+                            storageQuery = storageQuery.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type, c => c.Series, c => c.DriveType, c => c.FormFactor, c => c.Interface);
+                        }
+
+                        query = storageQuery;
+
+                        break;
+                    }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
+            }
+            ;
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get components with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Get the filters based on the list of components
+            List<BaseComponent> components = await query.ToListAsync();
+            var response = ComponentFilterBuilder.Build(components);
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "Component",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Successful Operation"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("component.gotComponents", new
+            {
+                componentIds = components.Select(u => u.Id),
+                gotBy = currentUserId
+            });
+
+            //Return the components
+            return Ok(response);
+        }
+
+        /// <summary>
         /// API endpoint for deleting the selected Component for administration.
         /// Deletes compatibility as well.
         /// </summary>
@@ -2860,7 +3965,11 @@ namespace KAZABUILD.API.Controllers.Components
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the component to delete
-            var component = await _db.Components.Include(c => c.Images).Include(c => c.Comments).FirstOrDefaultAsync(u => u.Id == id);
+            var component = await _db.Components
+                .Include(c => c.Images)
+                .Include(c => c.Comments)
+                .Include(c => c.Builds)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (component == null)
             {
                 //Log failure
@@ -2896,6 +4005,15 @@ namespace KAZABUILD.API.Controllers.Components
             if (component.Comments.Count != 0)
             {
                 _db.UserComments.RemoveRange(component.Comments);
+            }
+
+            //Set it to null in all builds it's used in
+            if (component.Builds.Count != 0)
+            {
+                foreach (var buildComponent in component.Builds)
+                {
+                    buildComponent.ComponentId = null;
+                }
             }
 
             //Handle deleting compatible components to avoid conflicts with cascade deletes

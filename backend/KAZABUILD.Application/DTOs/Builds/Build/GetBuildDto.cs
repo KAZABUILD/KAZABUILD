@@ -14,22 +14,26 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
 
         public List<string>? Tag { get; set; }
 
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAtStart { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAtEnd { get; set; }
+
         //Paging related fields
         /// <summary>
         /// Whether the paging should be used.
         /// </summary>
-        public bool Paging = false;
+        public bool Paging { get; set; } = false;
 
         /// <summary>
         /// Which page should be gotten if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page number must be greater than 0")]
         public int? Page { get; set; }
 
         /// <summary>
         /// How many objects should be in the response if paging enabled.
         /// </summary>
-        [MinLength(1, ErrorMessage = "Page length must be greater than 0")]
         public int? PageLength { get; set; }
 
         //Query search string

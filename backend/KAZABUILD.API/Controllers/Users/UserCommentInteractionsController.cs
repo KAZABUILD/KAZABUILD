@@ -1,9 +1,7 @@
-using KAZABUILD.Application.DTOs.Builds.BuildInteraction;
 using KAZABUILD.Application.DTOs.Users.UserCommentInteraction;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Security;
-using KAZABUILD.Domain.Entities.Builds;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
 using KAZABUILD.Infrastructure.Data;
@@ -317,7 +315,7 @@ namespace KAZABUILD.API.Controllers.Users
                 userCommentInteraction.IsLiked = (bool)dto.IsLiked;
 
                 //Set the IsDisliked field to false if IsLiked set to true
-                if(dto.IsLiked == true)
+                if (dto.IsLiked == true)
                 {
                     userCommentInteraction.IsDisliked = false;
                 }
@@ -418,7 +416,7 @@ namespace KAZABUILD.API.Controllers.Users
                 return NotFound(new { userCommentInteraction = "UserCommentInteraction not found!" });
             }
 
-            //Check if the userComment was deleted
+            //Get the UserComment
             var userComment = await _db.UserComments.Include(c => c.Build).FirstOrDefaultAsync(b => b.Id == userCommentInteraction.UserCommentId);
 
             //Log Description string declaration
@@ -433,7 +431,7 @@ namespace KAZABUILD.API.Controllers.Users
             var ownUserComment = userComment != null && currentUserId == userComment.UserId;
 
             //Return an unauthorized response if the user doesn't have correct privileges
-            if (!isPrivileged && !isSelf && !ownUserComment && (userComment == null || userComment.Build == null || userComment.Build.Status == BuildStatus.DRAFT || userComment.Build.Status == BuildStatus.GENERATED))
+            if (!isPrivileged && !isSelf && !ownUserComment && !(userComment != null && userComment.Build == null) && !(userComment != null && userComment.Build != null && userComment.Build.Status != BuildStatus.DRAFT && userComment.Build.Status != BuildStatus.GENERATED))
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -543,16 +541,20 @@ namespace KAZABUILD.API.Controllers.Users
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.UserCommentInteractions.Include(i => i.UserComment).AsNoTracking();
+            var query = _db.UserCommentInteractions.AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && isPrivileged)
             {
                 query = query.Where(i => dto.UserId.Contains(i.UserId));
             }
+            else if(dto.UserId != null && dto.UserId.Contains(currentUserId))
+            {
+                query = query.Where(i => i.UserId == currentUserId);
+            }
             if (dto.UserCommentId != null)
             {
-                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
+                query = query.Where(i => i.UserCommentId != null && dto.UserCommentId.Contains((Guid)i.UserCommentId));
             }
             if (dto.IsLiked != null)
             {
@@ -563,7 +565,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(i => dto.IsDisliked == i.IsDisliked);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.User).Search(dto.Query, i => i.User!.DisplayName);
@@ -586,7 +588,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<UserCommentInteraction> userCommentInteractions = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.UserComment != null && currentUserId == i.UserComment.UserId) || (i.UserComment != null && i.UserComment.Build != null && i.UserComment.Build.Status != BuildStatus.DRAFT && i.UserComment.Build.Status != BuildStatus.GENERATED)).ToListAsync();
+            List<UserCommentInteraction> userCommentInteractions = await query.Include(i => i.UserComment).ThenInclude(c => c!.Build).Where(i => currentUserId == i.UserId || isPrivileged || (i.UserComment != null && i.UserComment.Build == null) || (i.UserComment != null && currentUserId == i.UserComment.UserId) || (i.UserComment != null && i.UserComment.Build != null && i.UserComment.Build.Status != BuildStatus.DRAFT && i.UserComment.Build.Status != BuildStatus.GENERATED)).ToListAsync();
 
             //Declare response variable
             List<UserCommentInteractionResponseDto> responses;
@@ -692,13 +694,17 @@ namespace KAZABUILD.API.Controllers.Users
             var query = _db.UserCommentInteractions.Include(i => i.UserComment).AsNoTracking();
 
             //Filter by the variables if included
-            if (dto.UserId != null)
+            if (dto.UserId != null && isPrivileged)
             {
                 query = query.Where(i => dto.UserId.Contains(i.UserId));
             }
+            else if (dto.UserId != null && dto.UserId.Contains(currentUserId))
+            {
+                query = query.Where(i => i.UserId == currentUserId);
+            }
             if (dto.UserCommentId != null)
             {
-                query = query.Where(i => dto.UserCommentId.Contains(i.UserCommentId));
+                query = query.Where(i => i.UserCommentId != null && dto.UserCommentId.Contains((Guid)i.UserCommentId));
             }
             if (dto.IsLiked != null)
             {
@@ -709,7 +715,7 @@ namespace KAZABUILD.API.Controllers.Users
                 query = query.Where(i => dto.IsDisliked == i.IsDisliked);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.User).Search(dto.Query, i => i.User!.DisplayName);

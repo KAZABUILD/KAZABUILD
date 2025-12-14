@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../core/constants/app_color.dart';
 
 /// A widget that displays the application's logo and name, used as a header
 /// on authentication screens.
@@ -89,19 +90,23 @@ class SocialButton extends StatelessWidget {
   /// The asset path for the social media icon (can be SVG or other image formats).
   final String iconPath;
 
+  /// The callback function that is executed when the button is pressed.
+  final VoidCallback? onPressed;
+
   /// Creates a styled button for social media authentication.
-  const SocialButton({super.key, required this.text, required this.iconPath});
+  const SocialButton(
+      {super.key, required this.text, required this.iconPath, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+        backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -137,14 +142,25 @@ class OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Row(
         children: [
           const Expanded(child: Divider(thickness: 0.5)),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Text(text),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark
+                    ? AppColorsDark.textWhite.withValues(alpha: 0.6)
+                    : AppColorsLight.textBlack.withValues(alpha: 0.6),
+              ),
+            ),
           ),
           const Expanded(child: Divider(thickness: 0.5)),
         ],
@@ -212,6 +228,18 @@ class CustomTextField extends StatefulWidget {
   /// A callback that is triggered when the user taps on the text field.
   final VoidCallback? onTap;
 
+  /// Focus node for managing focus state.
+  final FocusNode? focusNode;
+
+  /// The action button to show on the keyboard.
+  final TextInputAction? textInputAction;
+
+  /// Callback when the user submits the field (e.g., presses Enter).
+  final void Function(String)? onFieldSubmitted;
+
+  /// Whether the field is required; if true, a red asterisk is shown.
+  final bool isRequired;
+
   const CustomTextField({
     super.key,
     required this.label,
@@ -223,6 +251,10 @@ class CustomTextField extends StatefulWidget {
     this.autovalidateMode,
     this.readOnly = false,
     this.onTap,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.isRequired = false,
   });
 
   @override
@@ -242,19 +274,36 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iconColor = theme.iconTheme.color?.withValues(alpha: 0.5);
+
+    final labelWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(widget.label),
+        if (widget.isRequired)
+          const Text(
+            ' *',
+            style: TextStyle(color: Colors.red),
+          ),
+      ],
+    );
+    
     return TextFormField(
       controller: widget.controller,
+      focusNode: widget.focusNode,
       obscureText: _isObscured,
       keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
       autovalidateMode: widget.autovalidateMode,
       validator: widget.validator,
       readOnly: widget.readOnly,
       onTap: widget.onTap,
+      onFieldSubmitted: widget.onFieldSubmitted,
       decoration: InputDecoration(
-        labelText: widget.label,
+        label: labelWidget,
         prefixIcon: Icon(
           widget.icon,
-          color: theme.iconTheme.color?.withOpacity(0.5),
+          color: iconColor,
         ),
         // If it's a password field, show an icon button to toggle text visibility.
         suffixIcon: widget.isPassword
@@ -263,7 +312,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   _isObscured
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: theme.iconTheme.color?.withOpacity(0.5),
+                  color: iconColor,
                 ),
                 onPressed: () {
                   setState(() {

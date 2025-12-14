@@ -540,7 +540,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -559,7 +559,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Where(i => i.Rating <= dto.RatingEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
@@ -676,7 +676,7 @@ namespace KAZABUILD.API.Controllers.Builds
         /// <returns></returns>
         [HttpPost("get-count")]
         [Authorize(Policy = "AllUsers")]
-        public async Task<ActionResult<IEnumerable<BuildInteractionResponseDto>>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
+        public async Task<ActionResult<double>> GetBuildInteractionsCount([FromBody] GetBuildInteractionDto dto)
         {
             //Get buildInteraction id and claims from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -690,7 +690,7 @@ namespace KAZABUILD.API.Controllers.Builds
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Declare the query
-            var query = _db.BuildInteractions.Include(i => i.Build).AsNoTracking();
+            var query = _db.BuildInteractions.AsNoTracking();
 
             //Filter by the variables if included
             if (dto.UserId != null)
@@ -699,7 +699,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(i => dto.BuildId.Contains(i.BuildId));
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
             }
             if (dto.IsWishlisted != null)
             {
@@ -718,7 +718,7 @@ namespace KAZABUILD.API.Controllers.Builds
                 query = query.Where(i => i.Rating <= dto.RatingEnd);
             }
 
-            //Apply search based om credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
@@ -739,7 +739,7 @@ namespace KAZABUILD.API.Controllers.Builds
             }
 
             //Count the amount of interactions to return
-            var interactionsAmount = await query.Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).CountAsync();
+            var interactionsAmount = await query.Include(i => i.Build).Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).CountAsync();
 
             //Log success
             await _logger.LogAsync(
@@ -754,6 +754,100 @@ namespace KAZABUILD.API.Controllers.Builds
 
             //Publish RabbitMQ event
             await _publisher.PublishAsync("buildInteraction.gotBuildInteractionsCount", new
+            {
+                count = interactionsAmount,
+                gotBy = currentUserId
+            });
+
+            //Return the buildInteractions
+            return Ok(interactionsAmount);
+        }
+
+        /// <summary>
+        /// API endpoint for getting Build Interactions' average rating with pagination and search.
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("get-average-rating")]
+        [Authorize(Policy = "AllUsers")]
+        public async Task<ActionResult<IEnumerable<BuildInteractionResponseDto>>> GetBuildInteractionsAverageRating([FromBody] GetBuildInteractionDto dto)
+        {
+            //Get buildInteraction id and claims from the request
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = Enum.Parse<UserRole>(User.FindFirstValue(ClaimTypes.Role)!);
+
+            //Get the IP from request
+            var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            //Check if current user has admin permissions
+            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+
+            //Declare the query
+            var query = _db.BuildInteractions.AsNoTracking();
+
+            //Filter by the variables if included
+            if (dto.UserId != null)
+            {
+                query = query.Where(i => dto.UserId.Contains(i.UserId));
+            }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(i => i.BuildId != null && dto.BuildId.Contains((Guid)i.BuildId));
+            }
+            if (dto.IsWishlisted != null)
+            {
+                query = query.Where(i => dto.IsWishlisted == i.IsWishlisted);
+            }
+            if (dto.IsLiked != null)
+            {
+                query = query.Where(i => dto.IsLiked == i.IsLiked);
+            }
+            if (dto.RatingStart != null)
+            {
+                query = query.Where(i => i.Rating >= dto.RatingStart);
+            }
+            if (dto.RatingEnd != null)
+            {
+                query = query.Where(i => i.Rating <= dto.RatingEnd);
+            }
+
+            //Apply search based on provided query string
+            if (!string.IsNullOrWhiteSpace(dto.Query))
+            {
+                query = query.Include(i => i.Build).Include(i => i.User).Where(i => i.Build != null).Search(dto.Query, i => i.Build!.Name, i => i.User!.DisplayName, i => i.Rating, i => i.UserNote!);
+            }
+
+            //Order by specified field if provided
+            if (!string.IsNullOrWhiteSpace(dto.OrderBy))
+            {
+                query = query.OrderBy($"{dto.OrderBy} {dto.SortDirection}");
+            }
+
+            //Get buildInteractions with paging
+            if (dto.Paging && dto.Page != null && dto.PageLength != null)
+            {
+                query = query
+                    .Skip(((int)dto.Page - 1) * (int)dto.PageLength)
+                    .Take((int)dto.PageLength);
+            }
+
+            //Count the amount of interactions to return
+            var interactionsAmount = await query.Include(i => i.Build).Where(i => currentUserId == i.UserId || isPrivileged || (i.Build != null && currentUserId == i.Build.UserId) || (i.Build != null && i.Build.Status != BuildStatus.DRAFT && i.Build.Status != BuildStatus.GENERATED)).Select(i => i.Rating).AverageAsync();
+
+            //Log success
+            await _logger.LogAsync(
+                currentUserId,
+                "GET",
+                "BuildInteraction",
+                ip,
+                Guid.Empty,
+                PrivacyLevel.INFORMATION,
+                "Operation Successful - BuildInteractions Counted"
+            );
+
+            //Publish RabbitMQ event
+            await _publisher.PublishAsync("buildInteraction.gotBuildInteractionsAverageRating", new
             {
                 count = interactionsAmount,
                 gotBy = currentUserId

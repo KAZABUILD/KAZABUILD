@@ -189,12 +189,6 @@ namespace KAZABUILD.API.Controllers.Users
             var changedFields = new List<string>();
 
             //Update allowed fields
-            if (dto.UserId != null)
-            {
-                changedFields.Add("UserId: " + userFeedback.UserId);
-
-                userFeedback.UserId = (Guid)dto.UserId;
-            }
             if (!string.IsNullOrWhiteSpace(dto.Feedback))
             {
                 changedFields.Add("Feedback: " + userFeedback.Feedback);
@@ -393,10 +387,10 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.UserId != null)
             {
-                query = query.Where(f => dto.UserId.Contains(f.UserId));
+                query = query.Where(f => f.UserId != null && dto.UserId.Contains((Guid)f.UserId));
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(f => f.User).Search(dto.Query, f => f.Feedback, f => f.User!.DisplayName);

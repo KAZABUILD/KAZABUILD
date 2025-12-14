@@ -110,6 +110,9 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
             var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
+            //Variable for storing the amount of images already existing for the requested target
+            int existingImagesAmount;
+
             //Create an image to add
             Image image = new()
             {
@@ -123,9 +126,6 @@ namespace KAZABUILD.API.Controllers
             switch (image.LocationType)
             {
                 case ImageLocationType.BUILD:
-                    //Set the target as build
-                    image.BuildId = dto.TargetId;
-
                     //Check if the build exists and if the user owns it
                     var build = await _db.Builds.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (build == null)
@@ -160,11 +160,31 @@ namespace KAZABUILD.API.Controllers
                         //Return proper unauthorized response
                         return Forbid();
                     }
+
+                    //Check if the image limit hasn't been exceeded
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.BUILD && i.BuildId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
+                    //Set the target as build
+                    image.BuildId = dto.TargetId;
+
                     break;
                 case ImageLocationType.COMPONENT:
-                    //Set the target as component
-                    image.ComponentId = dto.TargetId;
-
                     //Check if the component exists
                     var component = await _db.Components.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (component == null)
@@ -200,11 +220,11 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    //Set the target as component
+                    image.ComponentId = dto.TargetId;
+
                     break;
                 case ImageLocationType.SUBCOMPONENT:
-                    //Set the target as component
-                    image.SubComponentId = dto.TargetId;
-
                     //Check if the component exists
                     var subComponent = await _db.SubComponents.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (subComponent == null)
@@ -240,11 +260,11 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    //Set the target as component
+                    image.SubComponentId = dto.TargetId;
+
                     break;
                 case ImageLocationType.COMMENT:
-                    //Set the target as comment
-                    image.UserCommentId = dto.TargetId;
-
                     //Check if the comment exists
                     var comment = await _db.UserComments.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (comment == null)
@@ -280,11 +300,30 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    //Check if the image limit hasn't been exceeded
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.COMMENT && i.UserCommentId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
+                    //Set the target as comment
+                    image.UserCommentId = dto.TargetId;
+
                     break;
                 case ImageLocationType.FORUM:
-                    //Set the target as post
-                    image.ForumPostId = dto.TargetId;
-
                     //Check if the post exists
                     var post = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (post == null)
@@ -320,13 +359,32 @@ namespace KAZABUILD.API.Controllers
                         return Forbid();
                     }
 
+                    //Check if the image limit hasn't been exceeded
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.FORUM && i.ForumPostId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
+                    //Set the target as post
+                    image.ForumPostId = dto.TargetId;
+
                     break;
                 case ImageLocationType.USER:
-                    //Set the target as post
-                    image.UserId = dto.TargetId;
-
-                    //Check if the post exists
-                    var user = await _db.ForumPosts.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    //Check if the user exists
+                    var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
                     if (user == null)
                     {
                         //Log failure
@@ -337,11 +395,11 @@ namespace KAZABUILD.API.Controllers
                             ip,
                             Guid.Empty,
                             PrivacyLevel.WARNING,
-                            "Operation Failed - ForumPost Doesn't Exist"
+                            "Operation Failed - User Doesn't Exist"
                         );
 
                         //Return proper error response
-                        return BadRequest(new { message = "ForumPost not found!" });
+                        return BadRequest(new { message = "User not found!" });
                     }
                     else if (!isPrivileged && user.Id != currentUserId)
                     {
@@ -359,6 +417,127 @@ namespace KAZABUILD.API.Controllers
                         //Return proper unauthorized response
                         return Forbid();
                     }
+
+                    //Check if the image limit hasn't been exceeded
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.USER && i.UserId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
+                    //Set the target as user
+                    image.UserId = dto.TargetId;
+
+                    break;
+                case ImageLocationType.MESSAGE:
+                    //Check if the message exists
+                    var message = await _db.Messages.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    if (message == null)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Message Doesn't Exist"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Message not found!" });
+                    }
+                    else if (!isPrivileged && message.SenderId != currentUserId)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Unauthorized Access"
+                        );
+
+                        //Return proper unauthorized response
+                        return Forbid();
+                    }
+
+                    //Check if the image limit hasn't been exceeded
+                    existingImagesAmount = _db.Images.Where(i => i.LocationType == ImageLocationType.MESSAGE && i.MessageId == dto.TargetId).Count();
+                    if (existingImagesAmount > 4)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Too Many Images Assigned"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Image allocation limit reached! You can only add up to 5 images." });
+                    }
+
+                    //Set the target as message
+                    image.MessageId = dto.TargetId;
+
+                    break;
+                case ImageLocationType.GUIDE:
+                    //Check if the guide exists
+                    var guide = await _db.UserGuides.FirstOrDefaultAsync(u => u.Id == dto.TargetId);
+                    if (guide == null)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - UserGuide Doesn't Exist"
+                        );
+
+                        //Return proper error response
+                        return BadRequest(new { message = "Guide not found!" });
+                    }
+                    else if (!isPrivileged)
+                    {
+                        //Log failure
+                        await _logger.LogAsync(
+                            currentUserId,
+                            "POST",
+                            "Image",
+                            ip,
+                            Guid.Empty,
+                            PrivacyLevel.WARNING,
+                            "Operation Failed - Unauthorized Access"
+                        );
+
+                        //Return proper unauthorized response
+                        return Forbid();
+                    }
+
+                    //Set the target as guide
+                    image.UserGuideId = dto.TargetId;
 
                     break;
                 default:
@@ -485,10 +664,11 @@ namespace KAZABUILD.API.Controllers
             }
 
             //Check if current user has admin permissions or if they are modifying a follow for themselves
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
+            var isAdmin = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return unauthorized access exception if the user does not have the correct permissions
-            if (!isPrivileged)
+            if (!(isPrivileged && image.LocationType != ImageLocationType.COMPONENT && image.LocationType != ImageLocationType.SUBCOMPONENT) && !isAdmin)
             {
                 //Log failure
                 await _logger.LogAsync(
@@ -578,7 +758,12 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the image to return
-            var image = await _db.Images.FirstOrDefaultAsync(c => c.Id == id);
+            var image = await _db.Images
+                .Include(i => i.User)
+                    .ThenInclude(u => u!.Followers)
+                .Include(i => i.Build)
+                .Include(i => i.Message)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (image == null)
             {
                 //Log failure
@@ -600,23 +785,60 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Check the user has correct privileges or if the image isn't private
-            if (!isPrivileged && !(image.User == null && image.Build == null) &&
-                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT)) &&
-                !(image.User != null && (image.UserId == currentUserId || image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId))))))
+            //Check the user has correct privileges or if the image isn't private
+            if (!isPrivileged)
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "Image",
-                    ip,
-                    Guid.Empty,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
+                bool hasAccess = false;
 
-                //Return proper unauthorized response
-                return Forbid();
+                //If image is not attached to User, Build, or Message, allow access
+                if (image.UserId == null && image.BuildId == null && image.MessageId == null)
+                {
+                    hasAccess = true;
+                }
+                //Check Build access
+                else if (image.Build != null)
+                {
+                    if (image.Build.UserId == currentUserId ||
+                        (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check User profile access
+                else if (image.User != null)
+                {
+                    if (image.UserId == currentUserId ||
+                        image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
+                        (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check Message access
+                else if (image.Message != null)
+                {
+                    if (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId)
+                    {
+                        hasAccess = true;
+                    }
+                }
+
+                if (!hasAccess)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "GET",
+                        "Image",
+                        ip,
+                        id,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - Unauthorized Access"
+                    );
+
+                    //Return proper unauthorized response
+                    return Forbid();
+                }
             }
 
             //Log Description string declaration
@@ -671,13 +893,19 @@ namespace KAZABUILD.API.Controllers
                     response.TargetId = image.SubComponentId;
                     break;
                 case ImageLocationType.USER:
-                    response.TargetId = image.ComponentId;
+                    response.TargetId = image.UserId;
                     break;
                 case ImageLocationType.COMMENT:
                     response.TargetId = image.UserCommentId;
                     break;
                 case ImageLocationType.FORUM:
                     response.TargetId = image.ForumPostId;
+                    break;
+                case ImageLocationType.MESSAGE:
+                    response.TargetId = image.MessageId;
+                    break;
+                case ImageLocationType.GUIDE:
+                    response.TargetId = image.UserGuideId;
                     break;
                 default:
                     //Log failure
@@ -736,7 +964,7 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Check if current user has admin permissions
-            var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
+            var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Declare the query
             var query = _db.Images.AsNoTracking();
@@ -770,8 +998,16 @@ namespace KAZABUILD.API.Controllers
             {
                 query = query.Where(i => i.UserId != null && dto.UserId.Contains((Guid)i.UserId));
             }
+            if (dto.MessageId != null)
+            {
+                query = query.Where(i => i.MessageId != null && dto.MessageId.Contains((Guid)i.MessageId));
+            }
+            if (dto.UserGuideId != null)
+            {
+                query = query.Where(i => i.UserGuideId != null && dto.UserGuideId.Contains((Guid)i.UserGuideId));
+            }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(i => i.User).Search(dto.Query, i => i.Name);
@@ -799,8 +1035,10 @@ namespace KAZABUILD.API.Controllers
                 .Include(i => i.User)
                     .ThenInclude(u => u!.Followers)
                 .Include(i => i.Build)
+                .Include(i => i.Message)
                 .Where(i => isPrivileged || i.User == null || i.UserId == currentUserId || i.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (i.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && i.User.Followers.Any(f => f.FollowerId == currentUserId)))
                 .Where(i => isPrivileged || i.Build == null || i.Build.UserId == currentUserId || (i.Build.Status != BuildStatus.GENERATED && i.Build.Status != BuildStatus.DRAFT))
+                .Where(i => isPrivileged || i.Message == null || i.Message.SenderId == currentUserId || i.Message.ReceiverId == currentUserId)
                 .ToListAsync();
 
             //Declare the failure check boolean
@@ -840,13 +1078,19 @@ namespace KAZABUILD.API.Controllers
                             response.TargetId = image.SubComponentId;
                             break;
                         case ImageLocationType.USER:
-                            response.TargetId = image.ComponentId;
+                            response.TargetId = image.UserId;
                             break;
                         case ImageLocationType.COMMENT:
                             response.TargetId = image.UserCommentId;
                             break;
                         case ImageLocationType.FORUM:
                             response.TargetId = image.ForumPostId;
+                            break;
+                        case ImageLocationType.MESSAGE:
+                            response.TargetId = image.MessageId;
+                            break;
+                        case ImageLocationType.GUIDE:
+                            response.TargetId = image.UserGuideId;
                             break;
                         default:
                             failure = true;
@@ -889,13 +1133,19 @@ namespace KAZABUILD.API.Controllers
                             response.TargetId = image.SubComponentId;
                             break;
                         case ImageLocationType.USER:
-                            response.TargetId = image.ComponentId;
+                            response.TargetId = image.UserId;
                             break;
                         case ImageLocationType.COMMENT:
                             response.TargetId = image.UserCommentId;
                             break;
                         case ImageLocationType.FORUM:
                             response.TargetId = image.ForumPostId;
+                            break;
+                        case ImageLocationType.MESSAGE:
+                            response.TargetId = image.MessageId;
+                            break;
+                        case ImageLocationType.GUIDE:
+                            response.TargetId = image.UserGuideId;
                             break;
                         default:
                             failure = true;
@@ -966,7 +1216,13 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the image to delete
-            var image = await _db.Images.Include(i => i.Build).Include(i => i.UserComment).Include(i => i.ForumPost).FirstOrDefaultAsync(c => c.Id == id);
+            var image = await _db.Images
+                .Include(i => i.Build)
+                .Include(i => i.UserComment)
+                .Include(i => i.ForumPost)
+                .Include(i => i.Message)
+                .Include(i => i.User)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (image == null)
             {
                 //Log failure
@@ -990,7 +1246,8 @@ namespace KAZABUILD.API.Controllers
             var isSelf = (image.UserId != null && currentUserId == image.UserId) ||
                 (image.Build != null && currentUserId == image.Build.UserId) ||
                 (image.ForumPost != null && currentUserId == image.ForumPost.CreatorId) ||
-                (image.UserComment != null && currentUserId == image.UserComment.UserId);
+                (image.UserComment != null && currentUserId == image.UserComment.UserId) ||
+                (image.Message != null && currentUserId == image.Message.SenderId);
 
             //Check if the user has correct permission
             if (!isAdmin && !isSelf && !(isPrivileged && image.LocationType != ImageLocationType.COMPONENT && image.LocationType != ImageLocationType.SUBCOMPONENT))
@@ -1063,7 +1320,12 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the image to download
-            var image = await _db.Images.Include(i => i.Build).Include(i => i.User).ThenInclude(u => u!.Followers).FirstOrDefaultAsync(i => i.Id == id);
+            var image = await _db.Images
+                .Include(i => i.Build)
+                .Include(i => i.User)
+                    .ThenInclude(u => u!.Followers)
+                .Include(i => i.Message)
+                .FirstOrDefaultAsync(i => i.Id == id);
             if (image == null)
             {
                 //Log failure
@@ -1085,23 +1347,59 @@ namespace KAZABUILD.API.Controllers
             var isPrivileged = RoleGroups.Staff.Contains(currentUserRole.ToString());
 
             //Check the user has correct privileges or if the image isn't private
-            if (!isPrivileged && !(image.User == null && image.Build == null) &&
-                !(image.Build != null && (image.Build.UserId == currentUserId || (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))) &&
-                !(image.User != null && (image.UserId == currentUserId || image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC || (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))))
+            if (!isPrivileged)
             {
-                //Log failure
-                await _logger.LogAsync(
-                    currentUserId,
-                    "GET",
-                    "Image",
-                    ip,
-                    id,
-                    PrivacyLevel.WARNING,
-                    "Operation Failed - Unauthorized Access"
-                );
+                bool hasAccess = false;
 
-                //Return proper unauthorized response
-                return Forbid();
+                //If image is not attached to User, Build, or Message, allow access
+                if (image.UserId == null && image.BuildId == null && image.MessageId == null)
+                {
+                    hasAccess = true;
+                }
+                //Check Build access
+                else if (image.Build != null)
+                {
+                    if (image.Build.UserId == currentUserId ||
+                        (image.Build.Status != BuildStatus.GENERATED && image.Build.Status != BuildStatus.DRAFT))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check User profile access
+                else if (image.User != null)
+                {
+                    if (image.UserId == currentUserId ||
+                        image.User.ProfileAccessibility == ProfileAccessibility.PUBLIC ||
+                        (image.User.ProfileAccessibility == ProfileAccessibility.FOLLOWS && image.User.Followers.Any(f => f.FollowerId == currentUserId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+                //Check Message access
+                else if (image.Message != null)
+                {
+                    if (image.Message.SenderId == currentUserId || image.Message.ReceiverId == currentUserId)
+                    {
+                        hasAccess = true;
+                    }
+                }
+
+                if (!hasAccess)
+                {
+                    //Log failure
+                    await _logger.LogAsync(
+                        currentUserId,
+                        "GET",
+                        "Image",
+                        ip,
+                        id,
+                        PrivacyLevel.WARNING,
+                        "Operation Failed - Unauthorized Access"
+                    );
+
+                    //Return proper unauthorized response
+                    return Forbid();
+                }
             }
 
             //Check if the file exists
@@ -1130,6 +1428,7 @@ namespace KAZABUILD.API.Controllers
                 deletedBy = currentUserId
             });
 
+            //Return the actual media file
             return File(fileBytes, contentType);
         }
     }

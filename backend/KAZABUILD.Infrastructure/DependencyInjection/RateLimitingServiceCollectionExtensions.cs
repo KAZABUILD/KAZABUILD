@@ -43,7 +43,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                         partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anon",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 100,
+                            PermitLimit = 200,
                             Window = TimeSpan.FromSeconds(10),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 2
@@ -70,7 +70,7 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                         partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 100,
+                            PermitLimit = 200,
                             Window = TimeSpan.FromSeconds(60),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 2

@@ -1,3 +1,4 @@
+using Azure;
 using KAZABUILD.Application.DTOs.Users.Message;
 using KAZABUILD.Application.Helpers;
 using KAZABUILD.Application.Interfaces;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
+using static Google.Apis.Requests.BatchRequest;
 
 namespace KAZABUILD.API.Controllers.Users
 {
@@ -99,10 +101,12 @@ namespace KAZABUILD.API.Controllers.Users
             {
                 SenderId = dto.SenderId,
                 ReceiverId = dto.ReceiverId,
+                DeletedSenderId = dto.SenderId,
+                DeletedReceiverId = dto.ReceiverId,
                 CipherText = cipher,
                 IV = iv,
                 Title = dto.Title,
-                SentAt = dto.SentAt,
+                SentAt = isPrivileged ? dto.SentAt : DateTime.UtcNow,
                 IsRead = dto.IsRead,
                 ParentMessageId = dto.ParentMessageId,
                 MessageType = dto.MessageType,
@@ -341,7 +345,7 @@ namespace KAZABUILD.API.Controllers.Users
             MessageResponseDto response;
 
             //Check if current user is getting themselves or if they have admin permissions
-            var isSelf = currentUserId == message.SenderId;
+            var isSelf = currentUserId == message.SenderId || currentUserId == message.ReceiverId;
             var isPrivileged = RoleGroups.Admins.Contains(currentUserRole.ToString());
 
             //Return an unauthorized response if the user doesn't have correct privileges
@@ -404,6 +408,12 @@ namespace KAZABUILD.API.Controllers.Users
                 };
             }
 
+            //If the ids are null a deleted id fields in the response
+            if (response.ReceiverId == null)
+                response.DeletedReceiverId = message.DeletedReceiverId;
+            if (response.SenderId == null)
+                response.DeletedSenderId = message.DeletedSenderId;
+
             //Log success
             await _logger.LogAsync(
                 currentUserId,
@@ -453,11 +463,11 @@ namespace KAZABUILD.API.Controllers.Users
             //Filter by the variables if included
             if (dto.SenderId != null)
             {
-                query = query.Where(m => dto.SenderId.Contains(m.SenderId));
+                query = query.Where(m => m.SenderId != null && dto.SenderId.Contains((Guid)m.SenderId));
             }
             if (dto.ReceiverId != null)
             {
-                query = query.Where(m => dto.ReceiverId.Contains(m.ReceiverId));
+                query = query.Where(m => m.ReceiverId != null && dto.ReceiverId.Contains((Guid)m.ReceiverId));
             }
             if (dto.IsRead != null)
             {
@@ -469,14 +479,14 @@ namespace KAZABUILD.API.Controllers.Users
             }
             if (dto.SentAtStart != null)
             {
-                query = query.Where(m => m.SentAt >= dto.SentAtEnd);
+                query = query.Where(m => m.SentAt >= dto.SentAtStart);
             }
             if (dto.SentAtEnd != null)
             {
                 query = query.Where(m => m.SentAt <= dto.SentAtEnd);
             }
 
-            //Apply search based on credentials
+            //Apply search based on provided query string
             if (!string.IsNullOrWhiteSpace(dto.Query))
             {
                 query = query.Include(m => m.Sender).Search(dto.Query, m => m.SentAt, m => m.Title, m => m.Sender!.DisplayName);
@@ -499,7 +509,7 @@ namespace KAZABUILD.API.Controllers.Users
             //Log Description string declaration
             string logDescription;
 
-            List<Message> messages = await query.Where(m => m.SenderId == currentUserId || isPrivileged).ToListAsync();
+            List<Message> messages = await query.Where(m => m.SenderId == currentUserId || m.ReceiverId == currentUserId || isPrivileged).ToListAsync();
 
             //Declare response variable
             List<MessageResponseDto> responses;
@@ -517,7 +527,7 @@ namespace KAZABUILD.API.Controllers.Users
                     var content = _aes.Decrypt(message.CipherText, message.IV);
 
                     //Return a message response
-                    return new MessageResponseDto
+                    var response = new MessageResponseDto
                     {
                         Id = message.Id,
                         SenderId = message.SenderId,
@@ -527,6 +537,14 @@ namespace KAZABUILD.API.Controllers.Users
                         SentAt = message.SentAt,
                         IsRead = message.IsRead
                     };
+
+                    //If the ids are null a deleted id fields in the response
+                    if (response.ReceiverId == null)
+                        response.DeletedReceiverId = message.DeletedReceiverId;
+                    if (response.SenderId == null)
+                        response.DeletedSenderId = message.DeletedSenderId;
+
+                    return response;
                 })];
             }
             else //Return admin knowledge if has privileges
@@ -541,7 +559,7 @@ namespace KAZABUILD.API.Controllers.Users
                     var content = _aes.Decrypt(message.CipherText, message.IV);
 
                     //Return a message response
-                    return new MessageResponseDto
+                    var response = new MessageResponseDto
                     {
                         Id = message.Id,
                         SenderId = message.SenderId,
@@ -554,6 +572,14 @@ namespace KAZABUILD.API.Controllers.Users
                         LastEditedAt = message.LastEditedAt,
                         Note = message.Note
                     };
+
+                    //If the ids are null a deleted id fields in the response
+                    if (response.ReceiverId == null)
+                        response.DeletedReceiverId = message.DeletedReceiverId;
+                    if (response.SenderId == null)
+                        response.DeletedSenderId = message.DeletedSenderId;
+
+                    return response;
                 })];
             }
 
@@ -598,7 +624,7 @@ namespace KAZABUILD.API.Controllers.Users
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the message to delete
-            var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id);
+            var message = await _db.Messages.Include(m => m.Images).Include(m => m.ChildMessages).FirstOrDefaultAsync(m => m.Id == id);
             if (message == null)
             {
                 //Log failure
@@ -636,6 +662,26 @@ namespace KAZABUILD.API.Controllers.Users
 
                 //Return proper unauthorized response
                 return Forbid();
+            }
+
+            //Remove all related images
+            if (message.Images.Count != 0)
+            {
+                foreach (var image in message.Images)
+                {
+                    //Remove the file from the file system
+                    if (System.IO.File.Exists(image.Location))
+                        System.IO.File.Delete(image.Location);
+                }
+
+                //Delete all related images
+                _db.Images.RemoveRange(message.Images);
+            }
+
+            //Set all child message foreign keys to null
+            foreach (var child in message.ChildMessages)
+            {
+                child.ParentMessageId = null;
             }
 
             //Delete the message

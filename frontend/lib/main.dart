@@ -8,18 +8,34 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/router.dart';
+import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/locale_provider.dart';
+import 'package:frontend/l10n/app_localization.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/theme_provider.dart';
-
-import 'screens/extra/spalsh_page.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:go_router/go_router.dart';
+import 'widgets/global_swipe_reload.dart';
+import 'widgets/restart_widget.dart';
 
 /// The main function that runs when the application starts.
 void main() {
+  // Disable hash-based routing on web (use path-based instead)
+  // This prevents URLs like #/forums/123 and uses /forums/123 instead
+  if (kIsWeb) {
+    GoRouter.optionURLReflectsImperativeAPIs = true;
+  }
+  
   // runApp() inflates the given widget and attaches it to the screen.
   // ProviderScope is the widget that stores the state of all Riverpod providers.
   // All Flutter applications using Riverpod must have a ProviderScope at the
   // root of their widget tree.
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    RestartWidget(
+      child: const ProviderScope(child: MyApp()),
+    ),
+  );
 }
 
 /// The root widget of the application.
@@ -30,14 +46,25 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize auth (auto-login) when the app starts
+    ref.watch(authInitializationProvider);
+
     // Watches the `themeProvider` for changes. When the theme mode changes
     // (e.g., from light to dark), this widget will rebuild to apply the new theme.
+    final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
+    // Watches the `localeProvider` for changes. When the locale changes,
+    // this widget will rebuild to apply the new language.
+    final locale = ref.watch(localeProvider);
 
     // MaterialApp is the root of the app's UI, providing routing, theming,
-    // and other core functionalities.
-    return MaterialApp(
-      title: 'Kaza Build',
+    // localization, and other core functionalities.
+    return MaterialApp.router(
+      title: 'KazaBuild',
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return GlobalSwipeReload(child: child);
+      },
 
       // Defines the theme to use when the app is in light mode.
       theme: AppTheme.lightTheme,
@@ -48,10 +75,17 @@ class MyApp extends ConsumerWidget {
       // dynamic switching between light, dark, or system default themes.
       themeMode: themeMode,
 
+      // Localization support: delegates and supported locales
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      // The current locale is controlled by the `localeProvider`, allowing for
+      // dynamic switching between English, Polish, and Turkish.
+      locale: locale,
+
       // Hides the "debug" banner in the top-right corner of the app.
       debugShowCheckedModeBanner: false,
-      // Sets the initial screen of the application to be the SplashScreen.
-      home: const SplashScreen(),
+      // The router configuration from our router provider.
+      routerConfig: router,
     );
   }
 }

@@ -13,9 +13,9 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// Id of the user who created the post.
+        /// It will be set to null if the user is removed from the database.
         /// </summary>
-        [Required]
-        public Guid CreatorId { get; set; } = default!;
+        public Guid? CreatorId { get; set; }
 
         /// <summary>
         /// Content of the post.
@@ -61,5 +61,6 @@ namespace KAZABUILD.Domain.Entities.Users
 
         public ICollection<UserComment> Comments { get; set; } = [];
         public ICollection<Image> Images { get; set; } = [];
+        public ICollection<UserReport> UserReports { get; set; } = [];
     }
 }

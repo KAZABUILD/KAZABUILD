@@ -178,6 +178,25 @@ class ComponentPrice {
     required this.lastEditedAt,
     this.note,
   });
+
+  /// Creates a `ComponentPrice` instance from a JSON map.
+  factory ComponentPrice.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    return ComponentPrice(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      sourceUrl: json['sourceUrl']?.toString() ?? json['SourceUrl']?.toString() ?? '',
+      componentId: json['componentId']?.toString() ?? json['ComponentId']?.toString() ?? '',
+      vendorName: json['vendorName']?.toString() ?? json['VendorName']?.toString() ?? '',
+      fetchedAt: parseDate(json['fetchedAt']?.toString() ?? json['FetchedAt']?.toString()) ?? DateTime.now(),
+      price: ((json['price'] ?? json['Price'] ?? 0) as num).toDouble(),
+      currency: json['currency']?.toString() ?? json['Currency']?.toString() ?? 'USD',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+    );
+  }
 }
 
 /// Represents a user-submitted or professional review for a component.
@@ -436,6 +455,9 @@ class PortSubComponent extends BaseSubComponent {
 abstract class BaseComponent {
   /// The unique identifier for this component.
   final String id;
+  
+  /// IDs of components marked compatible with this component.
+  final List<String> compatibleComponentsIds;
 
   /// The full product name of the component.
   final String name;
@@ -461,6 +483,9 @@ abstract class BaseComponent {
   /// A URL to an image of the component.
   final String imageUrl;
 
+  /// Overrides the computed lowest price when supplied separately.
+  final double? lowestPriceOverride;
+
   /// A list of `ComponentPrice` objects from various vendors.
   final List<ComponentPrice> prices;
 
@@ -475,6 +500,7 @@ abstract class BaseComponent {
 
   const BaseComponent({
     required this.id,
+    this.compatibleComponentsIds = const [],
     required this.name,
     required this.manufacturer,
     required this.type,
@@ -483,6 +509,7 @@ abstract class BaseComponent {
     required this.imageUrl,
     this.release,
     this.note,
+    this.lowestPriceOverride,
     this.prices = const [],
     this.variants = const [],
     this.reviews = const [],
@@ -491,6 +518,7 @@ abstract class BaseComponent {
 
   /// Calculates the lowest price from the list of available prices.
   double? get lowestPrice {
+    if (lowestPriceOverride != null) return lowestPriceOverride;
     if (prices.isEmpty) return null;
     return prices.map((p) => p.price).reduce(min);
   }
@@ -503,6 +531,14 @@ abstract class BaseComponent {
     final avg = totalRating / reviews.length;
     return avg / 20.0;
   }
+}
+
+List<String> _parseCompatibleIds(Map<String, dynamic> json) {
+  final raw = json['compatibleComponentsIds'] ?? json['CompatibleComponentsIds'];
+  if (raw is List) {
+    return raw.map((e) => e.toString()).toList();
+  }
+  return const [];
 }
 
 /// Represents a PC Case component with its physical specifications.
@@ -564,6 +600,7 @@ class CaseComponent extends BaseComponent {
 
   const CaseComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -589,11 +626,63 @@ class CaseComponent extends BaseComponent {
     required this.supportsRearConnectingMotherboard,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.pcCase);
+
+  /// Creates a `CaseComponent` instance from a JSON map.
+  factory CaseComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return CaseComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      formFactor: json['formFactor']?.toString() ?? json['FormFactor']?.toString() ?? '',
+      powerSupplyShrouded: json['powerSupplyShrouded'] ?? json['PowerSupplyShrouded'] ?? false,
+      powerSupplyAmount: (json['powerSupplyAmount'] ?? json['PowerSupplyAmount'] as num?)?.toDouble(),
+      hasTransparentSidePanel: json['hasTransparentSidePanel'] ?? json['HasTransparentSidePanel'] ?? false,
+      sidePanelType: json['sidePanelType']?.toString() ?? json['SidePanelType']?.toString(),
+      maxVideoCardLength: ((json['maxVideoCardLength'] ?? json['MaxVideoCardLength'] ?? 0) as num).toDouble(),
+      maxCPUCoolerHeight: ((json['maxCPUCoolerHeight'] ?? json['MaxCPUCoolerHeight'] ?? 0) as num).toInt(),
+      internal35BayAmount: ((json['internal35BayAmount'] ?? json['Internal35BayAmount'] ?? 0) as num).toInt(),
+      internal25BayAmount: ((json['internal25BayAmount'] ?? json['Internal25BayAmount'] ?? 0) as num).toInt(),
+      external35BayAmount: ((json['external35BayAmount'] ?? json['External35BayAmount'] ?? 0) as num).toInt(),
+      external525BayAmount: ((json['external525BayAmount'] ?? json['External525BayAmount'] ?? 0) as num).toInt(),
+      expansionSlotAmount: ((json['expansionSlotAmount'] ?? json['ExpansionSlotAmount'] ?? 0) as num).toInt(),
+      width: (json['dimensions']?['width'] ?? json['Dimensions']?['Width'] as num? ?? 0.0).toDouble(),
+      height: (json['dimensions']?['height'] ?? json['Dimensions']?['Height'] as num? ?? 0.0).toDouble(),
+      depth: (json['dimensions']?['depth'] ?? json['Dimensions']?['Depth'] as num? ?? 0.0).toDouble(),
+      volume: ((json['volume'] ?? json['Volume'] ?? 0) as num).toDouble(),
+      weight: ((json['weight'] ?? json['Weight'] ?? 0) as num).toDouble(),
+      supportsRearConnectingMotherboard: json['supportsRearConnectingMotherboard'] ?? json['SupportsRearConnectingMotherboard'] ?? false,
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a Case Fan component with its performance and physical characteristics.
@@ -637,6 +726,7 @@ class CaseFanComponent extends BaseComponent {
 
   const CaseFanComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -656,11 +746,57 @@ class CaseFanComponent extends BaseComponent {
     required this.flowDirection,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.caseFan);
+
+  /// Creates a `CaseFanComponent` instance from a JSON map.
+  factory CaseFanComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return CaseFanComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      size: ((json['size'] ?? json['Size'] ?? 0) as num).toDouble(),
+      quantity: ((json['quantity'] ?? json['Quantity'] ?? 0) as num).toInt(),
+      minAirflow: ((json['minAirflow'] ?? json['MinAirflow'] ?? 0) as num).toDouble(),
+      maxAirflow: (json['maxAirflow'] ?? json['MaxAirflow'] as num?)?.toDouble(),
+      minNoiseLevel: ((json['minNoiseLevel'] ?? json['MinNoiseLevel'] ?? 0) as num).toDouble(),
+      maxNoiseLevel: (json['maxNoiseLevel'] ?? json['MaxNoiseLevel'] as num?)?.toDouble(),
+      pulseWidthModulation: json['pulseWidthModulation'] ?? json['PulseWidthModulation'] ?? false,
+      ledType: json['ledType']?.toString() ?? json['LedType']?.toString(),
+      connectorType: json['connectorType']?.toString() ?? json['ConnectorType']?.toString() ?? '',
+      controllerType: json['controllerType']?.toString() ?? json['ControllerType']?.toString() ?? '',
+      staticPressureAmount: ((json['staticPressureAmount'] ?? json['StaticPressureAmount'] ?? 0) as num).toDouble(),
+      flowDirection: json['flowDirection']?.toString() ?? json['FlowDirection']?.toString() ?? '',
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a CPU Cooler, which can be air or water-cooled.
@@ -698,6 +834,7 @@ class CoolerComponent extends BaseComponent {
 
   const CoolerComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -715,11 +852,55 @@ class CoolerComponent extends BaseComponent {
     required this.fanQuantity,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.cooler);
+
+  /// Creates a `CoolerComponent` instance from a JSON map.
+  factory CoolerComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return CoolerComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      minFanRotationSpeed: (json['minFanRotationSpeed'] ?? json['MinFanRotationSpeed'] as num?)?.toDouble(),
+      maxFanRotationSpeed: (json['maxFanRotationSpeed'] ?? json['MaxFanRotationSpeed'] as num?)?.toDouble(),
+      minNoiseLevel: (json['minNoiseLevel'] ?? json['MinNoiseLevel'] as num?)?.toDouble(),
+      maxNoiseLevel: (json['maxNoiseLevel'] ?? json['MaxNoiseLevel'] as num?)?.toDouble(),
+      height: ((json['height'] ?? json['Height'] ?? 0) as num).toDouble(),
+      isWaterCooled: json['isWaterCooled'] ?? json['IsWaterCooled'] ?? false,
+      radiatorSize: (json['radiatorSize'] ?? json['RadiatorSize'] as num?)?.toDouble(),
+      canOperateFanless: json['canOperateFanless'] ?? json['CanOperateFanless'] ?? false,
+      fanSize: (json['fanSize'] ?? json['FanSize'] as num?)?.toDouble(),
+      fanQuantity: ((json['fanQuantity'] ?? json['FanQuantity'] ?? 0) as num).toInt(),
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a Central Processing Unit (CPU) component.
@@ -788,8 +969,11 @@ class CPUComponent extends BaseComponent {
   /// The name of the integrated graphics, if any.
   final String graphics;
 
+  // TODO: Add basePerformanceSpeed and boostPerformanceSpeed to the UI.
+
   const CPUComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -821,11 +1005,82 @@ class CPUComponent extends BaseComponent {
     this.l4,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.cpu);
+
+  /// Creates a `CPUComponent` instance from a JSON map.
+  factory CPUComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    // Helper to safely parse DateTime from string.
+    DateTime? parseDate(String? dateStr) {
+      return dateStr != null ? DateTime.tryParse(dateStr) : null;
+    }
+    
+    int? _parseNullableInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return null;
+    }
+
+    return CPUComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      series: json['series']?.toString() ?? json['Series']?.toString() ?? '',
+      microarchitecture: json['microarchitecture']?.toString() ?? json['Microarchitecture']?.toString() ?? '',
+      coreFamily: json['coreFamily']?.toString() ?? json['CoreFamily']?.toString() ?? '',
+      socketType: json['socketType']?.toString() ?? json['SocketType']?.toString() ?? '',
+      coreTotal: ((json['coreTotal'] ?? json['CoreTotal'] ?? 0) as num).toInt(),
+      threadsAmount: ((json['threadsAmount'] ?? json['ThreadsAmount'] ?? 0) as num).toInt(),
+      includesCooler: json['includesCooler'] ?? json['IncludesCooler'] ?? false,
+      lithography: json['lithography']?.toString() ?? json['Lithography']?.toString() ?? '',
+      supportsSimultaneousMultithreading:
+          json['supportsSimultaneousMultithreading'] ?? json['SupportsSimultaneousMultithreading'] ?? false,
+      memoryType: json['memoryType']?.toString() ?? json['MemoryType']?.toString() ?? '',
+      packagingType: json['packagingType']?.toString() ?? json['PackagingType']?.toString() ?? '',
+      supportsECC: json['supportsECC'] ?? json['SupportsECC'] ?? false,
+      thermalDesignPower: ((json['thermalDesignPower'] ?? json['ThermalDesignPower'] ?? 0) as num).toDouble(),
+      graphics: json['graphics']?.toString() ?? json['Graphics']?.toString() ?? 'N/A',
+      performanceAmount: _parseNullableInt(json['performanceAmount'] ?? json['PerformanceAmount']),
+      efficiencyAmount: _parseNullableInt(json['efficiencyAmount'] ?? json['EfficiencyAmount']),
+      basePerformanceSpeed: (json['basePerformanceSpeed'] ?? json['BasePerformanceSpeed'] as num?)?.toDouble(),
+      boostPerformanceSpeed:
+          (json['boostPerformanceSpeed'] ?? json['BoostPerformanceSpeed'] as num?)?.toDouble(),
+      baseEfficiencySpeed: (json['baseEfficiencySpeed'] ?? json['BaseEfficiencySpeed'] as num?)?.toDouble(),
+      boostEfficiencySpeed: (json['boostEfficiencySpeed'] ?? json['BoostEfficiencySpeed'] as num?)?.toDouble(),
+      l1: (json['l1'] ?? json['L1'] as num?)?.toDouble(),
+      l2: (json['l2'] ?? json['L2'] as num?)?.toDouble(),
+      l3: (json['l3'] ?? json['L3'] as num?)?.toDouble(),
+      l4: (json['l4'] ?? json['L4'] as num?)?.toDouble(),
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      // Helper to parse prices from JSON
+      prices: () {
+        final pricesJson = json['prices'] ?? json['Prices'];
+        if (pricesJson == null) return const <ComponentPrice>[];
+        if (pricesJson is! List) return const <ComponentPrice>[];
+        return pricesJson
+            .whereType<Map<String, dynamic>>()
+            .map((p) => ComponentPrice.fromJson(p))
+            .toList();
+      }(),
+      variants: const [],
+      reviews: const [],
+      parts: const [],
+    );
+  }
 }
 
 /// Represents a Graphics Processing Unit (GPU) or Video Card.
@@ -875,6 +1130,7 @@ class GPUComponent extends BaseComponent {
 
   const GPUComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -896,11 +1152,60 @@ class GPUComponent extends BaseComponent {
     required this.coolingType,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.gpu);
+
+  /// Creates a `GPUComponent` instance from a JSON map.
+  factory GPUComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return GPUComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      chipset: json['chipset']?.toString() ?? json['Chipset']?.toString() ?? '',
+      videoMemoryAmount: ((json['videoMemoryAmount'] ?? json['VideoMemoryAmount'] ?? 0) as num).toDouble(),
+      videoMemoryType: json['videoMemoryType']?.toString() ?? json['VideoMemoryType']?.toString() ?? '',
+      coreBaseClockSpeed: ((json['coreBaseClockSpeed'] ?? json['CoreBaseClockSpeed'] ?? 0) as num).toDouble(),
+      coreBoostClockSpeed: ((json['coreBoostClockSpeed'] ?? json['CoreBoostClockSpeed'] ?? 0) as num).toDouble(),
+      coreCount: ((json['coreCount'] ?? json['CoreCount'] ?? 0) as num).toInt(),
+      effectiveMemoryClockSpeed:
+          ((json['effectiveMemoryClockSpeed'] ?? json['EffectiveMemoryClockSpeed'] ?? 0) as num).toDouble(),
+      memoryBusWidth: ((json['memoryBusWidth'] ?? json['MemoryBusWidth'] ?? 0) as num).toInt(),
+      frameSync: json['frameSync']?.toString() ?? json['FrameSync']?.toString() ?? '',
+      length: ((json['length'] ?? json['Length'] ?? 0) as num).toDouble(),
+      thermalDesignPower: ((json['thermalDesignPower'] ?? json['ThermalDesignPower'] ?? 0) as num).toDouble(),
+      caseExpansionSlotWidth: ((json['caseExpansionSlotWidth'] ?? json['CaseExpansionSlotWidth'] ?? 0) as num).toInt(),
+      totalSlotAmount: ((json['totalSlotAmount'] ?? json['TotalSlotAmount'] ?? 0) as num).toInt(),
+      coolingType: json['coolingType']?.toString() ?? json['CoolingType']?.toString() ?? '',
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a Memory (RAM) module.
@@ -950,6 +1255,7 @@ class MemoryComponent extends BaseComponent {
 
   const MemoryComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -971,11 +1277,59 @@ class MemoryComponent extends BaseComponent {
     required this.voltage,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.ram);
+
+  /// Creates a `MemoryComponent` instance from a JSON map.
+  factory MemoryComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return MemoryComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      speed: ((json['speed'] ?? json['Speed'] ?? 0) as num).toDouble(),
+      ramType: json['ramType']?.toString() ?? json['RamType']?.toString() ?? '',
+      formFactor: json['formFactor']?.toString() ?? json['FormFactor']?.toString() ?? '',
+      capacity: ((json['capacity'] ?? json['Capacity'] ?? 0) as num).toDouble(),
+      casLatency: ((json['casLatency'] ?? json['CasLatency'] ?? 0) as num).toDouble(),
+      timings: json['timings']?.toString() ?? json['Timings']?.toString() ?? '',
+      moduleQuantity: ((json['moduleQuantity'] ?? json['ModuleQuantity'] ?? 0) as num).toInt(),
+      moduleCapacity: ((json['moduleCapacity'] ?? json['ModuleCapacity'] ?? 0) as num).toDouble(),
+      ecc: json['ecc'] ?? json['Ecc'] ?? false,
+      registeredType: json['registeredType']?.toString() ?? json['RegisteredType']?.toString() ?? '',
+      haveHeatSpreader: json['haveHeatSpreader'] ?? json['HaveHeatSpreader'] ?? false,
+      haveRGB: json['haveRGB'] ?? json['HaveRGB'] ?? false,
+      height: ((json['height'] ?? json['Height'] ?? 0) as num).toDouble(),
+      voltage: ((json['voltage'] ?? json['Voltage'] ?? 0) as num).toDouble(),
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a computer Monitor.
@@ -1016,6 +1370,7 @@ class MonitorComponent extends BaseComponent {
 
   const MonitorComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1034,11 +1389,56 @@ class MonitorComponent extends BaseComponent {
     required this.adaptiveSyncType,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.monitor);
+
+  /// Creates a `MonitorComponent` instance from a JSON map.
+  factory MonitorComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return MonitorComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      screenSize: ((json['screenSize'] ?? json['ScreenSize'] ?? 0) as num).toDouble(),
+      horizontalResolution: ((json['horizontalResolution'] ?? json['HorizontalResolution'] ?? 0) as num).toInt(),
+      verticalResolution: ((json['verticalResolution'] ?? json['VerticalResolution'] ?? 0) as num).toInt(),
+      maxRefreshRate: ((json['maxRefreshRate'] ?? json['MaxRefreshRate'] ?? 0) as num).toDouble(),
+      panelType: json['panelType']?.toString() ?? json['PanelType']?.toString() ?? '',
+      responseTime: ((json['responseTime'] ?? json['ResponseTime'] ?? 0) as num).toDouble(),
+      viewingAngle: json['viewingAngle']?.toString() ?? json['ViewingAngle']?.toString() ?? '',
+      aspectRatio: json['aspectRatio']?.toString() ?? json['AspectRatio']?.toString() ?? '',
+      maxBrightness: (json['maxBrightness'] ?? json['MaxBrightness'] as num?)?.toDouble(),
+      highDynamicRangeType: json['highDynamicRangeType']?.toString() ?? json['HighDynamicRangeType']?.toString(),
+      adaptiveSyncType: json['adaptiveSyncType']?.toString() ?? json['AdaptiveSyncType']?.toString() ?? '',
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a Motherboard component.
@@ -1136,6 +1536,7 @@ class MotherboardComponent extends BaseComponent {
 
   const MotherboardComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1173,11 +1574,82 @@ class MotherboardComponent extends BaseComponent {
     required this.maxAudioChannels,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.motherboard);
+
+  /// Creates a `MotherboardComponent` instance from a JSON map.
+  factory MotherboardComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+    
+    int? _parseNullableInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return null;
+    }
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return MotherboardComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      socketType: json['socketType']?.toString() ?? json['SocketType']?.toString() ?? '',
+      formFactor: json['formFactor']?.toString() ?? json['FormFactor']?.toString() ?? '',
+      chipsetType: json['chipsetType']?.toString() ?? json['ChipsetType']?.toString() ?? '',
+      ramType: json['ramType']?.toString() ?? json['RamType']?.toString() ?? '',
+      ramSlotsAmount: ((json['ramSlotsAmount'] ?? json['RamSlotsAmount'] ?? 0) as num).toInt(),
+      maxRAMAmount: ((json['maxRAMAmount'] ?? json['MaxRAMAmount'] ?? 0) as num).toInt(),
+      sata6GBsAmount: ((json['sata6GBsAmount'] ?? json['Sata6GBsAmount'] ?? 0) as num).toInt(),
+      sata3GBsAmount: ((json['sata3GBsAmount'] ?? json['Sata3GBsAmount'] ?? 0) as num).toInt(),
+      u2PortAmount: ((json['u2PortAmount'] ?? json['U2PortAmount'] ?? 0) as num).toInt(),
+      wirelessNetworkingStandard: json['wirelessNetworkingStandard']?.toString() ?? json['WirelessNetworkingStandard']?.toString() ?? '',
+      cpuFanHeaderAmount: _parseNullableInt(json['cpuFanHeaderAmount'] ?? json['CpuFanHeaderAmount']),
+      caseFanHeaderAmount: _parseNullableInt(json['caseFanHeaderAmount'] ?? json['CaseFanHeaderAmount']),
+      pumpHeaderAmount: _parseNullableInt(json['pumpHeaderAmount'] ?? json['PumpHeaderAmount']),
+      cpuOptionalFanHeaderAmount: _parseNullableInt(json['cpuOptionalFanHeaderAmount'] ?? json['CpuOptionalFanHeaderAmount']),
+      argb5vHeaderAmount: _parseNullableInt(json['argb5vHeaderAmount'] ?? json['Argb5vHeaderAmount']),
+      rgb12vHeaderAmount: _parseNullableInt(json['rgb12vHeaderAmount'] ?? json['Rgb12vHeaderAmount']),
+      hasPowerButtonHeader: json['hasPowerButtonHeader'] ?? json['HasPowerButtonHeader'] ?? false,
+      hasResetButtonHeader: json['hasResetButtonHeader'] ?? json['HasResetButtonHeader'] ?? false,
+      hasPowerLEDHeader: json['hasPowerLEDHeader'] ?? json['HasPowerLEDHeader'] ?? false,
+      hasHDDLEDHeader: json['hasHDDLEDHeader'] ?? json['HasHDDLEDHeader'] ?? false,
+      temperatureSensorHeaderAmount: _parseNullableInt(json['temperatureSensorHeaderAmount'] ?? json['TemperatureSensorHeaderAmount']),
+      thunderboltHeaderAmount: _parseNullableInt(json['thunderboltHeaderAmount'] ?? json['ThunderboltHeaderAmount']),
+      comPortHeaderAmount: _parseNullableInt(json['comPortHeaderAmount'] ?? json['ComPortHeaderAmount']),
+      mainPowerType: json['mainPowerType']?.toString() ?? json['MainPowerType']?.toString(),
+      hasECCSupport: json['hasECCSupport'] ?? json['HasECCSupport'] ?? false,
+      hasRAIDSupport: json['hasRAIDSupport'] ?? json['HasRAIDSupport'] ?? false,
+      hasFlashback: json['hasFlashback'] ?? json['HasFlashback'] ?? false,
+      hasCMOS: json['hasCMOS'] ?? json['HasCMOS'] ?? false,
+      audioChipset: json['audioChipset']?.toString() ?? json['AudioChipset']?.toString() ?? '',
+      maxAudioChannels: ((json['maxAudioChannels'] ?? json['MaxAudioChannels'] ?? 0) as num).toDouble(),
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a Power Supply Unit (PSU).
@@ -1203,6 +1675,7 @@ class PowerSupplyComponent extends BaseComponent {
 
   const PowerSupplyComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1216,11 +1689,51 @@ class PowerSupplyComponent extends BaseComponent {
     required this.isFanless,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.psu);
+
+  /// Creates a `PowerSupplyComponent` instance from a JSON map.
+  factory PowerSupplyComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return PowerSupplyComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      powerOutput: ((json['powerOutput'] ?? json['PowerOutput'] ?? 0) as num).toDouble(),
+      formFactor: json['formFactor']?.toString() ?? json['FormFactor']?.toString() ?? '',
+      efficiencyRating: json['efficiencyRating']?.toString() ?? json['EfficiencyRating']?.toString() ?? '',
+      modularityType: json['modularityType']?.toString() ?? json['ModularityType']?.toString() ?? '',
+      length: ((json['length'] ?? json['Length'] ?? 0) as num).toDouble(),
+      isFanless: json['isFanless'] ?? json['IsFanless'] ?? false,
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }
 
 /// Represents a storage device, such as an SSD or HDD.
@@ -1246,6 +1759,7 @@ class StorageComponent extends BaseComponent {
 
   const StorageComponent({
     required super.id,
+    super.compatibleComponentsIds = const [],
     required super.name,
     required super.manufacturer,
     required super.databaseEntryAt,
@@ -1259,9 +1773,49 @@ class StorageComponent extends BaseComponent {
     required this.hasNVMe,
     super.release,
     super.note,
+    super.lowestPriceOverride,
     super.prices,
     super.variants,
     super.reviews,
     super.parts,
   }) : super(type: ComponentType.storage);
+
+  /// Creates a `StorageComponent` instance from a JSON map.
+  factory StorageComponent.fromJson(
+    Map<String, dynamic> json, {
+    double? priceOverride,
+  }) {
+    DateTime? parseDate(String? dateStr) =>
+        dateStr != null ? DateTime.tryParse(dateStr) : null;
+
+    // Helper to parse prices from JSON
+    List<ComponentPrice> parsePrices(dynamic pricesJson) {
+      if (pricesJson == null) return const [];
+      if (pricesJson is! List) return const [];
+      return pricesJson
+          .whereType<Map<String, dynamic>>()
+          .map((p) => ComponentPrice.fromJson(p))
+          .toList();
+    }
+
+    return StorageComponent(
+      id: json['id']?.toString() ?? json['Id']?.toString() ?? '',
+      compatibleComponentsIds: _parseCompatibleIds(json),
+      name: json['name']?.toString() ?? json['Name']?.toString() ?? '',
+      manufacturer: json['manufacturer']?.toString() ?? json['Manufacturer']?.toString() ?? '',
+      databaseEntryAt: parseDate(json['databaseEntryAt']?.toString() ?? json['DatabaseEntryAt']?.toString()) ?? DateTime.now(),
+      lastEditedAt: parseDate(json['lastEditedAt']?.toString() ?? json['LastEditedAt']?.toString()) ?? DateTime.now(),
+      imageUrl: json['imageUrl']?.toString() ?? json['ImageUrl']?.toString() ?? '',
+      series: json['series']?.toString() ?? json['Series']?.toString() ?? '',
+      capacity: ((json['capacity'] ?? json['Capacity'] ?? 0) as num).toDouble(),
+      driveType: json['driveType']?.toString() ?? json['DriveType']?.toString() ?? '',
+      formFactor: json['formFactor']?.toString() ?? json['FormFactor']?.toString() ?? '',
+      interface: json['interface']?.toString() ?? json['Interface']?.toString() ?? '',
+      hasNVMe: json['hasNVMe'] ?? json['HasNVMe'] ?? false,
+      release: parseDate(json['release']?.toString() ?? json['Release']?.toString()),
+      note: json['note']?.toString() ?? json['Note']?.toString(),
+      lowestPriceOverride: priceOverride,
+      prices: parsePrices(json['prices'] ?? json['Prices']),
+    );
+  }
 }

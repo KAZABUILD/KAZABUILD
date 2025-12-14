@@ -12,9 +12,9 @@ namespace KAZABUILD.Domain.Entities.Users
 
         /// <summary>
         /// The Id of the user leaving the feedback.
+        /// It is set to null only if the user gets deleted.
         /// </summary>
-        [Required]
-        public Guid UserId { get; set; } = default!;
+        public Guid? UserId { get; set; }
 
         /// <summary>
         /// The text of the feedback.

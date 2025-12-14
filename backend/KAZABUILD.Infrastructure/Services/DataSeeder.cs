@@ -9,7 +9,6 @@ using KAZABUILD.Domain.Enums;
 using KAZABUILD.Domain.ValueObjects;
 using KAZABUILD.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
 
 namespace KAZABUILD.Infrastructure.Services
 {
@@ -120,7 +119,7 @@ namespace KAZABUILD.Infrastructure.Services
 
                 var userIds = ids1 ?? [Guid.Empty];
 
-                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains(m.SenderId)).Select(m => m.Id).ToListAsync();
+                List<Guid> messageIds = await _context.Messages.Where(m => userIds.Contains((Guid)m.SenderId!)).Select(m => m.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetMessageFaker(userIds, messageIds);
             }
@@ -135,7 +134,7 @@ namespace KAZABUILD.Infrastructure.Services
                 var componentReviewIds = ids5 ?? [Guid.Empty];
 
                 //Get comments from the same generation batch
-                var commentIds = await _context.UserComments.Where(c => userIds.Contains(c.UserId)).Select(c => c.Id).ToListAsync();
+                var commentIds = await _context.UserComments.Where(c => userIds.Contains((Guid)c.UserId!)).Select(c => c.Id).ToListAsync();
 
                 return (Faker<T>)(object)GetUserCommentFaker(userIds, forumPostIds, buildIds, componentIds, componentReviewIds, commentTargetTypes, commentIds);
             }
@@ -154,9 +153,22 @@ namespace KAZABUILD.Infrastructure.Services
             }
             else if (typeof(T) == typeof(UserPreference))
             {
-                var userIds = ids1 ?? [Guid.Empty];
+                var userPreferenceAnswerIds = ids1 ?? [Guid.Empty];
 
-                return (Faker<T>)(object)GetUserPreferenceFaker(userIds);
+                return (Faker<T>)(object)GetUserPreferenceFaker(userPreferenceAnswerIds);
+            }
+            else if (typeof(T) == typeof(UserPreferenceAnswer))
+            {
+                var userPreferenceIds = ids1 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserPreferenceAnswerFaker(userPreferenceIds);
+            }
+            else if (typeof(T) == typeof(UserAnswer))
+            {
+                var userIds = ids1 ?? [Guid.Empty];
+                var userPreferenceAnswerIds = ids2 ?? [Guid.Empty];
+
+                return (Faker<T>)(object)GetUserAnswerFaker(userIds, userPreferenceAnswerIds);
             }
             else if (typeof(T) == typeof(UserActivity))
             {
@@ -352,7 +364,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(u => u.Description, f => f.Random.Bool() ? $"<p>{f.Lorem.Paragraph()}</p>" : null)
             .RuleFor(u => u.Gender, f => f.PickRandom(genders))
             .RuleFor(u => u.UserRole, f => f.PickRandom(roles))
-            .RuleFor(u => u.ImageUrl, f => "wwwroot/defaultuser.png")
+            .RuleFor(u => u.ImageId, f => null)
             .RuleFor(u => u.Birth, f => f.Date.Past(60, DateTime.UtcNow.AddYears(-18)))
             .RuleFor(u => u.RegisteredAt, f => f.Date.Past(2))
             .RuleFor(u => u.Address, f => null)
@@ -386,7 +398,7 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(n => n.LastEditedAt, (f, n) => f.Date.Between(n.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(n => n.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
-        private static readonly string[] topics = ["Troubleshoot", "Build Advice", "Show Off Your Build", "General Discussion"];
+        private static readonly string[] topics = ["Troubleshooting", "Build Advice", "Show Off Your Build", "General Discussion"];
         private Faker<ForumPost> GetForumPostFaker(List<Guid> creatorIds) => new Faker<ForumPost>("en")
             .RuleFor(p => p.Id, f => Guid.NewGuid())
             .RuleFor(p => p.CreatorId, f => f.PickRandom(creatorIds))
@@ -472,9 +484,34 @@ namespace KAZABUILD.Infrastructure.Services
             .RuleFor(f => f.LastEditedAt, (f, fo) => f.Date.Between(fo.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(f => f.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
 
-        private Faker<UserPreference> GetUserPreferenceFaker(List<Guid> userIds) => new Faker<UserPreference>("en")
+        private Faker<UserPreference> GetUserPreferenceFaker(List<Guid> userPreferenceAnswerIds) => new Faker<UserPreference>("en")
+            .RuleFor(p => p.Id, f => Guid.NewGuid())
+            .RuleFor(p => p.UserPreferenceAnswerId, f => f.PickRandom(userPreferenceAnswerIds))
+            .RuleFor(p => p.Question, f =>
+            {
+                var question = f.Lorem.Sentence(3);
+                return question[..Math.Min(question.Length, 127)] + "?";
+            })
+            .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<UserPreferenceAnswer> GetUserPreferenceAnswerFaker(List<Guid> userPreferenceIds) => new Faker<UserPreferenceAnswer>("en")
+            .RuleFor(p => p.Id, f => Guid.NewGuid())
+            .RuleFor(p => p.UserPreferenceId, f => f.PickRandom(userPreferenceIds))
+            .RuleFor(p => p.Answer, f =>
+            {
+                var answer = f.Lorem.Sentence(1);
+                return answer[..Math.Min(answer.Length, 32)];
+            })
+            .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
+            .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
+            .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
+
+        private Faker<UserAnswer> GetUserAnswerFaker(List<Guid> userIds, List<Guid> userPreferenceAnswerIds) => new Faker<UserAnswer>("en")
             .RuleFor(p => p.Id, f => Guid.NewGuid())
             .RuleFor(p => p.UserId, f => f.PickRandom(userIds))
+            .RuleFor(p => p.UserPreferenceAnswerId, f => f.PickRandom(userPreferenceAnswerIds))
             .RuleFor(p => p.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))
             .RuleFor(p => p.LastEditedAt, (f, p) => f.Date.Between(p.DatabaseEntryAt, DateTime.UtcNow))
             .RuleFor(p => p.Note, f => f.Random.Bool(0.4f) ? f.Lorem.Sentence() : null);
@@ -1012,7 +1049,7 @@ namespace KAZABUILD.Infrastructure.Services
         private static readonly string[] socketTypes = ["AM4", "AM5", "LGA1200", "LGA1700", "TR4", "sTRX4", "SP5"];
         private Faker<CoolerSocketSubComponent> GetCoolerSocketSubComponentFaker() => new Faker<CoolerSocketSubComponent>("en")
             .RuleFor(s => s.Id, _ => Guid.NewGuid())
-            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SCOKET)
+            .RuleFor(s => s.Type, _ => SubComponentType.COOLER_SOCKET)
             .RuleFor(s => s.SocketType, f => f.PickRandom(socketTypes))
             .RuleFor(s => s.Name, (f, s) => $"Socket Compatibility: {s.SocketType}")
             .RuleFor(s => s.DatabaseEntryAt, f => f.Date.Past(2, DateTime.UtcNow))

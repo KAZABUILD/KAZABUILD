@@ -741,3 +741,5 @@ Runner/GeneratedPluginRegistrant.*
 
 ### Custom Exceptions ###
 !backend/KAZABUILD.Application/DTOs/Builds/Build
+
+!backend/KAZABUILD.API/wwwroot/defaults/kaza.png

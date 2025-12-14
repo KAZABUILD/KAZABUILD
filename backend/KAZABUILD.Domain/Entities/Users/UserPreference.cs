@@ -3,23 +3,26 @@ using System.ComponentModel.DataAnnotations;
 namespace KAZABUILD.Domain.Entities.Users
 {
     /// <summary>
-    /// Model storing the answers user selected while answering a questionnaire.
+    /// Model storing a question the user can answer in the questionnaire.
     /// </summary>
     public class UserPreference
     {
-        //User Preferences fields
         [Key]
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Id of the user that set the preferences.
+        /// Id of the answer to the question this Preference is subject to.
+        /// Nullable if it's one of the main questions.
         /// </summary>
-        [Required]
-        public Guid UserId { get; set; } = default!;
+        public Guid? UserPreferenceAnswerId { get; set; }
 
         /// <summary>
-        /// TODO
+        /// Content of the Preference.
         /// </summary>
+        [Required]
+        [StringLength(128, ErrorMessage = "Question cannot be longer than 50 characters!")]
+        [MinLength(8, ErrorMessage = "Question must be at least 8 characters long!")]
+        public string Question { get; set; } = default!;
 
         //Additional database information
         [DataType(DataType.DateTime)]
@@ -32,6 +35,7 @@ namespace KAZABUILD.Domain.Entities.Users
         public string? Note { get; set; }
 
         //Database relationships
-        public User? User { get; set; } = default!;
+        public UserPreferenceAnswer UserPreferenceAnswer { get; set; } = default!;
+        public ICollection<UserPreferenceAnswer> UserPreferenceAnswers { get; set; } = [];
     }
 }

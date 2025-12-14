@@ -54,7 +54,7 @@ namespace KAZABUILD.API.Controllers
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -190,12 +190,12 @@ namespace KAZABUILD.API.Controllers
                     LastEditedAt = DateTime.UtcNow,
                 };
 
-                //Create the email message body with html
-                var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, tokenString);
-
                 //Try to send the confirmation email
                 try
                 {
+                    //Create the email message body with html
+                    var body = EmailBodyHelper.GetTwoFactorEmailBody(user.DisplayName, tokenString);
+
                     //Send the confirmation email
                     await _smtp.SendEmailAsync(user.Email, "KAZABUILD login verification code", body);
                 }
@@ -239,7 +239,7 @@ namespace KAZABUILD.API.Controllers
                     updatedBy = currentUserId
                 });
 
-                //Return a success response with 
+                //Return a success response with
                 return Ok(new { code = "2FA_REQUIRED", userId = user.Id });
             }
 
@@ -286,13 +286,15 @@ namespace KAZABUILD.API.Controllers
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => t.UserId == currentUserId && _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.TokenType == TokenType.LOGIN_2FA && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -331,7 +333,7 @@ namespace KAZABUILD.API.Controllers
             //Get the user the token was for
             var user = await _db.Users.FirstAsync(u => u.Id == token.UserId);
 
-            //Update the token usage time 
+            //Update the token usage time
             token.UsedAt = DateTime.UtcNow;
             token.LastEditedAt = DateTime.UtcNow;
 
@@ -369,7 +371,7 @@ namespace KAZABUILD.API.Controllers
             };
 
             //Return a success response
-            return Ok(response);
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
 
         /// <summary>
@@ -539,7 +541,7 @@ namespace KAZABUILD.API.Controllers
                 Description = dto.Description,
                 Gender = dto.Gender,
                 UserRole = UserRole.UNVERIFIED,
-                ImageUrl = dto.ImageUrl,
+                ImageId = dto.ImageId,
                 Birth = dto.Birth,
                 RegisteredAt = dto.RegisteredAt,
                 Address = dto.Address,
@@ -569,7 +571,7 @@ namespace KAZABUILD.API.Controllers
                 //Return conflict response
                 return BadRequest(new { message = "Unable to determine the IP address" });
             }
-
+            
             //Add the user to the database
             _db.Users.Add(user);
 
@@ -589,19 +591,31 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow,
             };
 
-            //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={tokenString}&userId={user.Id}";
-            //Create the email message body with html
-            var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
-
             //Try to send the confirmation email
             try
             {
+                //Create the confirmation backend call link
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-register?token={tokenString}&userId={user.Id}";
+                //Create the email message body with html
+                var body = EmailBodyHelper.GetAccountConfirmationEmailBody(user.DisplayName, confirmUrl);
+
                 //Send the confirmation email
                 await _smtp.SendEmailAsync(user.Email, "Confirm your KAZABUILD account", body);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.ERROR,
+                    $"Operation Failed - Sending Email Failed: {ex}"
+                );
+
+                //Return an internal error response
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
             }
 
@@ -650,7 +664,9 @@ namespace KAZABUILD.API.Controllers
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.TokenType == TokenType.CONFIRM_REGISTER && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -725,7 +741,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
 
         /// <summary>
@@ -739,7 +755,7 @@ namespace KAZABUILD.API.Controllers
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -786,6 +802,7 @@ namespace KAZABUILD.API.Controllers
             //Generate a new token
             var tokenString = Guid.NewGuid().ToString("N");
 
+            //Create the reset password token
             var token = new UserToken
             {
                 UserId = user.Id,
@@ -798,20 +815,32 @@ namespace KAZABUILD.API.Controllers
                 LastEditedAt = DateTime.UtcNow
             };
 
-            //Create the confirmation backend call link
-            var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={tokenString}&userId={user.Id}";
-
-            //Create the email message body with html
-            var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
-
             //Try to send the confirmation email
             try
             {
+                //Create the confirmation backend call link
+                var confirmUrl = $"{_frontend.Host}/auth/confirm-reset-password?token={tokenString}&userId={user.Id}";
+
+                //Create the email message body with html
+                var body = EmailBodyHelper.GetPasswordResetEmailBody(user.DisplayName, confirmUrl);
+
                 //Send the confirmation email
                 await _smtp.SendEmailAsync(user.Email, "Confirm password reset for your KAZABUILD account", body);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //Log failure
+                await _logger.LogAsync(
+                    currentUserId,
+                    "POST",
+                    "Auth",
+                    ip,
+                    user.Id,
+                    PrivacyLevel.ERROR,
+                    $"Operation Failed - Sending Email Failed: {ex}"
+                );
+
+                //Return an internal error response
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "Failed to send verification email. Please try again later." });
             }
 
@@ -854,13 +883,15 @@ namespace KAZABUILD.API.Controllers
         {
             //Get user id from the request
             var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
+            
             //Get the IP from request
             var ip = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
                 ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
             //Get the correct token
-            var token = await _db.UserTokens.FirstOrDefaultAsync(t => _hasher.Verify(dto.Token, t.TokenHash) && t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null);
+            var token = (await _db.UserTokens
+                .Where(t => t.TokenType == TokenType.RESET_PASSWORD && t.UsedAt == null).ToListAsync())
+                .FirstOrDefault(t => _hasher.Verify(dto.Token, t.TokenHash));
 
             //Check if the token isn't invalid or expired
             if (token == null)
@@ -906,7 +937,7 @@ namespace KAZABUILD.API.Controllers
             //Update the user in the database
             _db.Users.Update(user);
 
-            //Update the token usage time 
+            //Update the token usage time
             token.UsedAt = DateTime.UtcNow;
             token.LastEditedAt = DateTime.UtcNow;
 
@@ -935,7 +966,7 @@ namespace KAZABUILD.API.Controllers
             });
 
             //Return a success response
-            return Redirect($"{_frontend.Host}{token.RedirectUrl}?token={token}&userId={user.Id}");
+            return Redirect($"{_frontend.Host}{token.RedirectUrl}?userId={user.Id}");
         }
     }
 }

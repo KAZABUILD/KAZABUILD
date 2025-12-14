@@ -36,11 +36,18 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
             //Add logging service
             services.AddScoped<ILoggerService, LoggerService>();
 
+            //Add prices api service
+            services.AddHttpClient<IPricesApiService, PricesApiService>();
+            services.AddScoped<PricesApiSettings>();
+
             //Add logs and token cleanup service
             services.AddHostedService<CleanupService>();
 
             //Add Ip blocklist automatic unban service
             services.AddHostedService<UnbanUserService>();
+
+            //Add system metrics service for CPU, Memory, and Network monitoring
+            services.AddHostedService<SystemMetricsService>();
 
             //Add the RabbitMQ queue service
             services.Configure<RabbitMQSettings>(config.GetSection("RabbitMq"));
@@ -50,6 +57,9 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
 
             //Add the cleanup service
             services.AddScoped<IDataSeeder, DataSeeder>();
+
+            //Add cache, can be replaced with an external distribution later
+            services.AddMemoryCache();
 
             //Return the services with all the custom services added
             return services;

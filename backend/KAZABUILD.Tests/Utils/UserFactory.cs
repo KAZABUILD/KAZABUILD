@@ -1,3 +1,4 @@
+using KAZABUILD.Application.DTOs.Users.User;
 using KAZABUILD.Domain.Entities;
 using KAZABUILD.Domain.Entities.Users;
 using KAZABUILD.Domain.Enums;
@@ -38,7 +39,7 @@ namespace KAZABUILD.Tests.Utils
                 Description = "This is a test user description.",
                 Gender = gender ?? "Unknown",
                 UserRole = role ?? UserRole.GUEST,
-                ImageUrl = imageUrl ?? DbTestUtils.RandomUrl(),
+                ImageId = Guid.NewGuid(),
                 Birth = birth ?? DateTime.UtcNow.AddYears(-_random.Next(18, 50)),
                 RegisteredAt = DateTime.UtcNow,
                 Address = address,
@@ -56,12 +57,52 @@ namespace KAZABUILD.Tests.Utils
                 Followers = [],
                 Followed = [],
                 UserTokens = [],
-                UserPreferences = [],
+                UserAnswers = [],
                 UserComments = [],
                 ForumPosts = [],
                 ReceivedMessages = [],
                 SentMessages = [],
                 Notifications = []
+            };
+        }
+
+        public static CreateUserDto GenerateUserCreateDto(
+            string? login = null,
+            string? email = null,
+            string rawPassword = "Password123",
+            string? displayName = null,
+            string? phone = null,
+            string? gender = null,
+            UserRole? role = null,
+            Address? address = null,
+            DateTime? birth = null,
+            ProfileAccessibility? profileAccessibility = null,
+            Theme? theme = null,
+            Language? language = null,
+            string? location = null
+        )
+        {
+            return new CreateUserDto
+            {
+                Login = login ?? DbTestUtils.RandomString(10),
+                Email = email ?? DbTestUtils.RandomEmail(),
+                Password = rawPassword,
+                DisplayName = displayName ?? DbTestUtils.RandomString(12),
+                PhoneNumber = phone ?? DbTestUtils.RandomPhone(),
+                Description = "This is a test user description.",
+                Gender = gender ?? "Unknown",
+                UserRole = role ?? UserRole.GUEST,
+                ImageId = null,
+                Birth = birth ?? DateTime.UtcNow.AddYears(-_random.Next(18, 50)),
+                RegisteredAt = DateTime.UtcNow,
+                Address = address,
+                BannedUntil = null,
+                ProfileAccessibility = profileAccessibility ?? ProfileAccessibility.FOLLOWS,
+                Theme = theme ?? Theme.DARK,
+                Language = language ?? Language.ENGLISH,
+                Location = location ?? "Test Location",
+                ReceiveEmailNotifications = _random.Next(0, 2) == 1,
+                EnableDoubleFactorAuthentication = false
             };
         }
     }

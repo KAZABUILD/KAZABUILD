@@ -29,7 +29,13 @@ namespace KAZABUILD.Application.DTOs.Builds.Build
         /// Determines where on the website the Build is visible
         /// </summary>
         [EnumDataType(typeof(BuildStatus))]
-        public BuildStatus? Status { get; set; } = BuildStatus.DRAFT;
+        public BuildStatus? Status { get; set; }
+
+        /// <summary>
+        /// Date when the user Published the Build.
+        /// </summary>
+        [DataType(DataType.DateTime)]
+        public DateTime? PublishedAt { get; set; }
 
         [StringLength(255, ErrorMessage = "Note cannot be longer than 255 characters!")]
         public string? Note { get; set; }
