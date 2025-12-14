@@ -109,6 +109,9 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   /// Prefills the builder with the provided [components], typically sourced from
   /// an existing community build.
   void loadComponentsFromBuild(List<BaseComponent> components) {
+    // Clear saved build state from cookies first to prevent old components from being restored
+    _cookieStorage?.clearBuildState();
+    
     final updatedState = _initialState
         .map((c) => PcComponent(name: c.name, type: c.type))
         .toList();
@@ -140,6 +143,8 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     }
 
     state = updatedState;
+    // Save the new build state to cookies
+    _saveBuildStateToCookies();
   }
 
   static String _componentDisplayName(ComponentType type) {
@@ -504,6 +509,15 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final isUserLoggedIn = authState.valueOrNull != null;
 
     if (!isUserLoggedIn) {
+      return;
+    }
+
+    // Check if build already has components (e.g., loaded from "Open in Builder")
+    // If so, skip restoration to avoid overwriting
+    final buildState = ref.read(buildProvider);
+    final hasComponents = buildState.any((component) => component.selectedProduct != null);
+    if (hasComponents) {
+      _hasRestoredBuildState = true;
       return;
     }
 
