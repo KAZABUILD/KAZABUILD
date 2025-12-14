@@ -67,14 +67,14 @@ namespace KAZABUILD.Infrastructure.DependencyInjection
                 c.UseAllOfForInheritance();
 
                 //Register detection of polymorphic classes
-                c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<GetBaseComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<BaseComponentResponseDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseSubComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseSubComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<GetBaseSubComponentDto>>();
-                c.SchemaFilter<PolymorphismSchemaFilter<BaseSubComponentResponseDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<GetBaseComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<BaseComponentResponseDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<UpdateBaseSubComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<CreateBaseSubComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<GetBaseSubComponentDto>>();
+                //c.SchemaFilter<PolymorphismSchemaFilter<BaseSubComponentResponseDto>>();
 
             });
 
