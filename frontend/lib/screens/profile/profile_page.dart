@@ -207,13 +207,35 @@ class ProfilePage extends ConsumerWidget {
                       child: Column(
                         children: [
                           // Profile Header Card (other user - show follow button)
-                          _buildProfileCard(context, ref, profileUser, theme, isDark, isOwnProfile: isOwnProfile, currentUser: currentUser),
+                          _buildProfileCard(
+                            context,
+                            ref,
+                            profileUser,
+                            theme,
+                            isDark,
+                            isOwnProfile: isOwnProfile,
+                            currentUser: currentUser,
+                          ),
                           const SizedBox(height: 32),
                           // Builds Section
-                          _buildBuildsSection(context, ref, profileUser.uid, theme, isDark, isOwnProfile: isOwnProfile),
+                          _buildBuildsSection(
+                            context,
+                            ref,
+                            profileUser.uid,
+                            theme,
+                            isDark,
+                            isOwnProfile: isOwnProfile,
+                          ),
                           const SizedBox(height: 40),
                           // Forum Posts Section
-                          _buildForumPostsSection(context, ref, profileUser.uid, theme, isDark, isOwnProfile: isOwnProfile),
+                          _buildForumPostsSection(
+                            context,
+                            ref,
+                            profileUser.uid,
+                            theme,
+                            isDark,
+                            isOwnProfile: isOwnProfile,
+                          ),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -284,7 +306,9 @@ class ProfilePage extends ConsumerWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -298,7 +322,8 @@ class ProfilePage extends ConsumerWidget {
                         imageUrl: user.photoURL,
                         isCircle: true,
                         radius: 66,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         username: user.username,
                         userId: user.uid,
                       ),
@@ -321,7 +346,10 @@ class ProfilePage extends ConsumerWidget {
 
               // Username
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
@@ -342,7 +370,9 @@ class ProfilePage extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -535,7 +565,7 @@ class ProfilePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isOwnProfile 
+                          isOwnProfile
                               ? AppLocalizations.of(context)!.myBuilds
                               : AppLocalizations.of(context)!.builds,
                           style: theme.textTheme.headlineSmall?.copyWith(
@@ -546,7 +576,9 @@ class ProfilePage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          AppLocalizations.of(context)!.buildsCount(builds.length),
+                          AppLocalizations.of(
+                            context,
+                          )!.buildsCount(builds.length),
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -591,7 +623,10 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   itemCount: builds.length,
                   itemBuilder: (context, index) {
-                    return _BuildCard(buildData: builds[index], isOwnProfile: isOwnProfile);
+                    return _BuildCard(
+                      buildData: builds[index],
+                      isOwnProfile: isOwnProfile,
+                    );
                   },
                 ),
             ],
@@ -675,9 +710,7 @@ class ProfilePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isOwnProfile
-                              ? 'My Forum Posts'
-                              : 'Forum Posts',
+                          isOwnProfile ? 'My Forum Posts' : 'Forum Posts',
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
@@ -700,13 +733,18 @@ class ProfilePage extends ConsumerWidget {
 
               // Forum Posts List or Empty State
               if (forumPosts.isEmpty)
-                _buildForumPostsEmptyState(context, theme, isOwnProfile: isOwnProfile)
+                _buildForumPostsEmptyState(
+                  context,
+                  theme,
+                  isOwnProfile: isOwnProfile,
+                )
               else
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: forumPosts.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     return _ForumPostCard(
                       post: forumPosts[index],
@@ -757,7 +795,11 @@ class ProfilePage extends ConsumerWidget {
   }
 
   /// Builds the empty state when no forum posts exist
-  Widget _buildForumPostsEmptyState(BuildContext context, ThemeData theme, {bool isOwnProfile = false}) {
+  Widget _buildForumPostsEmptyState(
+    BuildContext context,
+    ThemeData theme, {
+    bool isOwnProfile = false,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
@@ -826,7 +868,11 @@ class ProfilePage extends ConsumerWidget {
   }
 
   /// Builds the empty state when no builds exist
-  Widget _buildEmptyState(BuildContext context, ThemeData theme, {bool isOwnProfile = false}) {
+  Widget _buildEmptyState(
+    BuildContext context,
+    ThemeData theme, {
+    bool isOwnProfile = false,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80.0, horizontal: 40.0),
@@ -917,7 +963,7 @@ class _FollowButton extends ConsumerWidget {
           onPressed: () async {
             try {
               final authService = ref.read(authServiceProvider);
-              
+
               if (isFollowing) {
                 // Unfollow
                 final followIdValue = await followIdAsync.value;
@@ -926,7 +972,7 @@ class _FollowButton extends ConsumerWidget {
                   // Invalidate providers to refresh
                   ref.invalidate(isFollowingProvider(followedUserId));
                   ref.invalidate(followIdProvider(followedUserId));
-                  
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -951,7 +997,7 @@ class _FollowButton extends ConsumerWidget {
                 // Invalidate providers to refresh
                 ref.invalidate(isFollowingProvider(followedUserId));
                 ref.invalidate(followIdProvider(followedUserId));
-                
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1042,10 +1088,7 @@ class _ActionButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           foregroundColor: theme.colorScheme.error,
-          side: BorderSide(
-            color: theme.colorScheme.error,
-            width: 1.5,
-          ),
+          side: BorderSide(color: theme.colorScheme.error, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -1062,10 +1105,7 @@ class _BuildCard extends ConsumerStatefulWidget {
   final Build buildData;
   final bool isOwnProfile;
 
-  const _BuildCard({
-    required this.buildData,
-    this.isOwnProfile = false,
-  });
+  const _BuildCard({required this.buildData, this.isOwnProfile = false});
 
   @override
   ConsumerState<_BuildCard> createState() => _BuildCardState();
@@ -1102,7 +1142,9 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
             Text(
               'No Image',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.5,
+                ),
               ),
             ),
           ],
@@ -1130,225 +1172,252 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            // 1. Build Image (Fixed Aspect Ratio 16/9)
-            InkWell(
-              onTap: () {
-                context.go('/build/${buildData.id}');
-              },
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _buildPlaceholderImage(context, theme),
-              ),
+          // 1. Build Image (Fixed Aspect Ratio 16/9)
+          InkWell(
+            onTap: () {
+              context.go('/build/${buildData.id}');
+            },
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _buildPlaceholderImage(context, theme),
             ),
+          ),
 
-            // 2. Content Section
-            // Wrapped in Expanded so it fills the remaining space of the card
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Build Name
-                    Text(
-                      buildData.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // 2. Content Section
+          // Wrapped in Expanded so it fills the remaining space of the card
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Build Name
+                  Text(
+                    buildData.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
-                    const SizedBox(height: 8),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
 
-                    // Components Header
-                    if (buildData.components.isNotEmpty)
-                      Text(
-                        'Components',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
+                  // Components Header
+                  if (buildData.components.isNotEmpty)
+                    Text(
+                      'Components',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                       ),
-                    const SizedBox(height: 4),
+                    ),
+                  const SizedBox(height: 4),
 
-                    // Components List Section
-                    // Wrapped in Expanded + SingleChildScrollView to enable scrolling
-                    // and prevent 144px overflow.
-                    Expanded(
-                      child: buildData.components.isEmpty
-                          ? Text(
-                              'No components',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 11,
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Column(
-                                children: [
-                                  // Show either first 5 or all components based on state
-                                  ...(_showAllComponents 
-                                      ? buildData.components 
-                                      : buildData.components.take(5)).map((component) {
-                                    
-                                    final componentName = component.name.isNotEmpty 
-                                        ? component.name 
-                                        : _getComponentTypeShortName(component.type);
-                                        
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            _getComponentIcon(component.type),
-                                            size: 14,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              componentName,
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                                color: theme.colorScheme.onSurface,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                  
-                                  // "Show more" button if there are more than 5 items
-                                  if (buildData.components.length > 5)
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _showAllComponents = !_showAllComponents;
-                                          });
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 4),
-                                          child: Text(
-                                            _showAllComponents
-                                                ? 'Show less'
-                                                : '+ ${buildData.components.length - 5} more',
-                                            style: theme.textTheme.labelSmall?.copyWith(
+                  // Components List Section
+                  // Wrapped in Expanded + SingleChildScrollView to enable scrolling
+                  // and prevent 144px overflow.
+                  Expanded(
+                    child: buildData.components.isEmpty
+                        ? Text(
+                            'No components',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              children: [
+                                // Show either first 5 or all components based on state
+                                ...(_showAllComponents
+                                        ? buildData.components
+                                        : buildData.components.take(5))
+                                    .map((component) {
+                                      final componentName =
+                                          component.name.isNotEmpty
+                                          ? component.name
+                                          : _getComponentTypeShortName(
+                                              component.type,
+                                            );
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _getComponentIcon(component.type),
+                                              size: 14,
                                               color: theme.colorScheme.primary,
-                                              fontWeight: FontWeight.bold,
                                             ),
-                                          ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                componentName,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurface,
+                                                    ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+
+                                // "Show more" button if there are more than 5 items
+                                if (buildData.components.length > 5)
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showAllComponents =
+                                              !_showAllComponents;
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
+                                        child: Text(
+                                          _showAllComponents
+                                              ? 'Show less'
+                                              : '+ ${buildData.components.length - 5} more',
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
+                                  ),
+                              ],
                             ),
-                    ),
-                    const SizedBox(height: 8),
+                          ),
+                  ),
+                  const SizedBox(height: 8),
 
-                    // Footer: Status, Rating, and Edit Button
-                    // This is outside the Expanded list, so it stays at the bottom.
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Rating
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: Colors.amber.shade600,
+                  // Footer: Status, Rating, and Edit Button
+                  // This is outside the Expanded list, so it stays at the bottom.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Rating
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: Colors.amber.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            buildData.averageRating > 0
+                                ? buildData.averageRating.toStringAsFixed(1)
+                                : 'New',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              buildData.averageRating > 0
-                                  ? buildData.averageRating.toStringAsFixed(1)
-                                  : 'New',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
+                          ),
+                        ],
+                      ),
+                      // Status and Edit/Delete Actions
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                          ],
-                        ),
-                        // Status and Edit/Delete Actions
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(buildData.status, theme).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(
                                 buildData.status,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _getStatusColor(buildData.status, theme),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 10,
+                                theme,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              buildData.status,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: _getStatusColor(buildData.status, theme),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                          if (isOwnProfile) ...[
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: () {
+                                context.go('/build/${buildData.id}/edit');
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                            if (isOwnProfile) ...[
-                              const SizedBox(width: 4),
-                              InkWell(
-                                onTap: () {
-                                  context.go('/build/${buildData.id}/edit');
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: Icon(
-                                    Icons.edit_outlined, 
-                                    size: 16,
-                                    color: theme.colorScheme.onSurfaceVariant
-                                  ),
+                            InkWell(
+                              onTap: () =>
+                                  _deleteBuild(context, ref, buildData),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: theme.colorScheme.error,
                                 ),
                               ),
-                              InkWell(
-                                onTap: () => _deleteBuild(context, ref, buildData),
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: Icon(
-                                    Icons.delete_outline, 
-                                    size: 16, 
-                                    color: theme.colorScheme.error
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
   }
 
   /// Handles the deletion logic for a build
-  Future<void> _deleteBuild(BuildContext context, WidgetRef ref, Build buildData) async {
+  Future<void> _deleteBuild(
+    BuildContext context,
+    WidgetRef ref,
+    Build buildData,
+  ) async {
     final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Build'),
-        content: const Text('Are you sure you want to delete this build? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this build? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -1364,15 +1433,15 @@ class _BuildCardState extends ConsumerState<_BuildCard> {
         ],
       ),
     );
-    
+
     if (confirmed == true && context.mounted) {
       try {
         final buildService = ref.read(buildServiceProvider);
         await buildService.deleteBuild(buildData.id);
-        
+
         // Invalidate the provider to refresh the list
         ref.invalidate(userBuildsProvider(buildData.userId));
-        
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -1462,10 +1531,7 @@ class _ForumPostCard extends ConsumerWidget {
   final ForumPost post;
   final bool isOwnProfile;
 
-  const _ForumPostCard({
-    required this.post,
-    this.isOwnProfile = false,
-  });
+  const _ForumPostCard({required this.post, this.isOwnProfile = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1526,14 +1592,18 @@ class _ForumPostCard extends ConsumerWidget {
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('Delete Forum Post'),
-                            content: const Text('Are you sure you want to delete this forum post? This action cannot be undone.'),
+                            content: const Text(
+                              'Are you sure you want to delete this forum post? This action cannot be undone.',
+                            ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 style: TextButton.styleFrom(
                                   foregroundColor: theme.colorScheme.error,
                                 ),
@@ -1542,19 +1612,23 @@ class _ForumPostCard extends ConsumerWidget {
                             ],
                           ),
                         );
-                        
+
                         if (confirmed == true && context.mounted) {
                           try {
                             final forumService = ref.read(forumServiceProvider);
                             await forumService.deleteForumPost(post.id);
-                            
+
                             // Invalidate the provider to refresh the list
-                            ref.invalidate(userForumPostsProvider(post.creatorId));
-                            
+                            ref.invalidate(
+                              userForumPostsProvider(post.creatorId),
+                            );
+
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Forum post deleted successfully'),
+                                  content: Text(
+                                    'Forum post deleted successfully',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -1563,7 +1637,9 @@ class _ForumPostCard extends ConsumerWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Error deleting forum post: ${e.toString()}'),
+                                  content: Text(
+                                    'Error deleting forum post: ${e.toString()}',
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -1571,7 +1647,11 @@ class _ForumPostCard extends ConsumerWidget {
                           }
                         }
                       },
-                      icon: Icon(Icons.delete_outline, size: 18, color: theme.colorScheme.error),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: theme.colorScheme.error,
+                      ),
                       tooltip: 'Delete Forum Post',
                       style: IconButton.styleFrom(
                         padding: const EdgeInsets.all(6),
@@ -1583,7 +1663,7 @@ class _ForumPostCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // Content Preview
               Text(
                 post.content,
@@ -1594,18 +1674,25 @@ class _ForumPostCard extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 12),
-              
+
               // Topic and Replies
               Row(
                 children: [
                   // Topic Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.6),
+                      color: theme.colorScheme.secondaryContainer.withValues(
+                        alpha: 0.6,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
+                        color: theme.colorScheme.secondary.withValues(
+                          alpha: 0.2,
+                        ),
                         width: 1,
                       ),
                     ),
