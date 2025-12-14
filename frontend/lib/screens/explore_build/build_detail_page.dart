@@ -312,10 +312,6 @@ class _BuildDetailPageState extends ConsumerState<BuildDetailPage> {
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Edit'),
           ),
-        OutlinedButton(
-          onPressed: () {},
-          child: Text(AppLocalizations.of(context)!.wishlistBuild),
-        ),
       ];
     }
 
