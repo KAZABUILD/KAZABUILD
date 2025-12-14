@@ -15,6 +15,7 @@ using System.Text.Json.Serialization;
 
 namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
 {
+    [JsonDerivedType(typeof(GetBaseComponentDto), "All")]
     [JsonDerivedType(typeof(GetCaseComponentDto), "Case")]
     [JsonDerivedType(typeof(GetCaseFanComponentDto), "CaseFan")]
     [JsonDerivedType(typeof(GetCoolerComponentDto), "Cooler")]
@@ -25,7 +26,7 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
     [JsonDerivedType(typeof(GetMotherboardComponentDto), "Motherboard")]
     [JsonDerivedType(typeof(GetPowerSupplyComponentDto), "PowerSupply")]
     [JsonDerivedType(typeof(GetStorageComponentDto), "Storage")]
-    public abstract class GetBaseComponentDto
+    public class GetBaseComponentDto
     {
         //Filter By fields
         public List<string>? Name { get; set; }
@@ -39,6 +40,8 @@ namespace KAZABUILD.Application.DTOs.Components.Components.BaseComponent
         public DateTime? ReleaseEnd { get; set; }
 
         public List<Guid>? CompatibleComponentsIds { get; set; }
+
+        public List<Guid>? BuildId { get; set; }
 
         public List<ComponentType>? Type { get; set; }
 

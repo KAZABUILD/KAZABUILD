@@ -1852,6 +1852,10 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
             if (dto.CompatibleComponentsIds != null)
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
@@ -2287,6 +2291,13 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
             }
             ;
 
@@ -2917,6 +2928,10 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
             if (dto.CompatibleComponentsIds != null)
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
@@ -3352,6 +3367,13 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
             }
             ;
 
@@ -3435,6 +3457,10 @@ namespace KAZABUILD.API.Controllers.Components
             {
                 query = query.Where(c => c.Release <= dto.ReleaseEnd);
             }
+            if (dto.BuildId != null)
+            {
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+            }
             if (dto.CompatibleComponentsIds != null)
             {
                 var requiredIds = dto.CompatibleComponentsIds.Distinct().ToList();
@@ -3870,6 +3896,13 @@ namespace KAZABUILD.API.Controllers.Components
 
                         break;
                     }
+                default:
+                    //If returning all component types just apply a general search
+                    if (!string.IsNullOrWhiteSpace(dto.Query))
+                    {
+                        query = query.Search(dto.Query, c => c.Name, c => c.Manufacturer, c => c.Release!, c => c.Type);
+                    }
+                    break;
             }
             ;
 
