@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/api_constants.dart';
 import 'package:frontend/models/auth_provider.dart';
+import 'package:frontend/models/compatibility_map.dart';
 import 'package:frontend/models/component_models.dart';
 
 const int _defaultComponentPageLength = 50;
@@ -1003,39 +1004,52 @@ class ComponentCompatibilityService {
     return result;
   }
 
-  /// Checks if a component is compatible with any of the selected components in the build.
-  /// Returns true if the component is compatible with at least one selected component.
+  /// Checks if a component is compatible with the relevant selected components in the build.
+  /// Only checks against components that the given type needs to be compatible with.
   Future<bool> isCompatibleWithBuild(
     String componentId,
-    List<String> selectedComponentIds,
+    ComponentType componentType,
+    List<BaseComponent> selectedComponents,
   ) async {
-    if (selectedComponentIds.isEmpty)
-      return true; // No selection means all are compatible
+    // Get only the relevant components based on compatibility rules
+    final relevantComponents = CompatibilityRules.getRelevantComponents(
+      componentType,
+      selectedComponents,
+    );
+
+    // If no relevant components, this component is valid
+    if (relevantComponents.isEmpty) return true;
+
+    final relevantIds = relevantComponents.map((c) => c.id).toList();
 
     // Get all compatible IDs for this component
     final compatibleIds = await getCompatibleComponentIds(componentId);
 
-    // Check if any selected component is in the compatible list
-    return selectedComponentIds.any(
-      (selectedId) => compatibleIds.contains(selectedId),
-    );
+    // Check if ALL relevant components are in the compatible list
+    return relevantIds.every((id) => compatibleIds.contains(id));
   }
 
   /// Batch checks compatibility for multiple components with selected components.
-  /// Returns a map of componentId -> isCompatible.
-  /// This is more efficient than checking each component individually.
+  /// Uses compatibility rules to only check relevant component types.
   Future<Map<String, bool>> batchCheckCompatibilityWithBuild(
     List<String> componentIds,
-    List<String> selectedComponentIds,
+    ComponentType componentType,
+    List<BaseComponent> selectedComponents,
   ) async {
-    if (selectedComponentIds.isEmpty) {
-      // If no selection, all components are compatible
+    // Get only the relevant components based on compatibility rules
+    final relevantComponents = CompatibilityRules.getRelevantComponents(
+      componentType,
+      selectedComponents,
+    );
+
+    // If no relevant components, all components are compatible
+    if (relevantComponents.isEmpty) {
       return {for (var id in componentIds) id: true};
     }
 
     if (componentIds.isEmpty) return {};
 
-    // Filter out invalid/empty component IDs
+    final relevantIds = relevantComponents.map((c) => c.id).toSet();
     final validComponentIds = componentIds
         .where((id) => id.isNotEmpty && id.trim().isNotEmpty)
         .toList();
@@ -1048,29 +1062,24 @@ class ComponentCompatibilityService {
     // Process one at a time with delays to be respectful to the server
     for (final componentId in validComponentIds) {
       try {
-        // Validate GUID format before making request
         if (!_isValidGuid(componentId)) {
-          if (kDebugMode) {
-            print('Invalid GUID format for componentId: $componentId');
-          }
           result[componentId] = false;
           continue;
         }
 
         final compatibleIds = await getCompatibleComponentIds(componentId);
-        final isCompatible = selectedComponentIds.any(
-          (selectedId) => compatibleIds.contains(selectedId),
+        // Must be compatible with ALL relevant components
+        final isCompatible = relevantIds.every(
+          (relevantId) => compatibleIds.contains(relevantId),
         );
         result[componentId] = isCompatible;
 
-        // Add delay between requests to avoid rate limiting
         await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
         if (kDebugMode) {
           print('Error checking compatibility for $componentId: $e');
         }
         result[componentId] = false;
-        // Continue with next component even if one fails
       }
     }
 
@@ -1103,18 +1112,20 @@ final compatibleComponentIdsProvider = FutureProvider.autoDispose
 /// Provider that checks if a component is compatible with selected components.
 /// Takes componentId and selectedComponentIds, returns true if compatible.
 final componentCompatibilityCheckProvider = FutureProvider.autoDispose
-    .family<bool, ({String componentId, List<String> selectedIds})>((
+    .family<bool, ({String componentId, ComponentType componentType, List<BaseComponent> selectedComponents})>((
       ref,
       params,
     ) async {
       final service = ref.watch(componentCompatibilityServiceProvider);
 
-      if (params.selectedIds.isEmpty)
+      if (params.selectedComponents.isEmpty) {
         return true; // No selection means compatible
+      }
 
       return await service.isCompatibleWithBuild(
         params.componentId,
-        params.selectedIds,
+        params.componentType,
+        params.selectedComponents,
       );
     });
 
@@ -1124,12 +1135,13 @@ final componentCompatibilityCheckProvider = FutureProvider.autoDispose
 final batchCompatibilityCheckProvider = FutureProvider.autoDispose
     .family<
       Map<String, bool>,
-      ({List<String> componentIds, List<String> selectedIds})
+      ({List<String> componentIds, ComponentType componentType, List<BaseComponent> selectedComponents})
     >((ref, params) async {
       final service = ref.watch(componentCompatibilityServiceProvider);
 
       return await service.batchCheckCompatibilityWithBuild(
         params.componentIds,
-        params.selectedIds,
+        params.componentType,
+        params.selectedComponents,
       );
     });

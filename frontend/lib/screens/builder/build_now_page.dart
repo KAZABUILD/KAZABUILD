@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/models/auth_provider.dart';
 import 'package:frontend/models/build_provider.dart';
+import 'package:frontend/models/compatibility_map.dart';
 import 'package:frontend/models/component_models.dart';
 import 'package:frontend/models/currency_provider.dart';
 import 'package:frontend/models/api_constants.dart';
@@ -36,13 +37,15 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class BuildNotifier extends StateNotifier<List<PcComponent>> {
   final CookieStorageService? _cookieStorage;
   final bool _isUserLoggedIn;
-  
+
   /// Initializes the build with a default set of empty component slots.
   /// Optionally loads saved build state from cookies if user is logged in.
-  BuildNotifier({CookieStorageService? cookieStorage, bool isUserLoggedIn = false}) 
-      : _cookieStorage = cookieStorage,
-        _isUserLoggedIn = isUserLoggedIn,
-        super(_initialState) {
+  BuildNotifier({
+    CookieStorageService? cookieStorage,
+    bool isUserLoggedIn = false,
+  }) : _cookieStorage = cookieStorage,
+       _isUserLoggedIn = isUserLoggedIn,
+       super(_initialState) {
     // Note: We don't load build state here because it's async.
     // Instead, restoreBuildStateFromCookies() will be called from the UI
     // after the notifier is created and ComponentService is available.
@@ -96,7 +99,9 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
 
   /// Resets the build to its initial empty state.
   void clearBuild() {
-    state = _initialState.map((c) => PcComponent(name: c.name, type: c.type)).toList();
+    state = _initialState
+        .map((c) => PcComponent(name: c.name, type: c.type))
+        .toList();
     // Clear saved build state from cookies
     _cookieStorage?.clearBuildState();
   }
@@ -118,7 +123,9 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
         continue;
       }
 
-      final duplicates = updatedState.where((slot) => slot.type == component.type).length;
+      final duplicates = updatedState
+          .where((slot) => slot.type == component.type)
+          .length;
       final displayName = duplicates == 0
           ? _componentDisplayName(component.type)
           : '${_componentDisplayName(component.type)} #${duplicates + 1}';
@@ -164,7 +171,9 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   Future<void> _saveBuildStateToCookies() async {
     final cookieStorage = _cookieStorage;
     if (cookieStorage == null || !_isUserLoggedIn) {
-      debugPrint('⚠️ Build state NOT saved: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn');
+      debugPrint(
+        '⚠️ Build state NOT saved: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn',
+      );
       return;
     }
 
@@ -184,9 +193,13 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
           .toList();
 
       await cookieStorage.saveBuildState(components);
-      debugPrint('✅ Build state saved to cookies: ${components.length} components');
+      debugPrint(
+        '✅ Build state saved to cookies: ${components.length} components',
+      );
       if (components.isNotEmpty) {
-        debugPrint('   Components: ${components.map((c) => c['name']).join(', ')}');
+        debugPrint(
+          '   Components: ${components.map((c) => c['name']).join(', ')}',
+        );
       }
     } catch (e) {
       debugPrint('❌ Error saving build state to cookies: $e');
@@ -198,7 +211,9 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   Future<void> _loadBuildStateFromCookies() async {
     final cookieStorage = _cookieStorage;
     if (cookieStorage == null || !_isUserLoggedIn) {
-      debugPrint('⚠️ Build state NOT loaded: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn');
+      debugPrint(
+        '⚠️ Build state NOT loaded: cookieStorage=${cookieStorage != null}, loggedIn=$_isUserLoggedIn',
+      );
       return;
     }
 
@@ -209,21 +224,27 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
         return;
       }
 
-      debugPrint('✅ Found saved build state: ${savedComponents.length} components');
-      
+      debugPrint(
+        '✅ Found saved build state: ${savedComponents.length} components',
+      );
+
       // We need to fetch component data from API, but we don't have direct access to ComponentService here
       // So we'll store the component IDs and let the UI handle restoration
       // For now, we'll create a method that can be called with ComponentService
       _savedComponentIds = savedComponents
-          .map((c) => {
-                'id': c['id'] as String? ?? '',
-                'type': c['type'] as String? ?? '',
-                'name': c['name'] as String? ?? '',
-              })
+          .map(
+            (c) => {
+              'id': c['id'] as String? ?? '',
+              'type': c['type'] as String? ?? '',
+              'name': c['name'] as String? ?? '',
+            },
+          )
           .where((c) => c['id']!.isNotEmpty)
           .toList();
-      
-      debugPrint('📦 Saved component IDs for restoration: ${_savedComponentIds.length}');
+
+      debugPrint(
+        '📦 Saved component IDs for restoration: ${_savedComponentIds.length}',
+      );
       for (final comp in _savedComponentIds) {
         debugPrint('   - ${comp['name']} (${comp['type']}, ID: ${comp['id']})');
       }
@@ -238,54 +259,66 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   /// Restores build state from saved component IDs.
   /// This should be called with ComponentService to fetch full component data.
   /// First loads saved component IDs from cookies, then fetches full component data and restores.
-  Future<void> restoreBuildStateFromCookies(ComponentService componentService) async {
+  Future<void> restoreBuildStateFromCookies(
+    ComponentService componentService,
+  ) async {
     // First, load saved component IDs from cookies if not already loaded
     if (_savedComponentIds.isEmpty) {
       await _loadBuildStateFromCookies();
     }
-    
+
     if (_savedComponentIds.isEmpty) {
       return;
     }
 
     try {
-      debugPrint('🔄 Restoring build state from ${_savedComponentIds.length} saved components...');
+      debugPrint(
+        '🔄 Restoring build state from ${_savedComponentIds.length} saved components...',
+      );
       final updatedState = List<PcComponent>.from(_initialState);
       int restoredCount = 0;
 
       for (final savedComp in _savedComponentIds) {
         final componentId = (savedComp['id'] as String?) ?? '';
         final componentTypeStr = (savedComp['type'] as String?) ?? '';
-        
+
         if (componentId.isEmpty || componentTypeStr.isEmpty) {
           continue;
         }
 
         try {
           // Fetch full component data from API
-          final component = await componentService.getComponentById(componentId);
-          
+          final component = await componentService.getComponentById(
+            componentId,
+          );
+
           // Find the matching slot
           final componentType = ComponentType.values.firstWhere(
             (type) => type.name == componentTypeStr,
             orElse: () => ComponentType.cpu,
           );
-          
-          final componentIndex = updatedState.indexWhere((c) => c.type == componentType);
+
+          final componentIndex = updatedState.indexWhere(
+            (c) => c.type == componentType,
+          );
           if (componentIndex != -1) {
             updatedState[componentIndex].selectedProduct = component;
             restoredCount++;
             debugPrint('✅ Restored: ${component.name}');
           }
         } catch (e) {
-          debugPrint('⚠️ Failed to restore component ${savedComp['name']} (ID: $componentId): $e');
+          debugPrint(
+            '⚠️ Failed to restore component ${savedComp['name']} (ID: $componentId): $e',
+          );
           // Continue with other components
         }
       }
 
       if (restoredCount > 0) {
         state = updatedState;
-        debugPrint('✅ Build state restored: $restoredCount/${_savedComponentIds.length} components');
+        debugPrint(
+          '✅ Build state restored: $restoredCount/${_savedComponentIds.length} components',
+        );
         // Clear saved IDs after successful restoration
         _savedComponentIds = [];
       } else {
@@ -297,7 +330,12 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
   }
 
   /// Saves the current build to the backend.
-  Future<String> saveBuild(WidgetRef ref, String name, String description, {List<String>? tagIds}) async {
+  Future<String> saveBuild(
+    WidgetRef ref,
+    String name,
+    String description, {
+    List<String>? tagIds,
+  }) async {
     final buildService = ref.read(buildServiceProvider);
     final userId = ref.read(authProvider).valueOrNull?.uid;
 
@@ -310,39 +348,49 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
     final newBuildId = await buildService.createBuild({
       'UserId': userId,
       'Name': name.trim(),
-      'Description': description.trim().isEmpty ? 'No description provided.' : description.trim(),
+      'Description': description.trim().isEmpty
+          ? 'No description provided.'
+          : description.trim(),
       'Status': 'DRAFT',
     });
 
     // 2. Add each selected component to the newly created build in parallel
-    final selectedComponents = state.where((slot) => slot.selectedProduct != null).toList();
-    debugPrint('saveBuild: Found ${selectedComponents.length} selected components in state');
-    
+    final selectedComponents = state
+        .where((slot) => slot.selectedProduct != null)
+        .toList();
+    debugPrint(
+      'saveBuild: Found ${selectedComponents.length} selected components in state',
+    );
+
     if (selectedComponents.isNotEmpty) {
       final componentFutures = selectedComponents.map((componentSlot) async {
         final component = componentSlot.selectedProduct!;
         final componentId = component.id;
-        
-        debugPrint('saveBuild: Processing component ${component.name} (ID: $componentId, Type: ${component.type})');
-        
+
+        debugPrint(
+          'saveBuild: Processing component ${component.name} (ID: $componentId, Type: ${component.type})',
+        );
+
         if (componentId.isEmpty) {
-          debugPrint('saveBuild: ERROR - Component ${component.name} has empty ID! Skipping.');
+          debugPrint(
+            'saveBuild: ERROR - Component ${component.name} has empty ID! Skipping.',
+          );
           return;
         }
-        
+
         try {
-          await buildService.addComponentToBuild(
-            newBuildId,
-            componentId,
-            1,
+          await buildService.addComponentToBuild(newBuildId, componentId, 1);
+          debugPrint(
+            'saveBuild: Successfully added component ${component.name} to build',
           );
-          debugPrint('saveBuild: Successfully added component ${component.name} to build');
         } catch (e) {
-          debugPrint('saveBuild: ERROR adding component ${component.name} to build: $e');
+          debugPrint(
+            'saveBuild: ERROR adding component ${component.name} to build: $e',
+          );
           // Don't throw - continue with other components
         }
       }).toList();
-      
+
       // Wait for all components to be added in parallel
       await Future.wait(componentFutures, eagerError: false);
     }
@@ -360,7 +408,7 @@ class BuildNotifier extends StateNotifier<List<PcComponent>> {
           // Continue with other tags even if one fails
         }
       }).toList();
-      
+
       // Wait for all tags to be added in parallel
       await Future.wait(tagFutures, eagerError: false);
     }
@@ -391,10 +439,10 @@ final buildProvider = StateNotifierProvider<BuildNotifier, List<PcComponent>>((
   // Watch auth state to react to login/logout changes
   final authState = ref.watch(authProvider);
   final isUserLoggedIn = authState.valueOrNull != null;
-  
+
   // Create cookie storage service
   final cookieStorage = CookieStorageService();
-  
+
   return BuildNotifier(
     cookieStorage: cookieStorage,
     isUserLoggedIn: isUserLoggedIn,
@@ -434,7 +482,8 @@ class BuildNowPage extends ConsumerStatefulWidget {
 
 class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
   String? _buildLink; // Build link will be generated after saving a build
   bool _hasRestoredBuildState = false;
 
@@ -450,10 +499,10 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   /// Restores build state from cookies if user is logged in and state hasn't been restored yet
   Future<void> _restoreBuildStateIfNeeded() async {
     if (_hasRestoredBuildState) return;
-    
+
     final authState = ref.read(authProvider);
     final isUserLoggedIn = authState.valueOrNull != null;
-    
+
     if (!isUserLoggedIn) {
       return;
     }
@@ -511,6 +560,61 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       }
       return sum;
     });
+  }
+
+  /// Validates build compatibility based on component-type-specific rules.
+  Future<Map<ComponentType, bool>> _validateBuildCompatibility(
+    List<PcComponent> components,
+    WidgetRef ref,
+  ) async {
+    final selectedComponents = components
+        .where((c) => c.selectedProduct != null)
+        .map((c) => c.selectedProduct!)
+        .toList();
+
+    if (selectedComponents.length < 2) {
+      // Not enough components to check compatibility
+      return {for (var c in components) c.type: true};
+    }
+
+    final compatibilityService = ref.read(
+      componentCompatibilityServiceProvider,
+    );
+    final Map<ComponentType, bool> result = {};
+
+    for (final component in components) {
+      if (component.selectedProduct == null) {
+        result[component.type] = true;
+        continue;
+      }
+
+      final relevantComponents = CompatibilityRules.getRelevantComponents(
+        component.type,
+        selectedComponents
+            .where((c) => c.id != component.selectedProduct!.id)
+            .toList(),
+      );
+
+      if (relevantComponents.isEmpty) {
+        result[component.type] = true;
+        continue;
+      }
+
+      // Check if this component is compatible with all relevant components
+      try {
+        final compatibleIds = await compatibilityService
+            .getCompatibleComponentIds(component.selectedProduct!.id);
+
+        final isCompatible = relevantComponents.every(
+          (relevant) => compatibleIds.contains(relevant.id),
+        );
+        result[component.type] = isCompatible;
+      } catch (e) {
+        result[component.type] = false;
+      }
+    }
+
+    return result;
   }
 
   String _compatibilityStatus(List<PcComponent> components) {
@@ -596,7 +700,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final selectedTagIds = <String>{};
-    
+
     // Use a ValueNotifier to preserve image state outside the dialog
     final selectedImageNotifier = ValueNotifier<XFile?>(null);
     final imagePathNotifier = ValueNotifier<String?>(null);
@@ -616,14 +720,19 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                   children: [
                     TextFormField(
                       controller: nameController,
-                      decoration: InputDecoration(labelText: AppLocalizations.of(context)!.buildName),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? AppLocalizations.of(context)!.pleaseEnterName : null,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.buildName,
+                      ),
+                      validator: (value) => value == null || value.isEmpty
+                          ? AppLocalizations.of(context)!.pleaseEnterName
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: descriptionController,
-                      decoration: InputDecoration(labelText: AppLocalizations.of(context)!.description),
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.description,
+                      ),
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
@@ -640,14 +749,19 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             if (tags.isEmpty) {
                               return Text(
                                 AppLocalizations.of(context)!.noTagsAvailable,
-                                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                                style: const TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.grey,
+                                ),
                               );
                             }
                             return Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: tags.map((tag) {
-                                final isSelected = selectedTagIds.contains(tag.name);
+                                final isSelected = selectedTagIds.contains(
+                                  tag.name,
+                                );
                                 return FilterChip(
                                   label: Text(tag.name),
                                   selected: isSelected,
@@ -665,7 +779,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             );
                           },
                           loading: () => const CircularProgressIndicator(),
-                          error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}'),
+                          error: (error, stack) => Text(
+                            '${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}',
+                          ),
                         );
                       },
                     ),
@@ -706,7 +822,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             FutureBuilder<Uint8List>(
                               future: selectedImage.readAsBytes(),
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return Container(
                                     height: 150,
                                     width: double.infinity,
@@ -714,7 +831,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(color: Colors.grey),
                                     ),
-                                    child: const Center(child: CircularProgressIndicator()),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
                                   );
                                 }
                                 if (snapshot.hasData) {
@@ -789,22 +908,29 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       try {
         final newBuildId = await ref
             .read(buildProvider.notifier)
-            .saveBuild(ref, nameController.text, descriptionController.text, tagIds: selectedTagIds.toList());
+            .saveBuild(
+              ref,
+              nameController.text,
+              descriptionController.text,
+              tagIds: selectedTagIds.toList(),
+            );
 
         // Upload image if one was selected
         final imageFile = selectedImageNotifier.value;
         final imagePathValue = imagePathNotifier.value;
-        
+
         if (imageFile != null) {
           try {
             debugPrint('_showSaveBuildDialog: Uploading image...');
             final dio = ref.read(authProvider.notifier).getDioInstance();
-            
+
             // Check if it's a blob URL - if so, read bytes directly
             MultipartFile filePart;
             if (imagePathValue != null && imagePathValue.startsWith('blob:')) {
               // For blob URLs, read the file bytes directly
-              debugPrint('_showSaveBuildDialog: Image is blob URL, reading bytes...');
+              debugPrint(
+                '_showSaveBuildDialog: Image is blob URL, reading bytes...',
+              );
               final bytes = await imageFile.readAsBytes();
               filePart = MultipartFile.fromBytes(
                 bytes,
@@ -812,18 +938,25 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
               );
             } else if (imagePathValue != null && imagePathValue.isNotEmpty) {
               // For real file paths, use fromFile
-              debugPrint('_showSaveBuildDialog: Image is file path: $imagePathValue');
-              filePart = await MultipartFile.fromFile(imagePathValue, filename: imageFile.name);
+              debugPrint(
+                '_showSaveBuildDialog: Image is file path: $imagePathValue',
+              );
+              filePart = await MultipartFile.fromFile(
+                imagePathValue,
+                filename: imageFile.name,
+              );
             } else {
               // Fallback: read bytes from XFile
-              debugPrint('_showSaveBuildDialog: Reading image bytes from XFile...');
+              debugPrint(
+                '_showSaveBuildDialog: Reading image bytes from XFile...',
+              );
               final bytes = await imageFile.readAsBytes();
               filePart = MultipartFile.fromBytes(
                 bytes,
                 filename: imageFile.name,
               );
             }
-            
+
             final formData = FormData.fromMap({
               'File': filePart,
               'TargetId': newBuildId,
@@ -869,10 +1002,10 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final components = ref.watch(buildProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 950;
-    
+
     // Smooth dark background to match the screenshot better
-    final backgroundColor = theme.brightness == Brightness.dark 
-        ? const Color(0xFF0F0915) 
+    final backgroundColor = theme.brightness == Brightness.dark
+        ? const Color(0xFF0F0915)
         : theme.colorScheme.background;
 
     final selectedCurrency = ref.watch(currencyProvider);
@@ -905,7 +1038,12 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                             shaderCallback: (bounds) => const LinearGradient(
                               colors: [
                                 Color(0xFF00E676), // Bright Green
-                                Color.fromARGB(255, 17, 105, 62), // Dark Green accent
+                                Color.fromARGB(
+                                  255,
+                                  17,
+                                  105,
+                                  62,
+                                ), // Dark Green accent
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -915,138 +1053,160 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
                               style: const TextStyle(
                                 fontSize: 56, // Slightly larger
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white, 
+                                color: Colors.white,
                                 letterSpacing: -1.5,
                                 height: 1.0,
                               ),
                             ),
                           ),
-                    const SizedBox(height: 12),
-                    Text(
-                      AppLocalizations.of(context)!.configurePcBuild,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    _TopBar(
-                      theme: theme,
-                      buildLink: _buildLink,
-                      components: components,
-                      currencyData: currencyData,
-                      estimatedWattage: estimatedWattage,
-                      onNew: _startNewBuild,
-                      onPost: _publishBuild,
-                      isMobile: isMobile,
-                      onShowSnackBar: _showSnackBar,
-                    ),
-                    const SizedBox(height: 24),
-                    _CompatibilityBar(
-                      theme: theme,
-                      statusMessage: _compatibilityStatus(components),
-                    ),
-                     const SizedBox(height: 24),
-                    _PriceAndSaveBar(
-                      theme: theme,
-                      totalPrice: totalPrice,
-                      currencyData: currencyData,
-                      onSave: _showSaveBuildDialog,
-                      onShareToExplore: _publishBuild,
-                      isMobile: isMobile,
-                    ),
-                    const SizedBox(height: 32),
-                    // Clear All Button Section
-                    if (!_isBuildEmpty(components))
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () async {
-                              final bool? shouldClear = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Clear All Components'),
-                                  content: const Text('Are you sure you want to remove all selected components from your build?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Theme.of(context).colorScheme.error,
+                          const SizedBox(height: 12),
+                          Text(
+                            AppLocalizations.of(context)!.configurePcBuild,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          _TopBar(
+                            theme: theme,
+                            buildLink: _buildLink,
+                            components: components,
+                            currencyData: currencyData,
+                            estimatedWattage: estimatedWattage,
+                            onNew: _startNewBuild,
+                            onPost: _publishBuild,
+                            isMobile: isMobile,
+                            onShowSnackBar: _showSnackBar,
+                          ),
+                          const SizedBox(height: 24),
+                          _CompatibilityBar(
+                            theme: theme,
+                            statusMessage: _compatibilityStatus(components),
+                          ),
+                          const SizedBox(height: 24),
+                          _PriceAndSaveBar(
+                            theme: theme,
+                            totalPrice: totalPrice,
+                            currencyData: currencyData,
+                            onSave: _showSaveBuildDialog,
+                            onShareToExplore: _publishBuild,
+                            isMobile: isMobile,
+                          ),
+                          const SizedBox(height: 32),
+                          // Clear All Button Section
+                          if (!_isBuildEmpty(components))
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    final bool?
+                                    shouldClear = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text(
+                                          'Clear All Components',
+                                        ),
+                                        content: const Text(
+                                          'Are you sure you want to remove all selected components from your build?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(
+                                              context,
+                                            ).pop(false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(true),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Theme.of(
+                                                context,
+                                              ).colorScheme.error,
+                                            ),
+                                            child: const Text('Clear All'),
+                                          ),
+                                        ],
                                       ),
-                                      child: const Text('Clear All'),
+                                    );
+
+                                    if (shouldClear == true && mounted) {
+                                      ref
+                                          .read(buildProvider.notifier)
+                                          .clearBuild();
+                                      _showSnackBar(
+                                        message: 'All components cleared',
+                                        backgroundColor: Colors.green,
+                                      );
+                                    }
+                                  },
+                                  icon: Icon(
+                                    Icons.clear_all_rounded,
+                                    size: 18,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  label: Text(
+                                    'Clear All',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.error,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ],
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                  ),
                                 ),
-                              );
-                              
-                              if (shouldClear == true && mounted) {
-                                ref.read(buildProvider.notifier).clearBuild();
-                                _showSnackBar(
-                                  message: 'All components cleared',
-                                  backgroundColor: Colors.green,
-                                );
+                              ],
+                            ),
+                          if (!_isBuildEmpty(components))
+                            const SizedBox(height: 16),
+                          _ComponentTable(
+                            theme: theme,
+                            components: components,
+                            onRemove: (i) => ref
+                                .read(buildProvider.notifier)
+                                .removeComponent(components[i].type),
+                            onAdd: (i) async {
+                              final targetType = components[i].type.name;
+                              final selected = await context
+                                  .push<BaseComponent?>(
+                                    '/parts/$targetType',
+                                    extra: components,
+                                  );
+                              if (selected != null && mounted) {
+                                if (selected.id.isEmpty) {
+                                  _showSnackBar(
+                                    message:
+                                        'Selected component has no ID. Try another.',
+                                    backgroundColor: Colors.red,
+                                  );
+                                  return;
+                                }
+                                ref
+                                    .read(buildProvider.notifier)
+                                    .addComponent(selected);
                               }
                             },
-                            icon: Icon(
-                              Icons.clear_all_rounded,
-                              size: 18,
-                              color: theme.colorScheme.error,
-                            ),
-                            label: Text(
-                              'Clear All',
-                              style: TextStyle(
-                                color: theme.colorScheme.error,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
+                            isMobile: isMobile,
+                            getIcon: _getComponentIcon,
+                            getIconColor: _getComponentIconColor,
                           ),
                         ],
                       ),
-                    if (!_isBuildEmpty(components)) const SizedBox(height: 16),
-                    _ComponentTable(
-                      theme: theme,
-                      components: components,
-                      onRemove: (i) => ref.read(buildProvider.notifier).removeComponent(components[i].type),
-                      onAdd: (i) async {
-                        final targetType = components[i].type.name;
-                        final selected = await context.push<BaseComponent?>(
-                          '/parts/$targetType',
-                          extra: components,
-                        );
-                        if (selected != null && mounted) {
-                          if (selected.id.isEmpty) {
-                            _showSnackBar(
-                              message: 'Selected component has no ID. Try another.',
-                              backgroundColor: Colors.red,
-                            );
-                            return;
-                          }
-                          ref.read(buildProvider.notifier).addComponent(selected);
-                        }
-                      },
-                      isMobile: isMobile,
-                      getIcon: _getComponentIcon,
-                      getIconColor: _getComponentIconColor,
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
-    ],
-  ),
-),
     );
   }
 
@@ -1070,7 +1230,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(AppLocalizations.of(context)!.clearBuild),
           ),
         ],
@@ -1085,18 +1247,20 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   /// Shows a dialog to get build name, description, and image, then saves and publishes it.
   Future<String?> _showPostBuildDialog() async {
     debugPrint('_showPostBuildDialog: Starting dialog');
-    
+
     // Check if widget is mounted before opening dialog
     if (!mounted) {
-      debugPrint('_showPostBuildDialog: Widget not mounted, cannot show dialog');
+      debugPrint(
+        '_showPostBuildDialog: Widget not mounted, cannot show dialog',
+      );
       return null;
     }
-    
+
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final selectedTagIds = <String>{};
-    
+
     // Use a ValueNotifier to preserve image state outside the dialog
     final selectedImageNotifier = ValueNotifier<XFile?>(null);
     final imagePathNotifier = ValueNotifier<String?>(null);
@@ -1107,204 +1271,226 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.postBuild),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: '${AppLocalizations.of(context)!.buildName} *',
-                      hintText: AppLocalizations.of(context)!.enterBuildName,
+            title: Text(AppLocalizations.of(context)!.postBuild),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText:
+                            '${AppLocalizations.of(context)!.buildName} *',
+                        hintText: AppLocalizations.of(context)!.enterBuildName,
+                      ),
+                      validator: (value) => value == null || value.isEmpty
+                          ? AppLocalizations.of(context)!.pleaseEnterName
+                          : null,
                     ),
-                    validator: (value) =>
-                        value == null || value.isEmpty ? AppLocalizations.of(context)!.pleaseEnterName : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: descriptionController,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.description,
-                      hintText: AppLocalizations.of(context)!.describeBuild,
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.description,
+                        hintText: AppLocalizations.of(context)!.describeBuild,
+                      ),
+                      maxLines: 4,
                     ),
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    AppLocalizations.of(context)!.tags,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final tagsAsync = ref.watch(tagsProvider);
-                      return tagsAsync.when(
-                        data: (tags) {
-                          if (tags.isEmpty) {
-                            return Text(
-                              AppLocalizations.of(context)!.noTagsAvailable,
-                              style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
-                            );
-                          }
-                          return Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: tags.map((tag) {
-                              // Store tag name instead of ID for easier matching
-                              final isSelected = selectedTagIds.contains(tag.name);
-                              return FilterChip(
-                                label: Text(tag.name),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  setDialogState(() {
-                                    if (selected) {
-                                      selectedTagIds.add(tag.name);
-                                    } else {
-                                      selectedTagIds.remove(tag.name);
-                                    }
-                                  });
-                                },
+                    const SizedBox(height: 24),
+                    Text(
+                      AppLocalizations.of(context)!.tags,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final tagsAsync = ref.watch(tagsProvider);
+                        return tagsAsync.when(
+                          data: (tags) {
+                            if (tags.isEmpty) {
+                              return Text(
+                                AppLocalizations.of(context)!.noTagsAvailable,
+                                style: const TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.grey,
+                                ),
                               );
-                            }).toList(),
-                          );
-                        },
-                        loading: () => const CircularProgressIndicator(),
-                        error: (error, stack) => Text('${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}'),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Build Image (Optional)',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ValueListenableBuilder<XFile?>(
-                    valueListenable: selectedImageNotifier,
-                    builder: (context, selectedImage, _) {
-                      if (selectedImage == null) {
-                        return OutlinedButton.icon(
-                          onPressed: () async {
-                            debugPrint('Select Image button pressed');
-                            final ImagePicker picker = ImagePicker();
-                            final XFile? image = await picker.pickImage(
-                              source: ImageSource.gallery,
-                              maxWidth: 1920,
-                              maxHeight: 1080,
-                              imageQuality: 90,
-                            );
-                            if (image != null) {
-                              debugPrint('Image selected: ${image.path}');
-                              setDialogState(() {
-                                selectedImageNotifier.value = image;
-                                imagePathNotifier.value = image.path;
-                              });
                             }
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: tags.map((tag) {
+                                // Store tag name instead of ID for easier matching
+                                final isSelected = selectedTagIds.contains(
+                                  tag.name,
+                                );
+                                return FilterChip(
+                                  label: Text(tag.name),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setDialogState(() {
+                                      if (selected) {
+                                        selectedTagIds.add(tag.name);
+                                      } else {
+                                        selectedTagIds.remove(tag.name);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            );
                           },
-                          icon: const Icon(Icons.image),
-                          label: const Text('Select Image'),
-                        );
-                      }
-                      return Column(
-                        children: [
-                          FutureBuilder<Uint8List>(
-                            future: selectedImage.readAsBytes(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Container(
-                            height: 150,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: const Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        if (snapshot.hasData) {
-                          return Container(
-                            height: 150,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.memory(
-                                snapshot.data!,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        }
-                        return Container(
-                          height: 150,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
-                            color: Colors.grey.shade200,
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, stack) => Text(
+                            '${AppLocalizations.of(context)!.errorLoadingTags}: ${getUserFriendlyError(error)}',
                           ),
-                          child: const Icon(Icons.image, size: 50),
                         );
                       },
                     ),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () {
-                              debugPrint('Remove Image button pressed');
-                              setDialogState(() {
-                                selectedImageNotifier.value = null;
-                                imagePathNotifier.value = null;
-                              });
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Build Image (Optional)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ValueListenableBuilder<XFile?>(
+                      valueListenable: selectedImageNotifier,
+                      builder: (context, selectedImage, _) {
+                        if (selectedImage == null) {
+                          return OutlinedButton.icon(
+                            onPressed: () async {
+                              debugPrint('Select Image button pressed');
+                              final ImagePicker picker = ImagePicker();
+                              final XFile? image = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                maxWidth: 1920,
+                                maxHeight: 1080,
+                                imageQuality: 90,
+                              );
+                              if (image != null) {
+                                debugPrint('Image selected: ${image.path}');
+                                setDialogState(() {
+                                  selectedImageNotifier.value = image;
+                                  imagePathNotifier.value = image.path;
+                                });
+                              }
                             },
-                            icon: const Icon(Icons.delete),
-                            label: const Text('Remove Image'),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                            icon: const Icon(Icons.image),
+                            label: const Text('Select Image'),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            FutureBuilder<Uint8List>(
+                              future: selectedImage.readAsBytes(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
+                                if (snapshot.hasData) {
+                                  return Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.memory(
+                                        snapshot.data!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Container(
+                                  height: 150,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey),
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  child: const Icon(Icons.image, size: 50),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                debugPrint('Remove Image button pressed');
+                                setDialogState(() {
+                                  selectedImageNotifier.value = null;
+                                  imagePathNotifier.value = null;
+                                });
+                              },
+                              icon: const Icon(Icons.delete),
+                              label: const Text('Remove Image'),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                debugPrint('Post Build button pressed in dialog');
-                debugPrint('Form key current state: ${formKey.currentState}');
-                if (formKey.currentState!.validate()) {
-                  debugPrint('Form is valid, closing dialog with true');
-                  debugPrint('Build name: ${nameController.text}');
-                  debugPrint('Build description length: ${descriptionController.text.length}');
-                  debugPrint('Selected image: ${selectedImageNotifier.value?.path ?? 'none'}');
-                  Navigator.of(context).pop(true);
-                } else {
-                  debugPrint('Form validation failed - name is empty or invalid');
-                }
-              },
-              child: Text(AppLocalizations.of(context)!.postBuild),
-            ),
-          ],
-        );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  debugPrint('Post Build button pressed in dialog');
+                  debugPrint('Form key current state: ${formKey.currentState}');
+                  if (formKey.currentState!.validate()) {
+                    debugPrint('Form is valid, closing dialog with true');
+                    debugPrint('Build name: ${nameController.text}');
+                    debugPrint(
+                      'Build description length: ${descriptionController.text.length}',
+                    );
+                    debugPrint(
+                      'Selected image: ${selectedImageNotifier.value?.path ?? 'none'}',
+                    );
+                    Navigator.of(context).pop(true);
+                  } else {
+                    debugPrint(
+                      'Form validation failed - name is empty or invalid',
+                    );
+                  }
+                },
+                child: Text(AppLocalizations.of(context)!.postBuild),
+              ),
+            ],
+          );
         },
       ),
     );
 
     // If user cancelled, return early
-    debugPrint('_showPostBuildDialog: Dialog returned: $shouldPost, mounted: $mounted');
+    debugPrint(
+      '_showPostBuildDialog: Dialog returned: $shouldPost, mounted: $mounted',
+    );
     if (shouldPost != true || !mounted) {
-      debugPrint('_showPostBuildDialog: User cancelled or widget not mounted, returning null');
+      debugPrint(
+        '_showPostBuildDialog: User cancelled or widget not mounted, returning null',
+      );
       return null;
     }
     debugPrint('_showPostBuildDialog: Proceeding with build publish');
@@ -1314,22 +1500,33 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     final buildDescription = descriptionController.text.trim();
     final imageFile = selectedImageNotifier.value;
     final imagePathValue = imagePathNotifier.value;
-    
-    debugPrint('_showPostBuildDialog: Stored values - name: "$buildName", description: "${buildDescription.length} chars", image: ${imageFile?.path ?? 'none'}');
+
+    debugPrint(
+      '_showPostBuildDialog: Stored values - name: "$buildName", description: "${buildDescription.length} chars", image: ${imageFile?.path ?? 'none'}',
+    );
 
     // Don't show loading snackbar here - it causes context issues
     // We'll show a success message after publishing or navigate directly
 
     try {
       // 1. Save the build first to get the build ID
-      debugPrint('_showPostBuildDialog: Saving build with name: $buildName, description length: ${buildDescription.length}');
+      debugPrint(
+        '_showPostBuildDialog: Saving build with name: $buildName, description length: ${buildDescription.length}',
+      );
       final newBuildId = await ref
           .read(buildProvider.notifier)
-          .saveBuild(ref, buildName, buildDescription, tagIds: selectedTagIds.toList());
+          .saveBuild(
+            ref,
+            buildName,
+            buildDescription,
+            tagIds: selectedTagIds.toList(),
+          );
       debugPrint('_showPostBuildDialog: Build saved with ID: $newBuildId');
 
       if (!mounted) {
-        debugPrint('_showPostBuildDialog: Widget not mounted after save, returning null');
+        debugPrint(
+          '_showPostBuildDialog: Widget not mounted after save, returning null',
+        );
         return null;
       }
 
@@ -1343,31 +1540,34 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
         try {
           debugPrint('_showPostBuildDialog: Uploading image...');
           final dio = ref.read(authProvider.notifier).getDioInstance();
-          
+
           // Check if it's a blob URL - if so, read bytes directly
           MultipartFile filePart;
           if (imagePathValue != null && imagePathValue.startsWith('blob:')) {
             // For blob URLs, read the file bytes directly
-            debugPrint('_showPostBuildDialog: Image is blob URL, reading bytes...');
-            final bytes = await imageFile.readAsBytes();
-            filePart = MultipartFile.fromBytes(
-              bytes,
-              filename: imageFile.name,
+            debugPrint(
+              '_showPostBuildDialog: Image is blob URL, reading bytes...',
             );
+            final bytes = await imageFile.readAsBytes();
+            filePart = MultipartFile.fromBytes(bytes, filename: imageFile.name);
           } else if (imagePathValue != null && imagePathValue.isNotEmpty) {
             // For real file paths, use fromFile
-            debugPrint('_showPostBuildDialog: Image is file path: $imagePathValue');
-            filePart = await MultipartFile.fromFile(imagePathValue, filename: imageFile.name);
-          } else {
-            // Fallback: read bytes from XFile
-            debugPrint('_showPostBuildDialog: Reading image bytes from XFile...');
-            final bytes = await imageFile.readAsBytes();
-            filePart = MultipartFile.fromBytes(
-              bytes,
+            debugPrint(
+              '_showPostBuildDialog: Image is file path: $imagePathValue',
+            );
+            filePart = await MultipartFile.fromFile(
+              imagePathValue,
               filename: imageFile.name,
             );
+          } else {
+            // Fallback: read bytes from XFile
+            debugPrint(
+              '_showPostBuildDialog: Reading image bytes from XFile...',
+            );
+            final bytes = await imageFile.readAsBytes();
+            filePart = MultipartFile.fromBytes(bytes, filename: imageFile.name);
           }
-          
+
           final formData = FormData.fromMap({
             'File': filePart,
             'TargetId': newBuildId,
@@ -1385,11 +1585,15 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
           // Image upload failure is not critical, build will still be published
         }
       } else {
-        debugPrint('_showPostBuildDialog: No image selected, skipping image upload');
+        debugPrint(
+          '_showPostBuildDialog: No image selected, skipping image upload',
+        );
       }
 
       if (!mounted) {
-        debugPrint('_showPostBuildDialog: Widget not mounted after image upload, returning null');
+        debugPrint(
+          '_showPostBuildDialog: Widget not mounted after image upload, returning null',
+        );
         return null;
       }
 
@@ -1409,7 +1613,9 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
       }
 
       if (!mounted) {
-        debugPrint('_showPostBuildDialog: Widget not mounted after publish, returning null');
+        debugPrint(
+          '_showPostBuildDialog: Widget not mounted after publish, returning null',
+        );
         return null;
       }
 
@@ -1426,14 +1632,14 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     } catch (e, stackTrace) {
       debugPrint('_showPostBuildDialog: Error publishing build: $e');
       debugPrint('_showPostBuildDialog: Stack trace: $stackTrace');
-      
+
       // Show error message to user
       _showSnackBar(
         message: 'Failed to publish build: ${e.toString()}',
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 5),
       );
-      
+
       return null;
     }
   }
@@ -1441,7 +1647,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
   /// Saves and then publishes the build to the Explore page.
   void _publishBuild() async {
     debugPrint('_publishBuild called');
-    
+
     // Check if user is logged in
     final user = ref.read(authProvider).valueOrNull;
     if (user == null) {
@@ -1459,7 +1665,8 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     if (_isBuildEmpty(components)) {
       debugPrint('Build is empty');
       _showSnackBar(
-        message: 'Please add at least one component to your build before posting.',
+        message:
+            'Please add at least one component to your build before posting.',
         backgroundColor: Colors.orange,
       );
       return;
@@ -1470,7 +1677,7 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     debugPrint('Showing post build dialog...');
     final result = await _showPostBuildDialog();
     debugPrint('Post build dialog returned: $result');
-    
+
     // Show success message if build was published successfully
     if (result != null) {
       _showSnackBar(
@@ -1480,7 +1687,6 @@ class _BuildNowPageState extends ConsumerState<BuildNowPage> {
     }
   }
 }
-
 
 /// The top bar of the builder page, containing the build link and action buttons.
 class _TopBar extends StatelessWidget {
@@ -1492,7 +1698,12 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onNew;
   final VoidCallback onPost;
   final bool isMobile;
-  final void Function({required String message, Color? backgroundColor, Duration duration}) onShowSnackBar;
+  final void Function({
+    required String message,
+    Color? backgroundColor,
+    Duration duration,
+  })
+  onShowSnackBar;
 
   const _TopBar({
     required this.theme,
@@ -1525,8 +1736,12 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = theme.brightness == Brightness.dark;
-    final containerColor = isDark ? const Color(0xFF13111A) : Colors.white; // Slightly lighter than bg
-    final borderColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2);
+    final containerColor = isDark
+        ? const Color(0xFF13111A)
+        : Colors.white; // Slightly lighter than bg
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.grey.withValues(alpha: 0.2);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -1534,13 +1749,15 @@ class _TopBar extends StatelessWidget {
         color: containerColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
-        boxShadow: isDark ? [] : [
-           BoxShadow(
-             color: Colors.black.withValues(alpha: 0.05),
-             blurRadius: 10,
-             offset: const Offset(0, 4),
-           ),
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -1553,61 +1770,89 @@ class _TopBar extends StatelessWidget {
                   height: 44,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F0915) : Colors.grey.shade100,
+                    color: isDark
+                        ? const Color(0xFF0F0915)
+                        : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.link_rounded, 
-                        size: 20, 
+                        Icons.link_rounded,
+                        size: 20,
                         color: buildLink != null
-                          ? (isDark ? Colors.grey.shade400 : theme.colorScheme.primary)
-                          : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                            ? (isDark
+                                  ? Colors.grey.shade400
+                                  : theme.colorScheme.primary)
+                            : (isDark
+                                  ? Colors.grey.shade600
+                                  : Colors.grey.shade400),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: GestureDetector(
-                          onTap: buildLink != null ? () {
-                            // Extract build ID from link and navigate to build detail page
-                            final link = buildLink!;
-                            String? buildId;
-                            
-                            // Handle both full URL and relative path formats
-                            if (link.contains('/build/')) {
-                              final parts = link.split('/build/');
-                              if (parts.length > 1) {
-                                buildId = parts[1].split('?').first; // Remove query params if any
-                              }
-                            } else if (link.startsWith('/build/')) {
-                              buildId = link.replaceFirst('/build/', '').split('?').first;
-                            }
-                            
-                            if (buildId != null && buildId.isNotEmpty) {
-                              // Navigate to build detail page
-                              context.go('/build/$buildId');
-                            } else {
-                              // Fallback: try to use the link as-is
-                              onShowSnackBar(message: 'Invalid build link');
-                            }
-                          } : null,
+                          onTap: buildLink != null
+                              ? () {
+                                  // Extract build ID from link and navigate to build detail page
+                                  final link = buildLink!;
+                                  String? buildId;
+
+                                  // Handle both full URL and relative path formats
+                                  if (link.contains('/build/')) {
+                                    final parts = link.split('/build/');
+                                    if (parts.length > 1) {
+                                      buildId = parts[1]
+                                          .split('?')
+                                          .first; // Remove query params if any
+                                    }
+                                  } else if (link.startsWith('/build/')) {
+                                    buildId = link
+                                        .replaceFirst('/build/', '')
+                                        .split('?')
+                                        .first;
+                                  }
+
+                                  if (buildId != null && buildId.isNotEmpty) {
+                                    // Navigate to build detail page
+                                    context.go('/build/$buildId');
+                                  } else {
+                                    // Fallback: try to use the link as-is
+                                    onShowSnackBar(
+                                      message: 'Invalid build link',
+                                    );
+                                  }
+                                }
+                              : null,
                           child: MouseRegion(
-                            cursor: buildLink != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                            cursor: buildLink != null
+                                ? SystemMouseCursors.click
+                                : SystemMouseCursors.basic,
                             child: Text(
                               buildLink ?? 'Save build to generate link',
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: buildLink != null
-                                  ? (isDark ? AppColorsDark.buttonBlue : theme.colorScheme.primary)
-                                  : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                                    ? (isDark
+                                          ? AppColorsDark.buttonBlue
+                                          : theme.colorScheme.primary)
+                                    : (isDark
+                                          ? Colors.grey.shade600
+                                          : Colors.grey.shade400),
                                 fontSize: 14,
-                                fontFamily: 'RobotoMono', // Monospace for link looks techy
-                                fontStyle: buildLink == null ? FontStyle.italic : FontStyle.normal,
-                                decoration: buildLink != null ? TextDecoration.underline : null,
+                                fontFamily:
+                                    'RobotoMono', // Monospace for link looks techy
+                                fontStyle: buildLink == null
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                                decoration: buildLink != null
+                                    ? TextDecoration.underline
+                                    : null,
                                 decorationColor: buildLink != null
-                                  ? (isDark ? AppColorsDark.buttonBlue : theme.colorScheme.primary)
-                                  : null,
+                                    ? (isDark
+                                          ? AppColorsDark.buttonBlue
+                                          : theme.colorScheme.primary)
+                                    : null,
                               ),
                             ),
                           ),
@@ -1618,18 +1863,24 @@ class _TopBar extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
-                          onTap: buildLink != null ? () {
-                            Clipboard.setData(ClipboardData(text: buildLink!));
-                            onShowSnackBar(message: 'Build link copied!');
-                          } : null, // Disable if no link
+                          onTap: buildLink != null
+                              ? () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: buildLink!),
+                                  );
+                                  onShowSnackBar(message: 'Build link copied!');
+                                }
+                              : null, // Disable if no link
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Icon(
-                              Icons.copy_rounded, 
-                              size: 18, 
+                              Icons.copy_rounded,
+                              size: 18,
                               color: buildLink != null
-                                ? (isDark ? Colors.grey.shade400 : theme.colorScheme.primary)
-                                : Colors.grey.shade500, // Disabled color
+                                  ? (isDark
+                                        ? Colors.grey.shade400
+                                        : theme.colorScheme.primary)
+                                  : Colors.grey.shade500, // Disabled color
                             ),
                           ),
                         ),
@@ -1641,18 +1892,35 @@ class _TopBar extends StatelessWidget {
               if (!isMobile) ...[
                 const SizedBox(width: 32),
                 // Markup Section
-                Text('Markup:', style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  'Markup:',
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                _MarkupButton(icon: Icons.code, tooltip: 'Reddit Markup', onTap: () {
-                    Clipboard.setData(ClipboardData(text: _generateRedditMarkup()));
+                _MarkupButton(
+                  icon: Icons.code,
+                  tooltip: 'Reddit Markup',
+                  onTap: () {
+                    Clipboard.setData(
+                      ClipboardData(text: _generateRedditMarkup()),
+                    );
                     onShowSnackBar(message: 'Reddit markup copied!');
-                }),
+                  },
+                ),
                 const SizedBox(width: 8),
-                _MarkupButton(icon: Icons.description_outlined, tooltip: 'Text Markup', onTap: () {
+                _MarkupButton(
+                  icon: Icons.description_outlined,
+                  tooltip: 'Text Markup',
+                  onTap: () {
                     onShowSnackBar(message: 'Text format copied!');
-                }),
+                  },
+                ),
                 const Spacer(),
-                
+
                 // New Build Button (Text Button Style)
                 TextButton.icon(
                   onPressed: onNew,
@@ -1664,18 +1932,27 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 24),
-                
+
                 // Wattage Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColorsDark.buttonGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColorsDark.buttonGreen.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColorsDark.buttonGreen.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bolt_rounded, color: AppColorsDark.buttonGreen, size: 18),
+                      const Icon(
+                        Icons.bolt_rounded,
+                        color: AppColorsDark.buttonGreen,
+                        size: 18,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Est: ${estimatedWattage}W',
@@ -1697,17 +1974,26 @@ class _TopBar extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                 // Wattage Badge Mobile
+                // Wattage Badge Mobile
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColorsDark.buttonGreen.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: AppColorsDark.buttonGreen.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bolt, color: AppColorsDark.buttonGreen, size: 16),
+                      const Icon(
+                        Icons.bolt,
+                        color: AppColorsDark.buttonGreen,
+                        size: 16,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Est: ${estimatedWattage}W',
@@ -1727,8 +2013,8 @@ class _TopBar extends StatelessWidget {
                   style: TextButton.styleFrom(foregroundColor: Colors.white),
                 ),
               ],
-            )
-          ]
+            ),
+          ],
         ],
       ),
     );
@@ -1740,7 +2026,11 @@ class _MarkupButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback onTap;
 
-  const _MarkupButton({required this.icon, required this.tooltip, required this.onTap});
+  const _MarkupButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1766,15 +2056,21 @@ class _CompatibilityBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasIssues = statusMessage.toLowerCase().contains('issues found') && !statusMessage.toLowerCase().contains('no issues');
+    final bool hasIssues =
+        statusMessage.toLowerCase().contains('issues found') &&
+        !statusMessage.toLowerCase().contains('no issues');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: hasIssues ? AppColorsDark.error.withValues(alpha: 0.1) : const Color(0xFF0C4F2A).withValues(alpha: 0.3),
+        color: hasIssues
+            ? AppColorsDark.error.withValues(alpha: 0.1)
+            : const Color(0xFF0C4F2A).withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: hasIssues ? AppColorsDark.error.withValues(alpha: 0.5) : const Color(0xFF0C4F2A),
+          color: hasIssues
+              ? AppColorsDark.error.withValues(alpha: 0.5)
+              : const Color(0xFF0C4F2A),
           width: 1,
         ),
       ),
@@ -1782,7 +2078,9 @@ class _CompatibilityBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            hasIssues ? Icons.cancel_outlined : Icons.check_circle_outline_rounded,
+            hasIssues
+                ? Icons.cancel_outlined
+                : Icons.check_circle_outline_rounded,
             color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
             size: 20,
           ),
@@ -1790,7 +2088,9 @@ class _CompatibilityBar extends StatelessWidget {
           Text(
             statusMessage,
             style: TextStyle(
-              color: hasIssues ? AppColorsDark.error : AppColorsDark.buttonGreen,
+              color: hasIssues
+                  ? AppColorsDark.error
+                  : AppColorsDark.buttonGreen,
               fontWeight: FontWeight.w600,
               fontSize: 14,
               letterSpacing: 0.5,
@@ -1822,13 +2122,17 @@ class _PriceAndSaveBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF13111A) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.grey.withValues(alpha: 0.2),
+        ),
       ),
       child: isMobile
           ? Column(
@@ -1885,7 +2189,9 @@ class _PriceAndSaveBar extends ConsumerWidget {
                           backgroundColor: const Color(0xFF2D2B40),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                           textStyle: const TextStyle(
                             fontWeight: FontWeight.bold,
@@ -1904,7 +2210,9 @@ class _PriceAndSaveBar extends ConsumerWidget {
                           backgroundColor: AppColorsDark.buttonGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                           textStyle: const TextStyle(
                             fontWeight: FontWeight.bold,
@@ -1973,10 +2281,17 @@ class _PriceAndSaveBar extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: onSave,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D2B40), // Softer dark button
+                    backgroundColor: const Color(
+                      0xFF2D2B40,
+                    ), // Softer dark button
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                     textStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
@@ -1991,10 +2306,16 @@ class _PriceAndSaveBar extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: onShareToExplore,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColorsDark.buttonGreen, // Green for share/publish
+                    backgroundColor:
+                        AppColorsDark.buttonGreen, // Green for share/publish
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                     textStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
@@ -2016,7 +2337,6 @@ class _PriceAndSaveBar extends ConsumerWidget {
     );
   }
 }
-
 
 /// The main table widget that lists all component slots in the build.
 class _ComponentTable extends StatelessWidget {
@@ -2057,7 +2377,7 @@ class _ComponentTable extends StatelessWidget {
                 color: isDark ? const Color(0xFF13111A) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected 
+                  color: isSelected
                       ? AppColorsDark.buttonPurple.withValues(alpha: 0.3)
                       : Colors.white.withValues(alpha: 0.05),
                 ),
@@ -2072,7 +2392,9 @@ class _ComponentTable extends StatelessWidget {
                         height: 48,
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E1B29) : Colors.grey.shade100,
+                          color: isDark
+                              ? const Color(0xFF1E1B29)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.05),
@@ -2094,7 +2416,9 @@ class _ComponentTable extends StatelessWidget {
                             Text(
                               component.name,
                               style: TextStyle(
-                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                                color: isDark
+                                    ? Colors.grey.shade300
+                                    : Colors.grey.shade800,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -2129,7 +2453,10 @@ class _ComponentTable extends StatelessWidget {
                             children: [
                               Text(
                                 '${product.manufacturer} • ${_getShortSpec(product)}',
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -2177,16 +2504,29 @@ class _ComponentTable extends StatelessWidget {
                           onTap: () => onAdd(index),
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColorsDark.buttonPurple.withValues(alpha: 0.1),
+                              color: AppColorsDark.buttonPurple.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColorsDark.buttonPurple.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: AppColorsDark.buttonPurple.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.add_rounded, size: 16, color: AppColorsDark.buttonPurple),
+                                const Icon(
+                                  Icons.add_rounded,
+                                  size: 16,
+                                  color: AppColorsDark.buttonPurple,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Add ${component.name}',
@@ -2234,16 +2574,16 @@ class _ComponentTable extends StatelessWidget {
                 child: Text(
                   'SELECTION',
                   style: TextStyle(
-                     color: Colors.grey.shade600,
-                     fontSize: 11,
-                     fontWeight: FontWeight.bold,
-                     letterSpacing: 1.0,
+                    color: Colors.grey.shade600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
                   ),
                 ),
               ),
-               SizedBox(
-                 width: 100,
-                 child: Text(
+              SizedBox(
+                width: 100,
+                child: Text(
                   'PRICE',
                   textAlign: TextAlign.right,
                   style: TextStyle(
@@ -2253,8 +2593,8 @@ class _ComponentTable extends StatelessWidget {
                     letterSpacing: 1.0,
                   ),
                 ),
-               ),
-               const SizedBox(width: 100), // Action Column
+              ),
+              const SizedBox(width: 100), // Action Column
             ],
           ),
         ),
@@ -2268,10 +2608,12 @@ class _ComponentTable extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF13111A) : Colors.white, // Lighter than background
+              color: isDark
+                  ? const Color(0xFF13111A)
+                  : Colors.white, // Lighter than background
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected 
+                color: isSelected
                     ? AppColorsDark.buttonPurple.withValues(alpha: 0.3)
                     : Colors.white.withValues(alpha: 0.05),
               ),
@@ -2288,7 +2630,9 @@ class _ComponentTable extends StatelessWidget {
                         height: 48,
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E1B29) : Colors.grey.shade100,
+                          color: isDark
+                              ? const Color(0xFF1E1B29)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.05),
@@ -2305,8 +2649,10 @@ class _ComponentTable extends StatelessWidget {
                       const SizedBox(width: 16),
                       Text(
                         component.name,
-                         style: TextStyle(
-                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade800,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2314,7 +2660,7 @@ class _ComponentTable extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 // Name and Description Section (Selection Column)
                 Expanded(
                   flex: 4,
@@ -2323,24 +2669,24 @@ class _ComponentTable extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (isSelected && product.imageUrl.isNotEmpty)
-                         Padding(
-                           padding: const EdgeInsets.only(bottom: 8.0),
-                           child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.network(
-                                product.imageUrl,
-                                height: 40,
-                                width: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_,__,___) => const SizedBox(),
-                              ),
-                           ),
-                         ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              product.imageUrl,
+                              height: 40,
+                              width: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const SizedBox(),
+                            ),
+                          ),
+                        ),
                       if (isSelected)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                             Text(
+                            Text(
                               product.name,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
@@ -2350,9 +2696,12 @@ class _ComponentTable extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                             Text(
-                               '${product.manufacturer} • ${_getShortSpec(product)}', 
-                               style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                            Text(
+                              '${product.manufacturer} • ${_getShortSpec(product)}',
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         )
@@ -2361,16 +2710,29 @@ class _ComponentTable extends StatelessWidget {
                           onTap: () => onAdd(index),
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColorsDark.buttonPurple.withValues(alpha: 0.1),
+                              color: AppColorsDark.buttonPurple.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColorsDark.buttonPurple.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: AppColorsDark.buttonPurple.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.add_rounded, size: 16, color: AppColorsDark.buttonPurple),
+                                const Icon(
+                                  Icons.add_rounded,
+                                  size: 16,
+                                  color: AppColorsDark.buttonPurple,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Add ${component.name}',
@@ -2387,21 +2749,23 @@ class _ComponentTable extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 // Price
                 SizedBox(
                   width: 100,
                   child: Text(
-                     isSelected ? '${product.lowestPrice?.toStringAsFixed(2) ?? '-'} PLN' : '-',
-                     textAlign: TextAlign.right,
-                     style: const TextStyle(
-                       color: Color(0xFF4DD0E1), // Cyan accent color
-                       fontWeight: FontWeight.bold,
-                       fontSize: 15,
-                     ),
+                    isSelected
+                        ? '${product.lowestPrice?.toStringAsFixed(2) ?? '-'} PLN'
+                        : '-',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF4DD0E1), // Cyan accent color
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-                
+
                 // Action Buttons
                 SizedBox(
                   width: 100,
@@ -2444,4 +2808,3 @@ class _ComponentTable extends StatelessWidget {
     return product.type.name.toUpperCase();
   }
 }
-

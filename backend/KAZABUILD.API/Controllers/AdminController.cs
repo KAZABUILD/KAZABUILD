@@ -1,6 +1,4 @@
 using KAZABUILD.Application.DTOs.Admin;
-using KAZABUILD.Application.DTOs.Users.User;
-using KAZABUILD.Application.DTOs.Users.UserFollow;
 using KAZABUILD.Application.Interfaces;
 using KAZABUILD.Application.Settings;
 using KAZABUILD.Domain.Entities;
@@ -17,9 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Prometheus;
-using KAZABUILD.Application.DTOs.Components.ComponentPrice;
 
 namespace KAZABUILD.API.Controllers
 {

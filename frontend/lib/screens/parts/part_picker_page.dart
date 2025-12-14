@@ -18,6 +18,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/models/compatibility_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/constants/app_color.dart';
 import 'package:frontend/models/component_provider.dart';
@@ -180,8 +181,15 @@ class _PartPickerPageState extends ConsumerState<PartPickerPage> {
           .toList();
 
       if (selectedProducts.isNotEmpty) {
-        activeFilters['CompatibleComponentsIds'] =
-            selectedProducts.map((p) => p.id).toList();
+        // Only pass IDs of components that this type needs to be compatible with
+        final relevantIds = CompatibilityRules.getRelevantComponentIds(
+          widget.componentType,
+          selectedProducts,
+        );
+        
+        if (relevantIds.isNotEmpty) {
+          activeFilters['CompatibleComponentsIds'] = relevantIds;
+        }
       }
     }
     return activeFilters;
