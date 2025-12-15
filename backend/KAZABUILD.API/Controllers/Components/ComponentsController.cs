@@ -1862,7 +1862,7 @@ namespace KAZABUILD.API.Controllers.Components
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.BuildId)));
             }
             if (dto.CompatibleComponentsIds != null)
             {
@@ -2946,7 +2946,7 @@ namespace KAZABUILD.API.Controllers.Components
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.BuildId)));
             }
             if (dto.CompatibleComponentsIds != null)
             {
@@ -3483,7 +3483,7 @@ namespace KAZABUILD.API.Controllers.Components
             }
             if (dto.BuildId != null)
             {
-                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.Id)));
+                query = query.Where(c => c.Builds.Any(b => dto.BuildId.Contains(b.BuildId)));
             }
             if (dto.CompatibleComponentsIds != null)
             {
