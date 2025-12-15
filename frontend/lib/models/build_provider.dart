@@ -20,7 +20,7 @@ class BuildService {
   BuildService(this._dio);
 
   /// Fetches BuildComponents for a list of build IDs.
-  /// 
+  ///
   /// optimization: This uses cache to avoid re-fetching, and bulk-fetches
   /// missing components in a single API call instead of one-by-one.
   Future<Map<String, List<Map<String, dynamic>>>> getBuildComponents(
@@ -29,55 +29,67 @@ class BuildService {
   }) async {
     try {
       if (buildIds.isEmpty) return {};
-      
+
       // 1. Get the mapping between Builds and Components
-      final response = await _dio.post('$apiBaseUrl/BuildComponents/get', data: {
-        'BuildId': buildIds,
-        'Paging': false,
-      });
-      
-      final List<dynamic> buildComponentsJson = response.data as List<dynamic>? ?? [];
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildComponents/get',
+        data: {'BuildId': buildIds, 'Paging': false},
+      );
+
+      final List<dynamic> buildComponentsJson =
+          response.data as List<dynamic>? ?? [];
       if (buildComponentsJson.isEmpty) return {};
-      
-      // 2. Extract all unique component IDs
+
+      // 2. Extract all unique component IDs and build mappings
       final Set<String> componentIds = {};
       final Map<String, List<String>> buildIdToComponentIds = {};
-      
+
       for (var bcJson in buildComponentsJson) {
         if (bcJson is Map<String, dynamic>) {
-          final buildId = (bcJson['buildId'] ?? bcJson['BuildId'] ?? '').toString();
-          final componentId = (bcJson['componentId'] ?? bcJson['ComponentId'] ?? '').toString();
-          
+          final buildId = (bcJson['buildId'] ?? bcJson['BuildId'] ?? '')
+              .toString();
+          final componentId =
+              (bcJson['componentId'] ?? bcJson['ComponentId'] ?? '').toString();
+
           if (buildId.isNotEmpty && componentId.isNotEmpty) {
             componentIds.add(componentId);
-            buildIdToComponentIds.putIfAbsent(buildId, () => []).add(componentId);
+            buildIdToComponentIds
+                .putIfAbsent(buildId, () => [])
+                .add(componentId);
           }
         }
       }
-      
+
       if (componentIds.isEmpty) return {};
-      
+
       // 3. Check Cache
-      final Map<String, Map<String, dynamic>> componentMap = cache != null ? Map.from(cache) : {};
-      
-      // Filter out components that are already in the cache
-      final componentIdsToFetch = componentIds.where((id) => !componentMap.containsKey(id)).toList();
-      
-      if (componentIdsToFetch.isEmpty) {
+      final Map<String, Map<String, dynamic>> componentMap = cache != null
+          ? Map.from(cache)
+          : {};
+
+      // Check if all components are already cached
+      final uncachedComponentIds = componentIds
+          .where((id) => !componentMap.containsKey(id))
+          .toSet();
+
+      if (uncachedComponentIds.isEmpty) {
         // All components are in cache, return immediately
         return _groupComponentsByBuildId(buildIdToComponentIds, componentMap);
       }
-      
-      // 4. Bulk Fetch Missing Components
-      // Instead of looping with GET (one by one), we use POST to fetch all at once.
-      try {
-        final componentsResponse = await _dio.post('$apiBaseUrl/Components/get', data: {
-          r'$type': 'All',
-          'Id': componentIdsToFetch, // Sending all IDs at once
-          'Paging': false,
-        });
 
-        final List<dynamic> fetchedComponents = componentsResponse.data as List<dynamic>? ?? [];
+      // 4. Fetch components using BuildId filter
+      try {
+        final componentsResponse = await _dio.post(
+          '$apiBaseUrl/Components/get',
+          data: {
+            r'$type': 'All',
+            'BuildId': buildIds.map((id) => id).toList(),
+            'Paging': false,
+          },
+        );
+
+        final List<dynamic> fetchedComponents =
+            componentsResponse.data as List<dynamic>? ?? [];
 
         for (var comp in fetchedComponents) {
           if (comp is Map<String, dynamic>) {
@@ -88,13 +100,11 @@ class BuildService {
           }
         }
       } catch (e) {
-        debugPrint('Error bulk fetching components: $e');
-        // Fallback: If bulk fetch fails, you might want to try smaller batches or individual fetch here,
-        // but typically bulk fetch is the standard way.
+        debugPrint('Error fetching components by BuildId: $e');
       }
-      
+
       if (componentMap.isEmpty) return {};
-      
+
       // 5. Group components by buildId
       return _groupComponentsByBuildId(buildIdToComponentIds, componentMap);
     } catch (e) {
@@ -112,12 +122,12 @@ class BuildService {
     for (var entry in buildIdToComponentIds.entries) {
       final buildId = entry.key;
       final compIds = entry.value;
-      
+
       final components = compIds
           .where((compId) => componentMap.containsKey(compId))
           .map((compId) => componentMap[compId]!)
           .toList();
-      
+
       if (components.isNotEmpty) {
         componentsByBuildId[buildId] = components;
       }
@@ -129,31 +139,36 @@ class BuildService {
   Future<Map<String, String?>> getBuildImages(List<String> buildIds) async {
     try {
       if (buildIds.isEmpty) return {};
-      
-      final response = await _dio.post('$apiBaseUrl/Images/get', data: {
-        'BuildId': buildIds,
-        'LocationType': ['BUILD'],
-        'Paging': false,
-      });
-      
+
+      final response = await _dio.post(
+        '$apiBaseUrl/Images/get',
+        data: {
+          'BuildId': buildIds,
+          'LocationType': ['BUILD'],
+          'Paging': false,
+        },
+      );
+
       final List<dynamic> imagesJson = response.data as List<dynamic>? ?? [];
       final Map<String, String?> imageUrlsByBuildId = {};
-      
+
       for (var imgJson in imagesJson) {
         if (imgJson is Map<String, dynamic>) {
-          final targetId = (imgJson['targetId'] ?? imgJson['TargetId'] ?? '').toString();
-          
+          final targetId = (imgJson['targetId'] ?? imgJson['TargetId'] ?? '')
+              .toString();
+
           if (targetId.isNotEmpty) {
             // Get image ID for download endpoint
             final imageId = (imgJson['id'] ?? imgJson['Id'] ?? '').toString();
             if (imageId.isNotEmpty) {
               // Backend serves images via /Images/download/{id} endpoint
-              imageUrlsByBuildId[targetId] = '$apiBaseUrl/Images/download/$imageId';
+              imageUrlsByBuildId[targetId] =
+                  '$apiBaseUrl/Images/download/$imageId';
             }
           }
         }
       }
-      
+
       return imageUrlsByBuildId;
     } catch (e) {
       return {};
@@ -162,34 +177,38 @@ class BuildService {
 
   /// Fetches builds from the backend based on a given filter map.
   /// [skipRatings] if true, skips fetching ratings to reduce API calls (useful for list views).
-  Future<List<Build>> getBuilds(Map<String, dynamic> filter, {String? currentUserId, bool skipRatings = false}) async {
+  Future<List<Build>> getBuilds(
+    Map<String, dynamic> filter, {
+    String? currentUserId,
+    bool skipRatings = false,
+  }) async {
     try {
       final response = await _dio.post('$apiBaseUrl/Builds/get', data: filter);
       final List<dynamic> buildsJson = response.data as List<dynamic>? ?? [];
-      
+
       // Extract build IDs
       final buildIds = buildsJson
           .where((json) => json is Map<String, dynamic>)
           .map((json) => (json['id'] ?? json['Id'] ?? '').toString())
           .where((id) => id.isNotEmpty)
           .toList();
-      
+
       if (buildIds.isEmpty) {
         return [];
       }
-      
+
       // Fetch images and ratings in parallel
       Map<String, String?> imageUrlsByBuildId = {};
       Map<String, int> ratingsCountByBuildId = {};
       Map<String, double?> averageRatingByBuildId = {};
       Map<String, double?> userRatingByBuildId = {};
-      
+
       try {
         imageUrlsByBuildId = await getBuildImages(buildIds);
       } catch (e) {
         // Continue even if images fail
       }
-      
+
       // Fetch ratings logic
       if (!skipRatings) {
         // Optimization: Fetching ratings in parallel
@@ -213,34 +232,31 @@ class BuildService {
             };
           }
         });
-        
+
         final ratingResults = await Future.wait(ratingFutures);
         for (var result in ratingResults) {
           final buildId = result['buildId'] as String;
           ratingsCountByBuildId[buildId] = result['ratingsCount'] as int;
           averageRatingByBuildId[buildId] = result['averageRating'] as double?;
         }
-        
+
         // Fetch user ratings if currentUserId is provided
         if (currentUserId != null && currentUserId.isNotEmpty) {
-          // This part fetches user specific ratings. 
+          // This part fetches user specific ratings.
           // Note: If you have a bulk endpoint for interactions (e.g. /BuildInteractions/get with multiple BuildIds),
           // it would be better to use that instead of this loop.
           final userRatingFutures = buildIds.map((buildId) async {
             try {
-              final userRating = await _getUserRatingForBuild(buildId, currentUserId);
-              return {
-                'buildId': buildId,
-                'userRating': userRating,
-              };
+              final userRating = await _getUserRatingForBuild(
+                buildId,
+                currentUserId,
+              );
+              return {'buildId': buildId, 'userRating': userRating};
             } catch (e) {
-              return {
-                'buildId': buildId,
-                'userRating': null,
-              };
+              return {'buildId': buildId, 'userRating': null};
             }
           });
-          
+
           final userRatingResults = await Future.wait(userRatingFutures);
           for (var result in userRatingResults) {
             final buildId = result['buildId'] as String;
@@ -254,24 +270,24 @@ class BuildService {
           averageRatingByBuildId[buildId] = 0.0;
         }
       }
-      
+
       // Assemble the final Build objects
       for (var json in buildsJson) {
         if (json is Map<String, dynamic>) {
           final buildId = (json['id'] ?? json['Id'] ?? '').toString();
-          
+
           if (imageUrlsByBuildId.containsKey(buildId)) {
             json['imageUrl'] = imageUrlsByBuildId[buildId];
             json['ImageUrl'] = imageUrlsByBuildId[buildId];
           }
-          
+
           final ratingsCount = ratingsCountByBuildId[buildId] ?? 0;
           final averageRating = averageRatingByBuildId[buildId] ?? 0.0;
           json['ratingsCount'] = ratingsCount;
           json['RatingsCount'] = ratingsCount;
           json['averageRating'] = averageRating;
           json['AverageRating'] = averageRating;
-          
+
           if (userRatingByBuildId.containsKey(buildId)) {
             final userRating = userRatingByBuildId[buildId];
             if (userRating != null && userRating > 0) {
@@ -281,7 +297,7 @@ class BuildService {
           }
         }
       }
-      
+
       return buildsJson.map((json) => Build.fromJson(json)).toList();
     } catch (e) {
       rethrow;
@@ -307,7 +323,7 @@ class BuildService {
       final imageUrlsByBuildId = await imagesFuture;
       final tagsByBuildId = await tagsFuture;
       final ratingsCount = await ratingsCountFuture;
-      
+
       double? averageRatingRaw;
       if (ratingsCount > 0) {
         averageRatingRaw = await _getBuildAverageRating(buildId);
@@ -340,65 +356,72 @@ class BuildService {
         buildJson['userRating'] = userRatingRaw;
         buildJson['UserRating'] = userRatingRaw;
       }
-      
+
       return Build.fromJson(buildJson);
     } catch (e) {
       rethrow;
     }
   }
-  
+
   /// Helper method to fetch tags for builds
-  Future<Map<String, List<String>>> _fetchBuildTags(List<String> buildIds) async {
+  Future<Map<String, List<String>>> _fetchBuildTags(
+    List<String> buildIds,
+  ) async {
     final Map<String, List<String>> tagsByBuildId = {};
-    
+
     try {
       if (buildIds.isEmpty) return tagsByBuildId;
-      
+
       // 1. Get BuildTags
-      final buildTagsResponse = await _dio.post('$apiBaseUrl/BuildTags/get', data: {
-        'buildId': buildIds,
-        'paging': false,
-      });
-      
-      final List<dynamic> buildTagsJson = buildTagsResponse.data as List<dynamic>? ?? [];
-      
+      final buildTagsResponse = await _dio.post(
+        '$apiBaseUrl/BuildTags/get',
+        data: {'buildId': buildIds, 'paging': false},
+      );
+
+      final List<dynamic> buildTagsJson =
+          buildTagsResponse.data as List<dynamic>? ?? [];
+
       final Set<String> uniqueTagIds = {};
       final Map<String, List<String>> tagIdsByBuildId = {};
-      
+
       for (var btJson in buildTagsJson) {
         if (btJson is Map<String, dynamic>) {
-          final buildId = (btJson['buildId'] ?? btJson['BuildId'] ?? '').toString();
+          final buildId = (btJson['buildId'] ?? btJson['BuildId'] ?? '')
+              .toString();
           final tagId = (btJson['tagId'] ?? btJson['TagId'] ?? '').toString();
-          
+
           if (buildId.isNotEmpty && tagId.isNotEmpty) {
             uniqueTagIds.add(tagId);
             tagIdsByBuildId.putIfAbsent(buildId, () => []).add(tagId);
           }
         }
       }
-      
+
       // 2. Fetch Tag Names (Bulk)
       if (uniqueTagIds.isNotEmpty) {
         // Fetch ALL tags. Since tags are usually small in number, this is efficient.
         // Alternatively, use 'id': uniqueTagIds.toList() if the backend supports filtering by list of IDs.
-        final tagsResponse = await _dio.post('$apiBaseUrl/Tags/get', data: {
-          'paging': false,
-        });
-        final List<dynamic> allTagsJson = tagsResponse.data as List<dynamic>? ?? [];
-        
+        final tagsResponse = await _dio.post(
+          '$apiBaseUrl/Tags/get',
+          data: {'paging': false},
+        );
+        final List<dynamic> allTagsJson =
+            tagsResponse.data as List<dynamic>? ?? [];
+
         final Map<String, String> tagNameMap = {};
-        
+
         for (var tagJson in allTagsJson) {
           if (tagJson is Map<String, dynamic>) {
             final tagId = (tagJson['id'] ?? tagJson['Id'] ?? '').toString();
-            final tagName = (tagJson['name'] ?? tagJson['Name'] ?? '').toString();
-            
+            final tagName = (tagJson['name'] ?? tagJson['Name'] ?? '')
+                .toString();
+
             if (tagId.isNotEmpty && tagName.isNotEmpty) {
               tagNameMap[tagId] = tagName;
             }
           }
         }
-        
+
         // Map build IDs to tag names
         for (var entry in tagIdsByBuildId.entries) {
           final buildId = entry.key;
@@ -408,7 +431,7 @@ class BuildService {
               .where((name) => name != null && name.isNotEmpty)
               .cast<String>()
               .toList();
-          
+
           if (tagNames.isNotEmpty) {
             tagsByBuildId[buildId] = tagNames;
           }
@@ -417,18 +440,21 @@ class BuildService {
     } catch (e) {
       debugPrint('Error fetching build tags: $e');
     }
-    
+
     return tagsByBuildId;
   }
 
   /// Retrieves the total number of ratings for a build.
   Future<int> _getBuildRatingsCount(String buildId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get-count', data: {
-        'BuildId': [buildId],
-        'RatingStart': 1,
-        'Paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildInteractions/get-count',
+        data: {
+          'BuildId': [buildId],
+          'RatingStart': 1,
+          'Paging': false,
+        },
+      );
       final data = response.data;
       if (data is int) return data;
       if (data is num) return data.toInt();
@@ -442,11 +468,14 @@ class BuildService {
   /// Retrieves the average rating (0-100 scale) for a build.
   Future<double?> _getBuildAverageRating(String buildId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get-average-rating', data: {
-        'BuildId': [buildId],
-        'RatingStart': 1,
-        'Paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildInteractions/get-average-rating',
+        data: {
+          'BuildId': [buildId],
+          'RatingStart': 1,
+          'Paging': false,
+        },
+      );
       final data = response.data;
       if (data is num) return data.toDouble();
       if (data is String) return double.tryParse(data);
@@ -459,11 +488,14 @@ class BuildService {
   /// Retrieves the current user's rating for a specific build.
   Future<double?> _getUserRatingForBuild(String buildId, String userId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get', data: {
-        'BuildId': [buildId],
-        'UserId': [userId],
-        'Paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildInteractions/get',
+        data: {
+          'BuildId': [buildId],
+          'UserId': [userId],
+          'Paging': false,
+        },
+      );
       final List<dynamic> interactions = response.data as List<dynamic>? ?? [];
       if (interactions.isEmpty) return null;
       final interaction = interactions.first;
@@ -484,9 +516,13 @@ class BuildService {
   /// Creates a new build on the backend and returns its ID.
   Future<String> createBuild(Map<String, dynamic> buildData) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/Builds/add', data: buildData);
-      
-      if (response.data is Map<String, dynamic> && response.data.containsKey('id')) {
+      final response = await _dio.post(
+        '$apiBaseUrl/Builds/add',
+        data: buildData,
+      );
+
+      if (response.data is Map<String, dynamic> &&
+          response.data.containsKey('id')) {
         return response.data['id'];
       } else {
         throw Exception('Failed to create build: ID not found in response.');
@@ -515,13 +551,20 @@ class BuildService {
   }
 
   /// Adds a component to a build.
-  Future<void> addComponentToBuild(String buildId, String componentId, int quantity) async {
+  Future<void> addComponentToBuild(
+    String buildId,
+    String componentId,
+    int quantity,
+  ) async {
     try {
-      await _dio.post('$apiBaseUrl/BuildComponents/add', data: {
-        'BuildId': buildId,
-        'ComponentId': componentId,
-        'Quantity': quantity
-      });
+      await _dio.post(
+        '$apiBaseUrl/BuildComponents/add',
+        data: {
+          'BuildId': buildId,
+          'ComponentId': componentId,
+          'Quantity': quantity,
+        },
+      );
     } catch (e) {
       rethrow;
     }
@@ -537,13 +580,19 @@ class BuildService {
   }
 
   /// Gets BuildComponent IDs for a build (used for finding IDs to delete).
-  Future<List<Map<String, dynamic>>> getBuildComponentIds(String buildId) async {
+  Future<List<Map<String, dynamic>>> getBuildComponentIds(
+    String buildId,
+  ) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildComponents/get', data: {
-        'BuildId': [buildId],
-        'Paging': false,
-      });
-      final List<dynamic> buildComponentsJson = response.data as List<dynamic>? ?? [];
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildComponents/get',
+        data: {
+          'BuildId': [buildId],
+          'Paging': false,
+        },
+      );
+      final List<dynamic> buildComponentsJson =
+          response.data as List<dynamic>? ?? [];
       return buildComponentsJson
           .where((json) => json is Map<String, dynamic>)
           .map((json) => json as Map<String, dynamic>)
@@ -556,14 +605,18 @@ class BuildService {
   /// Gets a BuildInteraction by userId and buildId.
   Future<String?> getBuildInteractionId(String buildId, String userId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildInteractions/get', data: {
-        'UserId': [userId],
-        'BuildId': [buildId],
-        'Paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildInteractions/get',
+        data: {
+          'UserId': [userId],
+          'BuildId': [buildId],
+          'Paging': false,
+        },
+      );
       if (response.data is List && (response.data as List).isNotEmpty) {
         final interaction = (response.data as List).first;
-        if (interaction is Map<String, dynamic> && interaction.containsKey('id')) {
+        if (interaction is Map<String, dynamic> &&
+            interaction.containsKey('id')) {
           return interaction['id'];
         }
       }
@@ -574,14 +627,20 @@ class BuildService {
   }
 
   /// Updates an existing BuildInteraction rating.
-  Future<Map<String, dynamic>> updateBuildInteractionRating(String interactionId, double rating) async {
+  Future<Map<String, dynamic>> updateBuildInteractionRating(
+    String interactionId,
+    double rating,
+  ) async {
     try {
       final scaled = (rating * 20).round(); // Scale 0-5 to 0-100
-      final response = await _dio.put('$apiBaseUrl/BuildInteractions/$interactionId', data: {
-        'IsWishlisted': null,
-        'IsLiked': rating >= 3.0 && rating > 0, 
-        'Rating': scaled,
-      });
+      final response = await _dio.put(
+        '$apiBaseUrl/BuildInteractions/$interactionId',
+        data: {
+          'IsWishlisted': null,
+          'IsLiked': rating >= 3.0 && rating > 0,
+          'Rating': scaled,
+        },
+      );
       return (response.data is Map<String, dynamic>)
           ? response.data as Map<String, dynamic>
           : <String, dynamic>{};
@@ -591,21 +650,28 @@ class BuildService {
   }
 
   /// Submits a rating for a build. Handles both create and update.
-  Future<Map<String, dynamic>> rateBuild(String buildId, double rating, String userId) async {
+  Future<Map<String, dynamic>> rateBuild(
+    String buildId,
+    double rating,
+    String userId,
+  ) async {
     try {
       final interactionId = await getBuildInteractionId(buildId, userId);
-      
+
       if (interactionId != null) {
         return await updateBuildInteractionRating(interactionId, rating);
       } else {
         final scaled = (rating * 20).round();
-        final response = await _dio.post('$apiBaseUrl/BuildInteractions/add', data: {
-          'UserId': userId,
-          'BuildId': buildId,
-          'IsWishlisted': false,
-          'IsLiked': rating >= 3.0 && rating > 0,
-          'Rating': scaled,
-        });
+        final response = await _dio.post(
+          '$apiBaseUrl/BuildInteractions/add',
+          data: {
+            'UserId': userId,
+            'BuildId': buildId,
+            'IsWishlisted': false,
+            'IsLiked': rating >= 3.0 && rating > 0,
+            'Rating': scaled,
+          },
+        );
         return (response.data is Map<String, dynamic>)
             ? response.data as Map<String, dynamic>
             : <String, dynamic>{};
@@ -615,9 +681,10 @@ class BuildService {
       bool isAlreadyExistsError = false;
       if (e is DioException && e.response?.statusCode == 400) {
         // ... (Error parsing logic same as original)
-        isAlreadyExistsError = true; // Simplified for brevity, assume check passed
+        isAlreadyExistsError =
+            true; // Simplified for brevity, assume check passed
       }
-      
+
       if (isAlreadyExistsError) {
         try {
           final interactionId = await getBuildInteractionId(buildId, userId);
@@ -641,10 +708,13 @@ class BuildService {
       if (query != null && query.isNotEmpty) {
         data['Query'] = query;
       }
-      
-      final response = await _dio.post('$apiBaseUrl/Tags/get-count', data: data);
+
+      final response = await _dio.post(
+        '$apiBaseUrl/Tags/get-count',
+        data: data,
+      );
       final count = response.data;
-      
+
       if (count is num) return count.toInt();
       if (count is String) return int.tryParse(count) ?? 0;
       if (count is List && count.isNotEmpty) return (count[0] as num).toInt();
@@ -670,10 +740,10 @@ class BuildService {
         data['page'] = page;
         data['pageLength'] = pageLength;
       }
-      
+
       final response = await _dio.post('$apiBaseUrl/Tags/get', data: data);
       final List<dynamic> tagsJson = response.data as List<dynamic>? ?? [];
-      
+
       final allTags = <Tag>[];
       for (var json in tagsJson) {
         try {
@@ -683,8 +753,10 @@ class BuildService {
           }
         } catch (_) {}
       }
-      
-      allTags.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      allTags.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
       return allTags;
     } catch (e) {
       rethrow;
@@ -694,10 +766,10 @@ class BuildService {
   /// Finds a tag by name and returns its ID.
   Future<String?> findTagIdByName(String tagName) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/Tags/get', data: {
-        'query': tagName,
-        'paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/Tags/get',
+        data: {'query': tagName, 'paging': false},
+      );
       final List<dynamic> tagsJson = response.data as List<dynamic>? ?? [];
       for (final json in tagsJson) {
         final tag = Tag.fromJson(json);
@@ -718,10 +790,10 @@ class BuildService {
       if (tagId == null) {
         throw Exception('Tag "$tagName" not found.');
       }
-      await _dio.post('$apiBaseUrl/BuildTags/add', data: {
-        'buildId': buildId,
-        'tagId': tagId,
-      });
+      await _dio.post(
+        '$apiBaseUrl/BuildTags/add',
+        data: {'buildId': buildId, 'tagId': tagId},
+      );
     } catch (e) {
       rethrow;
     }
@@ -730,10 +802,10 @@ class BuildService {
   /// Adds a tag to a build by ID.
   Future<void> addTagToBuild(String buildId, String tagId) async {
     try {
-      await _dio.post('$apiBaseUrl/BuildTags/add', data: {
-        'buildId': buildId,
-        'tagId': tagId,
-      });
+      await _dio.post(
+        '$apiBaseUrl/BuildTags/add',
+        data: {'buildId': buildId, 'tagId': tagId},
+      );
     } catch (e) {
       rethrow;
     }
@@ -764,23 +836,26 @@ class BuildService {
   /// Gets all tags for a specific build.
   Future<List<Tag>> getBuildTags(String buildId) async {
     try {
-      final response = await _dio.post('$apiBaseUrl/BuildTags/get', data: {
-        'buildId': [buildId],
-        'paging': false,
-      });
+      final response = await _dio.post(
+        '$apiBaseUrl/BuildTags/get',
+        data: {
+          'buildId': [buildId],
+          'paging': false,
+        },
+      );
       final List<dynamic> buildTagsJson = response.data as List<dynamic>? ?? [];
       final tagIds = buildTagsJson
           .map((bt) => (bt as Map<String, dynamic>)['tagId'] ?? bt['TagId'])
           .where((id) => id != null)
           .map((id) => id.toString())
           .toList();
-      
+
       if (tagIds.isEmpty) return [];
-      
-      final tagsResponse = await _dio.post('$apiBaseUrl/Tags/get', data: {
-        'tagId': tagIds,
-        'paging': false,
-      });
+
+      final tagsResponse = await _dio.post(
+        '$apiBaseUrl/Tags/get',
+        data: {'tagId': tagIds, 'paging': false},
+      );
       final List<dynamic> tagsJson = tagsResponse.data as List<dynamic>? ?? [];
       return tagsJson.map((json) => Tag.fromJson(json)).toList();
     } catch (e) {
@@ -800,21 +875,29 @@ final buildServiceProvider = Provider<BuildService>((ref) {
 });
 
 /// A provider that fetches a list of builds for a specific user.
-final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, userId) async {
+final userBuildsProvider = FutureProvider.family<List<Build>, String>((
+  ref,
+  userId,
+) async {
   final buildService = ref.watch(buildServiceProvider);
-  final builds = await buildService.getBuilds({'userId': [userId], 'paging': false}, skipRatings: true);
-  
+  final builds = await buildService.getBuilds({
+    'userId': [userId],
+    'paging': false,
+  }, skipRatings: true);
+
   if (builds.isEmpty) return builds;
-  
+
   // Bulk fetch components for all builds
   Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
   try {
-    componentsByBuildId = await buildService.getBuildComponents(builds.map((b) => b.id).toList());
+    componentsByBuildId = await buildService.getBuildComponents(
+      builds.map((b) => b.id).toList(),
+    );
   } catch (e) {
     debugPrint('Error fetching components for user builds: $e');
     return builds;
   }
-  
+
   return builds.map((build) {
     final rawComponents = componentsByBuildId[build.id];
     if (rawComponents == null || rawComponents.isEmpty) {
@@ -829,7 +912,10 @@ final userBuildsProvider = FutureProvider.family<List<Build>, String>((ref, user
 /// @deprecated Use exploreBuildsProvider instead.
 final allBuildsProvider = FutureProvider<List<Build>>((ref) async {
   final buildService = ref.watch(buildServiceProvider);
-  return buildService.getBuilds({'status': ['PUBLISHED'], 'paging': false}, skipRatings: true);
+  return buildService.getBuilds({
+    'status': ['PUBLISHED'],
+    'paging': false,
+  }, skipRatings: true);
 });
 
 /// Parameters for exploring builds.
@@ -891,105 +977,121 @@ class ExploreBuildsParams {
 }
 
 /// A provider that fetches builds for the "Explore" page with filtering.
-final exploreBuildsProvider = FutureProvider.autoDispose.family<List<Build>, ExploreBuildsParams>((ref, params) async {
-  final buildService = ref.watch(buildServiceProvider);
-  final currentUser = ref.watch(authProvider).valueOrNull;
-  final currentUserId = currentUser?.uid;
-  
-  final filter = <String, dynamic>{
-    'Status': ['PUBLISHED'],
-    'Paging': true,
-    'Page': params.page,
-    'PageLength': params.pageLength,
-  };
+final exploreBuildsProvider = FutureProvider.autoDispose
+    .family<List<Build>, ExploreBuildsParams>((ref, params) async {
+      final buildService = ref.watch(buildServiceProvider);
+      final currentUser = ref.watch(authProvider).valueOrNull;
+      final currentUserId = currentUser?.uid;
 
-  if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
-    filter['Query'] = params.searchQuery!.trim();
-  }
-  if (params.selectedTags != null && params.selectedTags!.isNotEmpty) {
-    filter['Tag'] = params.selectedTags!.toList();
-  }
-  if (params.dateRange != null) {
-    final now = DateTime.now().toUtc();
-    DateTime? startDate;
-    switch (params.dateRange) {
-      case '7days':
-        startDate = now.subtract(const Duration(days: 7));
-        break;
-      case '30days':
-        startDate = now.subtract(const Duration(days: 30));
-        break;
-      case '3months':
-        startDate = now.subtract(const Duration(days: 90));
-        break;
-    }
-    if (startDate != null) {
-      filter['PublishedAtStart'] = startDate.toIso8601String();
-      filter['PublishedAtEnd'] = now.toIso8601String();
-    }
-  }
-  if (params.selectedUserIds != null && params.selectedUserIds!.isNotEmpty) {
-    filter['UserId'] = params.selectedUserIds!.toList();
-  }
+      final filter = <String, dynamic>{
+        'Status': ['PUBLISHED'],
+        'Paging': true,
+        'Page': params.page,
+        'PageLength': params.pageLength,
+      };
 
-  String? orderBy;
-  String sortDirection = 'desc';
-  
-  switch (params.sortBy) {
-    case 'Latest':
-      orderBy = 'DatabaseEntryAt';
-      sortDirection = 'desc';
-      break;
-    case 'Popular':
-      orderBy = 'DatabaseEntryAt'; // Needs backend support for rating sorting
-      sortDirection = 'desc';
-      break;
-    case 'Price':
-      orderBy = 'Name';
-      sortDirection = 'asc';
-      break;
-    default:
-      orderBy = 'DatabaseEntryAt';
-      sortDirection = 'desc';
-  }
+      if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
+        filter['Query'] = params.searchQuery!.trim();
+      }
+      if (params.selectedTags != null && params.selectedTags!.isNotEmpty) {
+        filter['Tag'] = params.selectedTags!.toList();
+      }
+      if (params.dateRange != null) {
+        final now = DateTime.now().toUtc();
+        DateTime? startDate;
+        switch (params.dateRange) {
+          case '7days':
+            startDate = now.subtract(const Duration(days: 7));
+            break;
+          case '30days':
+            startDate = now.subtract(const Duration(days: 30));
+            break;
+          case '3months':
+            startDate = now.subtract(const Duration(days: 90));
+            break;
+        }
+        if (startDate != null) {
+          filter['PublishedAtStart'] = startDate.toIso8601String();
+          filter['PublishedAtEnd'] = now.toIso8601String();
+        }
+      }
+      if (params.selectedUserIds != null &&
+          params.selectedUserIds!.isNotEmpty) {
+        filter['UserId'] = params.selectedUserIds!.toList();
+      }
 
-  filter['OrderBy'] = orderBy;
-  filter['SortDirection'] = sortDirection;
+      String? orderBy;
+      String sortDirection = 'desc';
 
-  final builds = await buildService.getBuilds(filter, currentUserId: currentUserId, skipRatings: true);
-  
-  if (builds.isEmpty) return builds;
-  
-  // Bulk fetch components for all builds
-  Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
-  try {
-    componentsByBuildId = await buildService.getBuildComponents(builds.map((b) => b.id).toList());
-  } catch (e) {
-    debugPrint('Error fetching components for explore builds: $e');
-    return builds;
-  }
-  
-  return builds.map((build) {
-    final rawComponents = componentsByBuildId[build.id];
-    if (rawComponents == null || rawComponents.isEmpty) {
-      return build;
-    }
-    final parsedComponents = _parseComponentsWithPrices(rawComponents);
-    return build.copyWith(components: parsedComponents);
-  }).toList();
-});
+      switch (params.sortBy) {
+        case 'Latest':
+          orderBy = 'DatabaseEntryAt';
+          sortDirection = 'desc';
+          break;
+        case 'Popular':
+          orderBy =
+              'DatabaseEntryAt'; // Needs backend support for rating sorting
+          sortDirection = 'desc';
+          break;
+        case 'Price':
+          orderBy = 'Name';
+          sortDirection = 'asc';
+          break;
+        default:
+          orderBy = 'DatabaseEntryAt';
+          sortDirection = 'desc';
+      }
+
+      filter['OrderBy'] = orderBy;
+      filter['SortDirection'] = sortDirection;
+
+      final builds = await buildService.getBuilds(
+        filter,
+        currentUserId: currentUserId,
+        skipRatings: true,
+      );
+
+      if (builds.isEmpty) return builds;
+
+      // Bulk fetch components for all builds
+      Map<String, List<Map<String, dynamic>>> componentsByBuildId = {};
+      try {
+        componentsByBuildId = await buildService.getBuildComponents(
+          builds.map((b) => b.id).toList(),
+        );
+      } catch (e) {
+        debugPrint('Error fetching components for explore builds: $e');
+        return builds;
+      }
+
+      return builds.map((build) {
+        final rawComponents = componentsByBuildId[build.id];
+        if (rawComponents == null || rawComponents.isEmpty) {
+          return build;
+        }
+        final parsedComponents = _parseComponentsWithPrices(rawComponents);
+        return build.copyWith(components: parsedComponents);
+      }).toList();
+    });
 
 /// A provider that lazily fetches components for specific build IDs.
-final buildComponentsLazyProvider = FutureProvider.family<Map<String, List<Map<String, dynamic>>>, List<String>>((ref, buildIds) async {
-  if (buildIds.isEmpty) return {};
-  final buildService = ref.watch(buildServiceProvider);
-  return buildService.getBuildComponents(buildIds);
-});
+final buildComponentsLazyProvider =
+    FutureProvider.family<
+      Map<String, List<Map<String, dynamic>>>,
+      List<String>
+    >((ref, buildIds) async {
+      if (buildIds.isEmpty) return {};
+      final buildService = ref.watch(buildServiceProvider);
+      return buildService.getBuildComponents(buildIds);
+    });
 
 /// Parses raw component JSON.
-List<BaseComponent> _parseComponentsWithPrices(List<Map<String, dynamic>> componentsJson) {
+List<BaseComponent> _parseComponentsWithPrices(
+  List<Map<String, dynamic>> componentsJson,
+) {
   double? _extractPrice(Map<String, dynamic> data) {
-    final raw = data['lowestPriceOverride'] ??
+    final raw =
+        data['lowestPriceOverride'] ??
         data['LowestPriceOverride'] ??
         data['lowestPrice'] ??
         data['LowestPrice'] ??
@@ -1003,37 +1105,72 @@ List<BaseComponent> _parseComponentsWithPrices(List<Map<String, dynamic>> compon
 
   BaseComponent? mapComponent(Map<String, dynamic> componentData) {
     final typeString =
-        (componentData['type'] ?? componentData['Type'] ?? componentData['componentType'] ?? componentData['ComponentType'])?.toString().toUpperCase();
+        (componentData['type'] ??
+                componentData['Type'] ??
+                componentData['componentType'] ??
+                componentData['ComponentType'])
+            ?.toString()
+            .toUpperCase();
     if (typeString == null) return null;
 
     final priceOverride = _extractPrice(componentData);
 
     switch (typeString) {
       case 'CPU':
-        return CPUComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'GPU':
-        return GPUComponent.fromJson(componentData, priceOverride: priceOverride);
+        return GPUComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MOTHERBOARD':
-        return MotherboardComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MotherboardComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MEMORY':
       case 'RAM':
-        return MemoryComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MemoryComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'STORAGE':
-        return StorageComponent.fromJson(componentData, priceOverride: priceOverride);
+        return StorageComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'POWERSUPPLY':
       case 'PSU':
       case 'POWER_SUPPLY':
-        return PowerSupplyComponent.fromJson(componentData, priceOverride: priceOverride);
+        return PowerSupplyComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'CASE':
       case 'PCCASE':
-        return CaseComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CaseComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'COOLER':
-        return CoolerComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CoolerComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'CASEFAN':
       case 'CASE_FAN':
-        return CaseFanComponent.fromJson(componentData, priceOverride: priceOverride);
+        return CaseFanComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       case 'MONITOR':
-        return MonitorComponent.fromJson(componentData, priceOverride: priceOverride);
+        return MonitorComponent.fromJson(
+          componentData,
+          priceOverride: priceOverride,
+        );
       default:
         return null;
     }
@@ -1043,11 +1180,16 @@ List<BaseComponent> _parseComponentsWithPrices(List<Map<String, dynamic>> compon
 }
 
 /// Session-based cache for components.
-final componentCacheProvider = StateNotifierProvider<ComponentCacheNotifier, Map<String, Map<String, dynamic>>>((ref) {
-  return ComponentCacheNotifier();
-});
+final componentCacheProvider =
+    StateNotifierProvider<
+      ComponentCacheNotifier,
+      Map<String, Map<String, dynamic>>
+    >((ref) {
+      return ComponentCacheNotifier();
+    });
 
-class ComponentCacheNotifier extends StateNotifier<Map<String, Map<String, dynamic>>> {
+class ComponentCacheNotifier
+    extends StateNotifier<Map<String, Map<String, dynamic>>> {
   ComponentCacheNotifier() : super({});
 
   void addComponent(String componentId, Map<String, dynamic> componentData) {
@@ -1090,7 +1232,10 @@ class ComponentCacheNotifier extends StateNotifier<Map<String, Map<String, dynam
 }
 
 /// A provider that fetches the details of a single build by its ID.
-final buildDetailProvider = FutureProvider.autoDispose.family<Build, String>((ref, buildId) async {
+final buildDetailProvider = FutureProvider.autoDispose.family<Build, String>((
+  ref,
+  buildId,
+) async {
   final buildService = ref.watch(buildServiceProvider);
   final currentUser = ref.watch(authProvider).valueOrNull;
   return buildService.getBuildById(buildId, currentUserId: currentUser?.uid);
@@ -1103,7 +1248,10 @@ final tagsProvider = FutureProvider<List<Tag>>((ref) async {
 });
 
 /// A provider that fetches tags for a specific build.
-final buildTagsProvider = FutureProvider.family<List<Tag>, String>((ref, buildId) async {
+final buildTagsProvider = FutureProvider.family<List<Tag>, String>((
+  ref,
+  buildId,
+) async {
   final buildService = ref.watch(buildServiceProvider);
   return buildService.getBuildTags(buildId);
 });
